@@ -255,19 +255,35 @@ class _RecordScreenState extends State<RecordScreen> {
               child: ListView.builder(
                 itemCount: 4,
                 itemBuilder: (context, index) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextField(
-                        controller: _menuControllers[index],
-                        inputFormatters: [LengthLimitingTextInputFormatter(50)], // 最大50文字
-                        decoration: const InputDecoration(isDense: true, hintText: '種目名'),
+                  return Card( // ★Cardウィジェットで囲む
+                    margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0), // カード間の余白
+                    elevation: 2.0, // カードの影
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)), // 角丸
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0), // カード内のパディング
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextField(
+                            controller: _menuControllers[index],
+                            inputFormatters: [LengthLimitingTextInputFormatter(50)], // 最大50文字
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              hintText: '種目名',
+                              border: OutlineInputBorder(), // ★枠線を追加して見やすく
+                              contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          buildSetRow(index, 1, 0, 1),
+                          const SizedBox(height: 4),
+                          buildSetRow(index, 2, 2, 3),
+                          const SizedBox(height: 4),
+                          buildSetRow(index, 3, 4, 5),
+                          // const Divider(), // ★DividerはCardで囲んだため不要
+                        ],
                       ),
-                      buildSetRow(index, 1, 0, 1),
-                      buildSetRow(index, 2, 2, 3),
-                      buildSetRow(index, 3, 4, 5),
-                      const Divider(),
-                    ],
+                    ),
                   );
                 },
               ),
