@@ -45,3 +45,38 @@ class MenuDataAdapter extends TypeAdapter<MenuData> {
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
+
+class DailyRecordAdapter extends TypeAdapter<DailyRecord> {
+  @override
+  final int typeId = 1;
+
+  @override
+  DailyRecord read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return DailyRecord(
+      menus: (fields[0] as Map).map((dynamic k, dynamic v) =>
+          MapEntry(k as String, (v as List).cast<MenuData>())),
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, DailyRecord obj) {
+    writer
+      ..writeByte(1)
+      ..writeByte(0)
+      ..write(obj.menus);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DailyRecordAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
