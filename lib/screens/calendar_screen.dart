@@ -21,7 +21,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // Hive Boxのインスタンス
   late final Box<DailyRecord> recordsBox;
 
-  // 各部位に対応する色を定義 (settings_screen.dart にも同じリストがあるが、ここでは表示用)
+  // 各部位に対応する色を定義
   final Map<String, Color> partColors = {
     '腕': Colors.red,
     '胸': Colors.purple,
@@ -43,16 +43,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  // 指定された日付に記録されたすべての部位を取得するヘルパー関数
-  List<String> _getRecordedPartsForDate(DateTime date) {
+  // 指定された日付のDailyRecordから、最後に変更された部位の色を取得
+  Color? _getMarkerColorForDate(DateTime date) {
     final String dateKey = _getDateKey(date);
     final DailyRecord? dailyRecord = recordsBox.get(dateKey);
 
-    if (dailyRecord != null && dailyRecord.menus.isNotEmpty) {
-      // 記録がある部位のリストを返す
-      return dailyRecord.menus.keys.where((part) => dailyRecord.menus[part]!.isNotEmpty).toList();
+    if (dailyRecord != null && dailyRecord.lastModifiedPart != null) {
+      // lastModifiedPart が設定されていれば、その部位の色を返す
+      return partColors[dailyRecord.lastModifiedPart];
     }
-    return []; // 記録がなければ空のリストを返す
+    return null; // 記録がないか、lastModifiedPartが設定されていなければ色なし
   }
 
   void navigateToRecord(BuildContext context, DateTime date) {
@@ -118,28 +118,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
             calendarBuilders: CalendarBuilders(
               // 各日付の下にマーカーを表示
               markerBuilder: (context, date, events) {
-                final recordedParts = _getRecordedPartsForDate(date);
+                final markerColor = _getMarkerColorForDate(date);
 
-                if (recordedParts.isEmpty) {
+                if (markerColor == null) {
                   return null; // 記録がなければマーカーを表示しない
                 }
 
-                // 記録がある場合、複数のマーカーを表示できるようにStackを使用
+                // 記録がある場合、単一のマーカーを表示
                 return Positioned(
                   bottom: 1, // 日付の下に表示
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: recordedParts.map((part) {
-                      return Container(
-                        width: 6, // マーカーのサイズ
-                        height: 6,
-                        margin: const EdgeInsets.symmetric(horizontal: 0.5), // マーカー間のスペース
-                        decoration: BoxDecoration(
-                          color: partColors[part] ?? Colors.grey, // 部位に対応する色、なければ灰色
-                          shape: BoxShape.circle,
-                        ),
-                      );
-                    }).toList(),
+                  child: Container(
+                    width: 8, // マーカーのサイズ
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: markerColor, // 取得した色を使用
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 );
               },

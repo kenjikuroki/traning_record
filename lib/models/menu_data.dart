@@ -24,5 +24,9 @@ class DailyRecord extends HiveObject {
   @HiveField(0)
   Map<String, List<MenuData>> menus;
 
-  DailyRecord({required this.menus});
+  // その日に最後に変更されたターゲット部位を記録する新しいフィールド
+  @HiveField(1) // 新しいフィールドなので、既存のフィールドと異なるIDを割り当てます
+  String? lastModifiedPart; // null許容にして、既存のデータとの互換性を保ちます
+
+  DailyRecord({required this.menus, this.lastModifiedPart}); // コンストラクタを更新
 }

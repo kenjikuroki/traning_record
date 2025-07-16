@@ -59,15 +59,18 @@ class DailyRecordAdapter extends TypeAdapter<DailyRecord> {
     return DailyRecord(
       menus: (fields[0] as Map).map((dynamic k, dynamic v) =>
           MapEntry(k as String, (v as List).cast<MenuData>())),
+      lastModifiedPart: fields[1] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, DailyRecord obj) {
     writer
-      ..writeByte(1)
+      ..writeByte(2)
       ..writeByte(0)
-      ..write(obj.menus);
+      ..write(obj.menus)
+      ..writeByte(1)
+      ..write(obj.lastModifiedPart);
   }
 
   @override
