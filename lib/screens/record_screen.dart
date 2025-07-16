@@ -6,6 +6,39 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/menu_data.dart';     // MenuDataとDailyRecordをインポート
 import 'settings_screen.dart'; // SettingsScreenをインポート
 
+// 各ターゲットセクションのデータを保持するヘルパークラス
+class SectionData {
+  String? selectedPart; // このセクションで選択されているターゲット部位
+  List<TextEditingController> menuControllers; // このセクションの種目名コントローラー
+  List<List<TextEditingController>> setControllers; // このセクションのセットコントローラー
+
+  SectionData({
+    this.selectedPart,
+    required this.menuControllers,
+    required this.setControllers,
+  });
+
+  // 空のコントローラーを持つ新しいセクションデータを生成するファクトリコンストラクタ
+  static SectionData createEmpty() {
+    return SectionData(
+      menuControllers: List.generate(4, (_) => TextEditingController()), // デフォルトで4つの空の種目
+      setControllers: List.generate(4, (_) => List.generate(6, (_) => TextEditingController())),
+    );
+  }
+
+  // このセクション内のすべてのコントローラーを破棄するメソッド
+  void dispose() {
+    for (var c in menuControllers) {
+      c.dispose();
+    }
+    for (var list in setControllers) {
+      for (var c in list) {
+        c.dispose();
+      }
+    }
+  }
+}
+
 class RecordScreen extends StatefulWidget {
   final DateTime selectedDate;
 
@@ -17,10 +50,7 @@ class RecordScreen extends StatefulWidget {
 
 class _RecordScreenState extends State<RecordScreen> {
   final _bodyParts = ['腕', '胸', '肩', '背中', '足', '全体', 'その他'];
-  String? _selectedPart;
-
-  late List<TextEditingController> _menuControllers;
-  late List<List<TextEditingController>> _setControllers;
+  List<SectionData> _sections = []; // 複数のターゲットセクションを管理するリスト
 
   // Boxの型をDailyRecordに変更
   late final Box<DailyRecord> recordsBox;
@@ -31,13 +61,27 @@ class _RecordScreenState extends State<RecordScreen> {
     super.initState();
     recordsBox = Hive.box<DailyRecord>('recordsBox');
     lastUsedMenusBox = Hive.box<List<MenuData>>('lastUsedMenusBox');
-    _initControllers();
-    _loadFullDayData(); // 初回に全データをロード
+    _loadInitialSections(); // 初期セクションのロード（既存データまたは新規）
   }
 
-  void _initControllers() {
-    _menuControllers = List.generate(4, (_) => TextEditingController());
-    _setControllers = List.generate(4, (_) => List.generate(6, (_) => TextEditingController()));
+  // 初期セクションのロード（既存データがあればそれらを、なければ空のセクションを1つ作成）
+  void _loadInitialSections() {
+    String dateKey = _getDateKey(widget.selectedDate);
+    DailyRecord? record = recordsBox.get(dateKey);
+
+    if (record != null && record.menus.isNotEmpty) {
+      // 既存の記録からセクションをロード
+      record.menus.forEach((part, menuList) {
+        SectionData section = SectionData.createEmpty();
+        section.selectedPart = part;
+        _setControllersFromData(section.menuControllers, section.setControllers, menuList);
+        _sections.add(section);
+      });
+    } else {
+      // 記録がなければ、デフォルトで1つの空のセクションを作成
+      _sections.add(SectionData.createEmpty());
+    }
+    setState(() {}); // UIを更新
   }
 
   // 日付キーを生成するヘルパー関数
@@ -45,126 +89,96 @@ class _RecordScreenState extends State<RecordScreen> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  // 画面表示時にその日の記録があれば、最初のターゲットを自動選択して表示
-  void _loadFullDayData() {
-    String key = _getDateKey(widget.selectedDate);
-    var record = recordsBox.get(key);
+  // コントローラーにデータをセット（動的なサイズ調整を含む）
+  void _setControllersFromData(List<TextEditingController> menuCtrls, List<List<TextEditingController>> setCtrls, List<MenuData> list) {
+    // まず既存のコントローラーのテキストをクリア
+    for (var c in menuCtrls) c.clear();
+    for (var list in setCtrls) { for (var c in list) c.clear(); }
 
-    if (record != null && record.menus.isNotEmpty) {
-      // lastModifiedPart が設定されていればそれを使用、なければ最初の部位を選択
-      setState(() {
-        _selectedPart = record.lastModifiedPart ?? record.menus.keys.first;
-      });
-      _setControllersFromData(record.menus[_selectedPart!]!);
+    // 必要なコントローラーの数を調整
+    // もし読み込むリストのサイズが現在のコントローラー数より多ければ追加
+    while (menuCtrls.length < list.length) {
+      menuCtrls.add(TextEditingController());
+      setCtrls.add(List.generate(6, (_) => TextEditingController()));
     }
-  }
-
-  // 特定の部位のデータをロード
-  void _loadDataForPart(String part) {
-    _clearControllers(); // ★ここを追加：常にコントローラーをクリアしてからデータをロード
-
-    String key = _getDateKey(widget.selectedDate);
-    var record = recordsBox.get(key);
-
-    if (record != null && record.menus.containsKey(part)) {
-      // その日のその部位の記録があればそれをロード
-      _setControllersFromData(record.menus[part]!);
-    } else {
-      // その日のその部位の記録がなければ、前回使用したメニューをロード
-      List<MenuData>? lastMenus = lastUsedMenusBox.get(part);
-      if (lastMenus != null) {
-        _setControllersFromData(lastMenus);
-      }
-      // else: _clearControllers() は冒頭で呼ばれているため、ここでは不要
+    // もし読み込むリストのサイズが現在のコントローラー数より少なければ、余分なコントローラーを削除
+    // ただし、最低4つは残す（初期表示のため）
+    while (menuCtrls.length > list.length && menuCtrls.length > 4) {
+      menuCtrls.removeLast().dispose();
+      setCtrls.removeLast().forEach((c) => c.dispose());
     }
-  }
 
-  // コントローラーにデータをセット
-  void _setControllersFromData(List<MenuData> list) {
-    for (int i = 0; i < 4; i++) {
-      if (i < list.length) {
-        _menuControllers[i].text = list[i].name;
-        for (int s = 0; s < 3; s++) {
-          _setControllers[i][s * 2].text = list[i].weights[s].toString();
-          _setControllers[i][s * 2 + 1].text = list[i].reps[s].toString();
-        }
-      } else {
-        _menuControllers[i].clear();
-        for (int j = 0; j < 6; j++) {
-          _setControllers[i][j].clear();
-        }
+    // データでコントローラーを埋める
+    for (int i = 0; i < list.length; i++) {
+      menuCtrls[i].text = list[i].name;
+      for (int s = 0; s < 3; s++) {
+        setCtrls[i][s * 2].text = list[i].weights[s].toString();
+        setCtrls[i][s * 2 + 1].text = list[i].reps[s].toString();
       }
     }
+    // setStateは呼び出し元で処理されるため、ここでは不要
   }
 
-  // コントローラーをクリア
-  void _clearControllers() {
-    for (var c in _menuControllers) {
+  // コントローラーのテキスト内容をクリア（リスト自体はクリアしない）
+  void _clearControllers(List<TextEditingController> menuCtrls, List<List<TextEditingController>> setCtrls) {
+    for (var c in menuCtrls) {
       c.clear();
     }
-    for (var list in _setControllers) {
+    for (var list in setCtrls) {
       for (var c in list) {
         c.clear();
       }
     }
   }
 
-  // 現在のデータを保存
-  void _saveData() {
-    if (_selectedPart == null) return;
+  // 全てのセクションのデータを保存
+  void _saveAllSectionsData() {
+    String dateKey = _getDateKey(widget.selectedDate);
+    Map<String, List<MenuData>> allMenusForDay = {};
+    String? lastModifiedPart; // その日に最後に変更された部位を追跡
 
-    List<MenuData> list = [];
-    for (int i = 0; i < 4; i++) {
-      String name = _menuControllers[i].text.trim();
-      // 種目名が空で、かつ重量と回数もすべて0の場合はスキップ（完全に空の行）
-      if (name.isEmpty &&
-          (int.tryParse(_setControllers[i][0].text) ?? 0) == 0 &&
-          (int.tryParse(_setControllers[i][1].text) ?? 0) == 0 &&
-          (int.tryParse(_setControllers[i][2].text) ?? 0) == 0 &&
-          (int.tryParse(_setControllers[i][3].text) ?? 0) == 0 &&
-          (int.tryParse(_setControllers[i][4].text) ?? 0) == 0 &&
-          (int.tryParse(_setControllers[i][5].text) ?? 0) == 0) {
-        continue;
+    for (var section in _sections) {
+      if (section.selectedPart == null) continue; // 部位が選択されていないセクションはスキップ
+
+      List<MenuData> sectionMenuList = [];
+      bool sectionHasContent = false;
+      for (int i = 0; i < section.menuControllers.length; i++) {
+        String name = section.menuControllers[i].text.trim();
+        List<int> weights = [];
+        List<int> reps = [];
+        bool rowHasContent = false;
+        for (int s = 0; s < 3; s++) {
+          int w = int.tryParse(section.setControllers[i][s * 2].text) ?? 0;
+          int r = int.tryParse(section.setControllers[i][s * 2 + 1].text) ?? 0;
+          weights.add(w);
+          reps.add(r);
+          if (w > 0 || r > 0 || name.isNotEmpty) rowHasContent = true; // 種目名も考慮
+        }
+
+        if (name.isNotEmpty || rowHasContent) {
+          sectionMenuList.add(MenuData(name: name, weights: weights, reps: reps));
+          sectionHasContent = true;
+        }
       }
 
-      List<int> weights = [];
-      List<int> reps = [];
-      for (int s = 0; s < 3; s++) {
-        int w = int.tryParse(_setControllers[i][s * 2].text) ?? 0;
-        int r = int.tryParse(_setControllers[i][s * 2 + 1].text) ?? 0;
-        weights.add(w);
-        reps.add(r);
+      // セクションに内容がある場合のみ保存
+      if (sectionMenuList.isNotEmpty) {
+        allMenusForDay[section.selectedPart!] = sectionMenuList;
+        lastModifiedPart = section.selectedPart; // 最後に内容があった部位を記録
+        lastUsedMenusBox.put(section.selectedPart!, sectionMenuList); // 前回値も更新
+      } else {
+        // セクションが空になった場合、既存のマップからその部位を削除
+        allMenusForDay.remove(section.selectedPart);
       }
-      list.add(MenuData(name: name, weights: weights, reps: reps));
     }
 
-    String key = _getDateKey(widget.selectedDate);
-
-    // その日のDailyRecordを取得または新規作成
-    var record = recordsBox.get(key);
-    if (record == null) {
-      record = DailyRecord(menus: {});
+    // DailyRecord を保存または削除
+    if (allMenusForDay.isNotEmpty) {
+      DailyRecord newRecord = DailyRecord(menus: allMenusForDay, lastModifiedPart: lastModifiedPart);
+      recordsBox.put(dateKey, newRecord);
+    } else {
+      recordsBox.delete(dateKey); // 全てのメニューが空になったらDailyRecordを削除
     }
-
-    // 選択された部位のメニューリストを更新
-    record.menus[_selectedPart!] = list;
-    // 最後に変更された部位を記録
-    record.lastModifiedPart = _selectedPart!;
-
-    // DailyRecord を保存します。
-    // 特定の部位のメニューリストが空になっても、DailyRecord自体は削除しません。
-    // これにより、ユーザーが空にした場合でも、その日のその部位の記録は「空のリスト」として残ります。
-    recordsBox.put(key, record);
-
-    // 前回値も更新 (空でないリストの場合のみ)
-    if (list.isNotEmpty) {
-      lastUsedMenusBox.put(_selectedPart!, list);
-    }
-  }
-
-  // 画面を離れる際にデータを保存
-  void _saveOnDispose() {
-    _saveData();
   }
 
   // 設定画面へ遷移する関数
@@ -177,28 +191,40 @@ class _RecordScreenState extends State<RecordScreen> {
     );
   }
 
+  // 新しいメニューカードを特定のセクションに追加する関数
+  void _addMenuItem(int sectionIndex) {
+    setState(() {
+      _sections[sectionIndex].menuControllers.add(TextEditingController());
+      _sections[sectionIndex].setControllers.add(List.generate(6, (_) => TextEditingController()));
+    });
+  }
+
+  // 新しいターゲットセクションを追加する関数
+  void _addTargetSection() {
+    setState(() {
+      _sections.add(SectionData.createEmpty());
+    });
+  }
+
   @override
   void dispose() {
-    _saveOnDispose(); // dispose時に保存
-    for (var c in _menuControllers) {
-      c.dispose();
-    }
-    for (var list in _setControllers) {
-      for (var c in list) {
-        c.dispose();
-      }
+    _saveAllSectionsData(); // dispose時に全てのデータを保存
+    // すべてのコントローラーを破棄
+    for (var section in _sections) {
+      section.dispose();
     }
     super.dispose();
   }
 
-  Widget buildSetRow(int menuIndex, int setNumber, int weightIndex, int repIndex) {
+  // 各セットの入力行を構築するウィジェット
+  Widget buildSetRow(List<List<TextEditingController>> setCtrls, int menuIndex, int setNumber, int weightIndex, int repIndex) {
     return Row(
       children: [
         Text('${setNumber}セット：'),
         SizedBox(
           width: 60,
           child: TextField(
-            controller: _setControllers[menuIndex][weightIndex],
+            controller: setCtrls[menuIndex][weightIndex],
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly], // 数字のみを許可
             decoration: const InputDecoration(isDense: true, hintText: 'kg'),
@@ -208,7 +234,7 @@ class _RecordScreenState extends State<RecordScreen> {
         SizedBox(
           width: 60,
           child: TextField(
-            controller: _setControllers[menuIndex][repIndex],
+            controller: setCtrls[menuIndex][repIndex],
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly], // 数字のみを許可
             decoration: const InputDecoration(isDense: true, hintText: '回'),
@@ -235,27 +261,12 @@ class _RecordScreenState extends State<RecordScreen> {
         padding: const EdgeInsets.all(8),
         child: Column(
           children: [
-            DropdownButton<String>(
-              hint: const Text('ターゲットを選択'),
-              value: _selectedPart,
-              items: _bodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-              onChanged: (value) {
-                // 部位変更前に現在のデータを保存
-                _saveData();
-                setState(() {
-                  _selectedPart = value;
-                  if (_selectedPart != null) {
-                    _loadDataForPart(_selectedPart!);
-                  }
-                });
-              },
-            ),
-            const SizedBox(height: 10),
             Expanded(
               child: ListView.builder(
-                itemCount: 4,
-                itemBuilder: (context, index) {
-                  return Card( // ★Cardウィジェットで囲む
+                itemCount: _sections.length, // セクションの数に基づいてアイテム数を決定
+                itemBuilder: (context, sectionIndex) {
+                  final section = _sections[sectionIndex];
+                  return Card( // 各セクションをCardウィジェットで囲む
                     margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0), // カード間の余白
                     elevation: 2.0, // カードの影
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)), // 角丸
@@ -264,28 +275,98 @@ class _RecordScreenState extends State<RecordScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          TextField(
-                            controller: _menuControllers[index],
-                            inputFormatters: [LengthLimitingTextInputFormatter(50)], // 最大50文字
-                            decoration: const InputDecoration(
-                              isDense: true,
-                              hintText: '種目名',
-                              border: OutlineInputBorder(), // ★枠線を追加して見やすく
-                              contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                          // ターゲット部位選択ドロップダウン (セクションごと)
+                          DropdownButton<String>(
+                            hint: const Text('ターゲットを選択'),
+                            value: section.selectedPart,
+                            items: _bodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                // 部位変更前に現在のセクションのデータを保存 (全体保存ロジックで処理されるため、ここでは不要)
+                                section.selectedPart = value;
+                                if (section.selectedPart != null) {
+                                  // 新しい部位のデータをロード
+                                  String dateKey = _getDateKey(widget.selectedDate);
+                                  DailyRecord? record = recordsBox.get(dateKey);
+                                  List<MenuData>? listToLoad;
+
+                                  if (record != null && record.menus.containsKey(section.selectedPart!)) {
+                                    // その日のその部位の記録があればそれをロード
+                                    listToLoad = record.menus[section.selectedPart!];
+                                  } else {
+                                    // その日のその部位の記録がなければ、前回使用したメニューをロード
+                                    listToLoad = lastUsedMenusBox.get(section.selectedPart!);
+                                  }
+                                  _setControllersFromData(section.menuControllers, section.setControllers, listToLoad ?? []);
+                                } else {
+                                  // 部位が選択解除されたらコントローラーをクリア
+                                  _clearControllers(section.menuControllers, section.setControllers);
+                                }
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                          // 各セクション内の種目リスト
+                          ListView.builder(
+                            shrinkWrap: true, // 親のListView内で子ListViewがスクロールしないように
+                            physics: const NeverScrollableScrollPhysics(), // 自身のスクロールを無効化
+                            itemCount: section.menuControllers.length, // このセクションの種目数
+                            itemBuilder: (context, menuIndex) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  TextField(
+                                    controller: section.menuControllers[menuIndex],
+                                    inputFormatters: [LengthLimitingTextInputFormatter(50)], // 最大50文字
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      hintText: '種目名',
+                                      border: OutlineInputBorder(),
+                                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  buildSetRow(section.setControllers, menuIndex, 1, 0, 1),
+                                  const SizedBox(height: 4),
+                                  buildSetRow(section.setControllers, menuIndex, 2, 2, 3),
+                                  const SizedBox(height: 4),
+                                  buildSetRow(section.setControllers, menuIndex, 3, 4, 5),
+                                  const Divider(), // 各種目間の区切り線
+                                ],
+                              );
+                            },
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: () => _addMenuItem(sectionIndex), // このセクションに種目を追加
+                              icon: const Icon(Icons.add),
+                              label: const Text('種目を追加'),
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          buildSetRow(index, 1, 0, 1),
-                          const SizedBox(height: 4),
-                          buildSetRow(index, 2, 2, 3),
-                          const SizedBox(height: 4),
-                          buildSetRow(index, 3, 4, 5),
-                          // const Divider(), // ★DividerはCardで囲んだため不要
                         ],
                       ),
                     ),
                   );
                 },
+              ),
+            ),
+            // 最下部の「ターゲットを追加」ボタン
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _addTargetSection, // 新しいターゲットセクションを追加
+                  icon: const Icon(Icons.add),
+                  label: const Text('ターゲットを追加'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
