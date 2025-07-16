@@ -3,14 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-import '../models/menu_data.dart';     // MenuDataとDailyRecordをインポート
-import 'settings_screen.dart'; // SettingsScreenをインポート
+import '../models/menu_data.dart';     // MenuData and DailyRecord models
+import 'settings_screen.dart'; // SettingsScreen import
 
-// 各ターゲットセクションのデータを保持するヘルパークラス
+// Helper class to hold data for each target section
 class SectionData {
-  String? selectedPart; // このセクションで選択されているターゲット部位
-  List<TextEditingController> menuControllers; // このセクションの種目名コントローラー
-  List<List<TextEditingController>> setControllers; // このセクションのセットコントローラー
+  String? selectedPart; // Selected target part for this section
+  List<TextEditingController> menuControllers; // Controllers for exercise names in this section
+  List<List<TextEditingController>> setControllers; // Controllers for sets in this section
 
   SectionData({
     this.selectedPart,
@@ -18,21 +18,22 @@ class SectionData {
     required this.setControllers,
   });
 
-  // 空のコントローラーを持つ新しいセクションデータを生成するファクトリコンストラクタ
+  // Factory constructor to create a new empty section data with default controllers
   static SectionData createEmpty() {
     return SectionData(
-      menuControllers: List.generate(4, (_) => TextEditingController()), // デフォルトで4つの空の種目
+      menuControllers: List.generate(4, (_) => TextEditingController()), // Default 4 empty exercises
       setControllers: List.generate(4, (_) => List.generate(6, (_) => TextEditingController())),
     );
   }
 
-  // このセクション内のすべてのコントローラーを破棄するメソッド
+  // Method to dispose all controllers within this section
   void dispose() {
     for (var c in menuControllers) {
       c.dispose();
     }
     for (var list in setControllers) {
       for (var c in list) {
+        c.clear(); // Clear text before disposing
         c.dispose();
       }
     }
@@ -49,31 +50,31 @@ class RecordScreen extends StatefulWidget {
 }
 
 class _RecordScreenState extends State<RecordScreen> {
-  // 設定画面で選択された部位でフィルタリングされるリスト
+  // List of filtered body parts based on settings screen
   List<String> _filteredBodyParts = [];
-  // 全ての部位のリスト（フィルタリングの元）
+  // Full list of all body parts (source for filtering)
   final List<String> _allBodyParts = [
     '腕', '胸', '肩', '背中', '足', '全体', 'その他',
   ];
 
-  List<SectionData> _sections = []; // 複数のターゲットセクションを管理するリスト
+  List<SectionData> _sections = []; // List to manage multiple target sections
 
-  // Boxの型をDailyRecordに変更
+  // Hive Box instances
   late final Box<DailyRecord> recordsBox;
   late final Box<List<MenuData>> lastUsedMenusBox;
-  late final Box<Map<String, bool>> _settingsBox; // 設定を読み込むためのBox
+  late final Box<Map<String, bool>> _settingsBox; // Box to read settings
 
   @override
   void initState() {
     super.initState();
     recordsBox = Hive.box<DailyRecord>('recordsBox');
     lastUsedMenusBox = Hive.box<List<MenuData>>('lastUsedMenusBox');
-    _settingsBox = Hive.box<Map<String, bool>>('settingsBox'); // 設定Boxを初期化
-    _loadFilteredBodyParts(); // 設定から部位をロード
-    _loadInitialSections(); // 初期セクションのロード（既存データまたは新規）
+    _settingsBox = Hive.box<Map<String, bool>>('settingsBox'); // Initialize settings Box
+    _loadFilteredBodyParts(); // Load body parts from settings
+    _loadInitialSections(); // Load initial sections (existing data or new)
   }
 
-  // 設定からフィルタリングされた部位リストをロードする関数
+  // Function to load filtered body parts from settings
   void _loadFilteredBodyParts() {
     Map<String, bool>? savedSettings = _settingsBox.get('selectedBodyParts');
     if (savedSettings != null) {
@@ -81,26 +82,26 @@ class _RecordScreenState extends State<RecordScreen> {
         _filteredBodyParts = _allBodyParts
             .where((part) => savedSettings[part] == true)
             .toList();
-        // もしフィルタリングされた部位が空なら、全ての部位を表示（フォールバック）
+        // Fallback: if no filtered parts, show all parts
         if (_filteredBodyParts.isEmpty) {
           _filteredBodyParts = List.from(_allBodyParts);
         }
       });
     } else {
-      // 設定がまだ保存されていない場合、全ての部位を表示
+      // If no settings saved yet, show all parts
       setState(() {
         _filteredBodyParts = List.from(_allBodyParts);
       });
     }
   }
 
-  // 初期セクションのロード（既存データがあればそれらを、なければ空のセクションを1つ作成）
+  // Load initial sections (existing data or create a new empty section)
   void _loadInitialSections() {
     String dateKey = _getDateKey(widget.selectedDate);
     DailyRecord? record = recordsBox.get(dateKey);
 
     if (record != null && record.menus.isNotEmpty) {
-      // 既存の記録からセクションをロード
+      // Load sections from existing records
       record.menus.forEach((part, menuList) {
         SectionData section = SectionData.createEmpty();
         section.selectedPart = part;
@@ -108,36 +109,36 @@ class _RecordScreenState extends State<RecordScreen> {
         _sections.add(section);
       });
     } else {
-      // 記録がなければ、デフォルトで1つの空のセクションを作成
+      // If no records, create one empty section by default
       _sections.add(SectionData.createEmpty());
     }
-    // setState(() {}); // _loadFilteredBodyPartsのsetStateで十分
+    // setState is handled by _loadFilteredBodyParts's setState
   }
 
-  // 日付キーを生成するヘルパー関数
+  // Helper function to generate date key
   String _getDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  // コントローラーにデータをセット（動的なサイズ調整を含む）
+  // Set data to controllers (including dynamic size adjustment)
   void _setControllersFromData(List<TextEditingController> menuCtrls, List<List<TextEditingController>> setCtrls, List<MenuData> list) {
-    // まず既存のコントローラーのテキストをクリア
+    // First, clear text content of existing controllers
     _clearControllers(menuCtrls, setCtrls);
 
-    // 必要なコントローラーの数を調整
-    // もし読み込むリストのサイズが現在のコントローラー数より多ければ追加
+    // Adjust the number of required controllers
+    // If the list to load is larger than current controller count, add new ones
     while (menuCtrls.length < list.length) {
       menuCtrls.add(TextEditingController());
       setCtrls.add(List.generate(6, (_) => TextEditingController()));
     }
-    // もし読み込むリストのサイズが現在のコントローラー数より少なければ、余分なコントローラーを削除
-    // ただし、最低4つは残す（初期表示のため）
+    // If the list to load is smaller, remove excess controllers
+    // But keep at least 4 for initial display
     while (menuCtrls.length > list.length && menuCtrls.length > 4) {
       menuCtrls.removeLast().dispose();
       setCtrls.removeLast().forEach((c) => c.dispose());
     }
 
-    // データでコントローラーを埋める
+    // Populate controllers with data
     for (int i = 0; i < list.length; i++) {
       menuCtrls[i].text = list[i].name;
       for (int s = 0; s < 3; s++) {
@@ -145,10 +146,10 @@ class _RecordScreenState extends State<RecordScreen> {
         setCtrls[i][s * 2 + 1].text = list[i].reps[s].toString();
       }
     }
-    // setStateは呼び出し元で処理されるため、ここでは不要
+    // setState is handled by the caller, not needed here
   }
 
-  // コントローラーのテキスト内容をクリア（リスト自体はクリアしない）
+  // Clear text content of controllers (does not clear the lists themselves)
   void _clearControllers(List<TextEditingController> menuCtrls, List<List<TextEditingController>> setCtrls) {
     for (var c in menuCtrls) {
       c.clear();
@@ -160,14 +161,14 @@ class _RecordScreenState extends State<RecordScreen> {
     }
   }
 
-  // 全てのセクションのデータを保存
+  // Save data for all sections
   void _saveAllSectionsData() {
     String dateKey = _getDateKey(widget.selectedDate);
     Map<String, List<MenuData>> allMenusForDay = {};
-    String? lastModifiedPart; // その日に最後に変更された部位を追跡
+    String? lastModifiedPart; // Track the last modified part for the day
 
     for (var section in _sections) {
-      if (section.selectedPart == null) continue; // 部位が選択されていないセクションはスキップ
+      if (section.selectedPart == null) continue; // Skip sections where no part is selected
 
       List<MenuData> sectionMenuList = [];
       bool sectionHasContent = false;
@@ -181,7 +182,7 @@ class _RecordScreenState extends State<RecordScreen> {
           int r = int.tryParse(section.setControllers[i][s * 2 + 1].text) ?? 0;
           weights.add(w);
           reps.add(r);
-          if (w > 0 || r > 0 || name.isNotEmpty) rowHasContent = true; // 種目名も考慮
+          if (w > 0 || r > 0 || name.isNotEmpty) rowHasContent = true; // Also consider exercise name
         }
 
         if (name.isNotEmpty || rowHasContent) {
@@ -190,27 +191,27 @@ class _RecordScreenState extends State<RecordScreen> {
         }
       }
 
-      // セクションに内容がある場合のみ保存
+      // Save only if the section has content
       if (sectionMenuList.isNotEmpty) {
         allMenusForDay[section.selectedPart!] = sectionMenuList;
-        lastModifiedPart = section.selectedPart; // 最後に内容があった部位を記録
-        lastUsedMenusBox.put(section.selectedPart!, sectionMenuList); // 前回値も更新
+        lastModifiedPart = section.selectedPart; // Record the last part with content
+        lastUsedMenusBox.put(section.selectedPart!, sectionMenuList); // Update last used values
       } else {
-        // セクションが空になった場合、既存のマップからその部位を削除
+        // If section becomes empty, remove that part from the existing map
         allMenusForDay.remove(section.selectedPart);
       }
     }
 
-    // DailyRecord を保存または削除
+    // Save or delete DailyRecord
     if (allMenusForDay.isNotEmpty) {
       DailyRecord newRecord = DailyRecord(menus: allMenusForDay, lastModifiedPart: lastModifiedPart);
       recordsBox.put(dateKey, newRecord);
     } else {
-      recordsBox.delete(dateKey); // 全てのメニューが空になったらDailyRecordを削除
+      recordsBox.delete(dateKey); // Delete DailyRecord if all menus are empty
     }
   }
 
-  // 設定画面へ遷移する関数
+  // Function to navigate to settings screen
   void _navigateToSettings(BuildContext context) {
     Navigator.push(
       context,
@@ -218,15 +219,14 @@ class _RecordScreenState extends State<RecordScreen> {
         builder: (context) => const SettingsScreen(),
       ),
     ).then((_) {
-      // 設定画面から戻ってきたときに、フィルタリングされた部位リストを再ロード
+      // Reload filtered body parts when returning from settings screen
       _loadFilteredBodyParts();
-      // 必要に応じて、現在のセクションの選択状態と表示内容を再評価
-      // 例: 現在選択されている部位がフィルタリングで非表示になった場合など
+      // Re-evaluate current section selection and display if needed
       setState(() {});
     });
   }
 
-  // 新しいメニューカードを特定のセクションに追加する関数
+  // Function to add a new exercise card to a specific section
   void _addMenuItem(int sectionIndex) {
     setState(() {
       _sections[sectionIndex].menuControllers.add(TextEditingController());
@@ -234,7 +234,7 @@ class _RecordScreenState extends State<RecordScreen> {
     });
   }
 
-  // 新しいターゲットセクションを追加する関数
+  // Function to add a new target section
   void _addTargetSection() {
     setState(() {
       _sections.add(SectionData.createEmpty());
@@ -243,39 +243,63 @@ class _RecordScreenState extends State<RecordScreen> {
 
   @override
   void dispose() {
-    _saveAllSectionsData(); // dispose時に全てのデータを保存
-    // すべてのコントローラーを破棄
+    _saveAllSectionsData(); // Save all data on dispose
+    // Dispose all controllers
     for (var section in _sections) {
       section.dispose();
     }
     super.dispose();
   }
 
-  // 各セットの入力行を構築するウィジェット
+  // Widget to build each set input row
   Widget buildSetRow(List<List<TextEditingController>> setCtrls, int menuIndex, int setNumber, int weightIndex, int repIndex) {
     return Row(
       children: [
-        Text('${setNumber}セット：'),
-        SizedBox(
-          width: 60,
+        Text(
+          '${setNumber}セット：',
+          style: TextStyle(color: Colors.grey[700], fontSize: 14.0, fontWeight: FontWeight.w500), // Text color and size adjusted
+        ),
+        const SizedBox(width: 8), // Spacing adjustment
+        Expanded( // Wrap TextField with Expanded for flexible width
           child: TextField(
             controller: setCtrls[menuIndex][weightIndex],
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly], // 数字のみを許可
-            decoration: const InputDecoration(isDense: true, hintText: 'kg'),
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: '', // Empty hint text
+              filled: true,
+              fillColor: Colors.grey[50], // Background color to light grey (slightly lighter than target card)
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.0),
+                borderSide: BorderSide.none, // No border
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12), // Padding adjustment
+            ),
+            style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.bold), // Input text color and size
           ),
         ),
-        const Text(' kg '),
-        SizedBox(
-          width: 60,
+        Text(' kg ', style: TextStyle(color: Colors.grey[700], fontSize: 14.0, fontWeight: FontWeight.w500)), // Text color and size adjusted
+        Expanded( // Wrap TextField with Expanded for flexible width
           child: TextField(
             controller: setCtrls[menuIndex][repIndex],
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly], // 数字のみを許可
-            decoration: const InputDecoration(isDense: true, hintText: '回'),
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: '', // Empty hint text
+              filled: true,
+              fillColor: Colors.grey[50], // Background color to light grey (slightly lighter than target card)
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.0),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            ),
+            style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.bold),
           ),
         ),
-        const Text(' 回'),
+        Text(' 回', style: TextStyle(color: Colors.grey[700], fontSize: 14.0, fontWeight: FontWeight.w500)), // Text color and size adjusted
       ],
     );
   }
@@ -283,101 +307,137 @@ class _RecordScreenState extends State<RecordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100], // Overall background color to a slightly darker grey
       appBar: AppBar(
-        title: Text('${widget.selectedDate.year}/${widget.selectedDate.month}/${widget.selectedDate.day} 記録'),
+        title: Text(
+          '${widget.selectedDate.year}/${widget.selectedDate.month}/${widget.selectedDate.day} 記録',
+          style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 20.0), // Title text color and boldness
+        ),
+        backgroundColor: Colors.white, // AppBar background to white
+        elevation: 0.0, // No AppBar shadow for a flatter look
+        iconTheme: IconThemeData(color: Colors.grey[700]), // Icon color
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings), // 設定アイコン
-            onPressed: () => _navigateToSettings(context), // 設定画面へ遷移
+            icon: const Icon(Icons.settings, size: 24.0), // Settings icon size
+            onPressed: () => _navigateToSettings(context),
           ),
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(16.0), // Overall padding increased
         child: Column(
           children: [
             Expanded(
               child: ListView.builder(
-                itemCount: _sections.length, // セクションの数に基づいてアイテム数を決定
+                itemCount: _sections.length, // Number of sections determines item count
                 itemBuilder: (context, sectionIndex) {
                   final section = _sections[sectionIndex];
-                  return Card( // 各セクションをCardウィジェットで囲む
-                    margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0), // カード間の余白
-                    elevation: 2.0, // カードの影
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)), // 角丸
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 0.0), // Vertical margin for cards
+                    elevation: 1.0, // Lighter card shadow
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)), // Slightly smaller rounded corners
+                    color: Colors.grey[200], // ★ターゲットカードの背景色をColors.grey[200]に
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0), // カード内のパディング
+                      padding: const EdgeInsets.all(20.0), // Increased inner padding
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // ターゲット部位選択ドロップダウン (セクションごと)
-                          DropdownButton<String>(
-                            hint: const Text('ターゲットを選択'),
+                          // Target body part selection dropdown (per section)
+                          DropdownButtonFormField<String>(
+                            decoration: InputDecoration(
+                              hintText: 'ターゲットを選択',
+                              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 16.0), // Hint text style
+                              filled: true,
+                              fillColor: Colors.grey[100], // Background color to light grey
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10.0),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16), // Padding adjustment
+                            ),
                             value: section.selectedPart,
-                            // ★_filteredBodyParts を使用してドロップダウンアイテムを生成
-                            items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                            items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.bold)))).toList(), // Text style adjustment
                             onChanged: (value) {
                               setState(() {
-                                // 部位変更前に現在のセクションのデータを保存 (全体保存ロジックで処理されるため、ここでは不要)
                                 section.selectedPart = value;
                                 if (section.selectedPart != null) {
-                                  // 新しい部位のデータをロード
                                   String dateKey = _getDateKey(widget.selectedDate);
                                   DailyRecord? record = recordsBox.get(dateKey);
                                   List<MenuData>? listToLoad;
 
                                   if (record != null && record.menus.containsKey(section.selectedPart!)) {
-                                    // その日のその部位の記録があればそれをロード
                                     listToLoad = record.menus[section.selectedPart!];
                                   } else {
-                                    // その日のその部位の記録がなければ、前回使用したメニューをロード
                                     listToLoad = lastUsedMenusBox.get(section.selectedPart!);
                                   }
                                   _setControllersFromData(section.menuControllers, section.setControllers, listToLoad ?? []);
                                 } else {
-                                  // 部位が選択解除されたらコントローラーをクリア
                                   _clearControllers(section.menuControllers, section.setControllers);
                                 }
                               });
                             },
+                            dropdownColor: Colors.white, // Dropdown menu background color
+                            style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.bold), // Selected item text style
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 20), // Spacing adjustment
                           // 各セクション内の種目リスト
                           ListView.builder(
-                            shrinkWrap: true, // 親のListView内で子ListViewがスクロールしないように
-                            physics: const NeverScrollableScrollPhysics(), // 自身のスクロールを無効化
-                            itemCount: section.menuControllers.length, // このセクションの種目数
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: section.menuControllers.length,
                             itemBuilder: (context, menuIndex) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  TextField(
-                                    controller: section.menuControllers[menuIndex],
-                                    inputFormatters: [LengthLimitingTextInputFormatter(50)], // 最大50文字
-                                    decoration: const InputDecoration(
-                                      isDense: true,
-                                      hintText: '種目名',
-                                      border: OutlineInputBorder(),
-                                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                                    ),
+                              return Card( // 各種目をCardで囲む
+                                margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0), // 種目カードの垂直マージン
+                                elevation: 0.5, // 種目カードの影をさらに控えめに
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)), // 種目カードの角丸
+                                color: Colors.white, // ★種目カードの背景色をColors.whiteに
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0), // 種目カード内のパディング
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      TextField(
+                                        controller: section.menuControllers[menuIndex],
+                                        inputFormatters: [LengthLimitingTextInputFormatter(50)],
+                                        decoration: InputDecoration(
+                                          isDense: true,
+                                          hintText: '種目名',
+                                          hintStyle: TextStyle(color: Colors.grey[500], fontSize: 16.0),
+                                          filled: true,
+                                          fillColor: Colors.grey[50], // ★TextFieldの背景色をColors.grey[50]に
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(10.0),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                          contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                        ),
+                                        style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.bold),
+                                      ),
+                                      const SizedBox(height: 10), // スペーシング調整
+                                      buildSetRow(section.setControllers, menuIndex, 1, 0, 1),
+                                      const SizedBox(height: 8),
+                                      buildSetRow(section.setControllers, menuIndex, 2, 2, 3),
+                                      const SizedBox(height: 8),
+                                      buildSetRow(section.setControllers, menuIndex, 3, 4, 5),
+                                    ],
                                   ),
-                                  const SizedBox(height: 8),
-                                  buildSetRow(section.setControllers, menuIndex, 1, 0, 1),
-                                  const SizedBox(height: 4),
-                                  buildSetRow(section.setControllers, menuIndex, 2, 2, 3),
-                                  const SizedBox(height: 4),
-                                  buildSetRow(section.setControllers, menuIndex, 3, 4, 5),
-                                  const Divider(), // 各種目間の区切り線
-                                ],
+                                ),
                               );
                             },
                           ),
+                          const SizedBox(height: 12), // Spacing above the button
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton.icon(
-                              onPressed: () => _addMenuItem(sectionIndex), // このセクションに種目を追加
-                              icon: const Icon(Icons.add),
-                              label: const Text('種目を追加'),
+                              onPressed: () => _addMenuItem(sectionIndex),
+                              icon: Icon(Icons.add_circle_outline, color: Colors.blue[600], size: 24.0), // Icon color
+                              label: Text('種目を追加', style: TextStyle(color: Colors.blue[600], fontWeight: FontWeight.bold, fontSize: 16.0)), // Text color and boldness
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                                backgroundColor: Colors.blue[50], // Button background color
+                                elevation: 0.0, // No shadow for a flatter look
+                              ),
                             ),
                           ),
                         ],
@@ -387,20 +447,23 @@ class _RecordScreenState extends State<RecordScreen> {
                 },
               ),
             ),
-            // 最下部の「ターゲットを追加」ボタン
+            // "Add Target" button at the bottom
             Padding(
-              padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+              padding: const EdgeInsets.only(top: 20.0, bottom: 12.0), // Adjusted top/bottom padding
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _addTargetSection, // 新しいターゲットセクションを追加
-                  icon: const Icon(Icons.add),
-                  label: const Text('ターゲットを追加'),
+                  onPressed: _addTargetSection,
+                  icon: const Icon(Icons.add_box_outlined, color: Colors.white, size: 28.0), // Icon color and size
+                  label: const Text('ターゲットを追加', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18.0)), // Text color and size
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    backgroundColor: Colors.blue[700], // Button background color to a vibrant blue
+                    padding: const EdgeInsets.symmetric(vertical: 18.0), // Increased button padding
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
+                      borderRadius: BorderRadius.circular(16.0), // Larger rounded corners
                     ),
+                    elevation: 4.0, // Moderate button shadow
+                    shadowColor: Colors.blue[300], // Shadow color
                   ),
                 ),
               ),
