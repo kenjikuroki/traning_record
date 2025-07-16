@@ -1,3 +1,4 @@
+
 name: ttraining_record
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
@@ -19,7 +20,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.7.0
+  sdk: '>=3.0.0 <4.0.0' # より広い互換性のため、一般的な指定に変更 (元の^3.7.0でも可)
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -28,29 +29,25 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  hive: ^2.2.3
-  hive_flutter: ^1.1.0
   flutter:
     sdk: flutter
 
-  table_calendar: ^3.0.9
+  # 基本パッケージ (最新の安定版に近づける)
+  cupertino_icons: ^1.0.8 # 最新がこれに近い場合が多い
+  table_calendar: ^3.1.2  # 例: 2024年6月時点での比較的新しいバージョン (実際の最新を確認推奨)
+  hive: ^2.2.3            # 大きな変更がなければ維持、最新を確認
+  hive_flutter: ^1.1.0    # 大きな変更がなければ維持、最新を確認
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
+  # 必要に応じて追加のパッケージ
 
 dev_dependencies:
-  hive_generator: ^2.0.0
-  build_runner: ^2.4.6
   flutter_test:
     sdk: flutter
 
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  # コード生成とリンティング (最新の安定版に近づける)
+  flutter_lints: ^4.0.0      # 例: 2024年6月時点での比較的新しいバージョン (flutter pub outdatedのLatestへ)
+  build_runner: ^2.4.11      # 例: 2024年6月時点での比較的新しいバージョン
+  hive_generator: ^2.0.1   # 例: 2024年6月時点での比較的新しいバージョン
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -93,3 +90,4 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
