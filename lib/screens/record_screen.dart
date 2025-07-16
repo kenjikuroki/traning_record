@@ -61,6 +61,8 @@ class _RecordScreenState extends State<RecordScreen> {
 
   // 特定の部位のデータをロード
   void _loadDataForPart(String part) {
+    _clearControllers(); // ★ここを追加：常にコントローラーをクリアしてからデータをロード
+
     String key = _getDateKey(widget.selectedDate);
     var record = recordsBox.get(key);
 
@@ -72,10 +74,8 @@ class _RecordScreenState extends State<RecordScreen> {
       List<MenuData>? lastMenus = lastUsedMenusBox.get(part);
       if (lastMenus != null) {
         _setControllersFromData(lastMenus);
-      } else {
-        // 前回使用したメニューもなければクリア
-        _clearControllers();
       }
+      // else: _clearControllers() は冒頭で呼ばれているため、ここでは不要
     }
   }
 
