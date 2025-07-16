@@ -49,19 +49,49 @@ class RecordScreen extends StatefulWidget {
 }
 
 class _RecordScreenState extends State<RecordScreen> {
-  final _bodyParts = ['腕', '胸', '肩', '背中', '足', '全体', 'その他'];
+  // 設定画面で選択された部位でフィルタリングされるリスト
+  List<String> _filteredBodyParts = [];
+  // 全ての部位のリスト（フィルタリングの元）
+  final List<String> _allBodyParts = [
+    '腕', '胸', '肩', '背中', '足', '全体', 'その他',
+  ];
+
   List<SectionData> _sections = []; // 複数のターゲットセクションを管理するリスト
 
   // Boxの型をDailyRecordに変更
   late final Box<DailyRecord> recordsBox;
   late final Box<List<MenuData>> lastUsedMenusBox;
+  late final Box<Map<String, bool>> _settingsBox; // 設定を読み込むためのBox
 
   @override
   void initState() {
     super.initState();
     recordsBox = Hive.box<DailyRecord>('recordsBox');
     lastUsedMenusBox = Hive.box<List<MenuData>>('lastUsedMenusBox');
+    _settingsBox = Hive.box<Map<String, bool>>('settingsBox'); // 設定Boxを初期化
+    _loadFilteredBodyParts(); // 設定から部位をロード
     _loadInitialSections(); // 初期セクションのロード（既存データまたは新規）
+  }
+
+  // 設定からフィルタリングされた部位リストをロードする関数
+  void _loadFilteredBodyParts() {
+    Map<String, bool>? savedSettings = _settingsBox.get('selectedBodyParts');
+    if (savedSettings != null) {
+      setState(() {
+        _filteredBodyParts = _allBodyParts
+            .where((part) => savedSettings[part] == true)
+            .toList();
+        // もしフィルタリングされた部位が空なら、全ての部位を表示（フォールバック）
+        if (_filteredBodyParts.isEmpty) {
+          _filteredBodyParts = List.from(_allBodyParts);
+        }
+      });
+    } else {
+      // 設定がまだ保存されていない場合、全ての部位を表示
+      setState(() {
+        _filteredBodyParts = List.from(_allBodyParts);
+      });
+    }
   }
 
   // 初期セクションのロード（既存データがあればそれらを、なければ空のセクションを1つ作成）
@@ -81,7 +111,7 @@ class _RecordScreenState extends State<RecordScreen> {
       // 記録がなければ、デフォルトで1つの空のセクションを作成
       _sections.add(SectionData.createEmpty());
     }
-    setState(() {}); // UIを更新
+    // setState(() {}); // _loadFilteredBodyPartsのsetStateで十分
   }
 
   // 日付キーを生成するヘルパー関数
@@ -92,8 +122,7 @@ class _RecordScreenState extends State<RecordScreen> {
   // コントローラーにデータをセット（動的なサイズ調整を含む）
   void _setControllersFromData(List<TextEditingController> menuCtrls, List<List<TextEditingController>> setCtrls, List<MenuData> list) {
     // まず既存のコントローラーのテキストをクリア
-    for (var c in menuCtrls) c.clear();
-    for (var list in setCtrls) { for (var c in list) c.clear(); }
+    _clearControllers(menuCtrls, setCtrls);
 
     // 必要なコントローラーの数を調整
     // もし読み込むリストのサイズが現在のコントローラー数より多ければ追加
@@ -188,7 +217,13 @@ class _RecordScreenState extends State<RecordScreen> {
       MaterialPageRoute(
         builder: (context) => const SettingsScreen(),
       ),
-    );
+    ).then((_) {
+      // 設定画面から戻ってきたときに、フィルタリングされた部位リストを再ロード
+      _loadFilteredBodyParts();
+      // 必要に応じて、現在のセクションの選択状態と表示内容を再評価
+      // 例: 現在選択されている部位がフィルタリングで非表示になった場合など
+      setState(() {});
+    });
   }
 
   // 新しいメニューカードを特定のセクションに追加する関数
@@ -279,7 +314,8 @@ class _RecordScreenState extends State<RecordScreen> {
                           DropdownButton<String>(
                             hint: const Text('ターゲットを選択'),
                             value: section.selectedPart,
-                            items: _bodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                            // ★_filteredBodyParts を使用してドロップダウンアイテムを生成
+                            items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
                             onChanged: (value) {
                               setState(() {
                                 // 部位変更前に現在のセクションのデータを保存 (全体保存ロジックで処理されるため、ここでは不要)

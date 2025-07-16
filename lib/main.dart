@@ -10,13 +10,14 @@ void main() async {
   await Hive.initFlutter();
 
   // アダプター登録
-  // MenuDataとDailyRecordのアダプターは、menu_data.g.dartに生成されます。
   Hive.registerAdapter(MenuDataAdapter());
-  Hive.registerAdapter(DailyRecordAdapter()); // DailyRecordAdapterもmenu_data.dartで定義されたため、ここで登録
+  Hive.registerAdapter(DailyRecordAdapter());
 
   // Boxを開く（保存先の箱）
   await Hive.openBox<DailyRecord>('recordsBox');
-  await Hive.openBox<List<MenuData>>('lastUsedMenusBox'); // 前回使用したメニューを保存するBox
+  await Hive.openBox<List<MenuData>>('lastUsedMenusBox');
+  // ★設定を保存するための新しいBoxを開きます
+  await Hive.openBox<Map<String, bool>>('settingsBox');
 
   runApp(const TrainingRecordApp());
 }
