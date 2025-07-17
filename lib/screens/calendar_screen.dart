@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:hive_flutter/hive_flutter.dart'; // Hiveを使うために必要
-import 'package:hive/hive.dart'; // Hiveを使うために必要
-
-import '../models/menu_data.dart'; // DailyRecordも含まれる
-import 'record_screen.dart';
-import 'settings_screen.dart'; // settings_screenをインポート
+import 'package:hive/hive.dart';
+import '../models/menu_data.dart'; // MenuDataモデルをインポート
+import 'record_screen.dart'; // 記録画面をインポート
+import 'settings_screen.dart'; // 設定画面をインポート
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -38,7 +36,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     recordsBox = Hive.box<DailyRecord>('recordsBox'); // Boxを初期化
   }
 
-  // 日付キーを生成するヘルパー関数 (RecordScreenと合わせる)
+  // 日付キーを生成するヘルパー関数 (RecordScreenと共通)
   String _getDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
@@ -84,7 +82,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('トレーニングカレンダー'),
+        title: const Text('トレーニングカレンダー', style: TextStyle(fontWeight: FontWeight.bold)), // 太字に
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -106,6 +104,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
               });
               navigateToRecord(context, selectedDay);
             },
+            // HeaderStyle を追加し、formatButtonVisible を false に設定
+            headerStyle: const HeaderStyle(
+              formatButtonVisible: false, // これにより「2weeks」などの表示形式切り替えボタンが非表示になります
+              titleCentered: true, // タイトルを中央に配置して、よりすっきりした見た目に
+            ),
             calendarStyle: const CalendarStyle(
               todayDecoration: BoxDecoration(
                 color: Colors.orange,

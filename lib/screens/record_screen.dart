@@ -257,7 +257,7 @@ class _RecordScreenState extends State<RecordScreen> {
       children: [
         Text(
           '${setNumber}セット：',
-          style: TextStyle(color: Colors.grey[700], fontSize: 14.0, fontWeight: FontWeight.w500), // Text color and size adjusted
+          style: TextStyle(color: Colors.grey[700], fontSize: 14.0, fontWeight: FontWeight.normal), // フォントの太さをnormalに
         ),
         const SizedBox(width: 8), // Spacing adjustment
         Expanded( // Wrap TextField with Expanded for flexible width
@@ -276,10 +276,10 @@ class _RecordScreenState extends State<RecordScreen> {
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12), // Padding adjustment
             ),
-            style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.bold), // Input text color and size
+            style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.normal), // フォントの太さをnormalに
           ),
         ),
-        Text(' kg ', style: TextStyle(color: Colors.grey[700], fontSize: 14.0, fontWeight: FontWeight.w500)), // Text color and size adjusted
+        Text(' kg ', style: TextStyle(color: Colors.grey[700], fontSize: 14.0, fontWeight: FontWeight.normal)), // フォントの太さをnormalに
         Expanded( // Wrap TextField with Expanded for flexible width
           child: TextField(
             controller: setCtrls[menuIndex][repIndex],
@@ -296,10 +296,10 @@ class _RecordScreenState extends State<RecordScreen> {
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             ),
-            style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.normal), // フォントの太さをnormalに
           ),
         ),
-        Text(' 回', style: TextStyle(color: Colors.grey[700], fontSize: 14.0, fontWeight: FontWeight.w500)), // Text color and size adjusted
+        Text(' 回', style: TextStyle(color: Colors.grey[700], fontSize: 14.0, fontWeight: FontWeight.normal)), // フォントの太さをnormalに
       ],
     );
   }
@@ -329,14 +329,39 @@ class _RecordScreenState extends State<RecordScreen> {
           children: [
             Expanded(
               child: ListView.builder(
-                itemCount: _sections.length, // Number of sections determines item count
-                itemBuilder: (context, sectionIndex) {
-                  final section = _sections[sectionIndex];
+                itemCount: _sections.length + 1, // ★セクション数 + 1 (最後のボタン用)
+                itemBuilder: (context, index) {
+                  // ★最後のアイテムが「ターゲットを追加」ボタン
+                  if (index == _sections.length) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 20.0, bottom: 12.0), // 上下の余白を調整
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _addTargetSection,
+                          icon: const Icon(Icons.add_box_outlined, color: Colors.white, size: 28.0), // Icon color and size
+                          label: const Text('ターゲットを追加', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18.0)), // Text color and size
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue[700], // Button background color to a vibrant blue
+                            padding: const EdgeInsets.symmetric(vertical: 18.0), // Increased button padding
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16.0), // Larger rounded corners
+                            ),
+                            elevation: 4.0, // Moderate button shadow
+                            shadowColor: Colors.blue[300], // Shadow color
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  // 通常のターゲットセクションカード
+                  final section = _sections[index];
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 0.0), // Vertical margin for cards
                     elevation: 1.0, // Lighter card shadow
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)), // Slightly smaller rounded corners
-                    color: Colors.grey[200], // ★ターゲットカードの背景色をColors.grey[200]に
+                    color: Colors.grey[200], // Target card background color to Colors.grey[200]
                     child: Padding(
                       padding: const EdgeInsets.all(20.0), // Increased inner padding
                       child: Column(
@@ -346,17 +371,17 @@ class _RecordScreenState extends State<RecordScreen> {
                           DropdownButtonFormField<String>(
                             decoration: InputDecoration(
                               hintText: 'ターゲットを選択',
-                              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 16.0), // Hint text style
+                              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 16.0, fontWeight: FontWeight.normal), // フォントの太さをnormalに
                               filled: true,
                               fillColor: Colors.grey[100], // Background color to light grey
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10.0),
+                                borderRadius: BorderRadius.circular(25.0), // More pill-like rounded corners
                                 borderSide: BorderSide.none,
                               ),
-                              contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16), // Padding adjustment
+                              contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20), // Adjusted padding for pill shape
                             ),
                             value: section.selectedPart,
-                            items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.bold)))).toList(), // Text style adjustment
+                            items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.normal)))).toList(), // フォントの太さをnormalに
                             onChanged: (value) {
                               setState(() {
                                 section.selectedPart = value;
@@ -377,7 +402,7 @@ class _RecordScreenState extends State<RecordScreen> {
                               });
                             },
                             dropdownColor: Colors.white, // Dropdown menu background color
-                            style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.bold), // Selected item text style
+                            style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.normal), // フォントの太さをnormalに
                           ),
                           const SizedBox(height: 20), // Spacing adjustment
                           // 各セクション内の種目リスト
@@ -390,7 +415,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                 margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0), // 種目カードの垂直マージン
                                 elevation: 0.5, // 種目カードの影をさらに控えめに
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)), // 種目カードの角丸
-                                color: Colors.white, // ★種目カードの背景色をColors.whiteに
+                                color: Colors.white, // Exercise card background color to Colors.white
                                 child: Padding(
                                   padding: const EdgeInsets.all(16.0), // 種目カード内のパディング
                                   child: Column(
@@ -402,16 +427,16 @@ class _RecordScreenState extends State<RecordScreen> {
                                         decoration: InputDecoration(
                                           isDense: true,
                                           hintText: '種目名',
-                                          hintStyle: TextStyle(color: Colors.grey[500], fontSize: 16.0),
+                                          hintStyle: TextStyle(color: Colors.grey[500], fontSize: 16.0, fontWeight: FontWeight.normal), // フォントの太さをnormalに
                                           filled: true,
-                                          fillColor: Colors.grey[50], // ★TextFieldの背景色をColors.grey[50]に
+                                          fillColor: Colors.grey[50], // TextField background color to Colors.grey[50]
                                           border: OutlineInputBorder(
                                             borderRadius: BorderRadius.circular(10.0),
                                             borderSide: BorderSide.none,
                                           ),
                                           contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                                         ),
-                                        style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.bold),
+                                        style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.normal), // フォントの太さをnormalに
                                       ),
                                       const SizedBox(height: 10), // スペーシング調整
                                       buildSetRow(section.setControllers, menuIndex, 1, 0, 1),
@@ -429,9 +454,9 @@ class _RecordScreenState extends State<RecordScreen> {
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton.icon(
-                              onPressed: () => _addMenuItem(sectionIndex),
+                              onPressed: () => _addMenuItem(index), // ★ここを修正
                               icon: Icon(Icons.add_circle_outline, color: Colors.blue[600], size: 24.0), // Icon color
-                              label: Text('種目を追加', style: TextStyle(color: Colors.blue[600], fontWeight: FontWeight.bold, fontSize: 16.0)), // Text color and boldness
+                              label: Text('種目を追加', style: TextStyle(color: Colors.blue[600], fontWeight: FontWeight.normal, fontSize: 16.0)), // フォントの太さをnormalに
                               style: TextButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
@@ -447,27 +472,7 @@ class _RecordScreenState extends State<RecordScreen> {
                 },
               ),
             ),
-            // "Add Target" button at the bottom
-            Padding(
-              padding: const EdgeInsets.only(top: 20.0, bottom: 12.0), // Adjusted top/bottom padding
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _addTargetSection,
-                  icon: const Icon(Icons.add_box_outlined, color: Colors.white, size: 28.0), // Icon color and size
-                  label: const Text('ターゲットを追加', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18.0)), // Text color and size
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700], // Button background color to a vibrant blue
-                    padding: const EdgeInsets.symmetric(vertical: 18.0), // Increased button padding
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16.0), // Larger rounded corners
-                    ),
-                    elevation: 4.0, // Moderate button shadow
-                    shadowColor: Colors.blue[300], // Shadow color
-                  ),
-                ),
-              ),
-            ),
+            // ★「ターゲットを追加」ボタンはListView.builderの中に移動したのでここからは削除
           ],
         ),
       ),
