@@ -11,18 +11,21 @@ class SectionData {
   String? selectedPart; // Selected target part for this section
   List<TextEditingController> menuControllers; // Controllers for exercise names in this section
   List<List<TextEditingController>> setControllers; // Controllers for sets in this section
+  int? initialSetCount; // ★このセクションの初期セット数を保持
 
   SectionData({
     this.selectedPart,
     required this.menuControllers,
     required this.setControllers,
+    this.initialSetCount, // ★コンストラクタに追加
   });
 
   // Factory constructor to create a new empty section data with default controllers
-  static SectionData createEmpty() {
+  static SectionData createEmpty(int setCount) { // ★setCountを引数に追加
     return SectionData(
       menuControllers: List.generate(4, (_) => TextEditingController()), // Default 4 empty exercises
-      setControllers: List.generate(4, (_) => List.generate(6, (_) => TextEditingController())),
+      setControllers: List.generate(4, (_) => List.generate(setCount * 2, (_) => TextEditingController())), // ★setCountに応じてコントローラーを生成
+      initialSetCount: setCount, // ★初期セット数を設定
     );
   }
 
@@ -33,6 +36,7 @@ class SectionData {
     }
     for (var list in setControllers) {
       for (var c in list) {
+        c.clear(); // Clear text before disposing
         c.dispose();
       }
     }
@@ -61,57 +65,81 @@ class _RecordScreenState extends State<RecordScreen> {
   // Hive Box instances
   late final Box<DailyRecord> recordsBox;
   late final Box<List<MenuData>> lastUsedMenusBox;
-  late final Box<Map<String, bool>> _settingsBox; // Box to read settings
+  late final Box<Map<String, bool>> _bodyPartsSettingsBox; // ★部位選択用Box
+  late final Box<int> _setCountBox; // ★セット数設定用Box
+
+  // ★現在のセット数を保持する変数（設定画面からのグローバル設定）
+  int _currentSetCount = 3;
 
   @override
   void initState() {
     super.initState();
     recordsBox = Hive.box<DailyRecord>('recordsBox');
     lastUsedMenusBox = Hive.box<List<MenuData>>('lastUsedMenusBox');
-    _settingsBox = Hive.box<Map<String, bool>>('settingsBox'); // Initialize settings Box
-    _loadFilteredBodyParts(); // Load body parts from settings
-    _loadInitialSections(); // Load initial sections (existing data or new)
+    _bodyPartsSettingsBox = Hive.box<Map<String, bool>>('settingsBox'); // 部位選択用Boxを初期化
+    _setCountBox = Hive.box<int>('setCountBox'); // ★セット数用Boxを初期化
+
+    _loadSettingsAndParts(); // ★設定と部位を先にロード
+    // _loadInitialSections() は _loadSettingsAndParts() の setState() の後に実行される
   }
 
-  // Function to load filtered body parts from settings
-  void _loadFilteredBodyParts() {
-    Map<String, bool>? savedSettings = _settingsBox.get('selectedBodyParts');
-    if (savedSettings != null) {
-      setState(() {
-        _filteredBodyParts = _allBodyParts
-            .where((part) => savedSettings[part] == true)
-            .toList();
-        // Fallback: if no filtered parts, show all parts
-        if (_filteredBodyParts.isEmpty) {
-          _filteredBodyParts = List.from(_allBodyParts);
-        }
-      });
-    } else {
-      // If no settings saved yet, show all parts
-      setState(() {
+  // ★設定と部位をロードする新しい関数
+  void _loadSettingsAndParts() {
+    // ★明示的な型キャストを追加
+    Map<String, bool>? savedBodyPartsSettings = _bodyPartsSettingsBox.get('selectedBodyParts') as Map<String, bool>?;
+    int? savedSetCount = _setCountBox.get('setCount'); // ★セット数用Boxからロード
+
+    // 部位のフィルタリング設定をロード
+    if (savedBodyPartsSettings != null) {
+      _filteredBodyParts = _allBodyParts
+          .where((part) => savedBodyPartsSettings[part] == true)
+          .toList();
+      if (_filteredBodyParts.isEmpty) {
         _filteredBodyParts = List.from(_allBodyParts);
-      });
+      }
+    } else {
+      _filteredBodyParts = List.from(_allBodyParts);
     }
+
+    // セット数をロード
+    _currentSetCount = savedSetCount ?? 3; // なければデフォルト3セット
+
+    // setStateでUIを更新し、その後に初期セクションをロード
+    setState(() {
+      _loadInitialSections(); // ここで初期セクションをロード
+    });
   }
+
 
   // Load initial sections (existing data or create a new empty section)
   void _loadInitialSections() {
     String dateKey = _getDateKey(widget.selectedDate);
     DailyRecord? record = recordsBox.get(dateKey);
 
+    _sections.clear(); // 既存のセクションをクリア
+
     if (record != null && record.menus.isNotEmpty) {
-      // Load sections from existing records
+      // 既存の記録からセクションをロード
       record.menus.forEach((part, menuList) {
-        SectionData section = SectionData.createEmpty();
+        int sectionSpecificSetCount = _currentSetCount; // グローバル設定をデフォルトとする
+        if (menuList.isNotEmpty) {
+          // 既存のデータがあれば、そのデータのセット数を使用
+          sectionSpecificSetCount = menuList[0].weights.length;
+          // もし異なるメニューでセット数が異なる可能性があるなら、最大値を取る
+          // sectionSpecificSetCount = menuList.map((m) => m.weights.length).fold(0, (prev, current) => prev > current ? prev : current);
+        }
+        SectionData section = SectionData.createEmpty(sectionSpecificSetCount);
         section.selectedPart = part;
-        _setControllersFromData(section.menuControllers, section.setControllers, menuList);
+        section.initialSetCount = sectionSpecificSetCount; // 決定されたセット数を保持
+        _setControllersFromData(section.menuControllers, section.setControllers, menuList, sectionSpecificSetCount);
         _sections.add(section);
       });
     } else {
-      // If no records, create one empty section by default
-      _sections.add(SectionData.createEmpty());
+      // 記録がなければ、デフォルトで1つの空のセクションを作成（グローバル設定を使用）
+      _sections.add(SectionData.createEmpty(_currentSetCount));
+      _sections[0].initialSetCount = _currentSetCount;
     }
-    // setState is handled by _loadFilteredBodyParts's setState
+    // setStateは_loadSettingsAndParts()のsetStateで処理されるため、ここでは不要
   }
 
   // Helper function to generate date key
@@ -120,32 +148,45 @@ class _RecordScreenState extends State<RecordScreen> {
   }
 
   // Set data to controllers (including dynamic size adjustment)
-  void _setControllersFromData(List<TextEditingController> menuCtrls, List<List<TextEditingController>> setCtrls, List<MenuData> list) {
+  void _setControllersFromData(List<TextEditingController> menuCtrls, List<List<TextEditingController>> setCtrls, List<MenuData> list, int actualSetCount) {
     // First, clear text content of existing controllers
     _clearControllers(menuCtrls, setCtrls);
 
-    // Adjust the number of required controllers
-    // If the list to load is larger than current controller count, add new ones
+    // 必要なコントローラーの数を調整
+    // もし読み込むリストのサイズが現在のコントローラー数より多ければ追加
     while (menuCtrls.length < list.length) {
       menuCtrls.add(TextEditingController());
-      setCtrls.add(List.generate(6, (_) => TextEditingController()));
+      setCtrls.add(List.generate(actualSetCount * 2, (_) => TextEditingController())); // ★actualSetCountに応じてコントローラーを生成
     }
-    // If the list to load is smaller, remove excess controllers
-    // But keep at least 4 for initial display
+    // もし読み込むリストのサイズが現在のコントローラー数より少なければ、余分なコントローラーを削除
+    // ただし、最低4つは残す（初期表示のため）
     while (menuCtrls.length > list.length && menuCtrls.length > 4) {
       menuCtrls.removeLast().dispose();
       setCtrls.removeLast().forEach((c) => c.dispose());
     }
 
-    // Populate controllers with data
+    // データでコントローラーを埋める
     for (int i = 0; i < list.length; i++) {
       menuCtrls[i].text = list[i].name;
-      for (int s = 0; s < 3; s++) {
-        setCtrls[i][s * 2].text = list[i].weights[s].toString();
-        setCtrls[i][s * 2 + 1].text = list[i].reps[s].toString();
+      // ★actualSetCountに応じてループ
+      for (int s = 0; s < actualSetCount; s++) {
+        // データのリストがセット数より短い場合を考慮
+        if (s < list[i].weights.length) {
+          setCtrls[i][s * 2].text = list[i].weights[s].toString();
+          setCtrls[i][s * 2 + 1].text = list[i].reps[s].toString();
+        } else {
+          // データがない場合はクリア
+          setCtrls[i][s * 2].clear();
+          setCtrls[i][s * 2 + 1].clear();
+        }
+      }
+      // actualSetCountよりも多いセットのコントローラーがあればクリア
+      for (int s = actualSetCount; s < setCtrls[i].length / 2; s++) {
+        setCtrls[i][s * 2].clear();
+        setCtrls[i][s * 2 + 1].clear();
       }
     }
-    // setState is handled by the caller, not needed here
+    // setStateは呼び出し元で処理されるため、ここでは不要
   }
 
   // Clear text content of controllers (does not clear the lists themselves)
@@ -171,12 +212,16 @@ class _RecordScreenState extends State<RecordScreen> {
 
       List<MenuData> sectionMenuList = [];
       bool sectionHasContent = false;
+      // ★このセクションの実際のセット数を使用
+      int currentSectionSetCount = section.initialSetCount ?? _currentSetCount;
+
       for (int i = 0; i < section.menuControllers.length; i++) {
         String name = section.menuControllers[i].text.trim();
         List<int> weights = [];
         List<int> reps = [];
         bool rowHasContent = false;
-        for (int s = 0; s < 3; s++) {
+        // ★現在のセクションのセット数に応じてループ
+        for (int s = 0; s < currentSectionSetCount; s++) {
           int w = int.tryParse(section.setControllers[i][s * 2].text) ?? 0;
           int r = int.tryParse(section.setControllers[i][s * 2 + 1].text) ?? 0;
           weights.add(w);
@@ -212,45 +257,66 @@ class _RecordScreenState extends State<RecordScreen> {
 
   // Function to navigate to settings screen
   void _navigateToSettings(BuildContext context) {
-    // ★設定画面への遷移もPageRouteBuilderでスライドアニメーションを追加
     Navigator.push(
       context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const SettingsScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(0.0, 1.0); // 画面の下から開始
-          const end = Offset.zero; // 画面の元の位置へ
-          const curve = Curves.easeOut; // アニメーションのカーブ
-
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-          return SlideTransition(
-            position: animation.drive(tween),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 300), // アニメーションの時間
+      MaterialPageRoute(
+        builder: (context) => const SettingsScreen(),
       ),
     ).then((_) {
-      // Reload filtered body parts when returning from settings screen
-      _loadFilteredBodyParts();
+      // Reload filtered body parts and set count when returning from settings screen
+      _loadSettingsAndParts(); // ★設定画面から戻ったら設定を再ロード
       // Re-evaluate current section selection and display if needed
-      setState(() {});
+      setState(() {
+        // 現在のセクションのコントローラーを新しいセット数に合わせて再初期化・再ロード
+        // ただし、既存のデータを保持するように注意深く処理する
+        for (var section in _sections) {
+          String dateKey = _getDateKey(widget.selectedDate);
+          DailyRecord? record = recordsBox.get(dateKey);
+          List<MenuData>? existingMenuList = record?.menus[section.selectedPart!];
+
+          int sectionSetCountToUse;
+          if (existingMenuList != null && existingMenuList.isNotEmpty) {
+            // 既存のデータがあれば、そのデータのセット数を使用
+            sectionSetCountToUse = existingMenuList[0].weights.length;
+          } else {
+            // 既存データがなければ、グローバル設定の_currentSetCountを使用
+            sectionSetCountToUse = _currentSetCount;
+          }
+
+          // Dispose old controllers
+          section.dispose();
+
+          // Re-create controllers with the determined set count
+          section.menuControllers = List.generate(4, (_) => TextEditingController());
+          section.setControllers = List.generate(4, (_) => List.generate(sectionSetCountToUse * 2, (_) => TextEditingController()));
+          section.initialSetCount = sectionSetCountToUse; // initialSetCountを更新
+
+          // Load data back into the new controllers
+          _setControllersFromData(section.menuControllers, section.setControllers, existingMenuList ?? [], sectionSetCountToUse);
+        }
+        // もしセクションが一つもなければ、新しいグローバル設定で空のセクションを追加
+        if (_sections.isEmpty) {
+          _sections.add(SectionData.createEmpty(_currentSetCount));
+          _sections[0].initialSetCount = _currentSetCount;
+        }
+      });
     });
   }
 
   // Function to add a new exercise card to a specific section
   void _addMenuItem(int sectionIndex) {
     setState(() {
+      // ★このセクションの現在のセット数を使用
+      int currentSectionSetCount = _sections[sectionIndex].initialSetCount ?? _currentSetCount;
       _sections[sectionIndex].menuControllers.add(TextEditingController());
-      _sections[sectionIndex].setControllers.add(List.generate(6, (_) => TextEditingController()));
+      _sections[sectionIndex].setControllers.add(List.generate(currentSectionSetCount * 2, (_) => TextEditingController())); // ★setCountに応じてコントローラーを生成
     });
   }
 
   // Function to add a new target section
   void _addTargetSection() {
     setState(() {
-      _sections.add(SectionData.createEmpty());
+      _sections.add(SectionData.createEmpty(_currentSetCount)); // ★グローバル設定のsetCountを渡す
     });
   }
 
@@ -265,12 +331,13 @@ class _RecordScreenState extends State<RecordScreen> {
   }
 
   // Widget to build each set input row
+  // ★actualSetCountを引数に追加
   Widget buildSetRow(List<List<TextEditingController>> setCtrls, int menuIndex, int setNumber, int weightIndex, int repIndex) {
     return Row(
       children: [
         Text(
           '${setNumber}セット：',
-          style: TextStyle(color: Colors.grey[700], fontSize: 14.0, fontWeight: FontWeight.normal), // フォントの太さをnormalに
+          style: TextStyle(color: Colors.grey[700], fontSize: 14.0),
         ),
         const SizedBox(width: 8), // Spacing adjustment
         Expanded( // Wrap TextField with Expanded for flexible width
@@ -289,10 +356,10 @@ class _RecordScreenState extends State<RecordScreen> {
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12), // Padding adjustment
             ),
-            style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.normal), // フォントの太さをnormalに
+            style: TextStyle(color: Colors.grey[800], fontSize: 16.0),
           ),
         ),
-        Text(' kg ', style: TextStyle(color: Colors.grey[700], fontSize: 14.0, fontWeight: FontWeight.normal)), // フォントの太さをnormalに
+        Text(' kg ', style: TextStyle(color: Colors.grey[700], fontSize: 14.0)),
         Expanded( // Wrap TextField with Expanded for flexible width
           child: TextField(
             controller: setCtrls[menuIndex][repIndex],
@@ -309,10 +376,10 @@ class _RecordScreenState extends State<RecordScreen> {
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             ),
-            style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.normal), // フォントの太さをnormalに
+            style: TextStyle(color: Colors.grey[800], fontSize: 16.0),
           ),
         ),
-        Text(' 回', style: TextStyle(color: Colors.grey[700], fontSize: 14.0, fontWeight: FontWeight.normal)), // フォントの太さをnormalに
+        Text(' 回', style: TextStyle(color: Colors.grey[700], fontSize: 14.0)),
       ],
     );
   }
@@ -370,6 +437,9 @@ class _RecordScreenState extends State<RecordScreen> {
 
                   // 通常のターゲットセクションカード
                   final section = _sections[index];
+                  // このセクションのセット数を決定
+                  final int sectionDisplaySetCount = section.initialSetCount ?? _currentSetCount;
+
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 0.0), // Vertical margin for cards
                     elevation: 1.0, // Lighter card shadow
@@ -384,7 +454,7 @@ class _RecordScreenState extends State<RecordScreen> {
                           DropdownButtonFormField<String>(
                             decoration: InputDecoration(
                               hintText: 'ターゲットを選択',
-                              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 16.0, fontWeight: FontWeight.normal), // フォントの太さをnormalに
+                              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 16.0),
                               filled: true,
                               fillColor: Colors.grey[100], // Background color to light grey
                               border: OutlineInputBorder(
@@ -394,7 +464,7 @@ class _RecordScreenState extends State<RecordScreen> {
                               contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20), // Adjusted padding for pill shape
                             ),
                             value: section.selectedPart,
-                            items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.normal)))).toList(), // フォントの太さをnormalに
+                            items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.bold)))).toList(), // Text style adjustment
                             onChanged: (value) {
                               setState(() {
                                 section.selectedPart = value;
@@ -403,19 +473,37 @@ class _RecordScreenState extends State<RecordScreen> {
                                   DailyRecord? record = recordsBox.get(dateKey);
                                   List<MenuData>? listToLoad;
 
+                                  int newSectionSetCount = _currentSetCount; // デフォルトはグローバル設定
+
+                                  // その日付にその部位の記録があるかチェック
                                   if (record != null && record.menus.containsKey(section.selectedPart!)) {
                                     listToLoad = record.menus[section.selectedPart!];
+                                    if (listToLoad != null && listToLoad.isNotEmpty) {
+                                      // 既存の記録があれば、その記録のセット数を使用
+                                      newSectionSetCount = listToLoad[0].weights.length;
+                                    }
                                   } else {
+                                    // その日付にその部位の記録がなければ、lastUsedMenusBoxから内容をロード
+                                    // ただし、セット数は_currentSetCount（グローバル設定）を使用
                                     listToLoad = lastUsedMenusBox.get(section.selectedPart!);
+                                    // newSectionSetCountは_currentSetCountのまま
                                   }
-                                  _setControllersFromData(section.menuControllers, section.setControllers, listToLoad ?? []);
+
+                                  section.initialSetCount = newSectionSetCount; // セクションのセット数を更新
+                                  // コントローラーを新しいセット数で再生成
+                                  section.dispose();
+                                  section.menuControllers = List.generate(4, (_) => TextEditingController());
+                                  section.setControllers = List.generate(4, (_) => List.generate(newSectionSetCount * 2, (_) => TextEditingController()));
+
+                                  _setControllersFromData(section.menuControllers, section.setControllers, listToLoad ?? [], newSectionSetCount);
                                 } else {
                                   _clearControllers(section.menuControllers, section.setControllers);
+                                  section.initialSetCount = _currentSetCount; // 部位が選択されなければグローバル設定
                                 }
                               });
                             },
                             dropdownColor: Colors.white, // Dropdown menu background color
-                            style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.normal), // フォントの太さをnormalに
+                            style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.bold), // Selected item text style
                           ),
                           const SizedBox(height: 20), // Spacing adjustment
                           // 各セクション内の種目リスト
@@ -440,7 +528,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                         decoration: InputDecoration(
                                           isDense: true,
                                           hintText: '種目名',
-                                          hintStyle: TextStyle(color: Colors.grey[500], fontSize: 16.0, fontWeight: FontWeight.normal), // フォントの太さをnormalに
+                                          hintStyle: TextStyle(color: Colors.grey[500], fontSize: 16.0),
                                           filled: true,
                                           fillColor: Colors.grey[50], // TextField background color to Colors.grey[50]
                                           border: OutlineInputBorder(
@@ -449,14 +537,22 @@ class _RecordScreenState extends State<RecordScreen> {
                                           ),
                                           contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                                         ),
-                                        style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.normal), // フォントの太さをnormalに
+                                        style: TextStyle(color: Colors.grey[800], fontSize: 16.0, fontWeight: FontWeight.bold),
                                       ),
                                       const SizedBox(height: 10), // スペーシング調整
-                                      buildSetRow(section.setControllers, menuIndex, 1, 0, 1),
-                                      const SizedBox(height: 8),
-                                      buildSetRow(section.setControllers, menuIndex, 2, 2, 3),
-                                      const SizedBox(height: 8),
-                                      buildSetRow(section.setControllers, menuIndex, 3, 4, 5),
+                                      // ★セット数に応じて動的にSetRowを生成
+                                      ...List.generate(sectionDisplaySetCount, (setIndex) { // ★sectionDisplaySetCountを使用
+                                        return Padding(
+                                          padding: EdgeInsets.only(top: setIndex == 0 ? 0 : 8), // 最初のセット以外は上部に余白
+                                          child: buildSetRow(
+                                            section.setControllers,
+                                            menuIndex,
+                                            setIndex + 1, // セット番号 (1から始まる)
+                                            setIndex * 2, // 重量インデックス
+                                            setIndex * 2 + 1, // 回数インデックス
+                                          ),
+                                        );
+                                      }),
                                     ],
                                   ),
                                 ),
@@ -469,7 +565,7 @@ class _RecordScreenState extends State<RecordScreen> {
                             child: TextButton.icon(
                               onPressed: () => _addMenuItem(index), // ★ここを修正
                               icon: Icon(Icons.add_circle_outline, color: Colors.blue[600], size: 24.0), // Icon color
-                              label: Text('種目を追加', style: TextStyle(color: Colors.blue[600], fontWeight: FontWeight.normal, fontSize: 16.0)), // フォントの太さをnormalに
+                              label: Text('種目を追加', style: TextStyle(color: Colors.blue[600], fontWeight: FontWeight.bold, fontSize: 16.0)), // Text color and boldness
                               style: TextButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
@@ -485,7 +581,6 @@ class _RecordScreenState extends State<RecordScreen> {
                 },
               ),
             ),
-            // 「ターゲットを追加」ボタンはListView.builderの中に移動したのでここからは削除
           ],
         ),
       ),

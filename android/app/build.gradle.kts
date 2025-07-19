@@ -8,7 +8,8 @@ plugins {
 android {
     namespace = "com.example.ttraining_record"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // ★Android NDKのバージョンを明示的に指定してエラーを解消
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

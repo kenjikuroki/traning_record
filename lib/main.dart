@@ -16,8 +16,9 @@ void main() async {
   // Boxを開く（保存先の箱）
   await Hive.openBox<DailyRecord>('recordsBox');
   await Hive.openBox<List<MenuData>>('lastUsedMenusBox');
-  // ★設定を保存するための新しいBoxを開きます
-  await Hive.openBox<Map<String, bool>>('settingsBox');
+  await Hive.openBox<Map<String, bool>>('settingsBox'); // 部位選択の設定用Box
+  // ★セット数を保存するための新しいBoxを開きます
+  await Hive.openBox<int>('setCountBox'); // int型を保存するBox
 
   runApp(const TrainingRecordApp());
 }
