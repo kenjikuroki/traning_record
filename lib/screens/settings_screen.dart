@@ -104,7 +104,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 '鍛える部位を選択',
                 style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 18.0), // タイトルスタイル
               ),
-              initiallyExpanded: true, // デフォルトで開いておく
+              initiallyExpanded: false, // ★デフォルトで閉じるように変更
               iconColor: Colors.blue[600], // 展開アイコンの色
               collapsedIconColor: Colors.blue[600], // 折りたたみアイコンの色
               childrenPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // 子要素のパディング
@@ -139,7 +139,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 'セット数の変更',
                 style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 18.0), // タイトルスタイル
               ),
-              initiallyExpanded: true, // デフォルトで開いておく
+              initiallyExpanded: false, // ★デフォルトで閉じるように変更
               iconColor: Colors.blue[600], // 展開アイコンの色
               collapsedIconColor: Colors.blue[600], // 折りたたみアイコンの色
               childrenPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // 子要素のパディング
@@ -159,6 +159,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     });
                   },
                   activeColor: Colors.blue[600], // ラジオボタンがオンの時の色
+                  controlAffinity: ListTileControlAffinity.trailing, // ★ラジオボタンを右側に配置
                   contentPadding: EdgeInsets.zero, // パディングをリセットしてCardのPaddingに任せる
                 );
               }),
