@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:hive/hive.dart';
+import 'package:hive/hive.dart'; // Hiveをインポート
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});

@@ -33,7 +33,6 @@ class SectionData {
     }
     for (var list in setControllers) {
       for (var c in list) {
-        c.clear(); // Clear text before disposing
         c.dispose();
       }
     }
@@ -213,10 +212,24 @@ class _RecordScreenState extends State<RecordScreen> {
 
   // Function to navigate to settings screen
   void _navigateToSettings(BuildContext context) {
+    // ★設定画面への遷移もPageRouteBuilderでスライドアニメーションを追加
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const SettingsScreen(),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const SettingsScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 1.0); // 画面の下から開始
+          const end = Offset.zero; // 画面の元の位置へ
+          const curve = Curves.easeOut; // アニメーションのカーブ
+
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300), // アニメーションの時間
       ),
     ).then((_) {
       // Reload filtered body parts when returning from settings screen
@@ -472,7 +485,7 @@ class _RecordScreenState extends State<RecordScreen> {
                 },
               ),
             ),
-            // ★「ターゲットを追加」ボタンはListView.builderの中に移動したのでここからは削除
+            // 「ターゲットを追加」ボタンはListView.builderの中に移動したのでここからは削除
           ],
         ),
       ),

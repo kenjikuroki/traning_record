@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:hive/hive.dart';
-import '../models/menu_data.dart'; // MenuDataモデルをインポート
-import 'record_screen.dart'; // 記録画面をインポート
-import 'settings_screen.dart'; // 設定画面をインポート
+import 'package:hive_flutter/hive_flutter.dart'; // Hiveを使うために必要
+import 'package:hive/hive.dart'; // Hiveを使うために必要
+
+import '../models/menu_data.dart'; // DailyRecordも含まれる
+import 'record_screen.dart';
+import 'settings_screen.dart'; // settings_screenをインポート
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -55,10 +57,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   void navigateToRecord(BuildContext context, DateTime date) {
+    // PageRouteBuilder を使用してカスタムトランジションを定義
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => RecordScreen(selectedDate: date),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => RecordScreen(selectedDate: date),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 1.0); // 画面の下から開始
+          const end = Offset.zero; // 画面の元の位置へ
+          const curve = Curves.easeOut; // アニメーションのカーブ
+
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300), // アニメーションの時間
       ),
     ).then((_) {
       // RecordScreen から戻ってきたときにカレンダーを更新
@@ -70,10 +86,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   void navigateToSettings(BuildContext context) {
+    // ★設定画面への遷移もPageRouteBuilderでスライドアニメーションを追加
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const SettingsScreen(),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const SettingsScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 1.0); // 画面の下から開始
+          const end = Offset.zero; // 画面の元の位置へ
+          const curve = Curves.easeOut; // アニメーションのカーブ
+
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300), // アニメーションの時間
       ),
     );
   }
