@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart'; // Hive_flutterをインポート
 import 'package:hive/hive.dart'; // Hiveをインポート
+import 'package:hive_flutter/hive_flutter.dart'; // Hive_flutterをインポート
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -39,23 +39,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _loadSettings() {
     // 'selectedBodyParts'というキーで設定を保存します。
     // もしデータがなければ空のマップをデフォルト値として使用します。
-    // ★明示的な型キャストを追加
-    Map<String, bool>? savedBodyPartsSettings = _bodyPartsSettingsBox.get('selectedBodyParts') as Map<String, bool>?;
+    // ★明示的な型キャストを追加 (dynamicで受け取り、mapで安全に変換)
+    Map<dynamic, dynamic>? savedDynamicBodyPartsSettings = _bodyPartsSettingsBox.get('selectedBodyParts');
+    Map<String, bool>? savedBodyPartsSettings;
+
+    if (savedDynamicBodyPartsSettings != null) {
+      savedBodyPartsSettings = savedDynamicBodyPartsSettings.map(
+            (key, value) => MapEntry(key.toString(), value as bool),
+      );
+    }
+
     int? savedSetCount = _setCountBox.get('setCount'); // ★セット数用Boxからロード
 
     if (savedBodyPartsSettings != null) {
       setState(() {
+        // 保存された設定で_bodyPartsマップを更新します。
+        // 新しい部位が追加された場合でも対応できるように、既存の_bodyPartsをベースにします。
         _bodyParts.forEach((key, value) {
-          _bodyParts[key] = savedBodyPartsSettings[key] ?? false;
+          _bodyParts[key] = savedBodyPartsSettings![key] ?? false;
         });
       });
     } else {
+      // 初回起動時など、設定が保存されていない場合は、全ての部位をtrue（選択済み）として初期化
+      // これにより、デフォルトで全ての部位が記録画面に表示されるようになります。
       setState(() {
         _bodyParts.keys.forEach((key) {
           _bodyParts[key] = true;
         });
       });
-      _saveSettings(); // 初回起動時にデフォルト設定を保存
+      // 初期状態をHiveに保存
+      _saveSettings();
     }
 
     // ★保存されたセット数があれば更新、なければデフォルト値を使用
@@ -101,13 +114,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             color: Colors.white, // カードの背景色
             child: ExpansionTile(
               title: Text(
-                '鍛える部位を選択',
+                '鍛える部位', // ★元のテキストに戻しました
                 style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 18.0), // タイトルスタイル
               ),
               initiallyExpanded: false, // ★デフォルトで閉じるように変更
               iconColor: Colors.blue[600], // 展開アイコンの色
               collapsedIconColor: Colors.blue[600], // 折りたたみアイコンの色
               childrenPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // 子要素のパディング
+              // collapsedShapeとexpandedShapeは削除したままです
               children: _bodyParts.keys.map((part) {
                 return CheckboxListTile(
                   title: Text(
@@ -128,41 +142,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
               }).toList(),
             ),
           ),
-          // ★セット数の変更欄を追加
-          Card( // ExpansionTileをCardで囲む
-            margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0), // 垂直方向の余白
-            elevation: 4.0, // 影
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)), // 角丸
-            color: Colors.white, // カードの背景色
-            child: ExpansionTile(
-              title: Text(
-                'セット数の変更',
-                style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 18.0), // タイトルスタイル
-              ),
-              initiallyExpanded: false, // ★デフォルトで閉じるように変更
-              iconColor: Colors.blue[600], // 展開アイコンの色
-              collapsedIconColor: Colors.blue[600], // 折りたたみアイコンの色
-              childrenPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // 子要素のパディング
-              children: List.generate(5, (index) { // 1から5まで
-                final setCount = index + 1;
-                return RadioListTile<int>(
-                  title: Text(
-                    '${setCount}セット',
-                    style: TextStyle(color: Colors.grey[700], fontSize: 16.0),
+          const SizedBox(height: 16.0), // 部位選択とセット数の間にスペース
+          Card( // セット数選択用のCard
+            margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
+            elevation: 4.0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+            color: Colors.white,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'デフォルトのセット数',
+                    style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 18.0),
                   ),
-                  value: setCount,
-                  groupValue: _selectedSetCount,
-                  onChanged: (int? value) {
-                    setState(() {
-                      _selectedSetCount = value ?? 3; // デフォルトは3セット
-                      _saveSettings(); // 変更があったらすぐに保存
-                    });
-                  },
-                  activeColor: Colors.blue[600], // ラジオボタンがオンの時の色
-                  controlAffinity: ListTileControlAffinity.trailing, // ★ラジオボタンを右側に配置
-                  contentPadding: EdgeInsets.zero, // パディングをリセットしてCardのPaddingに任せる
-                );
-              }),
+                  const SizedBox(height: 12.0),
+                  DropdownButtonFormField<int>(
+                    decoration: InputDecoration(
+                      hintText: 'セット数を選択',
+                      hintStyle: TextStyle(color: Colors.grey[500], fontSize: 16.0),
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    ),
+                    value: _selectedSetCount,
+                    items: List.generate(10, (index) => index + 1) // 1から10までのセット数
+                        .map((count) => DropdownMenuItem(value: count, child: Text('$count セット')))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedSetCount = value ?? 3; // デフォルトは3セット
+                        _saveSettings(); // 変更があったらすぐに保存
+                      });
+                    },
+                    dropdownColor: Colors.white,
+                    style: TextStyle(color: Colors.grey[800], fontSize: 16.0),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

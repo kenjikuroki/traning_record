@@ -112,7 +112,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('トレーニングカレンダー', style: TextStyle(fontWeight: FontWeight.bold)), // 太字に
+        title: const Text('TrainingRecord', style: TextStyle(fontWeight: FontWeight.bold)), // 太字に
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
