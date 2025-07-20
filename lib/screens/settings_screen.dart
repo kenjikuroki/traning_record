@@ -43,8 +43,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Map<dynamic, dynamic>? savedDynamicBodyPartsSettings = _bodyPartsSettingsBox.get('selectedBodyParts');
     Map<String, bool>? savedBodyPartsSettings;
 
-    if (savedDynamicBodyPartsSettings != null) {
-      savedBodyPartsSettings = savedDynamicBodyPartsSettings.map(
+    // ★変数名を修正し、null-aware operatorを使用
+    if (savedDynamicBodyPartsSettings != null) { // ここをsavedDynamicBodyPartsSettingsに修正
+      savedBodyPartsSettings = savedDynamicBodyPartsSettings.map( // ここに ?. は不要 (ifでnullチェック済みのため)
             (key, value) => MapEntry(key.toString(), value as bool),
       );
     }
@@ -112,34 +113,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
             elevation: 4.0, // 影
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)), // 角丸
             color: Colors.white, // カードの背景色
-            child: ExpansionTile(
-              title: Text(
-                '鍛える部位', // ★元のテキストに戻しました
-                style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 18.0), // タイトルスタイル
+            child: Theme( // ★ThemeウィジェットでExpansionTileのテーマを上書き
+              data: Theme.of(context).copyWith(
+                dividerColor: Colors.transparent, // ★区切り線を透明に
+                expansionTileTheme: const ExpansionTileThemeData(
+                  // ★tilePaddingの右側を少し減らして、矢印を左にずらす
+                  tilePadding: EdgeInsets.fromLTRB(16.0, 16.0, 12.0, 16.0), // 左16, 右12
+                ),
               ),
-              initiallyExpanded: false, // ★デフォルトで閉じるように変更
-              iconColor: Colors.blue[600], // 展開アイコンの色
-              collapsedIconColor: Colors.blue[600], // 折りたたみアイコンの色
-              childrenPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // 子要素のパディング
-              // collapsedShapeとexpandedShapeは削除したままです
-              children: _bodyParts.keys.map((part) {
-                return CheckboxListTile(
-                  title: Text(
-                    part,
-                    style: TextStyle(color: Colors.grey[700], fontSize: 16.0),
-                  ),
-                  value: _bodyParts[part],
-                  onChanged: (bool? value) {
-                    setState(() {
-                      _bodyParts[part] = value ?? false;
-                      _saveSettings(); // 変更があったらすぐに保存
-                    });
-                  },
-                  activeColor: Colors.blue[600], // チェックボックスがオンの時の色
-                  checkColor: Colors.white, // チェックマークの色
-                  contentPadding: EdgeInsets.zero, // パディングをリセットしてCardのPaddingに任せる
-                );
-              }).toList(),
+              child: ExpansionTile(
+                title: Text( // ★Paddingウィジェットを削除
+                  '鍛える部位', // ★「鍛える部位」に変更
+                  style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 18.0), // タイトルスタイル
+                ),
+                initiallyExpanded: false, // ★デフォルトで閉じるように変更
+                iconColor: Colors.blue[600], // 展開アイコンの色
+                collapsedIconColor: Colors.blue[600], // 折りたたみアイコンの色
+                childrenPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // 子要素のパディング
+                children: _bodyParts.keys.map((part) {
+                  return CheckboxListTile(
+                    title: Text(
+                      part,
+                      style: TextStyle(color: Colors.grey[700], fontSize: 16.0),
+                    ),
+                    value: _bodyParts[part],
+                    onChanged: (bool? value) {
+                      setState(() {
+                        _bodyParts[part] = value ?? false;
+                        _saveSettings(); // 変更があったらすぐに保存
+                      });
+                    },
+                    // ★contentPaddingを調整して、タイトルとチェックボックスの左端を揃える
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16.0), // タイトルのhorizontalと同じ値に
+                    activeColor: Colors.blue[600], // チェックボックスがオンの時の色
+                    checkColor: Colors.white, // チェックマークの色
+                  );
+                }).toList(),
+              ),
             ),
           ),
           const SizedBox(height: 16.0), // 部位選択とセット数の間にスペース
