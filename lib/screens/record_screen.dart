@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:hive/hive.dart'; // Hive.box()のために必要
 
 import '../models/menu_data.dart';     // MenuData and DailyRecord models (DailyRecordもこのファイルに統合)
 import 'settings_screen.dart'; // SettingsScreen import
 import '../widgets/custom_widgets.dart'; // ★カスタムウィジェットをインポート
 import '../main.dart'; // currentThemeMode を使用するためにインポート
+
+// ignore_for_file: library_private_types_in_public_api // ★追加: プライベートな型に関する警告を抑制
 
 // Helper class to hold data for each target section
 class SectionData {
@@ -175,8 +177,10 @@ class _RecordScreenState extends State<RecordScreen> {
       menuCtrls[i].text = list[i].name;
       for (int s = 0; s < actualSetCount; s++) {
         if (s < list[i].weights.length) {
-          setCtrls[i][s * 2].text = list[i].weights[s].toString();
-          setCtrls[i][s * 2 + 1].text = list[i].reps[s].toString();
+          // ★重量が0の場合は空文字列を設定
+          setCtrls[i][s * 2].text = (list[i].weights[s] == 0) ? '' : list[i].weights[s].toString();
+          // ★回数が0の場合は空文字列を設定
+          setCtrls[i][s * 2 + 1].text = (list[i].reps[s] == 0) ? '' : list[i].reps[s].toString();
         } else {
           setCtrls[i][s * 2].clear();
           setCtrls[i][s * 2 + 1].clear();
@@ -220,6 +224,7 @@ class _RecordScreenState extends State<RecordScreen> {
         List<int> reps = [];
         bool rowHasContent = false;
         for (int s = 0; s < currentSectionSetCount; s++) {
+          // 入力が空の場合も0として保存（表示は空欄）
           int w = int.tryParse(section.setControllers[i][s * 2].text) ?? 0;
           int r = int.tryParse(section.setControllers[i][s * 2 + 1].text) ?? 0;
           weights.add(w);
@@ -350,7 +355,7 @@ class _RecordScreenState extends State<RecordScreen> {
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
-            fillColor: colorScheme.surfaceContainer, // ★surface -> surfaceContainer
+            fillColor: colorScheme.surfaceContainer,
             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
           ),
         ),
@@ -362,7 +367,7 @@ class _RecordScreenState extends State<RecordScreen> {
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
-            fillColor: colorScheme.surfaceContainer, // ★surface -> surfaceContainer
+            fillColor: colorScheme.surfaceContainer,
             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
           ),
         ),
@@ -419,7 +424,7 @@ class _RecordScreenState extends State<RecordScreen> {
 
                   return GlassCard(
                     borderRadius: 12.0,
-                    backgroundColor: colorScheme.surfaceContainerHighest, // ★surfaceVariant -> surfaceContainerHighest
+                    backgroundColor: colorScheme.surfaceContainerHighest,
                     padding: const EdgeInsets.all(20.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -429,7 +434,7 @@ class _RecordScreenState extends State<RecordScreen> {
                             hintText: 'ターゲットを選択',
                             hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
                             filled: true,
-                            fillColor: colorScheme.surfaceContainer, // ★surface -> surfaceContainer
+                            fillColor: colorScheme.surfaceContainer,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(25.0),
                               borderSide: BorderSide.none,
@@ -469,7 +474,7 @@ class _RecordScreenState extends State<RecordScreen> {
                               }
                             });
                           },
-                          dropdownColor: colorScheme.surfaceContainer, // ★surface -> surfaceContainer
+                          dropdownColor: colorScheme.surfaceContainer,
                           style: TextStyle(color: colorScheme.onSurface, fontSize: 16.0, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 20),
@@ -491,7 +496,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                     inputFormatters: [LengthLimitingTextInputFormatter(50)],
                                     hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
                                     textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0, fontWeight: FontWeight.bold),
-                                    fillColor: colorScheme.surfaceContainer, // ★surfaceVariant -> surfaceContainer
+                                    fillColor: colorScheme.surfaceContainer,
                                     contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                                   ),
                                   const SizedBox(height: 10),
