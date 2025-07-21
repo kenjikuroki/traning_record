@@ -33,16 +33,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _selectedSetCount = 3;
   ThemeMode _selectedThemeMode = ThemeMode.system; // デフォルトはシステム設定
 
-  // ★initStateから_loadSettings()の呼び出しを削除し、didChangeDependenciesに移動
   @override
   void initState() {
     super.initState();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // ここでTheme.of(context)のようなInheritedWidgetに依存する操作を行う
     _loadSettings(); // 保存された設定をロード
   }
 
@@ -95,9 +88,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // テーマモードを保存 (int型で保存)
     widget.themeModeBox.put('themeMode', _selectedThemeMode.index);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('設定を保存しました！')),
-    );
+    // 保存完了のSnackBarは、自動保存では頻繁に表示されるため削除
+    // ScaffoldMessenger.of(context).showSnackBar(
+    //   const SnackBar(content: Text('設定を保存しました！')),
+    // );
   }
 
   @override
@@ -120,12 +114,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: colorScheme.surface,
         elevation: 1.0,
         iconTheme: IconThemeData(color: colorScheme.onSurface),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.save, color: colorScheme.onSurface),
-            onPressed: _saveSettings,
-          ),
-        ],
+        // ★保存ボタンを削除
+        actions: [],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
@@ -133,36 +123,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // 鍛える部位
           Card(
             margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
-            elevation: 4.0,
+            elevation: 4.0, // ★影を戻す
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
             color: colorScheme.surfaceVariant,
-            child: ExpansionTile(
-              title: Text(
-                '鍛える部位を選択',
-                style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 18.0),
+            child: Theme( // ★ExpansionTileのテーマをオーバーライド
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                title: Text(
+                  '鍛える部位を選択',
+                  style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 18.0),
+                ),
+                initiallyExpanded: false,
+                iconColor: colorScheme.primary,
+                collapsedIconColor: colorScheme.primary,
+                childrenPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                // tilePaddingはデフォルトに戻すか、必要に応じて調整
+                tilePadding: const EdgeInsets.symmetric(horizontal: 16.0),
+                children: _bodyParts.keys.map((part) {
+                  return CheckboxListTile(
+                    title: Text(
+                      part,
+                      style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
+                    ),
+                    value: _bodyParts[part],
+                    onChanged: (bool? value) {
+                      setState(() {
+                        _bodyParts[part] = value ?? false;
+                        _saveSettings(); // ★変更時に自動保存
+                      });
+                    },
+                    activeColor: colorScheme.primary,
+                    checkColor: colorScheme.onPrimary,
+                    contentPadding: EdgeInsets.zero,
+                  );
+                }).toList(),
               ),
-              initiallyExpanded: false,
-              iconColor: colorScheme.primary,
-              collapsedIconColor: colorScheme.primary,
-              childrenPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              children: _bodyParts.keys.map((part) {
-                return CheckboxListTile(
-                  title: Text(
-                    part,
-                    style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
-                  ),
-                  value: _bodyParts[part],
-                  onChanged: (bool? value) {
-                    setState(() {
-                      _bodyParts[part] = value ?? false;
-                      _saveSettings();
-                    });
-                  },
-                  activeColor: colorScheme.primary,
-                  checkColor: colorScheme.onPrimary,
-                  contentPadding: EdgeInsets.zero,
-                );
-              }).toList(),
             ),
           ),
           const SizedBox(height: 16.0),
@@ -170,7 +165,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // デフォルトのセット数
           Card(
             margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
-            elevation: 4.0,
+            elevation: 4.0, // ★影を戻す
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
             color: colorScheme.surfaceVariant,
             child: Padding(
@@ -202,7 +197,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: (value) {
                       setState(() {
                         _selectedSetCount = value ?? 3;
-                        _saveSettings();
+                        _saveSettings(); // ★変更時に自動保存
                       });
                     },
                     dropdownColor: colorScheme.surface,
@@ -217,7 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // ダークモード切り替えスイッチ
           Card(
             margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
-            elevation: 4.0,
+            elevation: 4.0, // ★影を戻す
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
             color: colorScheme.surfaceVariant,
             child: Padding(
@@ -236,7 +231,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _selectedThemeMode = value ? ThemeMode.dark : ThemeMode.light;
                       });
                       widget.onThemeModeChanged(_selectedThemeMode); // main.dartに通知
-                      _saveSettings(); // 設定を保存
+                      _saveSettings(); // ★変更時に自動保存
                     },
                     activeColor: colorScheme.primary,
                     inactiveThumbColor: colorScheme.onSurfaceVariant,
