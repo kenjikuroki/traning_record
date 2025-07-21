@@ -136,7 +136,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       backgroundColor: colorScheme.background, // 背景色をテーマから取得
       appBar: AppBar(
         title: Text(
-          'トレーニングカレンダー',
+          'TrainingRecord',
           style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0), // タイトル色をテーマから取得
         ),
         backgroundColor: colorScheme.surface, // AppBar背景色をテーマから取得

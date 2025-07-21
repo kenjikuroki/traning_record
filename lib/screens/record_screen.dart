@@ -29,7 +29,7 @@ class SetInputData {
 
 // Helper class to hold data for each target section
 class SectionData {
-  String? selectedPart; // Selected target part for this section
+  String? selectedPart; // Selected training part for this section
   List<TextEditingController> menuControllers; // Controllers for exercise names in this section
   List<List<SetInputData>> setInputDataList; // ★SetInputDataのリストに変更
   int? initialSetCount; // ★このセクションの初期セット数を保持
@@ -380,9 +380,55 @@ class _RecordScreenState extends State<RecordScreen> {
         transitionDuration: const Duration(milliseconds: 300),
       ),
     ).then((_) {
-      // 設定が変更された後、再度設定と初期セクションをロードしてUIを更新
-      _loadSettingsAndParts();
-      // ここでのsetStateは_loadSettingsAndParts()内で既に呼び出されているため不要
+      // ★ここを修正: 設定画面から戻った際に、現在の入力状態をクリアせずに設定のみを更新する
+      setState(() {
+        // セット数を更新
+        _currentSetCount = widget.setCountBox.get('setCount') ?? 3;
+
+        // 選択可能な部位リストを更新
+        Map<dynamic, dynamic>? savedDynamicBodyPartsSettings = widget.settingsBox.get('selectedBodyParts');
+        Map<String, bool>? savedBodyPartsSettings;
+
+        if (savedDynamicBodyPartsSettings != null) {
+          savedBodyPartsSettings = savedDynamicBodyPartsSettings.map(
+                (key, value) => MapEntry(key.toString(), value as bool),
+          );
+        }
+
+        if (savedBodyPartsSettings != null) {
+          _filteredBodyParts = _allBodyParts
+              .where((part) => savedBodyPartsSettings![part] == true)
+              .toList();
+          if (_filteredBodyParts.isEmpty) {
+            _filteredBodyParts = List.from(_allBodyParts);
+          }
+        } else {
+          _filteredBodyParts = List.from(_allBodyParts);
+        }
+
+        // 各セクションの初期セット数を新しい設定に合わせて更新（既存のセット数より大きい場合のみ）
+        // これにより、設定でセット数を増やした場合に、既存のセクションにも反映される
+        for (var section in _sections) {
+          if (section.initialSetCount != null && section.initialSetCount! < _currentSetCount) {
+            // 現在のセット数より新しい設定のセット数が多い場合のみ、セット数を更新
+            section.initialSetCount = _currentSetCount;
+            // 新しいセット分のコントローラーを追加
+            for (var setInputDataRow in section.setInputDataList) {
+              while (setInputDataRow.length < _currentSetCount) {
+                final weightCtrl = TextEditingController();
+                final repCtrl = TextEditingController();
+                _isPlaceholderMap[weightCtrl] = false;
+                _isPlaceholderMap[repCtrl] = false;
+                _initialSuggestionStatusMap[weightCtrl] = false;
+                _initialSuggestionStatusMap[repCtrl] = false;
+                weightCtrl.addListener(() => _handleInputChanged(weightCtrl));
+                repCtrl.addListener(() => _handleInputChanged(repCtrl));
+                setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
+              }
+            }
+          }
+        }
+      });
     });
   }
 
@@ -500,12 +546,13 @@ class _RecordScreenState extends State<RecordScreen> {
                   if (index == _sections.length) {
                     return Padding(
                       padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
-                      child: SizedBox(
-                        width: double.infinity,
+                      // ★SizedBox(width: double.infinity)を削除し、Alignで右寄せにする
+                      child: Align(
+                        alignment: Alignment.centerRight,
                         child: StylishButton(
-                          text: 'ターゲットを追加',
+                          text: 'トレーニング部位を追加', // ★テキストを修正
                           onPressed: _addTargetSection,
-                          icon: Icons.add_box_outlined,
+                          icon: Icons.add_circle_outline,
                         ),
                       ),
                     );
@@ -523,7 +570,7 @@ class _RecordScreenState extends State<RecordScreen> {
                       children: [
                         DropdownButtonFormField<String>(
                           decoration: InputDecoration(
-                            hintText: 'ターゲットを選択',
+                            hintText: 'トレーニング部位を選択', // ★ヒントテキストを修正
                             hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
                             filled: true,
                             fillColor: colorScheme.surfaceContainer,
