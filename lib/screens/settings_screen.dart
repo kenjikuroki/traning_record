@@ -103,6 +103,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    // 現在のテーマがダークモードかどうかを判断
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
 
     return Scaffold(
       backgroundColor: colorScheme.background,
@@ -225,9 +228,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 18.0),
                   ),
                   Switch(
-                    value: _selectedThemeMode == ThemeMode.dark,
+                    value: isDarkMode, // ★現在のアプリの輝度に基づいてスイッチの状態を設定
                     onChanged: (bool value) {
                       setState(() {
+                        // スイッチの状態に基づいて_selectedThemeModeを更新
                         _selectedThemeMode = value ? ThemeMode.dark : ThemeMode.light;
                       });
                       widget.onThemeModeChanged(_selectedThemeMode); // main.dartに通知
