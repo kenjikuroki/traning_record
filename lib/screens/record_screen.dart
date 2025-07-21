@@ -5,7 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/menu_data.dart';     // MenuData and DailyRecord models
 import 'settings_screen.dart'; // SettingsScreen import
-import '../widgets/custom_widgets.dart'; // ★カスタムウィジェットをインポート
+import '../widgets/custom_widgets.dart'; // カスタムウィジェットをインポート
 import '../main.dart'; // currentThemeMode を使用するためにインポート
 
 // ignore_for_file: library_private_types_in_public_api
@@ -26,7 +26,7 @@ class SetInputData {
   }
 }
 
-// ★アニメーションの方向を定義するenum
+// アニメーションの方向を定義するenum
 enum AnimationDirection {
   topToBottom,
   bottomToTop,
@@ -37,14 +37,14 @@ class AnimatedListItem extends StatefulWidget {
   final Widget child;
   final Duration duration;
   final Curve curve;
-  final AnimationDirection direction; // ★追加：アニメーションの方向
+  final AnimationDirection direction; // 追加：アニメーションの方向
 
   const AnimatedListItem({
     Key? key,
     required this.child,
     this.duration = const Duration(milliseconds: 300),
     this.curve = Curves.easeOut,
-    this.direction = AnimationDirection.bottomToTop, // ★デフォルトは下から上
+    this.direction = AnimationDirection.bottomToTop, // デフォルトは下から上
   }) : super(key: key);
 
   @override
@@ -269,6 +269,10 @@ class _RecordScreenState extends State<RecordScreen> {
 
     for (int i = 0; i < itemsToCreate; i++) {
       final newMenuController = TextEditingController();
+      // ★ここを修正: MenuDataのnameをTextEditingControllerに設定
+      if (i < list.length) {
+        newMenuController.text = list[i].name;
+      }
       menuCtrls.add(newMenuController);
       menuKeys.add(UniqueKey());
 
@@ -609,7 +613,7 @@ class _RecordScreenState extends State<RecordScreen> {
 
                   return AnimatedListItem(
                     key: section.key,
-                    direction: AnimationDirection.bottomToTop, // ★トレーニング部位追加時は下から上
+                    direction: AnimationDirection.bottomToTop, // トレーニング部位追加時は下から上
                     child: GlassCard(
                       borderRadius: 12.0,
                       backgroundColor: colorScheme.surfaceContainerHighest,
@@ -670,7 +674,7 @@ class _RecordScreenState extends State<RecordScreen> {
                             duration: const Duration(milliseconds: 400),
                             transitionBuilder: (Widget child, Animation<double> animation) {
                               final offsetAnimation = Tween<Offset>(
-                                begin: const Offset(0.0, -0.2), // ★トレーニング部位選択時は上から下へ
+                                begin: const Offset(0.0, -0.2), // トレーニング部位選択時は上から下へ
                                 end: Offset.zero,
                               ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut));
                               return FadeTransition(
@@ -690,7 +694,7 @@ class _RecordScreenState extends State<RecordScreen> {
                               itemBuilder: (context, menuIndex) {
                                 return AnimatedListItem(
                                   key: section.menuKeys[menuIndex],
-                                  direction: AnimationDirection.topToBottom, // ★種目追加時は上から下へ
+                                  direction: AnimationDirection.topToBottom, // 種目追加時は上から下へ
                                   child: GlassCard(
                                     borderRadius: 10.0,
                                     backgroundColor: colorScheme.surface,
