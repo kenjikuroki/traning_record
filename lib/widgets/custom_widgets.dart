@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // FilteringTextInputFormatterのために必要
+import 'package:flutter/services.dart';
 
-// StylishInput: テキスト入力フィールドのカスタムスタイル
-class StylishInput extends StatelessWidget {
+// ★カスタムウィジェット
+class StylishInput extends StatefulWidget {
   final TextEditingController controller;
   final String hint;
   final TextInputType keyboardType;
@@ -11,6 +11,7 @@ class StylishInput extends StatelessWidget {
   final TextStyle? hintStyle;
   final Color? fillColor;
   final EdgeInsetsGeometry? contentPadding;
+  final bool isPlaceholder; // ★このプロパティは残す (初期表示用)
 
   const StylishInput({
     super.key,
@@ -22,46 +23,74 @@ class StylishInput extends StatelessWidget {
     this.hintStyle,
     this.fillColor,
     this.contentPadding,
+    this.isPlaceholder = false, // ★デフォルト値をfalseに
   });
+
+  @override
+  State<StylishInput> createState() => _StylishInputState();
+}
+
+class _StylishInputState extends State<StylishInput> {
+  // ★_focusNodeと_currentIsPlaceholderは削除。直接widget.isPlaceholderを使用する。
+
+  @override
+  void initState() {
+    super.initState();
+    // ★コントローラーのリスナーはSetInputDataで管理するため、ここでは不要
+    // ★フォーカスノードもここでは不要
+  }
+
+  @override
+  void didUpdateWidget(covariant StylishInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // ★コントローラーの変更検知もSetInputDataに任せる
+  }
+
+  @override
+  void dispose() {
+    // ★リスナーとフォーカスノードのdisposeは不要になった
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final effectiveTextStyle = widget.textStyle ?? TextStyle(color: colorScheme.onSurface);
+    final effectiveHintStyle = widget.hintStyle ?? TextStyle(color: colorScheme.onSurfaceVariant);
+
     return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      style: textStyle ?? TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
+      controller: widget.controller,
+      keyboardType: widget.keyboardType,
+      inputFormatters: widget.inputFormatters,
+      style: effectiveTextStyle.copyWith(
+        // ★widget.isPlaceholderがtrueの場合に薄い色を適用
+        color: widget.isPlaceholder ? effectiveHintStyle.color : effectiveTextStyle.color,
+      ),
       decoration: InputDecoration(
-        isDense: true,
-        hintText: hint,
-        hintStyle: hintStyle ?? TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
+        hintText: widget.hint,
+        hintStyle: effectiveHintStyle,
         filled: true,
-        fillColor: fillColor ?? colorScheme.surface, // デフォルトはsurface
+        fillColor: widget.fillColor ?? colorScheme.surfaceContainer,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.0),
+          borderRadius: BorderRadius.circular(12.0),
           borderSide: BorderSide.none,
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.0),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.0),
-          borderSide: BorderSide(color: colorScheme.primary, width: 2), // フォーカス時の色
-        ),
-        contentPadding: contentPadding ?? const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        contentPadding: widget.contentPadding ?? const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       ),
     );
   }
 }
 
-// StylishButton: ElevatedButtonのカスタムスタイル
+// 他のカスタムウィジェットは変更なし
+// StylishButton, GlassCard など
+// ... (既存のコードをここに含める)
 class StylishButton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
   final IconData? icon;
-  final Color? backgroundColor; // オプションで背景色を指定できるようにする
+  final Color? backgroundColor;
+  final Color? textColor;
+  final Color? iconColor;
 
   const StylishButton({
     super.key,
@@ -69,45 +98,56 @@ class StylishButton extends StatelessWidget {
     required this.onPressed,
     this.icon,
     this.backgroundColor,
+    this.textColor,
+    this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
-    return ElevatedButton.icon(
+    return ElevatedButton(
       onPressed: onPressed,
-      icon: icon != null
-          ? Icon(icon, color: colorScheme.onPrimary, size: 28.0) // アイコンの色はonPrimary
-          : const SizedBox.shrink(), // アイコンがない場合は空のSizedBox
-      label: Text(
-        text,
-        style: TextStyle(color: colorScheme.onPrimary, fontWeight: FontWeight.bold, fontSize: 18.0), // テキストの色はonPrimary
-      ),
       style: ElevatedButton.styleFrom(
-        backgroundColor: backgroundColor ?? colorScheme.primary, // デフォルトはprimary
-        padding: const EdgeInsets.symmetric(vertical: 18.0),
+        backgroundColor: backgroundColor ?? colorScheme.primary,
+        foregroundColor: textColor ?? colorScheme.onPrimary,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.0),
+          borderRadius: BorderRadius.circular(12.0),
         ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         elevation: 4.0,
-        shadowColor: colorScheme.shadow.withOpacity(0.3), // 影の色
+        shadowColor: colorScheme.shadow.withOpacity(0.2),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: iconColor ?? colorScheme.onPrimary),
+            const SizedBox(width: 8),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 18.0,
+              fontWeight: FontWeight.bold,
+              color: textColor ?? colorScheme.onPrimary,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// GlassCard: Cardのカスタムスタイル（Material Design 3のCardをベースに）
 class GlassCard extends StatelessWidget {
   final Widget child;
   final double borderRadius;
-  final Color? backgroundColor; // オプションで背景色を指定できるようにする
+  final Color? backgroundColor;
   final EdgeInsetsGeometry? padding;
 
   const GlassCard({
     super.key,
     required this.child,
-    this.borderRadius = 12.0,
+    this.borderRadius = 16.0,
     this.backgroundColor,
     this.padding,
   });
@@ -115,13 +155,21 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 0.0),
-      elevation: 1.0, // 影は控えめに
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(borderRadius)),
-      color: backgroundColor ?? colorScheme.surfaceVariant, // デフォルトはsurfaceVariant
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      decoration: BoxDecoration(
+        color: backgroundColor ?? colorScheme.surface,
+        borderRadius: BorderRadius.circular(borderRadius),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: padding ?? const EdgeInsets.all(20.0),
+        padding: padding ?? const EdgeInsets.all(16.0),
         child: child,
       ),
     );
