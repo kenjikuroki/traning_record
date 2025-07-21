@@ -185,17 +185,26 @@ class _RecordScreenState extends State<RecordScreen> {
     Map<String, bool>? savedBodyPartsSettings;
 
     if (savedDynamicBodyPartsSettings != null) {
-      savedBodyPartsSettings = savedDynamicBodyPartsSettings.map(
-            (key, value) => MapEntry(key.toString(), value as bool),
-      );
+      savedBodyPartsSettings = {}; // 明示的に新しいマップを初期化
+      savedDynamicBodyPartsSettings.forEach((key, value) {
+        // キーがString、値がboolであることを確認してから追加
+        if (key is String && value is bool) {
+          savedBodyPartsSettings![key] = value;
+        } else {
+          // ログ出力などでデバッグ情報を残すことも可能
+          // print('Warning: Invalid type for body part setting - Key: $key, Value: $value');
+        }
+      });
     }
 
     int? savedSetCount = widget.setCountBox.get('setCount');
 
-    if (savedBodyPartsSettings != null) {
+    // savedBodyPartsSettings が null または空の場合に _allBodyParts を使用するように修正
+    if (savedBodyPartsSettings != null && savedBodyPartsSettings.isNotEmpty) {
       _filteredBodyParts = _allBodyParts
           .where((part) => savedBodyPartsSettings![part] == true)
           .toList();
+      // 全ての部位がfalseでフィルタリングされた場合もデフォルトに戻す
       if (_filteredBodyParts.isEmpty) {
         _filteredBodyParts = List.from(_allBodyParts);
       }
@@ -269,7 +278,6 @@ class _RecordScreenState extends State<RecordScreen> {
 
     for (int i = 0; i < itemsToCreate; i++) {
       final newMenuController = TextEditingController();
-      // ★ここを修正: MenuDataのnameをTextEditingControllerに設定
       if (i < list.length) {
         newMenuController.text = list[i].name;
       }
@@ -449,9 +457,12 @@ class _RecordScreenState extends State<RecordScreen> {
         Map<String, bool>? savedBodyPartsSettings;
 
         if (savedDynamicBodyPartsSettings != null) {
-          savedBodyPartsSettings = savedDynamicBodyPartsSettings.map(
-                (key, value) => MapEntry(key.toString(), value as bool),
-          );
+          savedBodyPartsSettings = {};
+          savedDynamicBodyPartsSettings.forEach((key, value) {
+            if (key is String && value is bool) {
+              savedBodyPartsSettings![key] = value;
+            }
+          });
         }
 
         if (savedBodyPartsSettings != null) {
@@ -600,9 +611,11 @@ class _RecordScreenState extends State<RecordScreen> {
                       child: Align(
                         alignment: Alignment.centerRight,
                         child: StylishButton(
-                          text: 'トレーニング部位を追加',
+                          text: '部位を追加',
                           onPressed: _addTargetSection,
                           icon: Icons.add_circle_outline,
+                          fontSize: 12.0,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         ),
                       ),
                     );
@@ -624,7 +637,7 @@ class _RecordScreenState extends State<RecordScreen> {
                           DropdownButtonFormField<String>(
                             decoration: InputDecoration(
                               hintText: 'トレーニング部位を選択',
-                              hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
+                              hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
                               filled: true,
                               fillColor: colorScheme.surfaceContainer,
                               border: OutlineInputBorder(
@@ -634,7 +647,7 @@ class _RecordScreenState extends State<RecordScreen> {
                               contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                             ),
                             value: section.selectedPart,
-                            items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 16.0, fontWeight: FontWeight.bold)))).toList(),
+                            items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold)))).toList(),
                             onChanged: (value) {
                               setState(() {
                                 section.selectedPart = value;
@@ -667,7 +680,7 @@ class _RecordScreenState extends State<RecordScreen> {
                               });
                             },
                             dropdownColor: colorScheme.surfaceContainer,
-                            style: TextStyle(color: colorScheme.onSurface, fontSize: 16.0, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 20),
                           AnimatedSwitcher(
@@ -737,10 +750,10 @@ class _RecordScreenState extends State<RecordScreen> {
                             alignment: Alignment.centerRight,
                             child: TextButton.icon(
                               onPressed: () => _addMenuItem(index),
-                              icon: Icon(Icons.add_circle_outline, color: colorScheme.primary, size: 24.0),
-                              label: Text('種目を追加', style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 16.0)),
+                              icon: Icon(Icons.add_circle_outline, color: colorScheme.primary, size: 20.0),
+                              label: Text('種目を追加', style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 12.0)),
                               style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
                                 backgroundColor: colorScheme.primaryContainer,
                                 elevation: 0.0,
