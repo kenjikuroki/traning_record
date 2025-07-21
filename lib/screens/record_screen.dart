@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:hive/hive.dart'; // Hive.box()のために必要
 
-import '../models/menu_data.dart';     // MenuData and DailyRecord models
+import '../models/menu_data.dart';     // MenuData and DailyRecord models (DailyRecordもこのファイルに統合)
 import 'settings_screen.dart'; // SettingsScreen import
 import '../widgets/custom_widgets.dart'; // ★カスタムウィジェットをインポート
+import '../main.dart'; // currentThemeMode を使用するためにインポート
 
 // Helper class to hold data for each target section
 class SectionData {
@@ -48,8 +49,9 @@ class RecordScreen extends StatefulWidget {
   final DateTime selectedDate;
   final Box<DailyRecord> recordsBox; // ★Boxインスタンスを受け取る
   final Box<List<MenuData>> lastUsedMenusBox; // ★Boxインスタンスを受け取る
-  final Box<Map<String, bool>> settingsBox; // ★Boxインスタンスを受け取る
+  final Box<Map<String, bool>> settingsBox; // 型はMap<String, bool>のまま
   final Box<int> setCountBox; // ★Boxインスタンスを受け取る
+  final Box<int> themeModeBox; // ★新しいBoxを受け取る
 
   const RecordScreen({
     super.key,
@@ -58,6 +60,7 @@ class RecordScreen extends StatefulWidget {
     required this.lastUsedMenusBox, // ★コンストラクタに追加
     required this.settingsBox, // ★コンストラクタに追加
     required this.setCountBox, // ★コンストラクタに追加
+    required this.themeModeBox, // ★新しいBoxを受け取る
   });
 
   @override
@@ -208,7 +211,7 @@ class _RecordScreenState extends State<RecordScreen> {
       if (section.selectedPart == null) continue;
 
       List<MenuData> sectionMenuList = [];
-      bool sectionHasContent = false;
+      bool sectionHasContent = false; // This variable is now used
       int currentSectionSetCount = section.initialSetCount ?? _currentSetCount;
 
       for (int i = 0; i < section.menuControllers.length; i++) {
@@ -233,7 +236,7 @@ class _RecordScreenState extends State<RecordScreen> {
       if (sectionMenuList.isNotEmpty) {
         allMenusForDay[section.selectedPart!] = sectionMenuList;
         lastModifiedPart = section.selectedPart;
-        widget.lastUsedMenusBox.put(section.selectedPart!, sectionMenuList); // widget.lastUsedMenusBoxから取得
+        widget.lastUsedMenusBox.put(section.selectedPart!, sectionMenuList);
       } else {
         allMenusForDay.remove(section.selectedPart);
       }
@@ -241,9 +244,9 @@ class _RecordScreenState extends State<RecordScreen> {
 
     if (allMenusForDay.isNotEmpty) {
       DailyRecord newRecord = DailyRecord(menus: allMenusForDay, lastModifiedPart: lastModifiedPart);
-      widget.recordsBox.put(dateKey, newRecord); // widget.recordsBoxから取得
+      widget.recordsBox.put(dateKey, newRecord);
     } else {
-      widget.recordsBox.delete(dateKey); // widget.recordsBoxから取得
+      widget.recordsBox.delete(dateKey);
     }
   }
 
@@ -252,7 +255,15 @@ class _RecordScreenState extends State<RecordScreen> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const SettingsScreen(),
+        pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
+          settingsBox: widget.settingsBox, // settingsBoxを渡す
+          setCountBox: widget.setCountBox, // setCountBoxを渡す
+          themeModeBox: widget.themeModeBox, // ★themeModeBoxを渡す
+          onThemeModeChanged: (newMode) {
+            // CalendarScreenから渡されたコールバックを呼び出す (main.dartのValueNotifierを更新するため)
+            currentThemeMode.value = newMode;
+          },
+        ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(0.0, 1.0);
           const end = Offset.zero;
@@ -272,7 +283,7 @@ class _RecordScreenState extends State<RecordScreen> {
       setState(() {
         for (var section in _sections) {
           String dateKey = _getDateKey(widget.selectedDate);
-          DailyRecord? record = widget.recordsBox.get(dateKey); // widget.recordsBoxから取得
+          DailyRecord? record = widget.recordsBox.get(dateKey);
           List<MenuData>? existingMenuList = record?.menus[section.selectedPart!];
 
           int sectionSetCountToUse;
@@ -339,7 +350,7 @@ class _RecordScreenState extends State<RecordScreen> {
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
-            fillColor: colorScheme.surface,
+            fillColor: colorScheme.surfaceContainer, // ★surface -> surfaceContainer
             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
           ),
         ),
@@ -351,7 +362,7 @@ class _RecordScreenState extends State<RecordScreen> {
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
-            fillColor: colorScheme.surface,
+            fillColor: colorScheme.surfaceContainer, // ★surface -> surfaceContainer
             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
           ),
         ),
@@ -376,7 +387,7 @@ class _RecordScreenState extends State<RecordScreen> {
         iconTheme: IconThemeData(color: colorScheme.onSurface),
         actions: [
           IconButton(
-            icon: Icon(Icons.settings, size: 24.0, color: colorScheme.onSurface), // アイコン色をテーマから取得
+            icon: Icon(Icons.settings, size: 24.0, color: colorScheme.onSurface),
             onPressed: () => _navigateToSettings(context),
           ),
         ],
@@ -398,7 +409,6 @@ class _RecordScreenState extends State<RecordScreen> {
                           text: 'ターゲットを追加',
                           onPressed: _addTargetSection,
                           icon: Icons.add_box_outlined,
-                          // StylishButton内でprimaryカラーが使用される
                         ),
                       ),
                     );
@@ -407,9 +417,9 @@ class _RecordScreenState extends State<RecordScreen> {
                   final section = _sections[index];
                   final int sectionDisplaySetCount = section.initialSetCount ?? _currentSetCount;
 
-                  return GlassCard( // GlassCardを使用
+                  return GlassCard(
                     borderRadius: 12.0,
-                    backgroundColor: colorScheme.surfaceVariant, // カード背景色をテーマから取得
+                    backgroundColor: colorScheme.surfaceContainerHighest, // ★surfaceVariant -> surfaceContainerHighest
                     padding: const EdgeInsets.all(20.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,7 +429,7 @@ class _RecordScreenState extends State<RecordScreen> {
                             hintText: 'ターゲットを選択',
                             hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
                             filled: true,
-                            fillColor: colorScheme.surface, // ドロップダウン背景色をテーマから取得
+                            fillColor: colorScheme.surfaceContainer, // ★surface -> surfaceContainer
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(25.0),
                               borderSide: BorderSide.none,
@@ -459,7 +469,7 @@ class _RecordScreenState extends State<RecordScreen> {
                               }
                             });
                           },
-                          dropdownColor: colorScheme.surface, // ドロップダウンメニュー背景色をテーマから取得
+                          dropdownColor: colorScheme.surfaceContainer, // ★surface -> surfaceContainer
                           style: TextStyle(color: colorScheme.onSurface, fontSize: 16.0, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 20),
@@ -468,9 +478,9 @@ class _RecordScreenState extends State<RecordScreen> {
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: section.menuControllers.length,
                           itemBuilder: (context, menuIndex) {
-                            return GlassCard( // GlassCardを使用
+                            return GlassCard(
                               borderRadius: 10.0,
-                              backgroundColor: colorScheme.surface, // 種目カード背景色をテーマから取得
+                              backgroundColor: colorScheme.surface,
                               padding: const EdgeInsets.all(16.0),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -481,7 +491,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                     inputFormatters: [LengthLimitingTextInputFormatter(50)],
                                     hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
                                     textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0, fontWeight: FontWeight.bold),
-                                    fillColor: colorScheme.surfaceVariant, // TextField塗りつぶし色をテーマから取得
+                                    fillColor: colorScheme.surfaceContainer, // ★surfaceVariant -> surfaceContainer
                                     contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                                   ),
                                   const SizedBox(height: 10),
@@ -507,12 +517,12 @@ class _RecordScreenState extends State<RecordScreen> {
                           alignment: Alignment.centerRight,
                           child: TextButton.icon(
                             onPressed: () => _addMenuItem(index),
-                            icon: Icon(Icons.add_circle_outline, color: colorScheme.primary, size: 24.0), // アイコン色をテーマから取得
-                            label: Text('種目を追加', style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 16.0)), // テキスト色をテーマから取得
+                            icon: Icon(Icons.add_circle_outline, color: colorScheme.primary, size: 24.0),
+                            label: Text('種目を追加', style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 16.0)),
                             style: TextButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
-                              backgroundColor: colorScheme.primaryContainer, // ボタン背景色をテーマから取得
+                              backgroundColor: colorScheme.primaryContainer,
                               elevation: 0.0,
                             ),
                           ),

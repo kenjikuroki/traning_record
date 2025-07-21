@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:hive/hive.dart';
+// import 'package:hive/hive.dart'; // Unnecessary import, removed
 
-import '../models/menu_data.dart'; // DailyRecordも含まれる
+import '../models/menu_data.dart'; // DailyRecordもこのファイルに統合
+// import '../models/daily_record.dart'; // DailyRecordモデルはmenu_data.dartに統合されているため削除
 import 'record_screen.dart';
 import 'settings_screen.dart';
+import '../main.dart'; // currentThemeMode を使用するためにインポート
 
 class CalendarScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
   final Box<List<MenuData>> lastUsedMenusBox;
-  final Box<Map<String, bool>> settingsBox;
+  final Box<Map<String, bool>> settingsBox; // 型はMap<String, bool>のまま
   final Box<int> setCountBox;
+  final Box<int> themeModeBox; // ★新しいBoxを受け取る
 
   const CalendarScreen({
     super.key,
@@ -19,6 +22,7 @@ class CalendarScreen extends StatefulWidget {
     required this.lastUsedMenusBox,
     required this.settingsBox,
     required this.setCountBox,
+    required this.themeModeBox, // ★新しいBoxを受け取る
   });
 
   @override
@@ -43,7 +47,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void initState() {
     super.initState();
-    // Boxインスタンスはwidgetから直接参照するため、ここでは初期化不要
   }
 
   // 日付キーを生成するヘルパー関数 (RecordScreenと共通)
@@ -72,6 +75,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           lastUsedMenusBox: widget.lastUsedMenusBox, // Boxインスタンスを渡す
           settingsBox: widget.settingsBox, // Boxインスタンスを渡す
           setCountBox: widget.setCountBox, // Boxインスタンスを渡す
+          themeModeBox: widget.themeModeBox, // ★themeModeBoxを渡す
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(0.0, 1.0);
@@ -99,7 +103,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const SettingsScreen(),
+        pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
+          settingsBox: widget.settingsBox, // settingsBoxを渡す
+          setCountBox: widget.setCountBox, // setCountBoxを渡す
+          themeModeBox: widget.themeModeBox, // ★themeModeBoxを渡す
+          onThemeModeChanged: (newMode) {
+            currentThemeMode.value = newMode; // main.dartのValueNotifierを更新
+          },
+        ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(0.0, 1.0);
           const end = Offset.zero;
@@ -119,7 +130,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme; // ColorSchemeを取得
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       backgroundColor: colorScheme.background, // 背景色をテーマから取得

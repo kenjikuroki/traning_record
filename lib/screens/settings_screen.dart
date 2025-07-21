@@ -1,47 +1,54 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart'; // Hiveをインポート
-import 'package:hive_flutter/hive_flutter.dart'; // Hive_flutterをインポート
-import '../widgets/custom_widgets.dart'; // ★StylishInput を使用するためにインポートを追加
+import 'package:hive_flutter/hive_flutter.dart';
+// import 'package:hive/hive.dart'; // Unnecessary import, removed
+import '../widgets/custom_widgets.dart'; // StylishInput を使用するためにインポートを追加
+
+// ThemeMode変更を通知するための型定義
+typedef ThemeModeChangedCallback = void Function(ThemeMode newMode);
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final Box<Map<String, bool>> settingsBox; // 部位選択の設定用Box
+  final Box<int> setCountBox; // セット数設定用Box
+  final Box<int> themeModeBox; // ★テーマモード保存用Box
+  final ThemeModeChangedCallback onThemeModeChanged; // main.dartに通知するためのコールバック
+
+  const SettingsScreen({
+    super.key,
+    required this.settingsBox,
+    required this.setCountBox,
+    required this.themeModeBox, // ★コンストラクタに追加
+    required this.onThemeModeChanged,
+  });
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // 部位選択の状態を保持するマップ。初期値は全てfalse。
   final Map<String, bool> _bodyParts = {
-    '腕': false,
-    '胸': false,
-    '肩': false,
-    '背中': false,
-    '足': false,
-    '全体': false,
-    'その他': false,
+    '腕': false, '胸': false, '肩': false, '背中': false,
+    '足': false, '全体': false, 'その他': false,
   };
 
-  // ★セット数の選択状態を保持する変数。デフォルトは3セット。
   int _selectedSetCount = 3;
+  ThemeMode _selectedThemeMode = ThemeMode.system; // デフォルトはシステム設定
 
-  late Box<Map<String, bool>> _bodyPartsSettingsBox; // 部位選択の設定用Box
-  late Box<int> _setCountBox; // ★セット数設定用Box
-
+  // ★initStateから_loadSettings()の呼び出しを削除し、didChangeDependenciesに移動
   @override
   void initState() {
     super.initState();
-    _bodyPartsSettingsBox = Hive.box<Map<String, bool>>('settingsBox'); // 部位選択用Boxを初期化
-    _setCountBox = Hive.box<int>('setCountBox'); // ★セット数用Boxを初期化
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // ここでTheme.of(context)のようなInheritedWidgetに依存する操作を行う
     _loadSettings(); // 保存された設定をロード
   }
 
-  // Hiveから設定をロードする関数
   void _loadSettings() {
-    // 'selectedBodyParts'というキーで設定を保存します。
-    // もしデータがなければ空のマップをデフォルト値として使用します。
-    // ★明示的な型キャストを追加 (dynamicで受け取り、mapで安全に変換)
-    Map<dynamic, dynamic>? savedDynamicBodyPartsSettings = _bodyPartsSettingsBox.get('selectedBodyParts');
+    // 部位選択設定をロード
+    Map<dynamic, dynamic>? savedDynamicBodyPartsSettings = widget.settingsBox.get('selectedBodyParts');
     Map<String, bool>? savedBodyPartsSettings;
 
     if (savedDynamicBodyPartsSettings != null) {
@@ -50,40 +57,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
 
-    int? savedSetCount = _setCountBox.get('setCount'); // ★セット数用Boxからロード
-
     if (savedBodyPartsSettings != null) {
       setState(() {
-        // 保存された設定で_bodyPartsマップを更新します。
-        // 新しい部位が追加された場合でも対応できるように、既存の_bodyPartsをベースにします。
         _bodyParts.forEach((key, value) {
           _bodyParts[key] = savedBodyPartsSettings![key] ?? false;
         });
       });
     } else {
-      // 初回起動時など、設定が保存されていない場合は、全ての部位をtrue（選択済み）として初期化
-      // これにより、デフォルトで全ての部位が記録画面に表示されるようになります。
       setState(() {
         _bodyParts.keys.forEach((key) {
-          _bodyParts[key] = true;
+          _bodyParts[key] = true; // デフォルトで全て選択
         });
       });
-      // 初期状態をHiveに保存
-      _saveSettings();
+      _saveSettings(); // 初期状態をHiveに保存
     }
 
-    // ★保存されたセット数があれば更新、なければデフォルト値を使用
+    // セット数をロード
+    int? savedSetCount = widget.setCountBox.get('setCount');
     if (savedSetCount != null) {
       setState(() {
         _selectedSetCount = savedSetCount;
       });
     }
+
+    // テーマモードをロード
+    // savedThemeModeIndex が null の可能性があるので、null-aware演算子を使用
+    final int? savedThemeModeIndex = widget.themeModeBox.get('themeMode', defaultValue: ThemeMode.system.index);
+    setState(() {
+      _selectedThemeMode = ThemeMode.values[savedThemeModeIndex ?? ThemeMode.system.index]; // ★null安全なアクセス
+    });
   }
 
-  // Hiveに設定を保存する関数
   void _saveSettings() {
-    _bodyPartsSettingsBox.put('selectedBodyParts', _bodyParts); // ★部位選択用Boxに保存
-    _setCountBox.put('setCount', _selectedSetCount); // ★セット数用Boxに保存
+    widget.settingsBox.put('selectedBodyParts', _bodyParts);
+    widget.setCountBox.put('setCount', _selectedSetCount);
+
+    // テーマモードを保存 (int型で保存)
+    widget.themeModeBox.put('themeMode', _selectedThemeMode.index);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('設定を保存しました！')),
+    );
   }
 
   @override
@@ -94,70 +108,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // テーマからColorSchemeを取得
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.background, // ★テーマカラー適用
+      backgroundColor: colorScheme.background,
       appBar: AppBar(
         title: Text(
           '設定',
-          style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0), // ★テーマカラー適用
+          style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0),
         ),
-        backgroundColor: colorScheme.surface, // ★テーマカラー適用
-        elevation: 1.0, // AppBarの影を少しつける
-        iconTheme: IconThemeData(color: colorScheme.onSurface), // ★テーマカラー適用
+        backgroundColor: colorScheme.surface,
+        elevation: 1.0,
+        iconTheme: IconThemeData(color: colorScheme.onSurface),
         actions: [
           IconButton(
-            icon: Icon(Icons.save, color: colorScheme.onSurface), // アイコン色をテーマから取得
+            icon: Icon(Icons.save, color: colorScheme.onSurface),
             onPressed: _saveSettings,
           ),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16.0), // 全体のパディングをRecordScreenと合わせる
+        padding: const EdgeInsets.all(16.0),
         children: [
-          Card( // ExpansionTileをCardで囲む
-            margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0), // 垂直方向の余白
-            elevation: 4.0, // 影
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)), // 角丸
-            color: colorScheme.surfaceVariant, // ★テーマカラー適用
+          // 鍛える部位
+          Card(
+            margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
+            elevation: 4.0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+            color: colorScheme.surfaceVariant,
             child: ExpansionTile(
               title: Text(
-                '鍛える部位を選択', // ★元のテキストに戻しました
-                style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 18.0), // ★テーマカラー適用
+                '鍛える部位を選択',
+                style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 18.0),
               ),
-              initiallyExpanded: false, // ★デフォルトで閉じるように変更
-              iconColor: colorScheme.primary, // ★テーマカラー適用
-              collapsedIconColor: colorScheme.primary, // ★テーマカラー適用
-              childrenPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // 子要素のパディング
-              // collapsedShapeとexpandedShapeは削除したままです
+              initiallyExpanded: false,
+              iconColor: colorScheme.primary,
+              collapsedIconColor: colorScheme.primary,
+              childrenPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               children: _bodyParts.keys.map((part) {
                 return CheckboxListTile(
                   title: Text(
                     part,
-                    style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0), // ★テーマカラー適用
+                    style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
                   ),
                   value: _bodyParts[part],
                   onChanged: (bool? value) {
                     setState(() {
                       _bodyParts[part] = value ?? false;
-                      _saveSettings(); // 変更があったらすぐに保存
+                      _saveSettings();
                     });
                   },
-                  activeColor: colorScheme.primary, // ★テーマカラー適用
-                  checkColor: colorScheme.onPrimary, // ★テーマカラー適用
-                  contentPadding: EdgeInsets.zero, // パディングをリセットしてCardのPaddingに任せる
+                  activeColor: colorScheme.primary,
+                  checkColor: colorScheme.onPrimary,
+                  contentPadding: EdgeInsets.zero,
                 );
               }).toList(),
             ),
           ),
-          const SizedBox(height: 16.0), // 部位選択とセット数の間にスペース
-          Card( // セット数選択用のCard
+          const SizedBox(height: 16.0),
+
+          // デフォルトのセット数
+          Card(
             margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
             elevation: 4.0,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-            color: colorScheme.surfaceVariant, // ★テーマカラー適用
+            color: colorScheme.surfaceVariant,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -165,15 +180,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Text(
                     'デフォルトのセット数',
-                    style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 18.0), // ★テーマカラー適用
+                    style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 18.0),
                   ),
                   const SizedBox(height: 12.0),
                   DropdownButtonFormField<int>(
                     decoration: InputDecoration(
                       hintText: 'セット数を選択',
-                      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0), // ★テーマカラー適用
+                      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
                       filled: true,
-                      fillColor: colorScheme.surface, // ★テーマカラー適用
+                      fillColor: colorScheme.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10.0),
                         borderSide: BorderSide.none,
@@ -181,17 +196,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                     ),
                     value: _selectedSetCount,
-                    items: List.generate(10, (index) => index + 1) // 1から10までのセット数
-                        .map((count) => DropdownMenuItem(value: count, child: Text('$count セット', style: TextStyle(color: colorScheme.onSurface)))) // ★テーマカラー適用
+                    items: List.generate(10, (index) => index + 1)
+                        .map((count) => DropdownMenuItem(value: count, child: Text('$count セット', style: TextStyle(color: colorScheme.onSurface))))
                         .toList(),
                     onChanged: (value) {
                       setState(() {
-                        _selectedSetCount = value ?? 3; // デフォルトは3セット
-                        _saveSettings(); // 変更があったらすぐに保存
+                        _selectedSetCount = value ?? 3;
+                        _saveSettings();
                       });
                     },
-                    dropdownColor: colorScheme.surface, // ★テーマカラー適用
-                    style: TextStyle(color: colorScheme.onSurface, fontSize: 16.0), // ★テーマカラー適用
+                    dropdownColor: colorScheme.surface,
+                    style: TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16.0),
+
+          // ダークモード切り替えスイッチ
+          Card(
+            margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
+            elevation: 4.0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+            color: colorScheme.surfaceVariant,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'ダークモード',
+                    style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 18.0),
+                  ),
+                  Switch(
+                    value: _selectedThemeMode == ThemeMode.dark,
+                    onChanged: (bool value) {
+                      setState(() {
+                        _selectedThemeMode = value ? ThemeMode.dark : ThemeMode.light;
+                      });
+                      widget.onThemeModeChanged(_selectedThemeMode); // main.dartに通知
+                      _saveSettings(); // 設定を保存
+                    },
+                    activeColor: colorScheme.primary,
+                    inactiveThumbColor: colorScheme.onSurfaceVariant,
+                    inactiveTrackColor: colorScheme.surface,
                   ),
                 ],
               ),
