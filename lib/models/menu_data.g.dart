@@ -18,8 +18,8 @@ class MenuDataAdapter extends TypeAdapter<MenuData> {
     };
     return MenuData(
       name: fields[0] as String,
-      weights: (fields[1] as List).cast<int>(),
-      reps: (fields[2] as List).cast<int>(),
+      weights: (fields[1] as List).cast<String>(),
+      reps: (fields[2] as List).cast<String>(),
     );
   }
 

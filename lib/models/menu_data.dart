@@ -9,10 +9,10 @@ class MenuData extends HiveObject {
   String name;
 
   @HiveField(1)
-  List<int> weights;
+  List<String> weights; // List<int> から List<String> に変更
 
   @HiveField(2)
-  List<int> reps;
+  List<String> reps; // List<int> から List<String> に変更
 
   MenuData({required this.name, required this.weights, required this.reps});
 }

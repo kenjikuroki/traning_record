@@ -233,6 +233,7 @@ class _RecordScreenState extends State<RecordScreen> {
       record.menus.forEach((part, menuList) {
         int sectionSpecificSetCount = _currentSetCount;
         if (menuList.isNotEmpty) {
+          // Changed to check weights.length as it's now List<String>
           sectionSpecificSetCount = menuList[0].weights.length;
         }
         SectionData section = SectionData(
@@ -248,6 +249,8 @@ class _RecordScreenState extends State<RecordScreen> {
         _sections.add(section);
       });
     } else {
+      // 初期状態では1つの空のセクションを追加し、種目名とセット入力は表示しない
+      // 部位が選択された時に初めて種目名とセット入力を追加する
       _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
       _sections[0].initialSetCount = _currentSetCount;
     }
@@ -262,6 +265,9 @@ class _RecordScreenState extends State<RecordScreen> {
     // 既存のコントローラーを破棄し、マップのエントリをクリア
     for (int i = 0; i < menuCtrls.length; i++) {
       menuCtrls[i].dispose();
+      _isPlaceholderMap.remove(menuCtrls[i]); // 種目名コントローラーのマップエントリを削除
+      _initialSuggestionStatusMap.remove(menuCtrls[i]);
+
       if (i < setInputDataList.length) {
         for (var data in setInputDataList[i]) {
           data.weightController.dispose();
@@ -277,13 +283,18 @@ class _RecordScreenState extends State<RecordScreen> {
     setInputDataList.clear();
     menuKeys.clear();
 
-    int itemsToCreate = list.isNotEmpty ? list.length : 1;
+    int itemsToCreate = list.isNotEmpty ? list.length : 1; // データがない場合は1つの空の入力行を作成
 
     for (int i = 0; i < itemsToCreate; i++) {
       final newMenuController = TextEditingController();
       if (i < list.length) {
         newMenuController.text = list[i].name;
+        _isPlaceholderMap[newMenuController] = newMenuController.text.isEmpty; // 種目名が空ならプレースホルダー
+      } else {
+        _isPlaceholderMap[newMenuController] = true; // 新規追加はプレースホルダー
       }
+      _initialSuggestionStatusMap[newMenuController] = _isPlaceholderMap[newMenuController]!;
+      newMenuController.addListener(() => _handleInputChanged(newMenuController));
       menuCtrls.add(newMenuController);
       menuKeys.add(UniqueKey());
 
@@ -292,40 +303,19 @@ class _RecordScreenState extends State<RecordScreen> {
         final newWeightController = TextEditingController();
         final newRepController = TextEditingController();
 
-        if (i < list.length && s < list[i].weights.length) {
-          int loadedWeight = list[i].weights[s];
-          int loadedRep = list[i].reps[s];
+        // Weights and reps are now List<String>
+        String loadedWeight = '';
+        String loadedRep = '';
 
-          // DailyRecordからの読み込みの場合の表示ロジック
-          if (!isSuggestionData) {
-            // 重量と回数が両方とも0の場合、空として表示（NULLとして扱う）
-            if (loadedWeight == 0 && loadedRep == 0) {
-              newWeightController.text = '';
-              _isPlaceholderMap[newWeightController] = true; // ヒント表示のためtrue
-              newRepController.text = '';
-              _isPlaceholderMap[newRepController] = true; // ヒント表示のためtrue
-            } else {
-              // 片方または両方が0ではない場合、または片方が0でもう片方が0ではない場合、
-              // 0は明示的な0として表示し、ヒントは表示しない
-              newWeightController.text = loadedWeight.toString();
-              _isPlaceholderMap[newWeightController] = false; // ヒント非表示のためfalse
-              newRepController.text = loadedRep.toString();
-              _isPlaceholderMap[newRepController] = false; // ヒント非表示のためfalse
-            }
-          } else {
-            // lastUsedMenusBox (提案データ) からの読み込みの場合、0は常に明示的な0として表示
-            newWeightController.text = loadedWeight.toString();
-            _isPlaceholderMap[newWeightController] = false; // ヒント非表示のためfalse
-            newRepController.text = loadedRep.toString();
-            _isPlaceholderMap[newRepController] = false; // ヒント非表示のためfalse
-          }
-        } else {
-          // データがない場合（新規追加時など）は空のまま、プレースホルダーとして扱う
-          newWeightController.text = '';
-          newRepController.text = '';
-          _isPlaceholderMap[newWeightController] = true; // 新規はプレースホルダー
-          _isPlaceholderMap[newRepController] = true;
+        if (i < list.length && s < list[i].weights.length) {
+          loadedWeight = list[i].weights[s];
+          loadedRep = list[i].reps[s];
         }
+
+        newWeightController.text = loadedWeight;
+        _isPlaceholderMap[newWeightController] = loadedWeight.isEmpty; // 空文字列ならプレースホルダー
+        newRepController.text = loadedRep;
+        _isPlaceholderMap[newRepController] = loadedRep.isEmpty; // 空文字列ならプレースホルダー
 
         // _initialSuggestionStatusMapを_isPlaceholderMapの初期値で設定
         _initialSuggestionStatusMap[newWeightController] = _isPlaceholderMap[newWeightController]!;
@@ -348,6 +338,8 @@ class _RecordScreenState extends State<RecordScreen> {
   void _clearSectionControllersAndMaps(List<TextEditingController> menuCtrls, List<List<SetInputData>> setInputDataList) {
     for (var c in menuCtrls) {
       c.dispose();
+      _isPlaceholderMap.remove(c); // 種目名コントローラーのマップエントリを削除
+      _initialSuggestionStatusMap.remove(c);
     }
     for (var list in setInputDataList) {
       for (var data in list) {
@@ -355,7 +347,7 @@ class _RecordScreenState extends State<RecordScreen> {
         data.repController.dispose();
         _isPlaceholderMap.remove(data.weightController);
         _isPlaceholderMap.remove(data.repController);
-        _initialSuggestionStatusMap.remove(data.weightController);
+        _initialSuggestionStatusMap.remove(data.repController);
         _initialSuggestionStatusMap.remove(data.repController);
       }
     }
@@ -396,8 +388,8 @@ class _RecordScreenState extends State<RecordScreen> {
 
       for (int i = 0; i < section.menuControllers.length; i++) {
         String name = section.menuControllers[i].text.trim();
-        List<int> weights = [];
-        List<int> reps = [];
+        List<String> weights = []; // List<String> に変更
+        List<String> reps = []; // List<String> に変更
         bool rowHasContent = false; // この行（種目）に何らかの有効な入力があるか
 
         for (int s = 0; s < currentSectionSetCount; s++) {
@@ -405,25 +397,15 @@ class _RecordScreenState extends State<RecordScreen> {
               ? section.setInputDataList[i][s]
               : null;
 
-          int w = 0;
-          int r = 0;
+          String w = ''; // String に変更
+          String r = ''; // String に変更
 
           if (setInputData != null) {
-            // 重量コントローラーのテキストが空でなければパース。空の場合は0として保存。
-            if (setInputData.weightController.text.isEmpty) {
-              w = 0;
-            } else {
-              w = int.tryParse(setInputData.weightController.text) ?? 0;
-            }
-            // 回数コントローラーのテキストが空でなければパース。空の場合は0として保存。
-            if (setInputData.repController.text.isEmpty) {
-              r = 0;
-            } else {
-              r = int.tryParse(setInputData.repController.text) ?? 0;
-            }
+            w = setInputData.weightController.text; // 直接テキストを取得
+            r = setInputData.repController.text; // 直接テキストを取得
 
             // このセットに有効な入力があるかを判定 (空でないテキストがあれば有効な入力とする)
-            if (setInputData.weightController.text.isNotEmpty || setInputData.repController.text.isNotEmpty) {
+            if (w.isNotEmpty || r.isNotEmpty) {
               rowHasContent = true;
             }
           }
@@ -538,6 +520,10 @@ class _RecordScreenState extends State<RecordScreen> {
       _sections[sectionIndex].menuControllers.add(newMenuController);
       _sections[sectionIndex].menuKeys.add(UniqueKey());
 
+      _isPlaceholderMap[newMenuController] = true; // 新規追加の種目名はプレースホルダー
+      _initialSuggestionStatusMap[newMenuController] = true;
+      newMenuController.addListener(() => _handleInputChanged(newMenuController));
+
       final newSetInputDataList = List.generate(currentSectionSetCount, (_) {
         final weightCtrl = TextEditingController();
         final repCtrl = TextEditingController();
@@ -557,6 +543,8 @@ class _RecordScreenState extends State<RecordScreen> {
     setState(() {
       final newSection = SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false);
       _sections.add(newSection);
+      // 新しいセクションには初期の種目名コントローラーやセット入力データは追加しない
+      // それらは部位が選択された時に_setControllersFromDataによって追加される
     });
   }
 
@@ -640,17 +628,21 @@ class _RecordScreenState extends State<RecordScreen> {
               child: ListView.builder(
                 itemCount: _sections.length + 1,
                 itemBuilder: (context, index) {
+                  // 「部位を追加」ボタンの表示制御
                   if (index == _sections.length) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: StylishButton(
-                          text: '部位を追加',
-                          onPressed: _addTargetSection,
-                          icon: Icons.add_circle_outline,
-                          fontSize: 12.0,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    return Visibility(
+                      visible: _sections.any((s) => s.selectedPart != null), // いずれかの部位が選択されていれば表示
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: StylishButton(
+                            text: '部位を追加',
+                            onPressed: _addTargetSection,
+                            icon: Icons.add_circle_outline,
+                            fontSize: 12.0,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          ),
                         ),
                       ),
                     );
@@ -697,6 +689,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                   if (record != null && record.menus.containsKey(section.selectedPart!)) {
                                     listToLoad = record.menus[section.selectedPart!];
                                     if (listToLoad != null && listToLoad.isNotEmpty) {
+                                      // Changed to check weights.length as it's now List<String>
                                       newSectionSetCount = listToLoad[0].weights.length;
                                     }
                                     isSuggestion = false; // DailyRecordからの読み込みは提案ではない
@@ -709,6 +702,7 @@ class _RecordScreenState extends State<RecordScreen> {
 
                                   _setControllersFromData(section.menuControllers, section.setInputDataList, section.menuKeys, listToLoad ?? [], newSectionSetCount, isSuggestion);
                                 } else {
+                                  // 部位が選択解除された場合、コントローラーをクリアして非表示状態に戻す
                                   _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
                                   section.menuKeys.clear();
                                   section.initialSetCount = _currentSetCount;
@@ -719,6 +713,7 @@ class _RecordScreenState extends State<RecordScreen> {
                             style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 20),
+                          // 部位が選択されている場合にのみ種目名とセット入力を表示
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 400),
                             transitionBuilder: (Widget child, Animation<double> animation) {
@@ -734,9 +729,9 @@ class _RecordScreenState extends State<RecordScreen> {
                                 ),
                               );
                             },
-                            child: section.menuControllers.isNotEmpty
+                            child: section.selectedPart != null // ここを修正: 部位が選択されていれば表示
                                 ? ListView.builder(
-                              key: ValueKey(section.selectedPart),
+                              key: ValueKey(section.selectedPart), // 部位が変わったらアニメーションを再トリガー
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: section.menuControllers.length,
@@ -753,12 +748,12 @@ class _RecordScreenState extends State<RecordScreen> {
                                       children: [
                                         StylishInput(
                                           controller: section.menuControllers[menuIndex],
-                                          hint: '種目名',
+                                          hint: '種目名', // 種目名のヒントテキスト
                                           inputFormatters: [LengthLimitingTextInputFormatter(50)],
                                           textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0, fontWeight: FontWeight.bold),
                                           fillColor: colorScheme.surfaceContainer,
                                           contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                                          isPlaceholder: false, // 種目名はプレースホルダーではない
+                                          isPlaceholder: _isPlaceholderMap[section.menuControllers[menuIndex]] ?? false, // 種目名のプレースホルダー状態を適用
                                           textAlign: TextAlign.left, // 種目名は左寄せ
                                         ),
                                         const SizedBox(height: 10),
@@ -779,20 +774,24 @@ class _RecordScreenState extends State<RecordScreen> {
                                 );
                               },
                             )
-                                : const SizedBox.shrink(key: ValueKey('empty')),
+                                : const SizedBox.shrink(key: ValueKey('empty')), // 部位が選択されていなければ非表示
                           ),
                           const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton.icon(
-                              onPressed: () => _addMenuItem(index),
-                              icon: Icon(Icons.add_circle_outline, color: colorScheme.primary, size: 20.0),
-                              label: Text('種目を追加', style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 12.0)),
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
-                                backgroundColor: colorScheme.primaryContainer,
-                                elevation: 0.0,
+                          // 「種目を追加」ボタンの表示制御
+                          Visibility(
+                            visible: section.selectedPart != null, // 部位が選択されていれば表示
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                onPressed: () => _addMenuItem(index),
+                                icon: Icon(Icons.add_circle_outline, color: colorScheme.primary, size: 20.0),
+                                label: Text('種目を追加', style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 12.0)),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                                  backgroundColor: colorScheme.primaryContainer,
+                                  elevation: 0.0,
+                                ),
                               ),
                             ),
                           ),
