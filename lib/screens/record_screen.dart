@@ -10,12 +10,11 @@ import '../main.dart'; // currentThemeMode を使用するためにインポー�
 
 // ignore_for_file: library_private_types_in_public_api
 
-// ★SetInputDataクラスを定義（isPlaceholder関連のロジックは削除）
+// SetInputDataクラスを定義
 class SetInputData {
   final TextEditingController weightController;
   final TextEditingController repController;
 
-  // ★コンストラクタでリスナー設定は不要（RecordScreenで管理する）
   SetInputData({
     required this.weightController,
     required this.repController,
@@ -27,27 +26,102 @@ class SetInputData {
   }
 }
 
+// ★アニメーションの方向を定義するenum
+enum AnimationDirection {
+  topToBottom,
+  bottomToTop,
+}
+
+// アニメーション付きリストアイテムウィジェット
+class AnimatedListItem extends StatefulWidget {
+  final Widget child;
+  final Duration duration;
+  final Curve curve;
+  final AnimationDirection direction; // ★追加：アニメーションの方向
+
+  const AnimatedListItem({
+    Key? key,
+    required this.child,
+    this.duration = const Duration(milliseconds: 300),
+    this.curve = Curves.easeOut,
+    this.direction = AnimationDirection.bottomToTop, // ★デフォルトは下から上
+  }) : super(key: key);
+
+  @override
+  _AnimatedListItemState createState() => _AnimatedListItemState();
+}
+
+class _AnimatedListItemState extends State<AnimatedListItem> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _offsetAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: widget.duration);
+
+    Offset beginOffset;
+    if (widget.direction == AnimationDirection.topToBottom) {
+      beginOffset = const Offset(0.0, -0.5); // 上から下へスライド
+    } else {
+      beginOffset = const Offset(0.0, 0.5); // 下から上へスライド
+    }
+
+    _offsetAnimation = Tween<Offset>(
+      begin: beginOffset,
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: widget.curve));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: widget.curve),
+    );
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: _offsetAnimation,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
 // Helper class to hold data for each target section
 class SectionData {
+  final Key key; // セクションのキー
   String? selectedPart; // Selected training part for this section
   List<TextEditingController> menuControllers; // Controllers for exercise names in this section
-  List<List<SetInputData>> setInputDataList; // ★SetInputDataのリストに変更
-  int? initialSetCount; // ★このセクションの初期セット数を保持
+  List<List<SetInputData>> setInputDataList; // SetInputDataのリストに変更
+  int? initialSetCount; // このセクションの初期セット数を保持
+  List<Key> menuKeys; // 各メニューアイテムのキーを保持
 
   SectionData({
+    Key? key,
     this.selectedPart,
     required this.menuControllers,
-    required this.setInputDataList, // ★変更
+    required this.setInputDataList,
     this.initialSetCount,
-  });
+    required this.menuKeys,
+  }) : this.key = key ?? UniqueKey();
 
   // Factory constructor to create a new empty section data with default controllers
-  // ★shouldPopulateDefaultsパラメータを追加
   static SectionData createEmpty(int setCount, {bool shouldPopulateDefaults = true}) {
     return SectionData(
-      menuControllers: shouldPopulateDefaults ? List.generate(1, (_) => TextEditingController()) : [], // ★デフォルトの種目数を1に変更
-      setInputDataList: shouldPopulateDefaults ? List.generate(1, (_) => List.generate(setCount, (_) => SetInputData(weightController: TextEditingController(), repController: TextEditingController()))) : [], // ★デフォルトの種目数を1に変更
+      menuControllers: shouldPopulateDefaults ? List.generate(1, (_) => TextEditingController()) : [],
+      setInputDataList: shouldPopulateDefaults ? List.generate(1, (_) => List.generate(setCount, (_) => SetInputData(weightController: TextEditingController(), repController: TextEditingController()))) : [],
       initialSetCount: setCount,
+      menuKeys: shouldPopulateDefaults ? List.generate(1, (_) => UniqueKey()) : [],
     );
   }
 
@@ -56,9 +130,9 @@ class SectionData {
     for (var c in menuControllers) {
       c.dispose();
     }
-    for (var list in setInputDataList) { // ★変更
-      for (var data in list) { // ★変更
-        data.dispose(); // ★SetInputDataのdisposeを呼び出す
+    for (var list in setInputDataList) {
+      for (var data in list) {
+        data.dispose();
       }
     }
   }
@@ -96,7 +170,7 @@ class _RecordScreenState extends State<RecordScreen> {
 
   int _currentSetCount = 3;
 
-  // ★新しいマップを追加して、各コントローラーのプレースホルダー状態と初期提案状態を管理
+  // 新しいマップを追加して、各コントローラーのプレースホルダー状態と初期提案状態を管理
   final Map<TextEditingController, bool> _isPlaceholderMap = {};
   final Map<TextEditingController, bool> _initialSuggestionStatusMap = {};
 
@@ -131,7 +205,6 @@ class _RecordScreenState extends State<RecordScreen> {
 
     _currentSetCount = savedSetCount ?? 3;
 
-    // setStateを呼び出してUIを更新
     setState(() {
       _loadInitialSections();
     });
@@ -142,30 +215,30 @@ class _RecordScreenState extends State<RecordScreen> {
     String dateKey = _getDateKey(widget.selectedDate);
     DailyRecord? record = widget.recordsBox.get(dateKey);
 
-    // ★すべてのコントローラーとマップをクリア
     _clearAllControllersAndMaps();
 
     _sections.clear();
 
     if (record != null && record.menus.isNotEmpty) {
-      // 既存の記録からセクションをロード (isSuggestionData: false)
       record.menus.forEach((part, menuList) {
         int sectionSpecificSetCount = _currentSetCount;
         if (menuList.isNotEmpty) {
           sectionSpecificSetCount = menuList[0].weights.length;
         }
-        // 既存の記録がある場合は、その内容に基づいてセクションを生成
-        SectionData section = SectionData.createEmpty(sectionSpecificSetCount, shouldPopulateDefaults: true);
-        section.selectedPart = part;
-        section.initialSetCount = sectionSpecificSetCount;
-        _setControllersFromData(section.menuControllers, section.setInputDataList, menuList, sectionSpecificSetCount, false); // ★isSuggestionData: false
+        SectionData section = SectionData(
+          key: UniqueKey(),
+          selectedPart: part,
+          menuControllers: [],
+          setInputDataList: [],
+          initialSetCount: sectionSpecificSetCount,
+          menuKeys: [],
+        );
+        _setControllersFromData(section.menuControllers, section.setInputDataList, section.menuKeys, menuList, sectionSpecificSetCount, false);
         _sections.add(section);
       });
     } else {
-      // 記録がなければ、デフォルトで1つの空のセクションを作成（ただし、初期の種目入力欄は作成しない）
-      _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false)); // ★変更
+      _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
       _sections[0].initialSetCount = _currentSetCount;
-      // この時点ではコントローラーがないので、_addListenersAndMapEntriesForNewSectionは呼ばない
     }
   }
 
@@ -174,13 +247,9 @@ class _RecordScreenState extends State<RecordScreen> {
   }
 
   // Set data to controllers (including dynamic size adjustment)
-  // ★isSuggestionDataパラメータを追加
-  void _setControllersFromData(List<TextEditingController> menuCtrls, List<List<SetInputData>> setInputDataList, List<MenuData> list, int actualSetCount, bool isSuggestionData) {
-    // 既存のコントローラーとマップエントリをクリアし、disposeする
-    // この関数が呼ばれる前に、menuCtrlsとsetInputDataListが既に存在している場合を考慮
+  void _setControllersFromData(List<TextEditingController> menuCtrls, List<List<SetInputData>> setInputDataList, List<Key> menuKeys, List<MenuData> list, int actualSetCount, bool isSuggestionData) {
     for (int i = 0; i < menuCtrls.length; i++) {
       menuCtrls[i].dispose();
-      // setInputDataList[i]が存在することを確認
       if (i < setInputDataList.length) {
         for (var data in setInputDataList[i]) {
           data.weightController.dispose();
@@ -194,14 +263,14 @@ class _RecordScreenState extends State<RecordScreen> {
     }
     menuCtrls.clear();
     setInputDataList.clear();
+    menuKeys.clear();
 
-    // データをロードするか、デフォルトの空の項目を作成
-    // listが空の場合、デフォルトで1つの項目を作成
-    int itemsToCreate = list.isNotEmpty ? list.length : 1; // ★ここを4から1に変更
+    int itemsToCreate = list.isNotEmpty ? list.length : 1;
 
     for (int i = 0; i < itemsToCreate; i++) {
       final newMenuController = TextEditingController();
       menuCtrls.add(newMenuController);
+      menuKeys.add(UniqueKey());
 
       final newSetInputDataRow = <SetInputData>[];
       for (int s = 0; s < actualSetCount; s++) {
@@ -211,14 +280,12 @@ class _RecordScreenState extends State<RecordScreen> {
         bool currentIsSuggestion = isSuggestionData;
 
         if (i < list.length && s < list[i].weights.length) {
-          // 実際のデータがある場合
           if (list[i].weights[s] != 0 || list[i].reps[s] != 0) {
-            currentIsSuggestion = false; // 0以外のデータがあれば、それは提案ではない
+            currentIsSuggestion = false;
           }
           newWeightController.text = (list[i].weights[s] == 0 && currentIsSuggestion) ? '' : list[i].weights[s].toString();
           newRepController.text = (list[i].reps[s] == 0 && currentIsSuggestion) ? '' : list[i].reps[s].toString();
         } else {
-          // データがない場合は、提案ではない
           currentIsSuggestion = false;
         }
 
@@ -227,24 +294,19 @@ class _RecordScreenState extends State<RecordScreen> {
           repController: newRepController,
         ));
 
-        // マップを更新
         _isPlaceholderMap[newWeightController] = currentIsSuggestion;
         _isPlaceholderMap[newRepController] = currentIsSuggestion;
         _initialSuggestionStatusMap[newWeightController] = currentIsSuggestion;
         _initialSuggestionStatusMap[newRepController] = currentIsSuggestion;
 
-        // 新しいコントローラーにリスナーを追加
         newWeightController.addListener(() => _handleInputChanged(newWeightController));
         newRepController.addListener(() => _handleInputChanged(newRepController));
       }
       setInputDataList.add(newSetInputDataRow);
-
-      // 種目名コントローラーにもリスナーを追加（必要であれば）
-      // newMenuController.addListener(() => _handleInputChanged(newMenuController)); // 種目名にはプレースホルダーロジックは適用しないため不要
     }
   }
 
-  // ★セクション内のコントローラーとマップエントリをクリアするヘルパー
+  // セクション内のコントローラーとマップエントリをクリアするヘルパー
   void _clearSectionControllersAndMaps(List<TextEditingController> menuCtrls, List<List<SetInputData>> setInputDataList) {
     for (var c in menuCtrls) {
       c.dispose();
@@ -263,7 +325,7 @@ class _RecordScreenState extends State<RecordScreen> {
     setInputDataList.clear();
   }
 
-  // ★すべてのセクションのコントローラーとマップエントリをクリアするヘルパー
+  // すべてのセクションのコントローラーとマップエントリをクリアするヘルパー
   void _clearAllControllersAndMaps() {
     for (var section in _sections) {
       _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
@@ -272,15 +334,12 @@ class _RecordScreenState extends State<RecordScreen> {
     _initialSuggestionStatusMap.clear();
   }
 
-  // ★テキスト変更を処理する新しいハンドラー
+  // テキスト変更を処理する新しいハンドラー
   void _handleInputChanged(TextEditingController controller) {
-    // setStateを呼び出してUIを更新
     setState(() {
       if (controller.text.isEmpty) {
-        // テキストが空の場合、それが元々提案された値であればプレースホルダー状態に戻す
         _isPlaceholderMap[controller] = _initialSuggestionStatusMap[controller] ?? false;
       } else {
-        // テキストがあれば、プレースホルダーではない
         _isPlaceholderMap[controller] = false;
       }
     });
@@ -314,7 +373,6 @@ class _RecordScreenState extends State<RecordScreen> {
           int r = 0;
 
           if (setInputData != null) {
-            // ★_isPlaceholderMapの現在の状態を確認
             bool isCurrentPlaceholder = _isPlaceholderMap[setInputData.weightController] ?? false;
 
             if (!isCurrentPlaceholder || setInputData.weightController.text.isNotEmpty) {
@@ -380,12 +438,9 @@ class _RecordScreenState extends State<RecordScreen> {
         transitionDuration: const Duration(milliseconds: 300),
       ),
     ).then((_) {
-      // ★ここを修正: 設定画面から戻った際に、現在の入力状態をクリアせずに設定のみを更新する
       setState(() {
-        // セット数を更新
         _currentSetCount = widget.setCountBox.get('setCount') ?? 3;
 
-        // 選択可能な部位リストを更新
         Map<dynamic, dynamic>? savedDynamicBodyPartsSettings = widget.settingsBox.get('selectedBodyParts');
         Map<String, bool>? savedBodyPartsSettings;
 
@@ -406,13 +461,9 @@ class _RecordScreenState extends State<RecordScreen> {
           _filteredBodyParts = List.from(_allBodyParts);
         }
 
-        // 各セクションの初期セット数を新しい設定に合わせて更新（既存のセット数より大きい場合のみ）
-        // これにより、設定でセット数を増やした場合に、既存のセクションにも反映される
         for (var section in _sections) {
           if (section.initialSetCount != null && section.initialSetCount! < _currentSetCount) {
-            // 現在のセット数より新しい設定のセット数が多い場合のみ、セット数を更新
             section.initialSetCount = _currentSetCount;
-            // 新しいセット分のコントローラーを追加
             for (var setInputDataRow in section.setInputDataList) {
               while (setInputDataRow.length < _currentSetCount) {
                 final weightCtrl = TextEditingController();
@@ -437,11 +488,11 @@ class _RecordScreenState extends State<RecordScreen> {
       int currentSectionSetCount = _sections[sectionIndex].initialSetCount ?? _currentSetCount;
       final newMenuController = TextEditingController();
       _sections[sectionIndex].menuControllers.add(newMenuController);
+      _sections[sectionIndex].menuKeys.add(UniqueKey());
 
       final newSetInputDataList = List.generate(currentSectionSetCount, (_) {
         final weightCtrl = TextEditingController();
         final repCtrl = TextEditingController();
-        // 新しく追加された項目はプレースホルダーではない
         _isPlaceholderMap[weightCtrl] = false;
         _isPlaceholderMap[repCtrl] = false;
         _initialSuggestionStatusMap[weightCtrl] = false;
@@ -456,25 +507,22 @@ class _RecordScreenState extends State<RecordScreen> {
 
   void _addTargetSection() {
     setState(() {
-      final newSection = SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false); // ★変更
+      final newSection = SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false);
       _sections.add(newSection);
-      // この時点ではコントローラーがないので、_addListenersAndMapEntriesForNewSectionは呼ばない
     });
   }
 
   @override
   void dispose() {
     _saveAllSectionsData();
-    // ★すべてのコントローラーとマップエントリをクリア
     _clearAllControllersAndMaps();
     super.dispose();
   }
 
   // Widget to build each set input row
-  // ★SetInputDataのリストを受け取るように変更
   Widget buildSetRow(List<List<SetInputData>> setInputDataList, int menuIndex, int setNumber, int setIndex) {
     final colorScheme = Theme.of(context).colorScheme;
-    final setInputData = setInputDataList[menuIndex][setIndex]; // ★SetInputDataを取得
+    final setInputData = setInputDataList[menuIndex][setIndex];
 
     return Row(
       children: [
@@ -485,27 +533,27 @@ class _RecordScreenState extends State<RecordScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: StylishInput(
-            controller: setInputData.weightController, // ★SetInputDataのコントローラーを使用
+            controller: setInputData.weightController,
             hint: '',
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
             fillColor: colorScheme.surfaceContainer,
             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-            isPlaceholder: _isPlaceholderMap[setInputData.weightController] ?? false, // ★マップからisPlaceholderを取得
+            isPlaceholder: _isPlaceholderMap[setInputData.weightController] ?? false,
           ),
         ),
         Text(' kg ', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
         Expanded(
           child: StylishInput(
-            controller: setInputData.repController, // ★SetInputDataのコントローラーを使用
+            controller: setInputData.repController,
             hint: '',
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
             fillColor: colorScheme.surfaceContainer,
             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-            isPlaceholder: _isPlaceholderMap[setInputData.repController] ?? false, // ★マップからisPlaceholderを取得
+            isPlaceholder: _isPlaceholderMap[setInputData.repController] ?? false,
           ),
         ),
         Text(' 回', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
@@ -521,7 +569,6 @@ class _RecordScreenState extends State<RecordScreen> {
       backgroundColor: colorScheme.background,
       appBar: AppBar(
         title: Text(
-          // ★日付のみを表示するように変更
           '${widget.selectedDate.year}/${widget.selectedDate.month}/${widget.selectedDate.day}',
           style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0),
         ),
@@ -546,11 +593,10 @@ class _RecordScreenState extends State<RecordScreen> {
                   if (index == _sections.length) {
                     return Padding(
                       padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
-                      // ★SizedBox(width: double.infinity)を削除し、Alignで右寄せにする
                       child: Align(
                         alignment: Alignment.centerRight,
                         child: StylishButton(
-                          text: 'トレーニング部位を追加', // ★テキストを修正
+                          text: 'トレーニング部位を追加',
                           onPressed: _addTargetSection,
                           icon: Icons.add_circle_outline,
                         ),
@@ -561,122 +607,144 @@ class _RecordScreenState extends State<RecordScreen> {
                   final section = _sections[index];
                   final int sectionDisplaySetCount = section.initialSetCount ?? _currentSetCount;
 
-                  return GlassCard(
-                    borderRadius: 12.0,
-                    backgroundColor: colorScheme.surfaceContainerHighest,
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        DropdownButtonFormField<String>(
-                          decoration: InputDecoration(
-                            hintText: 'トレーニング部位を選択', // ★ヒントテキストを修正
-                            hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
-                            filled: true,
-                            fillColor: colorScheme.surfaceContainer,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(25.0),
-                              borderSide: BorderSide.none,
+                  return AnimatedListItem(
+                    key: section.key,
+                    direction: AnimationDirection.bottomToTop, // ★トレーニング部位追加時は下から上
+                    child: GlassCard(
+                      borderRadius: 12.0,
+                      backgroundColor: colorScheme.surfaceContainerHighest,
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          DropdownButtonFormField<String>(
+                            decoration: InputDecoration(
+                              hintText: 'トレーニング部位を選択',
+                              hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
+                              filled: true,
+                              fillColor: colorScheme.surfaceContainer,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(25.0),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                             ),
-                            contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                          ),
-                          value: section.selectedPart,
-                          items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 16.0, fontWeight: FontWeight.bold)))).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              section.selectedPart = value;
-                              if (section.selectedPart != null) {
-                                String dateKey = _getDateKey(widget.selectedDate);
-                                DailyRecord? record = widget.recordsBox.get(dateKey);
-                                List<MenuData>? listToLoad;
-                                bool isSuggestion = false; // ★isSuggestionフラグ
+                            value: section.selectedPart,
+                            items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 16.0, fontWeight: FontWeight.bold)))).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                section.selectedPart = value;
+                                if (section.selectedPart != null) {
+                                  String dateKey = _getDateKey(widget.selectedDate);
+                                  DailyRecord? record = widget.recordsBox.get(dateKey);
+                                  List<MenuData>? listToLoad;
+                                  bool isSuggestion = false;
 
-                                int newSectionSetCount = _currentSetCount;
+                                  int newSectionSetCount = _currentSetCount;
 
-                                if (record != null && record.menus.containsKey(section.selectedPart!)) {
-                                  listToLoad = record.menus[section.selectedPart!];
-                                  if (listToLoad != null && listToLoad.isNotEmpty) {
-                                    newSectionSetCount = listToLoad[0].weights.length;
+                                  if (record != null && record.menus.containsKey(section.selectedPart!)) {
+                                    listToLoad = record.menus[section.selectedPart!];
+                                    if (listToLoad != null && listToLoad.isNotEmpty) {
+                                      newSectionSetCount = listToLoad[0].weights.length;
+                                    }
+                                  } else {
+                                    listToLoad = widget.lastUsedMenusBox.get(section.selectedPart!);
+                                    isSuggestion = true;
                                   }
+
+                                  section.initialSetCount = newSectionSetCount;
+
+                                  _setControllersFromData(section.menuControllers, section.setInputDataList, section.menuKeys, listToLoad ?? [], newSectionSetCount, isSuggestion);
                                 } else {
-                                  listToLoad = widget.lastUsedMenusBox.get(section.selectedPart!);
-                                  isSuggestion = true; // ★lastUsedMenusBoxからロードする場合はisSuggestionをtrueに
+                                  _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
+                                  section.menuKeys.clear();
+                                  section.initialSetCount = _currentSetCount;
                                 }
-
-                                section.initialSetCount = newSectionSetCount;
-
-                                // _setControllersFromData内で古いコントローラーのdisposeとマップのクリアを行う
-                                _setControllersFromData(section.menuControllers, section.setInputDataList, listToLoad ?? [], newSectionSetCount, isSuggestion); // ★isSuggestionを渡す
-                              } else {
-                                // ターゲットが選択されていない場合、コントローラーとマップをクリアし、初期状態に戻す
-                                _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
-                                section.initialSetCount = _currentSetCount;
-                              }
-                            });
-                          },
-                          dropdownColor: colorScheme.surfaceContainer,
-                          style: TextStyle(color: colorScheme.onSurface, fontSize: 16.0, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 20),
-                        // 種目リストはmenuControllersが空でなければ表示
-                        if (section.menuControllers.isNotEmpty)
-                          ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: section.menuControllers.length,
-                            itemBuilder: (context, menuIndex) {
-                              return GlassCard(
-                                borderRadius: 10.0,
-                                backgroundColor: colorScheme.surface,
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    StylishInput(
-                                      controller: section.menuControllers[menuIndex],
-                                      hint: '種目名',
-                                      inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                                      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
-                                      textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0, fontWeight: FontWeight.bold),
-                                      fillColor: colorScheme.surfaceContainer,
-                                      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                                      // 種目名にはプレースホルダーロジックは適用しない
-                                      isPlaceholder: false,
-                                    ),
-                                    const SizedBox(height: 10),
-                                    ...List.generate(sectionDisplaySetCount, (setIndex) {
-                                      return Padding(
-                                        padding: EdgeInsets.only(top: setIndex == 0 ? 0 : 8),
-                                        child: buildSetRow(
-                                          section.setInputDataList, // ★SetInputDataのリストを渡す
-                                          menuIndex,
-                                          setIndex + 1,
-                                          setIndex, // ★setIndexをそのまま渡す
-                                        ),
-                                      );
-                                    }),
-                                  ],
+                              });
+                            },
+                            dropdownColor: colorScheme.surfaceContainer,
+                            style: TextStyle(color: colorScheme.onSurface, fontSize: 16.0, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 20),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 400),
+                            transitionBuilder: (Widget child, Animation<double> animation) {
+                              final offsetAnimation = Tween<Offset>(
+                                begin: const Offset(0.0, -0.2), // ★トレーニング部位選択時は上から下へ
+                                end: Offset.zero,
+                              ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut));
+                              return FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: offsetAnimation,
+                                  child: child,
                                 ),
                               );
                             },
+                            child: section.menuControllers.isNotEmpty
+                                ? ListView.builder(
+                              key: ValueKey(section.selectedPart),
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: section.menuControllers.length,
+                              itemBuilder: (context, menuIndex) {
+                                return AnimatedListItem(
+                                  key: section.menuKeys[menuIndex],
+                                  direction: AnimationDirection.topToBottom, // ★種目追加時は上から下へ
+                                  child: GlassCard(
+                                    borderRadius: 10.0,
+                                    backgroundColor: colorScheme.surface,
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        StylishInput(
+                                          controller: section.menuControllers[menuIndex],
+                                          hint: '種目名',
+                                          inputFormatters: [LengthLimitingTextInputFormatter(50)],
+                                          hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
+                                          textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0, fontWeight: FontWeight.bold),
+                                          fillColor: colorScheme.surfaceContainer,
+                                          contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                          isPlaceholder: false,
+                                        ),
+                                        const SizedBox(height: 10),
+                                        ...List.generate(sectionDisplaySetCount, (setIndex) {
+                                          return Padding(
+                                            padding: EdgeInsets.only(top: setIndex == 0 ? 0 : 8),
+                                            child: buildSetRow(
+                                              section.setInputDataList,
+                                              menuIndex,
+                                              setIndex + 1,
+                                              setIndex,
+                                            ),
+                                          );
+                                        }),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            )
+                                : const SizedBox.shrink(key: ValueKey('empty')),
                           ),
-                        const SizedBox(height: 12),
-                        // 種目を追加ボタンは常に表示
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton.icon(
-                            onPressed: () => _addMenuItem(index),
-                            icon: Icon(Icons.add_circle_outline, color: colorScheme.primary, size: 24.0),
-                            label: Text('種目を追加', style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 16.0)),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
-                              backgroundColor: colorScheme.primaryContainer,
-                              elevation: 0.0,
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: () => _addMenuItem(index),
+                              icon: Icon(Icons.add_circle_outline, color: colorScheme.primary, size: 24.0),
+                              label: Text('種目を追加', style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 16.0)),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                                backgroundColor: colorScheme.primaryContainer,
+                                elevation: 0.0,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 },
