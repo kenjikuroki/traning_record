@@ -170,8 +170,9 @@ class _RecordScreenState extends State<RecordScreen> {
 
   int _currentSetCount = 3;
 
-  // 新しいマップを追加して、各コントローラーのプレースホルダー状態と初期提案状態を管理
+  // 各コントローラーのプレースホルダー状態を管理するマップ
   final Map<TextEditingController, bool> _isPlaceholderMap = {};
+  // 各コントローラーの初期状態がプレースホルダーだったかを管理するマップ（ユーザーがクリアした時に元に戻すため）
   final Map<TextEditingController, bool> _initialSuggestionStatusMap = {};
 
   @override
@@ -242,6 +243,7 @@ class _RecordScreenState extends State<RecordScreen> {
           initialSetCount: sectionSpecificSetCount,
           menuKeys: [],
         );
+        // isSuggestionDataをfalseに設定して、DailyRecordからの読み込みであることを示す
         _setControllersFromData(section.menuControllers, section.setInputDataList, section.menuKeys, menuList, sectionSpecificSetCount, false);
         _sections.add(section);
       });
@@ -257,6 +259,7 @@ class _RecordScreenState extends State<RecordScreen> {
 
   // Set data to controllers (including dynamic size adjustment)
   void _setControllersFromData(List<TextEditingController> menuCtrls, List<List<SetInputData>> setInputDataList, List<Key> menuKeys, List<MenuData> list, int actualSetCount, bool isSuggestionData) {
+    // 既存のコントローラーを破棄し、マップのエントリをクリア
     for (int i = 0; i < menuCtrls.length; i++) {
       menuCtrls[i].dispose();
       if (i < setInputDataList.length) {
@@ -289,28 +292,51 @@ class _RecordScreenState extends State<RecordScreen> {
         final newWeightController = TextEditingController();
         final newRepController = TextEditingController();
 
-        bool currentIsSuggestion = isSuggestionData;
-
         if (i < list.length && s < list[i].weights.length) {
-          if (list[i].weights[s] != 0 || list[i].reps[s] != 0) {
-            currentIsSuggestion = false;
+          int loadedWeight = list[i].weights[s];
+          int loadedRep = list[i].reps[s];
+
+          // DailyRecordからの読み込みの場合の表示ロジック
+          if (!isSuggestionData) {
+            // 重量と回数が両方とも0の場合、空として表示（NULLとして扱う）
+            if (loadedWeight == 0 && loadedRep == 0) {
+              newWeightController.text = '';
+              _isPlaceholderMap[newWeightController] = true; // ヒント表示のためtrue
+              newRepController.text = '';
+              _isPlaceholderMap[newRepController] = true; // ヒント表示のためtrue
+            } else {
+              // 片方または両方が0ではない場合、または片方が0でもう片方が0ではない場合、
+              // 0は明示的な0として表示し、ヒントは表示しない
+              newWeightController.text = loadedWeight.toString();
+              _isPlaceholderMap[newWeightController] = false; // ヒント非表示のためfalse
+              newRepController.text = loadedRep.toString();
+              _isPlaceholderMap[newRepController] = false; // ヒント非表示のためfalse
+            }
+          } else {
+            // lastUsedMenusBox (提案データ) からの読み込みの場合、0は常に明示的な0として表示
+            newWeightController.text = loadedWeight.toString();
+            _isPlaceholderMap[newWeightController] = false; // ヒント非表示のためfalse
+            newRepController.text = loadedRep.toString();
+            _isPlaceholderMap[newRepController] = false; // ヒント非表示のためfalse
           }
-          newWeightController.text = (list[i].weights[s] == 0 && currentIsSuggestion) ? '' : list[i].weights[s].toString();
-          newRepController.text = (list[i].reps[s] == 0 && currentIsSuggestion) ? '' : list[i].reps[s].toString();
         } else {
-          currentIsSuggestion = false;
+          // データがない場合（新規追加時など）は空のまま、プレースホルダーとして扱う
+          newWeightController.text = '';
+          newRepController.text = '';
+          _isPlaceholderMap[newWeightController] = true; // 新規はプレースホルダー
+          _isPlaceholderMap[newRepController] = true;
         }
+
+        // _initialSuggestionStatusMapを_isPlaceholderMapの初期値で設定
+        _initialSuggestionStatusMap[newWeightController] = _isPlaceholderMap[newWeightController]!;
+        _initialSuggestionStatusMap[newRepController] = _isPlaceholderMap[newRepController]!;
 
         newSetInputDataRow.add(SetInputData(
           weightController: newWeightController,
           repController: newRepController,
         ));
 
-        _isPlaceholderMap[newWeightController] = currentIsSuggestion;
-        _isPlaceholderMap[newRepController] = currentIsSuggestion;
-        _initialSuggestionStatusMap[newWeightController] = currentIsSuggestion;
-        _initialSuggestionStatusMap[newRepController] = currentIsSuggestion;
-
+        // リスナーを追加
         newWeightController.addListener(() => _handleInputChanged(newWeightController));
         newRepController.addListener(() => _handleInputChanged(newRepController));
       }
@@ -349,11 +375,9 @@ class _RecordScreenState extends State<RecordScreen> {
   // テキスト変更を処理する新しいハンドラー
   void _handleInputChanged(TextEditingController controller) {
     setState(() {
-      if (controller.text.isEmpty) {
-        _isPlaceholderMap[controller] = _initialSuggestionStatusMap[controller] ?? false;
-      } else {
-        _isPlaceholderMap[controller] = false;
-      }
+      // ユーザーが入力内容をクリアした場合、プレースホルダー状態に戻す
+      // （StylishInputがヒントを表示するかどうかを制御するため）
+      _isPlaceholderMap[controller] = controller.text.isEmpty;
     });
   }
 
@@ -374,7 +398,7 @@ class _RecordScreenState extends State<RecordScreen> {
         String name = section.menuControllers[i].text.trim();
         List<int> weights = [];
         List<int> reps = [];
-        bool rowHasContent = false;
+        bool rowHasContent = false; // この行（種目）に何らかの有効な入力があるか
 
         for (int s = 0; s < currentSectionSetCount; s++) {
           final setInputData = (section.setInputDataList.length > i && section.setInputDataList[i].length > s)
@@ -385,21 +409,30 @@ class _RecordScreenState extends State<RecordScreen> {
           int r = 0;
 
           if (setInputData != null) {
-            bool isCurrentPlaceholder = _isPlaceholderMap[setInputData.weightController] ?? false;
-
-            if (!isCurrentPlaceholder || setInputData.weightController.text.isNotEmpty) {
+            // 重量コントローラーのテキストが空でなければパース。空の場合は0として保存。
+            if (setInputData.weightController.text.isEmpty) {
+              w = 0;
+            } else {
               w = int.tryParse(setInputData.weightController.text) ?? 0;
             }
-            if (!isCurrentPlaceholder || setInputData.repController.text.isNotEmpty) {
+            // 回数コントローラーのテキストが空でなければパース。空の場合は0として保存。
+            if (setInputData.repController.text.isEmpty) {
+              r = 0;
+            } else {
               r = int.tryParse(setInputData.repController.text) ?? 0;
+            }
+
+            // このセットに有効な入力があるかを判定 (空でないテキストがあれば有効な入力とする)
+            if (setInputData.weightController.text.isNotEmpty || setInputData.repController.text.isNotEmpty) {
+              rowHasContent = true;
             }
           }
 
           weights.add(w);
           reps.add(r);
-          if (w > 0 || r > 0 || name.isNotEmpty) rowHasContent = true;
         }
 
+        // 種目名があるか、または少なくとも1つのセットに有効な入力があれば、その種目を保存
         if (name.isNotEmpty || rowHasContent) {
           sectionMenuList.add(MenuData(name: name, weights: weights, reps: reps));
           sectionHasContent = true;
@@ -483,10 +516,10 @@ class _RecordScreenState extends State<RecordScreen> {
               while (setInputDataRow.length < _currentSetCount) {
                 final weightCtrl = TextEditingController();
                 final repCtrl = TextEditingController();
-                _isPlaceholderMap[weightCtrl] = false;
-                _isPlaceholderMap[repCtrl] = false;
-                _initialSuggestionStatusMap[weightCtrl] = false;
-                _initialSuggestionStatusMap[repCtrl] = false;
+                _isPlaceholderMap[weightCtrl] = true; // 新しく追加されるセットもプレースホルダーとして開始
+                _isPlaceholderMap[repCtrl] = true;
+                _initialSuggestionStatusMap[weightCtrl] = true;
+                _initialSuggestionStatusMap[repCtrl] = true;
                 weightCtrl.addListener(() => _handleInputChanged(weightCtrl));
                 repCtrl.addListener(() => _handleInputChanged(repCtrl));
                 setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
@@ -508,10 +541,10 @@ class _RecordScreenState extends State<RecordScreen> {
       final newSetInputDataList = List.generate(currentSectionSetCount, (_) {
         final weightCtrl = TextEditingController();
         final repCtrl = TextEditingController();
-        _isPlaceholderMap[weightCtrl] = false;
-        _isPlaceholderMap[repCtrl] = false;
-        _initialSuggestionStatusMap[weightCtrl] = false;
-        _initialSuggestionStatusMap[repCtrl] = false;
+        _isPlaceholderMap[weightCtrl] = true; // 新規追加の入力はプレースホルダー
+        _isPlaceholderMap[repCtrl] = true;
+        _initialSuggestionStatusMap[weightCtrl] = true;
+        _initialSuggestionStatusMap[repCtrl] = true;
         weightCtrl.addListener(() => _handleInputChanged(weightCtrl));
         repCtrl.addListener(() => _handleInputChanged(repCtrl));
         return SetInputData(weightController: weightCtrl, repController: repCtrl);
@@ -549,26 +582,28 @@ class _RecordScreenState extends State<RecordScreen> {
         Expanded(
           child: StylishInput(
             controller: setInputData.weightController,
-            hint: '',
+            hint: '', // 空欄の場合に表示するヒントテキスト（今回は空）
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
             fillColor: colorScheme.surfaceContainer,
             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-            isPlaceholder: _isPlaceholderMap[setInputData.weightController] ?? false,
+            isPlaceholder: _isPlaceholderMap[setInputData.weightController] ?? false, // プレースホルダー状態をStylishInputに伝える
+            textAlign: TextAlign.right, // 重量入力は右寄せ
           ),
         ),
         Text(' kg ', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
         Expanded(
           child: StylishInput(
             controller: setInputData.repController,
-            hint: '',
+            hint: '', // 空欄の場合に表示するヒントテキスト（今回は空）
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
             fillColor: colorScheme.surfaceContainer,
             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-            isPlaceholder: _isPlaceholderMap[setInputData.repController] ?? false,
+            isPlaceholder: _isPlaceholderMap[setInputData.repController] ?? false, // プレースホルダー状態をStylishInputに伝える
+            textAlign: TextAlign.right, // 回数入力は右寄せ
           ),
         ),
         Text(' 回', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
@@ -655,7 +690,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                   String dateKey = _getDateKey(widget.selectedDate);
                                   DailyRecord? record = widget.recordsBox.get(dateKey);
                                   List<MenuData>? listToLoad;
-                                  bool isSuggestion = false;
+                                  bool isSuggestion = false; // 提案データかどうかを判断するフラグ
 
                                   int newSectionSetCount = _currentSetCount;
 
@@ -664,9 +699,10 @@ class _RecordScreenState extends State<RecordScreen> {
                                     if (listToLoad != null && listToLoad.isNotEmpty) {
                                       newSectionSetCount = listToLoad[0].weights.length;
                                     }
+                                    isSuggestion = false; // DailyRecordからの読み込みは提案ではない
                                   } else {
                                     listToLoad = widget.lastUsedMenusBox.get(section.selectedPart!);
-                                    isSuggestion = true;
+                                    isSuggestion = true; // lastUsedMenusBoxからの読み込みは提案
                                   }
 
                                   section.initialSetCount = newSectionSetCount;
@@ -719,11 +755,11 @@ class _RecordScreenState extends State<RecordScreen> {
                                           controller: section.menuControllers[menuIndex],
                                           hint: '種目名',
                                           inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                                          hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
                                           textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0, fontWeight: FontWeight.bold),
                                           fillColor: colorScheme.surfaceContainer,
                                           contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                                          isPlaceholder: false,
+                                          isPlaceholder: false, // 種目名はプレースホルダーではない
+                                          textAlign: TextAlign.left, // 種目名は左寄せ
                                         ),
                                         const SizedBox(height: 10),
                                         ...List.generate(sectionDisplaySetCount, (setIndex) {
