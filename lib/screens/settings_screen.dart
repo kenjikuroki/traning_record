@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart'; // Hiveをインポート
 import 'package:hive_flutter/hive_flutter.dart'; // Hive_flutterをインポート
+import '../widgets/custom_widgets.dart'; // ★StylishInput を使用するためにインポートを追加
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -43,9 +44,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Map<dynamic, dynamic>? savedDynamicBodyPartsSettings = _bodyPartsSettingsBox.get('selectedBodyParts');
     Map<String, bool>? savedBodyPartsSettings;
 
-    // ★変数名を修正し、null-aware operatorを使用
-    if (savedDynamicBodyPartsSettings != null) { // ここをsavedDynamicBodyPartsSettingsに修正
-      savedBodyPartsSettings = savedDynamicBodyPartsSettings.map( // ここに ?. は不要 (ifでnullチェック済みのため)
+    if (savedDynamicBodyPartsSettings != null) {
+      savedBodyPartsSettings = savedDynamicBodyPartsSettings.map(
             (key, value) => MapEntry(key.toString(), value as bool),
       );
     }
@@ -94,16 +94,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // テーマからColorSchemeを取得
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.grey[50], // 全体の背景色をRecordScreenと合わせる
+      backgroundColor: colorScheme.background, // ★テーマカラー適用
       appBar: AppBar(
         title: Text(
           '設定',
-          style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 20.0), // タイトルスタイルをRecordScreenと合わせる
+          style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0), // ★テーマカラー適用
         ),
-        backgroundColor: Colors.white, // AppBarの背景色を白に
+        backgroundColor: colorScheme.surface, // ★テーマカラー適用
         elevation: 1.0, // AppBarの影を少しつける
-        iconTheme: IconThemeData(color: Colors.grey[700]), // アイコンの色をRecordScreenと合わせる
+        iconTheme: IconThemeData(color: colorScheme.onSurface), // ★テーマカラー適用
+        actions: [
+          IconButton(
+            icon: Icon(Icons.save, color: colorScheme.onSurface), // アイコン色をテーマから取得
+            onPressed: _saveSettings,
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0), // 全体のパディングをRecordScreenと合わせる
@@ -112,44 +121,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
             margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0), // 垂直方向の余白
             elevation: 4.0, // 影
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)), // 角丸
-            color: Colors.white, // カードの背景色
-            child: Theme( // ★ThemeウィジェットでExpansionTileのテーマを上書き
-              data: Theme.of(context).copyWith(
-                dividerColor: Colors.transparent, // ★区切り線を透明に
-                expansionTileTheme: const ExpansionTileThemeData(
-                  // ★tilePaddingの右側を少し減らして、矢印を左にずらす
-                  tilePadding: EdgeInsets.fromLTRB(16.0, 16.0, 12.0, 16.0), // 左16, 右12
-                ),
+            color: colorScheme.surfaceVariant, // ★テーマカラー適用
+            child: ExpansionTile(
+              title: Text(
+                '鍛える部位を選択', // ★元のテキストに戻しました
+                style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 18.0), // ★テーマカラー適用
               ),
-              child: ExpansionTile(
-                title: Text( // ★Paddingウィジェットを削除
-                  '鍛える部位', // ★「鍛える部位」に変更
-                  style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 18.0), // タイトルスタイル
-                ),
-                initiallyExpanded: false, // ★デフォルトで閉じるように変更
-                iconColor: Colors.blue[600], // 展開アイコンの色
-                collapsedIconColor: Colors.blue[600], // 折りたたみアイコンの色
-                childrenPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // 子要素のパディング
-                children: _bodyParts.keys.map((part) {
-                  return CheckboxListTile(
-                    title: Text(
-                      part,
-                      style: TextStyle(color: Colors.grey[700], fontSize: 16.0),
-                    ),
-                    value: _bodyParts[part],
-                    onChanged: (bool? value) {
-                      setState(() {
-                        _bodyParts[part] = value ?? false;
-                        _saveSettings(); // 変更があったらすぐに保存
-                      });
-                    },
-                    // ★contentPaddingを調整して、タイトルとチェックボックスの左端を揃える
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16.0), // タイトルのhorizontalと同じ値に
-                    activeColor: Colors.blue[600], // チェックボックスがオンの時の色
-                    checkColor: Colors.white, // チェックマークの色
-                  );
-                }).toList(),
-              ),
+              initiallyExpanded: false, // ★デフォルトで閉じるように変更
+              iconColor: colorScheme.primary, // ★テーマカラー適用
+              collapsedIconColor: colorScheme.primary, // ★テーマカラー適用
+              childrenPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // 子要素のパディング
+              // collapsedShapeとexpandedShapeは削除したままです
+              children: _bodyParts.keys.map((part) {
+                return CheckboxListTile(
+                  title: Text(
+                    part,
+                    style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0), // ★テーマカラー適用
+                  ),
+                  value: _bodyParts[part],
+                  onChanged: (bool? value) {
+                    setState(() {
+                      _bodyParts[part] = value ?? false;
+                      _saveSettings(); // 変更があったらすぐに保存
+                    });
+                  },
+                  activeColor: colorScheme.primary, // ★テーマカラー適用
+                  checkColor: colorScheme.onPrimary, // ★テーマカラー適用
+                  contentPadding: EdgeInsets.zero, // パディングをリセットしてCardのPaddingに任せる
+                );
+              }).toList(),
             ),
           ),
           const SizedBox(height: 16.0), // 部位選択とセット数の間にスペース
@@ -157,7 +157,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0),
             elevation: 4.0,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-            color: Colors.white,
+            color: colorScheme.surfaceVariant, // ★テーマカラー適用
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -165,15 +165,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Text(
                     'デフォルトのセット数',
-                    style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 18.0),
+                    style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 18.0), // ★テーマカラー適用
                   ),
                   const SizedBox(height: 12.0),
                   DropdownButtonFormField<int>(
                     decoration: InputDecoration(
                       hintText: 'セット数を選択',
-                      hintStyle: TextStyle(color: Colors.grey[500], fontSize: 16.0),
+                      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0), // ★テーマカラー適用
                       filled: true,
-                      fillColor: Colors.grey[100],
+                      fillColor: colorScheme.surface, // ★テーマカラー適用
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10.0),
                         borderSide: BorderSide.none,
@@ -182,7 +182,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     value: _selectedSetCount,
                     items: List.generate(10, (index) => index + 1) // 1から10までのセット数
-                        .map((count) => DropdownMenuItem(value: count, child: Text('$count セット')))
+                        .map((count) => DropdownMenuItem(value: count, child: Text('$count セット', style: TextStyle(color: colorScheme.onSurface)))) // ★テーマカラー適用
                         .toList(),
                     onChanged: (value) {
                       setState(() {
@@ -190,8 +190,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _saveSettings(); // 変更があったらすぐに保存
                       });
                     },
-                    dropdownColor: Colors.white,
-                    style: TextStyle(color: Colors.grey[800], fontSize: 16.0),
+                    dropdownColor: colorScheme.surface, // ★テーマカラー適用
+                    style: TextStyle(color: colorScheme.onSurface, fontSize: 16.0), // ★テーマカラー適用
                   ),
                 ],
               ),
