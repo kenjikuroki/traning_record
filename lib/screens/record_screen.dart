@@ -162,8 +162,9 @@ class RecordScreen extends StatefulWidget {
 
 class _RecordScreenState extends State<RecordScreen> {
   List<String> _filteredBodyParts = [];
+  // トレーニング部位の順番と名称を修正
   final List<String> _allBodyParts = [
-    '腕', '胸', '肩', '背中', '足', '全体', 'その他',
+    '有酸素運動', '腕', '胸', '背中', '肩', '足', '全身', 'その他１', 'その他２', 'その他３',
   ];
 
   List<SectionData> _sections = [];
@@ -556,9 +557,17 @@ class _RecordScreenState extends State<RecordScreen> {
   }
 
   // Widget to build each set input row
-  Widget buildSetRow(List<List<SetInputData>> setInputDataList, int menuIndex, int setNumber, int setIndex) {
+  Widget buildSetRow(List<List<SetInputData>> setInputDataList, int menuIndex, int setNumber, int setIndex, String? selectedPart) {
     final colorScheme = Theme.of(context).colorScheme;
     final setInputData = setInputDataList[menuIndex][setIndex];
+
+    String weightUnit = 'kg';
+    String repUnit = '回';
+
+    if (selectedPart == '有酸素運動') { // '有酸素' から '有酸素運動' に変更
+      weightUnit = '分';
+      repUnit = '秒';
+    }
 
     return Row(
       children: [
@@ -570,7 +579,7 @@ class _RecordScreenState extends State<RecordScreen> {
         Expanded(
           child: StylishInput(
             controller: setInputData.weightController,
-            hint: '', // 空欄の場合に表示するヒントテキスト（今回は空）
+            hint: '', // プレースホルダーは空文字列に設定
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
@@ -580,11 +589,11 @@ class _RecordScreenState extends State<RecordScreen> {
             textAlign: TextAlign.right, // 重量入力は右寄せ
           ),
         ),
-        Text(' kg ', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
+        Text(' $weightUnit ', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
         Expanded(
           child: StylishInput(
             controller: setInputData.repController,
-            hint: '', // 空欄の場合に表示するヒントテキスト（今回は空）
+            hint: '', // プレースホルダーは空文字列に設定
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
@@ -594,7 +603,7 @@ class _RecordScreenState extends State<RecordScreen> {
             textAlign: TextAlign.right, // 回数入力は右寄せ
           ),
         ),
-        Text(' 回', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
+        Text(' $repUnit', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
       ],
     );
   }
@@ -602,6 +611,7 @@ class _RecordScreenState extends State<RecordScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isLightMode = Theme.of(context).brightness == Brightness.light;
 
     return Scaffold(
       backgroundColor: colorScheme.background,
@@ -656,11 +666,15 @@ class _RecordScreenState extends State<RecordScreen> {
                     direction: AnimationDirection.bottomToTop, // トレーニング部位追加時は下から上
                     child: GlassCard(
                       borderRadius: 12.0,
-                      backgroundColor: colorScheme.surfaceContainerHighest,
+                      // 部位選択カードの背景色を条件付きで変更
+                      backgroundColor: section.selectedPart == '有酸素運動' && isLightMode // '有酸素' から '有酸素運動' に変更
+                          ? Colors.grey[400]! // ライトモードで有酸素の場合、Colors.grey[400]に変更
+                          : colorScheme.surfaceContainerHighest, // それ以外の場合
                       padding: const EdgeInsets.all(20.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // DropdownButtonFormFieldのdropdownMenuMaxHeightプロパティを追加
                           DropdownButtonFormField<String>(
                             decoration: InputDecoration(
                               hintText: 'トレーニング部位を選択',
@@ -668,6 +682,14 @@ class _RecordScreenState extends State<RecordScreen> {
                               filled: true,
                               fillColor: colorScheme.surfaceContainer,
                               border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(25.0), // 入力フィールドの角を丸める
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder( // 通常時のボーダー
+                                borderRadius: BorderRadius.circular(25.0),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder( // フォーカス時のボーダー
                                 borderRadius: BorderRadius.circular(25.0),
                                 borderSide: BorderSide.none,
                               ),
@@ -709,8 +731,10 @@ class _RecordScreenState extends State<RecordScreen> {
                                 }
                               });
                             },
-                            dropdownColor: colorScheme.surfaceContainer,
+                            dropdownColor: colorScheme.surfaceContainer, // ドロップダウンメニューの背景色
                             style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
+                            // ここを修正: borderRadiusプロパティを追加
+                            borderRadius: BorderRadius.circular(15.0), // ドロップダウンメニューの角を丸める
                           ),
                           const SizedBox(height: 20),
                           // 部位が選択されている場合にのみ種目名とセット入力を表示
@@ -741,6 +765,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                   direction: AnimationDirection.topToBottom, // 種目追加時は上から下へ
                                   child: GlassCard(
                                     borderRadius: 10.0,
+                                    // 種目カードの背景色は常にcolorScheme.surface
                                     backgroundColor: colorScheme.surface,
                                     padding: const EdgeInsets.all(16.0),
                                     child: Column(
@@ -765,6 +790,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                               menuIndex,
                                               setIndex + 1,
                                               setIndex,
+                                              section.selectedPart, // selectedPartを渡す
                                             ),
                                           );
                                         }),

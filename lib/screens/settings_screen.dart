@@ -26,8 +26,8 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final Map<String, bool> _bodyParts = {
-    '腕': false, '胸': false, '肩': false, '背中': false,
-    '足': false, '全体': false, 'その他': false,
+    '有酸素運動': false,'腕': false, '胸': false, '肩': false, '背中': false,
+    '足': false, '全身': false, 'その他１': false,'その他２': false,'その他３': false,
   };
 
   int _selectedSetCount = 3;
