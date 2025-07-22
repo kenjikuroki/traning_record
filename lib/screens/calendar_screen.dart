@@ -35,13 +35,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // 各部位に対応する色を定義 (機能の一部として維持)
   final Map<String, Color> partColors = {
-    '腕': Colors.red,
-    '胸': Colors.purple,
-    '肩': Colors.blue,
-    '背中': Colors.green,
-    '足': Colors.yellow,
-    '全体': Colors.orange,
-    'その他': Colors.pink,
+    '有酸素運動': Colors.lightBlue, // 有酸素運動
+    '腕': Colors.orange,          // 腕
+    '胸': Colors.red,             // 胸
+    '肩': Colors.green,           // 肩
+    '背中': Colors.deepPurple,     // 背中
+    '足': Colors.amber,           // 足
+    '全身': Colors.teal,          // 全身
+    'その他１': Colors.brown,       // その他１
+    'その他２': Colors.pink,        // その他２
+    'その他３': Colors.cyan,        // その他３
   };
 
   @override
