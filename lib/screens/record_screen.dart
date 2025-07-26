@@ -696,7 +696,7 @@ class _RecordScreenState extends State<RecordScreen> {
         final repCtrl = TextEditingController();
         _isSuggestionDisplayMap[weightCtrl] = true; // 新規追加の入力は提案としてマーク
         _isSuggestionDisplayMap[repCtrl] = true;
-        return SetInputData(weightController: weightCtrl, repController: repCtrl); // Corrected: repController to repCtrl
+        return SetInputData(weightController: weightCtrl, repController: repCtrl);
       });
       _sections[sectionIndex].setInputDataList.add(newSetInputDataList);
     });
@@ -885,11 +885,11 @@ class _RecordScreenState extends State<RecordScreen> {
                           child: Align(
                             alignment: Alignment.centerRight,
                             child: StylishButton(
-                              text: '部位を追加',
+                              text: '＋部位', // テキスト変更
                               onPressed: _addTargetSection,
-                              icon: Icons.add_circle_outline,
                               fontSize: 12.0,
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              buttonColor: Colors.blue.shade700, // 濃い青
                             ),
                           ),
                         );
@@ -1034,11 +1034,11 @@ class _RecordScreenState extends State<RecordScreen> {
                                       child: Padding(
                                         padding: const EdgeInsets.only(top: 12.0),
                                         child: StylishButton(
-                                          text: '種目を追加',
+                                          text: '＋種目', // テキスト変更
                                           onPressed: () => _addMenuItem(index),
-                                          icon: Icons.add_circle_outline,
                                           fontSize: 12.0,
                                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                          buttonColor: Colors.blue.shade400, // 薄い青
                                         ),
                                       ),
                                     ),

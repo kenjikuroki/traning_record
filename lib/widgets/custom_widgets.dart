@@ -1,32 +1,75 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart'; // TextInputFormatter を使用するためにインポート
 
-// グラスモーフィズム風のカードウィジェット
+// StylishButton ウィジェットの定義
+class StylishButton extends StatelessWidget {
+  final String text; // ボタンに表示するテキスト
+  final VoidCallback onPressed; // ボタンが押されたときに実行されるコールバック
+  final double fontSize; // テキストのフォントサイズ
+  final EdgeInsetsGeometry padding; // ボタンのパディング
+  final Color? buttonColor; // 追加: ボタンの背景色（オプション）
+
+  const StylishButton({
+    Key? key,
+    required this.text,
+    required this.onPressed,
+    this.fontSize = 16.0,
+    this.padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+    this.buttonColor, // コンストラクタにbuttonColorを追加
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        // buttonColorが指定されていればそれを使用し、なければテーマのprimary色を使用
+        backgroundColor: buttonColor ?? Theme.of(context).colorScheme.primary,
+        // ボタンのテキスト色を白に設定（青系のボタンに合うように）
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(25.0), // 角丸を設定
+        ),
+        padding: padding, // パディングを設定
+      ),
+      child: Text(
+        text,
+        style: TextStyle(fontSize: fontSize), // フォントサイズを設定
+      ),
+    );
+  }
+}
+
+// GlassCard ウィジェットの定義（既存のコードから変更なし）
 class GlassCard extends StatelessWidget {
   final Widget child;
   final double borderRadius;
   final Color backgroundColor;
   final EdgeInsetsGeometry padding;
-  final double elevation; // 影の深さを追加
 
   const GlassCard({
     Key? key,
     required this.child,
-    this.borderRadius = 16.0,
-    this.backgroundColor = Colors.white54,
+    this.borderRadius = 8.0,
+    required this.backgroundColor,
     this.padding = const EdgeInsets.all(16.0),
-    this.elevation = 4.0, // デフォルトの影の深さ
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: elevation, // 影の深さを適用
-      shape: RoundedRectangleBorder(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16.0),
+      decoration: BoxDecoration(
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(borderRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      clipBehavior: Clip.antiAlias,
-      color: backgroundColor,
       child: Padding(
         padding: padding,
         child: child,
@@ -35,166 +78,70 @@ class GlassCard extends StatelessWidget {
   }
 }
 
-// スタイリッシュなボタンウィジェット
-class StylishButton extends StatelessWidget {
-  final String text;
-  final VoidCallback onPressed;
-  final IconData? icon;
-  final double fontSize;
-  final EdgeInsetsGeometry padding;
-
-  const StylishButton({
-    Key? key,
-    required this.text,
-    required this.onPressed,
-    this.icon,
-    this.fontSize = 16.0,
-    this.padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: colorScheme.primary,
-        foregroundColor: colorScheme.onPrimary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(25.0),
-        ),
-        padding: padding,
-        elevation: 4.0,
-        shadowColor: colorScheme.shadow.withOpacity(0.3),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: fontSize * 1.2),
-            const SizedBox(width: 8),
-          ],
-          Text(
-            text,
-            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// スタイリッシュなテキスト入力ウィジェット (変更あり)
-class StylishInput extends StatefulWidget {
+// StylishInput ウィジェットの定義
+class StylishInput extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
   final TextInputType keyboardType;
-  final List<TextInputFormatter>? inputFormatters;
+  final List<TextInputFormatter>? inputFormatters; // 型定義を修正
   final TextStyle? textStyle;
   final Color? fillColor;
-  final EdgeInsetsGeometry? contentPadding;
-  final bool isSuggestionDisplay; // 新しいプロパティ: 提案データとして表示するかどうか
+  final EdgeInsetsGeometry contentPadding;
+  final bool isSuggestionDisplay;
   final TextAlign textAlign;
-  final VoidCallback? onTap; // 追加: タップイベントを通知するコールバック
-  final ValueChanged<String>? onChanged; // 追加: onChangedイベントを通知するコールバック
+  final ValueChanged<String>? onChanged;
+  final GestureTapCallback? onTap;
 
   const StylishInput({
     Key? key,
     required this.controller,
-    this.hint = '',
+    required this.hint,
     this.keyboardType = TextInputType.text,
     this.inputFormatters,
     this.textStyle,
     this.fillColor,
-    this.contentPadding,
-    this.isSuggestionDisplay = false, // デフォルトはfalse
-    this.textAlign = TextAlign.center,
-    this.onTap, // 追加
-    this.onChanged, // 追加
+    this.contentPadding = const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+    this.isSuggestionDisplay = false,
+    this.textAlign = TextAlign.left,
+    this.onChanged,
+    this.onTap,
   }) : super(key: key);
 
   @override
-  _StylishInputState createState() => _StylishInputState();
-}
-
-class _StylishInputState extends State<StylishInput> {
-  late FocusNode _focusNode;
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode = FocusNode();
-    // フォーカスが変更されたときにウィジェットを再ビルドして色を更新
-    _focusNode.addListener(() {
-      setState(() {});
-      // フォーカスが当たったときにonTapコールバックをトリガー
-      if (_focusNode.hasFocus && widget.onTap != null) {
-        widget.onTap!();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final effectiveTextStyle = widget.textStyle ?? Theme.of(context).textTheme.bodyLarge;
-    final effectiveFillColor = widget.fillColor ?? Theme.of(context).colorScheme.surfaceVariant;
     final colorScheme = Theme.of(context).colorScheme;
-
-    Color textColor;
-    // フォーカスがある場合、または提案表示ではない場合（ユーザーが入力済みの場合など）は濃い色
-    if (_focusNode.hasFocus || !widget.isSuggestionDisplay) {
-      textColor = effectiveTextStyle?.color ?? colorScheme.onSurface;
-    } else {
-      // フォーカスがなく、提案表示の場合は薄い色
-      textColor = (effectiveTextStyle?.color ?? colorScheme.onSurface).withOpacity(0.5);
-    }
+    final defaultTextStyle = TextStyle(color: colorScheme.onSurface, fontSize: 16.0);
+    final suggestionTextStyle = defaultTextStyle.copyWith(
+      color: colorScheme.onSurface.withOpacity(0.5), // 薄い色で表示
+    );
 
     return TextField(
-      controller: widget.controller,
-      focusNode: _focusNode, // FocusNodeをTextFieldに適用
-      keyboardType: widget.keyboardType,
-      inputFormatters: widget.inputFormatters,
-      style: effectiveTextStyle?.copyWith(color: textColor), // 色を動的に適用
-      textAlign: widget.textAlign,
+      controller: controller,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      style: isSuggestionDisplay ? suggestionTextStyle : (textStyle ?? defaultTextStyle),
+      textAlign: textAlign,
       decoration: InputDecoration(
-        // コントローラーのテキストが空で、かつフォーカスがなく、提案表示の場合のみヒントテキストを表示
-        hintText: widget.controller.text.isEmpty && !_focusNode.hasFocus && widget.isSuggestionDisplay ? widget.hint : null,
-        hintStyle: effectiveTextStyle?.copyWith(color: effectiveTextStyle.color?.withOpacity(0.5) ?? Colors.grey),
+        hintText: hint,
+        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant.withOpacity(0.7), fontSize: 14.0),
         filled: true,
-        fillColor: effectiveFillColor,
+        fillColor: fillColor ?? colorScheme.surfaceContainer,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.0),
+          borderRadius: BorderRadius.circular(10.0),
           borderSide: BorderSide.none,
         ),
-        contentPadding: widget.contentPadding,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10.0),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10.0),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: contentPadding,
       ),
-      onChanged: (value) {
-        // 外部から渡されたonChangedコールバックを呼び出す
-        if (widget.onChanged != null) {
-          widget.onChanged!(value);
-        }
-      },
-      onTap: () {
-        // TextFieldがタップされたときにonTapコールバックをトリガー
-        if (widget.onTap != null) {
-          widget.onTap!();
-        }
-      },
+      onChanged: onChanged,
+      onTap: onTap,
     );
   }
-}
-
-// ドロップダウンメニューの項目ウィジェット
-class DropMenuItem<T> extends DropdownMenuItem<T> {
-  const DropMenuItem({
-    Key? key,
-    required T value,
-    required Widget child,
-  }) : super(key: key, value: value, child: child);
 }
