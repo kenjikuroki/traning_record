@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // SystemChrome を使用するためにインポート
+import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:collection/collection.dart'; // firstWhereOrNull を使用するためにインポート
@@ -142,7 +142,7 @@ class SectionData {
 class RecordScreen extends StatefulWidget {
   final DateTime selectedDate;
   final Box<DailyRecord> recordsBox;
-  final Box<List<MenuData>> lastUsedMenusBox;
+  final Box<dynamic> lastUsedMenusBox;
   final Box<Map<String, bool>> settingsBox;
   final Box<int> setCountBox;
   final Box<int> themeModeBox;
@@ -185,9 +185,6 @@ class _RecordScreenState extends State<RecordScreen> {
     _loadSettingsAndParts();
   }
 
-  // アプリが破棄されるときに画面の向き設定をリセットする必要がある場合は、
-  // dispose メソッドで SystemChrome.setPreferredOrientations([]) を呼び出すことができます。
-  // ただし、アプリ全体で縦向き固定を意図している場合は不要です。
   @override
   void dispose() {
     _saveAllSectionsData(); // アプリ終了時にデータを保存
@@ -214,12 +211,10 @@ class _RecordScreenState extends State<RecordScreen> {
 
     int? savedSetCount = widget.setCountBox.get('setCount');
 
-    // savedBodyPartsSettings が null または空の場合に _allBodyParts を使用するように修正
     if (savedBodyPartsSettings != null && savedBodyPartsSettings.isNotEmpty) {
       _filteredBodyParts = _allBodyParts
           .where((part) => savedBodyPartsSettings![part] == true)
           .toList();
-      // 全ての部位がfalseでフィルタリングされた場合もデフォルトに戻す
       if (_filteredBodyParts.isEmpty) {
         _filteredBodyParts = List.from(_allBodyParts);
       }
@@ -229,23 +224,23 @@ class _RecordScreenState extends State<RecordScreen> {
 
     _currentSetCount = savedSetCount ?? 3;
 
-    setState(() {
-      _loadInitialSections();
-    });
+    if (mounted) {
+      setState(() {
+        _loadInitialSections();
+      });
+    }
   }
 
-  // Load initial sections (existing data or create a new empty section)
   void _loadInitialSections() {
     String dateKey = _getDateKey(widget.selectedDate);
     DailyRecord? record = widget.recordsBox.get(dateKey); // Saved data for today
-    Box<List<MenuData>> lastUsedMenusBox = widget.lastUsedMenusBox; // Last used menus (suggestions)
+    // Box<dynamic> lastUsedMenusBox = widget.lastUsedMenusBox; // lastUsedMenusBox はこのメソッドでは直接使用しない
 
     _clearAllControllersAndMaps(); // Clear existing controllers and their suggestion states
     _sections.clear();
 
     Map<String, SectionData> tempSectionsMap = {}; // Use this to build sections
 
-    // Helper to add a menu to tempSectionsMap
     void addMenuToTempMap(String part, MenuData menuData, bool isSuggestionForWeightReps) {
       SectionData section = tempSectionsMap.putIfAbsent(part, () => SectionData(
         key: UniqueKey(),
@@ -273,148 +268,62 @@ class _RecordScreenState extends State<RecordScreen> {
       section.setInputDataList.add(setInputDataRow);
     }
 
-    // Check if there is ANY confirmed data for the selected date.
-    // If not, immediately set to initial empty state and return.
-    if (record == null || record.menus.isEmpty) {
+    // ★ 修正: 選択された日付に記録がある場合のみ、その記録をロードする ★
+    if (record != null && record.menus.isNotEmpty) {
+      record.menus.forEach((part, menuList) {
+        for (var menuData in menuList) {
+          addMenuToTempMap(part, menuData, false); // Confirmed data is NOT a suggestion
+        }
+      });
+      _sections = tempSectionsMap.values.toList();
+    } else {
+      // ★ 修正: 記録がない場合は、完全に空の初期画面を表示する ★
       _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
       _sections[0].initialSetCount = _currentSetCount;
-      setState(() {});
-      return; // Crucial: Exit here if no confirmed data for this specific date
     }
 
-    // If we reached here, there IS confirmed data for the selected date.
-    // Proceed to load confirmed data first.
-    record.menus.forEach((part, menuList) {
-      for (var menuData in menuList) {
-        addMenuToTempMap(part, menuData, false); // Confirmed data is NOT a suggestion for weight/reps
-      }
-    });
-
-    // Then, overlay with suggestion data from lastUsedMenusBox.
-    // This ensures that thin values persist if they are not overwritten by confirmed data.
-    for (String part in _allBodyParts) {
-      List<MenuData>? lastUsedMenuList = lastUsedMenusBox.get(part);
-
-      if (lastUsedMenuList != null && lastUsedMenuList.isNotEmpty) {
-        SectionData section = tempSectionsMap.putIfAbsent(part, () => SectionData(
-          key: UniqueKey(),
-          selectedPart: part,
-          menuControllers: [],
-          setInputDataList: [],
-          initialSetCount: _currentSetCount,
-          menuKeys: [],
-        ));
-
-        for (var suggestionMenuData in lastUsedMenuList) {
-          // Try to find an existing menu with the same name in this section
-          int existingMenuIndex = section.menuControllers.indexWhere((ctrl) => ctrl.text == suggestionMenuData.name);
-
-          if (existingMenuIndex == -1) {
-            // Menu does not exist, add it as a new item (with suggestion status for weights/reps)
-            final menuCtrl = TextEditingController(text: suggestionMenuData.name);
-            section.menuControllers.add(menuCtrl);
-            section.menuKeys.add(UniqueKey());
-            _isSuggestionDisplayMap[menuCtrl] = false; // Menu name is always confirmed
-
-            List<SetInputData> setInputDataRow = [];
-            int currentMenuSetCount = suggestionMenuData.weights.length;
-            for (int s = 0; s < currentMenuSetCount; s++) {
-              final weightCtrl = TextEditingController(text: suggestionMenuData.weights[s]);
-              final repCtrl = TextEditingController(text: suggestionMenuData.reps[s]);
-              _isSuggestionDisplayMap[weightCtrl] = true; // Mark as suggestion
-              _isSuggestionDisplayMap[repCtrl] = true; // Mark as suggestion
-              setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
-            }
-            section.setInputDataList.add(setInputDataRow);
-          } else {
-            // Menu already exists. Update its weight/rep values if they are currently suggestions or empty.
-            // Do NOT overwrite if they are already confirmed (from recordsBox).
-            List<SetInputData> existingSetInputDataRow = section.setInputDataList[existingMenuIndex];
-            int suggestionMenuSetCount = suggestionMenuData.weights.length;
-
-            // Adjust size of existingSetInputDataRow to match suggestionMenuSetCount
-            while (existingSetInputDataRow.length < suggestionMenuSetCount) {
-              final weightCtrl = TextEditingController();
-              final repCtrl = TextEditingController();
-              _isSuggestionDisplayMap[weightCtrl] = true; // New sets are suggestions
-              _isSuggestionDisplayMap[repCtrl] = true;
-              existingSetInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
-            }
-            while (existingSetInputDataRow.length > suggestionMenuSetCount) {
-              existingSetInputDataRow.removeLast().dispose();
-            }
-
-            for (int s = 0; s < suggestionMenuSetCount; s++) {
-              final existingWeightCtrl = existingSetInputDataRow[s].weightController;
-              final existingRepCtrl = existingSetInputDataRow[s].repController;
-
-              // If the existing value is confirmed (not marked as suggestion) AND not empty, leave it.
-              // Otherwise, update with suggestion and mark as suggestion.
-              if (!(_isSuggestionDisplayMap[existingWeightCtrl] ?? false) && existingWeightCtrl.text.isNotEmpty) {
-                // Existing weight is confirmed and not empty, do nothing.
-              } else {
-                existingWeightCtrl.text = suggestionMenuData.weights[s];
-                _isSuggestionDisplayMap[existingWeightCtrl] = true; // Mark as suggestion
-              }
-
-              if (!(_isSuggestionDisplayMap[existingRepCtrl] ?? false) && existingRepCtrl.text.isNotEmpty) {
-                // Existing rep is confirmed and not empty, do nothing.
-              } else {
-                existingRepCtrl.text = suggestionMenuData.reps[s];
-                _isSuggestionDisplayMap[existingRepCtrl] = true; // Mark as suggestion
-              }
-            }
-          }
-        }
-      }
-    }
-
-    _sections = tempSectionsMap.values.toList();
-
-    // 各セクションの初期セット数を調整し、不足しているセットを追加
+    // Adjust set counts for all sections.
     for (var section in _sections) {
-      int maxSetsInSection = _currentSetCount; // デフォルトのセット数で初期化
+      int maxSetsInSection = _currentSetCount;
       for (var menuInputDataList in section.setInputDataList) {
         if (menuInputDataList.isNotEmpty) {
           maxSetsInSection = maxSetsInSection > menuInputDataList.length ? maxSetsInSection : menuInputDataList.length;
         }
       }
-      // 設定のセット数と読み込んだデータの最大セット数の大きい方を使用
       section.initialSetCount = maxSetsInSection > _currentSetCount ? maxSetsInSection : _currentSetCount;
 
       for (var setInputDataRow in section.setInputDataList) {
         while (setInputDataRow.length < section.initialSetCount!) {
           final weightCtrl = TextEditingController();
           final repCtrl = TextEditingController();
-          _isSuggestionDisplayMap[weightCtrl] = true; // 新しく追加されるセットは提案としてマーク
+          _isSuggestionDisplayMap[weightCtrl] = true;
           _isSuggestionDisplayMap[repCtrl] = true;
           setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
         }
       }
     }
 
-    // 部位の順序でセクションをソート
     _sections.sort((a, b) {
       if (a.selectedPart == null && b.selectedPart == null) return 0;
-      if (a.selectedPart == null) return 1; // nullは最後に
-      if (b.selectedPart == null) return -1; // nullは最後に
+      if (a.selectedPart == null) return 1;
+      if (b.selectedPart == null) return -1;
       int indexA = _allBodyParts.indexOf(a.selectedPart!);
       int indexB = _allBodyParts.indexOf(b.selectedPart!);
       return indexA.compareTo(indexB);
     });
 
-    setState(() {}); // UIを更新
+    if (mounted) {
+      setState(() {});
+    }
   }
+
 
   String _getDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  // Set data to controllers (including dynamic size adjustment)
-  // このメソッドは_loadInitialSectionsの内部ロジックに置き換えられたため、直接呼び出されることはなくなりますが、
-  // 他の箇所でまだ使われている可能性を考慮し、修正は最小限に留めます。
+  // Set data to controllers
   void _setControllersFromData(List<TextEditingController> menuCtrls, List<List<SetInputData>> setInputDataList, List<Key> menuKeys, List<MenuData> list, int actualSetCount, bool isSuggestionData) {
-    // 既存のコントローラーを破棄し、マップのエントリをクリア
     for (int i = 0; i < menuCtrls.length; i++) {
       menuCtrls[i].dispose();
       _isSuggestionDisplayMap.remove(menuCtrls[i]);
@@ -431,15 +340,15 @@ class _RecordScreenState extends State<RecordScreen> {
     setInputDataList.clear();
     menuKeys.clear();
 
-    int itemsToCreate = list.isNotEmpty ? list.length : 1; // データがない場合は1つの空の入力行を作成
+    int itemsToCreate = list.isNotEmpty ? list.length : 1;
 
     for (int i = 0; i < itemsToCreate; i++) {
       final newMenuController = TextEditingController();
       if (i < list.length) {
         newMenuController.text = list[i].name;
-        _isSuggestionDisplayMap[newMenuController] = false; // 種目名は常に確定状態
+        _isSuggestionDisplayMap[newMenuController] = false;
       } else {
-        _isSuggestionDisplayMap[newMenuController] = false; // 新規追加の種目名も確定状態
+        _isSuggestionDisplayMap[newMenuController] = false;
       }
       menuCtrls.add(newMenuController);
       menuKeys.add(UniqueKey());
@@ -460,7 +369,6 @@ class _RecordScreenState extends State<RecordScreen> {
         newWeightController.text = loadedWeight;
         newRepController.text = loadedRep;
 
-        // isSuggestionDataがtrueの場合、重量と回数を提案としてマーク
         _isSuggestionDisplayMap[newWeightController] = isSuggestionData;
         _isSuggestionDisplayMap[newRepController] = isSuggestionData;
 
@@ -473,7 +381,6 @@ class _RecordScreenState extends State<RecordScreen> {
     }
   }
 
-  // セクション内のコントローラーとマップエントリをクリアするヘルパー
   void _clearSectionControllersAndMaps(List<TextEditingController> menuCtrls, List<List<SetInputData>> setInputDataList) {
     for (var c in menuCtrls) {
       c.dispose();
@@ -491,7 +398,6 @@ class _RecordScreenState extends State<RecordScreen> {
     setInputDataList.clear();
   }
 
-  // すべてのセクションのコントローラーとマップエントリをクリアするヘルパー
   void _clearAllControllersAndMaps() {
     for (var section in _sections) {
       _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
@@ -499,32 +405,31 @@ class _RecordScreenState extends State<RecordScreen> {
     _isSuggestionDisplayMap.clear();
   }
 
-  // テキスト変更またはタップを処理するハンドラー
   void _confirmInput(TextEditingController controller) {
-    setState(() {
-      // ユーザーが入力内容を変更またはタップしたら、提案表示状態を解除（確定）
-      _isSuggestionDisplayMap[controller] = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isSuggestionDisplayMap[controller] = false;
+      });
+    }
   }
 
-  // Save data for all sections
+  // ★ 修正された _saveAllSectionsData 関数 ★
   void _saveAllSectionsData() {
     String dateKey = _getDateKey(widget.selectedDate);
     Map<String, List<MenuData>> allMenusForDay = {};
     String? lastModifiedPart;
 
-    // --- Part 1: Prepare data for DailyRecord (only confirmed data) ---
+    // --- Part 1: Prepare data for DailyRecord (only confirmed, non-suggestion data) ---
     for (var section in _sections) {
       if (section.selectedPart == null) continue;
 
       List<MenuData> sectionMenuListForRecord = [];
-      bool sectionHasConfirmedContent = false;
-      int currentSectionSetCount = section.initialSetCount ?? _currentSetCount;
+      String? currentPart = section.selectedPart;
 
       for (int i = 0; i < section.menuControllers.length; i++) {
         String name = section.menuControllers[i].text.trim();
-        List<String> weights = [];
-        List<String> reps = [];
+        List<String> confirmedWeights = [];
+        List<String> confirmedReps = [];
         bool rowHasConfirmedContent = false;
 
         // 種目名は常に確定状態なので、_isSuggestionDisplayMapはチェックしない
@@ -533,6 +438,7 @@ class _RecordScreenState extends State<RecordScreen> {
           name = '';
         }
 
+        int currentSectionSetCount = section.initialSetCount ?? _currentSetCount;
         for (int s = 0; s < currentSectionSetCount; s++) {
           final setInputData = (section.setInputDataList.length > i && section.setInputDataList[i].length > s)
               ? section.setInputDataList[i][s]
@@ -542,35 +448,36 @@ class _RecordScreenState extends State<RecordScreen> {
           String r = '';
 
           if (setInputData != null) {
-            // 重量と回数が未確定の提案データ（色が薄い状態）であれば、記録として保存しない（空文字列として扱う）
+            // ここが重要な修正ポイントです。
+            // 重量と回数が「提案（色が薄い状態）」ではなく、かつ入力内容が空でなければ、確定済みデータとして扱います。
+            // ユーザーがタップや入力を行った時点で、提案フラグはfalseになっています。
             if (!(_isSuggestionDisplayMap[setInputData.weightController] ?? false)) {
               w = setInputData.weightController.text;
             }
             if (!(_isSuggestionDisplayMap[setInputData.repController] ?? false)) {
               r = setInputData.repController.text;
             }
-
-            if (w.isNotEmpty || r.isNotEmpty) {
-              rowHasConfirmedContent = true;
-            }
           }
 
-          weights.add(w);
-          reps.add(r);
+          if (w.isNotEmpty || r.isNotEmpty) {
+            rowHasConfirmedContent = true;
+          }
+          confirmedWeights.add(w);
+          confirmedReps.add(r);
         }
 
-        // 種目名があるか、または少なくとも1つのセットに有効な入力があれば、その種目を記録として保存
+        // 種目名が入力されているか、または少なくとも1つのセットに有効な入力があれば、その種目を記録として保存
         if (name.isNotEmpty || rowHasConfirmedContent) {
-          sectionMenuListForRecord.add(MenuData(name: name, weights: weights, reps: reps));
-          sectionHasConfirmedContent = true;
+          sectionMenuListForRecord.add(MenuData(name: name, weights: confirmedWeights, reps: confirmedReps));
+          lastModifiedPart = currentPart;
         }
       }
 
       if (sectionMenuListForRecord.isNotEmpty) {
-        allMenusForDay[section.selectedPart!] = sectionMenuListForRecord;
-        lastModifiedPart = section.selectedPart; // この部分はそのまま維持
+        allMenusForDay[currentPart!] = sectionMenuListForRecord;
       } else {
-        allMenusForDay.remove(section.selectedPart);
+        // その部位に確定済みデータがなければ、その日の記録からその部位を削除する
+        allMenusForDay.remove(currentPart);
       }
     }
 
@@ -583,17 +490,12 @@ class _RecordScreenState extends State<RecordScreen> {
     }
 
     // --- Part 3: Update lastUsedMenusBox (現在表示されているすべてのメニュー、提案データも含む) ---
-    // This box stores the last used menus for suggestion purposes.
-    // It should only be updated if there's actual content for a part on the current screen.
-    // It should NOT be cleared if a part is currently empty on screen.
-
     for (var section in _sections) {
       if (section.selectedPart == null) continue;
 
       List<MenuData> displayedMenuList = [];
       for (int i = 0; i < section.menuControllers.length; i++) {
         String name = section.menuControllers[i].text.trim();
-        // Only consider non-empty menu names for suggestions
         if (name.isEmpty) continue;
 
         List<String> weights = [];
@@ -614,14 +516,9 @@ class _RecordScreenState extends State<RecordScreen> {
         displayedMenuList.add(MenuData(name: name, weights: weights, reps: reps));
       }
 
-      // Only update lastUsedMenusBox for this part if there's actual data to save.
-      // If displayedMenuList is empty, it means this part has no current entries,
-      // so we should NOT overwrite any existing suggestions in lastUsedMenusBox for this part.
       if (displayedMenuList.isNotEmpty) {
         widget.lastUsedMenusBox.put(section.selectedPart!, displayedMenuList);
       }
-      // If displayedMenuList IS empty, we do nothing. This preserves previous suggestions for this part.
-      // If the user wants to explicitly clear suggestions for a part, they would need a specific "clear suggestions" button.
     }
   }
 
@@ -652,81 +549,82 @@ class _RecordScreenState extends State<RecordScreen> {
         transitionDuration: const Duration(milliseconds: 300),
       ),
     ).then((_) {
-      setState(() {
-        _currentSetCount = widget.setCountBox.get('setCount') ?? 3;
+      if (mounted) {
+        setState(() {
+          _currentSetCount = widget.setCountBox.get('setCount') ?? 3;
 
-        Map<dynamic, dynamic>? savedDynamicBodyPartsSettings = widget.settingsBox.get('selectedBodyParts');
-        Map<String, bool>? savedBodyPartsSettings;
+          Map<dynamic, dynamic>? savedDynamicBodyPartsSettings = widget.settingsBox.get('selectedBodyParts');
+          Map<String, bool>? savedBodyPartsSettings;
 
-        if (savedDynamicBodyPartsSettings != null) {
-          savedBodyPartsSettings = {};
-          savedDynamicBodyPartsSettings.forEach((key, value) {
-            if (key is String && value is bool) {
-              savedBodyPartsSettings![key] = value;
+          if (savedDynamicBodyPartsSettings != null) {
+            savedBodyPartsSettings = {};
+            savedDynamicBodyPartsSettings.forEach((key, value) {
+              if (key is String && value is bool) {
+                savedBodyPartsSettings![key] = value;
+              }
+            });
+          }
+
+          if (savedBodyPartsSettings != null) {
+            _filteredBodyParts = _allBodyParts
+                .where((part) => savedBodyPartsSettings![part] == true)
+                .toList();
+            if (_filteredBodyParts.isEmpty) {
+              _filteredBodyParts = List.from(_allBodyParts);
             }
-          });
-        }
-
-        if (savedBodyPartsSettings != null) {
-          _filteredBodyParts = _allBodyParts
-              .where((part) => savedBodyPartsSettings![part] == true)
-              .toList();
-          if (_filteredBodyParts.isEmpty) {
+          } else {
             _filteredBodyParts = List.from(_allBodyParts);
           }
-        } else {
-          _filteredBodyParts = List.from(_allBodyParts);
-        }
 
-        // 設定画面から戻った際、各セクションのセット数を更新し、不足しているセットを追加
-        for (var section in _sections) {
-          if (section.initialSetCount != null && section.initialSetCount! < _currentSetCount) {
-            section.initialSetCount = _currentSetCount;
-            for (var setInputDataRow in section.setInputDataList) {
-              while (setInputDataRow.length < _currentSetCount) {
-                final weightCtrl = TextEditingController();
-                final repCtrl = TextEditingController();
-                _isSuggestionDisplayMap[weightCtrl] = true; // 新しく追加されるセットは提案としてマーク
-                _isSuggestionDisplayMap[repCtrl] = true;
-                setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
+          for (var section in _sections) {
+            if (section.initialSetCount != null && section.initialSetCount! < _currentSetCount) {
+              section.initialSetCount = _currentSetCount;
+              for (var setInputDataRow in section.setInputDataList) {
+                while (setInputDataRow.length < _currentSetCount) {
+                  final weightCtrl = TextEditingController();
+                  final repCtrl = TextEditingController();
+                  _isSuggestionDisplayMap[weightCtrl] = true;
+                  _isSuggestionDisplayMap[repCtrl] = true;
+                  setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
+                }
               }
             }
           }
-        }
-      });
+        });
+      }
     });
   }
 
   void _addMenuItem(int sectionIndex) {
-    setState(() {
-      int currentSectionSetCount = _sections[sectionIndex].initialSetCount ?? _currentSetCount;
-      final newMenuController = TextEditingController();
-      _sections[sectionIndex].menuControllers.add(newMenuController);
-      _sections[sectionIndex].menuKeys.add(UniqueKey());
+    if (mounted) {
+      setState(() {
+        int currentSectionSetCount = _sections[sectionIndex].initialSetCount ?? _currentSetCount;
+        final newMenuController = TextEditingController();
+        _sections[sectionIndex].menuControllers.add(newMenuController);
+        _sections[sectionIndex].menuKeys.add(UniqueKey());
 
-      _isSuggestionDisplayMap[newMenuController] = false; // 新規追加の種目名は確定状態
-      final newSetInputDataList = List.generate(currentSectionSetCount, (_) {
-        final weightCtrl = TextEditingController();
-        final repCtrl = TextEditingController();
-        _isSuggestionDisplayMap[weightCtrl] = true; // 新規追加の入力は提案としてマーク
-        _isSuggestionDisplayMap[repCtrl] = true;
-        return SetInputData(weightController: weightCtrl, repController: repCtrl);
+        _isSuggestionDisplayMap[newMenuController] = false;
+        final newSetInputDataList = List.generate(currentSectionSetCount, (_) {
+          final weightCtrl = TextEditingController();
+          final repCtrl = TextEditingController();
+          _isSuggestionDisplayMap[weightCtrl] = true;
+          _isSuggestionDisplayMap[repCtrl] = true;
+          return SetInputData(weightController: weightCtrl, repController: repCtrl);
+        });
+        _sections[sectionIndex].setInputDataList.add(newSetInputDataList);
       });
-      _sections[sectionIndex].setInputDataList.add(newSetInputDataList);
-    });
+    }
   }
 
   void _addTargetSection() {
-    setState(() {
-      final newSection = SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false);
-      _sections.add(newSection);
-      // 新しいセクションには初期の種目名コントローラーやセット入力データは追加しない
-      // それらは部位が選択された時に_setControllersFromDataによって追加される
-    });
+    if (mounted) {
+      setState(() {
+        final newSection = SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false);
+        _sections.add(newSection);
+      });
+    }
   }
 
-  // Widget to build each set input row (独立した関数として定義)
-  // この関数はsetStateを直接呼び出さず、isSuggestionDisplayMapの更新とsetStateのトリガーを呼び出し元に任せる
   Widget _buildSetRow(BuildContext context, List<List<SetInputData>> setInputDataList, int menuIndex, int setNumber, int setIndex, String? selectedPart, Map<TextEditingController, bool> isSuggestionDisplayMap, VoidCallback triggerSetState) {
     final colorScheme = Theme.of(context).colorScheme;
     final setInputData = setInputDataList[menuIndex][setIndex];
@@ -749,21 +647,24 @@ class _RecordScreenState extends State<RecordScreen> {
         Expanded(
           child: StylishInput(
             controller: setInputData.weightController,
-            hint: '', // プレースホルダーは空文字列に設定
+            hint: '',
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
+            textStyle: TextStyle(
+              color: (isSuggestionDisplayMap[setInputData.weightController] ?? false) ? colorScheme.onSurfaceVariant.withOpacity(0.5) : colorScheme.onSurface,
+              fontSize: 16.0,
+            ),
             fillColor: colorScheme.surfaceContainer,
             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-            isSuggestionDisplay: isSuggestionDisplayMap[setInputData.weightController] ?? false, // 提案表示状態を渡す
-            textAlign: TextAlign.right, // 重量入力は右寄せ
+            isSuggestionDisplay: isSuggestionDisplayMap[setInputData.weightController] ?? false,
+            textAlign: TextAlign.right,
             onChanged: (value) {
-              isSuggestionDisplayMap[setInputData.weightController] = false; // 入力で確定
-              triggerSetState(); // setStateを呼び出し元でトリガー
+              isSuggestionDisplayMap[setInputData.weightController] = false;
+              triggerSetState();
             },
             onTap: () {
-              isSuggestionDisplayMap[setInputData.weightController] = false; // タップで確定
-              triggerSetState(); // setStateを呼び出し元でトリガー
+              isSuggestionDisplayMap[setInputData.weightController] = false;
+              triggerSetState();
             },
           ),
         ),
@@ -771,21 +672,24 @@ class _RecordScreenState extends State<RecordScreen> {
         Expanded(
           child: StylishInput(
             controller: setInputData.repController,
-            hint: '', // プレースホルダーは空文字列に設定
+            hint: '',
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
+            textStyle: TextStyle(
+              color: (isSuggestionDisplayMap[setInputData.repController] ?? false) ? colorScheme.onSurfaceVariant.withOpacity(0.5) : colorScheme.onSurface,
+              fontSize: 16.0,
+            ),
             fillColor: colorScheme.surfaceContainer,
             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-            isSuggestionDisplay: isSuggestionDisplayMap[setInputData.repController] ?? false, // 提案表示状態を渡す
-            textAlign: TextAlign.right, // 回数入力は右寄せ
+            isSuggestionDisplay: isSuggestionDisplayMap[setInputData.repController] ?? false,
+            textAlign: TextAlign.right,
             onChanged: (value) {
-              isSuggestionDisplayMap[setInputData.repController] = false; // 入力で確定
-              triggerSetState(); // setStateを呼び出し元でトリガー
+              isSuggestionDisplayMap[setInputData.repController] = false;
+              triggerSetState();
             },
             onTap: () {
-              isSuggestionDisplayMap[setInputData.repController] = false; // タップで確定
-              triggerSetState(); // setStateを呼び出し元でトリガー
+              isSuggestionDisplayMap[setInputData.repController] = false;
+              triggerSetState();
             },
           ),
         ),
@@ -799,7 +703,6 @@ class _RecordScreenState extends State<RecordScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final isLightMode = Theme.of(context).brightness == Brightness.light;
 
-    // Check for the initial state: only one section and its part is null
     bool isInitialEmptyState = _sections.length == 1 && _sections[0].selectedPart == null;
 
     return Scaffold(
@@ -823,11 +726,10 @@ class _RecordScreenState extends State<RecordScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Conditionally render the single dropdown or the ListView of sections
             if (isInitialEmptyState)
               Padding(
-                padding: const EdgeInsets.only(top: 20.0), // Consistent padding
-                child: GlassCard( // GlassCardで囲む
+                padding: const EdgeInsets.only(top: 20.0),
+                child: GlassCard(
                   borderRadius: 12.0,
                   backgroundColor: colorScheme.surfaceContainerHighest,
                   padding: const EdgeInsets.all(20.0),
@@ -854,38 +756,48 @@ class _RecordScreenState extends State<RecordScreen> {
                     value: _sections[0].selectedPart,
                     items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold)))).toList(),
                     onChanged: (value) {
-                      setState(() {
-                        _sections[0].selectedPart = value;
-                        if (_sections[0].selectedPart != null) {
-                          _clearSectionControllersAndMaps(_sections[0].menuControllers, _sections[0].setInputDataList);
-                          _sections[0].menuKeys.clear();
+                      if (mounted) {
+                        setState(() {
+                          _sections[0].selectedPart = value;
+                          if (value != null) {
+                            _clearSectionControllersAndMaps(_sections[0].menuControllers, _sections[0].setInputDataList);
+                            _sections[0].menuKeys.clear();
 
-                          String dateKey = _getDateKey(widget.selectedDate);
-                          DailyRecord? record = widget.recordsBox.get(dateKey);
-                          List<MenuData>? listToLoad;
-                          bool isSuggestion = false;
+                            String dateKey = _getDateKey(widget.selectedDate);
+                            DailyRecord? record = widget.recordsBox.get(dateKey);
+                            List<MenuData>? listToLoad;
+                            bool isSuggestion = false;
 
-                          if (record != null && record.menus.containsKey(_sections[0].selectedPart!)) {
-                            listToLoad = record.menus[_sections[0].selectedPart!];
-                            isSuggestion = false;
+                            if (record != null && record.menus.containsKey(value)) {
+                              listToLoad = record.menus[value];
+                              isSuggestion = false;
+                            } else {
+                              final dynamic rawList = widget.lastUsedMenusBox.get(value);
+                              if (rawList is List) {
+                                listToLoad = rawList.map((e) {
+                                  if (e is Map) {
+                                    return MenuData.fromJson(e);
+                                  }
+                                  return e as MenuData;
+                                }).toList();
+                              }
+                              isSuggestion = true;
+                            }
+
+                            int newSectionSetCount = _currentSetCount;
+                            if (listToLoad != null && listToLoad.isNotEmpty) {
+                              newSectionSetCount = listToLoad[0].weights.length;
+                            }
+                            _sections[0].initialSetCount = newSectionSetCount;
+
+                            _setControllersFromData(_sections[0].menuControllers, _sections[0].setInputDataList, _sections[0].menuKeys, listToLoad ?? [], newSectionSetCount, isSuggestion);
                           } else {
-                            listToLoad = widget.lastUsedMenusBox.get(_sections[0].selectedPart!);
-                            isSuggestion = true;
+                            _clearSectionControllersAndMaps(_sections[0].menuControllers, _sections[0].setInputDataList);
+                            _sections[0].menuKeys.clear();
+                            _sections[0].initialSetCount = _currentSetCount;
                           }
-
-                          int newSectionSetCount = _currentSetCount;
-                          if (listToLoad != null && listToLoad.isNotEmpty) {
-                            newSectionSetCount = listToLoad[0].weights.length;
-                          }
-                          _sections[0].initialSetCount = newSectionSetCount;
-
-                          _setControllersFromData(_sections[0].menuControllers, _sections[0].setInputDataList, _sections[0].menuKeys, listToLoad ?? [], newSectionSetCount, isSuggestion);
-                        } else {
-                          _clearSectionControllersAndMaps(_sections[0].menuControllers, _sections[0].setInputDataList);
-                          _sections[0].menuKeys.clear();
-                          _sections[0].initialSetCount = _currentSetCount;
-                        }
-                      });
+                        });
+                      }
                     },
                     dropdownColor: colorScheme.surfaceContainer,
                     style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
@@ -896,22 +808,21 @@ class _RecordScreenState extends State<RecordScreen> {
             else
               Expanded(
                 child: ListView.builder(
-                    primary: true, // 追加: ListViewが主要なスクロールビューであることを示す
-                    physics: const AlwaysScrollableScrollPhysics(), // 追加: コンテンツが少なくても常にスクロール可能にする
-                    itemCount: _sections.length + 1, // Add 1 for "部位を追加" button
+                    primary: true,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: _sections.length + 1,
                     itemBuilder: (context, index) {
-                      // This handles the "部位を追加" button as the last item in the list
                       if (index == _sections.length) {
                         return Padding(
                           padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
                           child: Align(
                             alignment: Alignment.centerRight,
                             child: StylishButton(
-                              text: '＋部位', // テキスト変更
+                              text: '＋部位',
                               onPressed: _addTargetSection,
                               fontSize: 12.0,
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              buttonColor: Colors.blue.shade700, // 濃い青
+                              buttonColor: Colors.blue.shade700,
                             ),
                           ),
                         );
@@ -955,38 +866,48 @@ class _RecordScreenState extends State<RecordScreen> {
                                 value: section.selectedPart,
                                 items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold)))).toList(),
                                 onChanged: (value) {
-                                  setState(() {
-                                    section.selectedPart = value;
-                                    if (section.selectedPart != null) {
-                                      _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
-                                      section.menuKeys.clear();
+                                  if (mounted) {
+                                    setState(() {
+                                      section.selectedPart = value;
+                                      if (section.selectedPart != null) {
+                                        _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
+                                        section.menuKeys.clear();
 
-                                      String dateKey = _getDateKey(widget.selectedDate);
-                                      DailyRecord? record = widget.recordsBox.get(dateKey);
-                                      List<MenuData>? listToLoad;
-                                      bool isSuggestion = false;
+                                        String dateKey = _getDateKey(widget.selectedDate);
+                                        DailyRecord? record = widget.recordsBox.get(dateKey);
+                                        List<MenuData>? listToLoad;
+                                        bool isSuggestion = false;
 
-                                      if (record != null && record.menus.containsKey(section.selectedPart!)) {
-                                        listToLoad = record.menus[section.selectedPart!];
-                                        isSuggestion = false;
+                                        if (record != null && record.menus.containsKey(section.selectedPart!)) {
+                                          listToLoad = record.menus[section.selectedPart!];
+                                          isSuggestion = false;
+                                        } else {
+                                          final dynamic rawList = widget.lastUsedMenusBox.get(section.selectedPart!);
+                                          if (rawList is List) {
+                                            listToLoad = rawList.map((e) {
+                                              if (e is Map) {
+                                                return MenuData.fromJson(e);
+                                              }
+                                              return e as MenuData;
+                                            }).toList();
+                                          }
+                                          isSuggestion = true;
+                                        }
+
+                                        int newSectionSetCount = _currentSetCount;
+                                        if (listToLoad != null && listToLoad.isNotEmpty) {
+                                          newSectionSetCount = listToLoad[0].weights.length;
+                                        }
+                                        section.initialSetCount = newSectionSetCount;
+
+                                        _setControllersFromData(section.menuControllers, section.setInputDataList, section.menuKeys, listToLoad ?? [], newSectionSetCount, isSuggestion);
                                       } else {
-                                        listToLoad = widget.lastUsedMenusBox.get(section.selectedPart!);
-                                        isSuggestion = true;
+                                        _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
+                                        section.menuKeys.clear();
+                                        section.initialSetCount = _currentSetCount;
                                       }
-
-                                      int newSectionSetCount = _currentSetCount;
-                                      if (listToLoad != null && listToLoad.isNotEmpty) {
-                                        newSectionSetCount = listToLoad[0].weights.length;
-                                      }
-                                      section.initialSetCount = newSectionSetCount;
-
-                                      _setControllersFromData(section.menuControllers, section.setInputDataList, section.menuKeys, listToLoad ?? [], newSectionSetCount, isSuggestion);
-                                    } else {
-                                      _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
-                                      section.menuKeys.clear();
-                                      section.initialSetCount = _currentSetCount;
-                                    }
-                                  });
+                                    });
+                                  }
                                 },
                                 dropdownColor: colorScheme.surfaceContainer,
                                 style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
@@ -1013,7 +934,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                   children: [
                                     ListView.builder(
                                       shrinkWrap: true,
-                                      physics: const NeverScrollableScrollPhysics(), // 追加: 内側のリストはスクロールしない
+                                      physics: const NeverScrollableScrollPhysics(),
                                       itemCount: section.menuControllers.length,
                                       itemBuilder: (context, menuIndex) {
                                         return AnimatedListItem(
@@ -1030,28 +951,48 @@ class _RecordScreenState extends State<RecordScreen> {
                                                   controller: section.menuControllers[menuIndex],
                                                   hint: '種目名',
                                                   inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                                                  textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0, fontWeight: FontWeight.bold),
+                                                  textStyle: TextStyle(
+                                                    color: (section.selectedPart == '有酸素運動' && isLightMode) ? Colors.black : colorScheme.onSurface,
+                                                    fontSize: 16.0,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
                                                   fillColor: colorScheme.surfaceContainer,
                                                   contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                                                   isSuggestionDisplay: _isSuggestionDisplayMap[section.menuControllers[menuIndex]] ?? false,
-                                                  onChanged: (value) => _confirmInput(section.menuControllers[menuIndex]),
-                                                  onTap: () => _confirmInput(section.menuControllers[menuIndex]),
+                                                  onChanged: (value) {
+                                                    if (mounted) {
+                                                      setState(() {
+                                                        _isSuggestionDisplayMap[section.menuControllers[menuIndex]] = false;
+                                                      });
+                                                    }
+                                                  },
+                                                  onTap: () {
+                                                    if (mounted) {
+                                                      setState(() {
+                                                        _isSuggestionDisplayMap[section.menuControllers[menuIndex]] = false;
+                                                      });
+                                                    }
+                                                  },
                                                 ),
                                                 const SizedBox(height: 8),
                                                 ListView.separated(
                                                   shrinkWrap: true,
-                                                  physics: const NeverScrollableScrollPhysics(), // 追加: 最も内側のリストもスクロールしない
+                                                  physics: const NeverScrollableScrollPhysics(),
                                                   itemCount: section.setInputDataList[menuIndex].length,
                                                   separatorBuilder: (context, s) => const SizedBox(height: 8),
-                                                  itemBuilder: (context, s) => _buildSetRow( // 独立した関数として呼び出し
-                                                      context, // context を渡す
+                                                  itemBuilder: (context, s) => _buildSetRow(
+                                                      context,
                                                       section.setInputDataList,
                                                       menuIndex,
                                                       s + 1,
                                                       s,
                                                       section.selectedPart,
-                                                      _isSuggestionDisplayMap, // _isSuggestionDisplayMap を渡す
-                                                          () => setState(() {}) // setStateをトリガーするコールバックを渡す
+                                                      _isSuggestionDisplayMap,
+                                                          () {
+                                                        if (mounted) {
+                                                          setState(() {});
+                                                        }
+                                                      }
                                                   ),
                                                 ),
                                                 const SizedBox(height: 8),
@@ -1066,11 +1007,11 @@ class _RecordScreenState extends State<RecordScreen> {
                                       child: Padding(
                                         padding: const EdgeInsets.only(top: 12.0),
                                         child: StylishButton(
-                                          text: '＋種目', // テキスト変更
+                                          text: '＋種目',
                                           onPressed: () => _addMenuItem(index),
                                           fontSize: 12.0,
                                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                          buttonColor: Colors.blue.shade400, // 薄い青
+                                          buttonColor: Colors.blue.shade400,
                                         ),
                                       ),
                                     ),
@@ -1087,6 +1028,12 @@ class _RecordScreenState extends State<RecordScreen> {
               ),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
+        child: const Icon(Icons.save),
+        onPressed: _saveAllSectionsData,
       ),
     );
   }

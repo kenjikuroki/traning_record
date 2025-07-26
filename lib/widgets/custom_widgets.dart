@@ -1,75 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // TextInputFormatter を使用するためにインポート
+import 'package:flutter/services.dart';
 
-// StylishButton ウィジェットの定義
-class StylishButton extends StatelessWidget {
-  final String text; // ボタンに表示するテキスト
-  final VoidCallback onPressed; // ボタンが押されたときに実行されるコールバック
-  final double fontSize; // テキストのフォントサイズ
-  final EdgeInsetsGeometry padding; // ボタンのパディング
-  final Color? buttonColor; // 追加: ボタンの背景色（オプション）
-
-  const StylishButton({
-    Key? key,
-    required this.text,
-    required this.onPressed,
-    this.fontSize = 16.0,
-    this.padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-    this.buttonColor, // コンストラクタにbuttonColorを追加
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        // buttonColorが指定されていればそれを使用し、なければテーマのprimary色を使用
-        backgroundColor: buttonColor ?? Theme.of(context).colorScheme.primary,
-        // ボタンのテキスト色を白に設定（青系のボタンに合うように）
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(25.0), // 角丸を設定
-        ),
-        padding: padding, // パディングを設定
-      ),
-      child: Text(
-        text,
-        style: TextStyle(fontSize: fontSize), // フォントサイズを設定
-      ),
-    );
-  }
-}
-
-// GlassCard ウィジェットの定義（既存のコードから変更なし）
+// グラスモーフィズム風のカードウィジェット
 class GlassCard extends StatelessWidget {
   final Widget child;
   final double borderRadius;
   final Color backgroundColor;
   final EdgeInsetsGeometry padding;
+  final double elevation; // 影の深さを追加
 
   const GlassCard({
     Key? key,
     required this.child,
-    this.borderRadius = 8.0,
-    required this.backgroundColor,
+    this.borderRadius = 16.0,
+    this.backgroundColor = Colors.white54,
     this.padding = const EdgeInsets.all(16.0),
+    this.elevation = 4.0, // デフォルトの影の深さ
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16.0),
-      decoration: BoxDecoration(
-        color: backgroundColor,
+    return Card(
+      elevation: elevation, // 影の深さを適用
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
+      clipBehavior: Clip.antiAlias,
+      color: backgroundColor,
       child: Padding(
         padding: padding,
         child: child,
@@ -78,15 +35,66 @@ class GlassCard extends StatelessWidget {
   }
 }
 
-// StylishInput ウィジェットの定義
-class StylishInput extends StatelessWidget {
-  final TextEditingController controller;
+// スタイリッシュなボタンウィジェット
+class StylishButton extends StatelessWidget {
+  final String text;
+  final VoidCallback onPressed;
+  final IconData? icon;
+  final double fontSize;
+  final EdgeInsetsGeometry padding;
+  final Color? buttonColor; // ボタンの背景色を追加
+
+  const StylishButton({
+    Key? key,
+    required this.text,
+    required this.onPressed,
+    this.icon,
+    this.fontSize = 16.0,
+    this.padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+    this.buttonColor, // コンストラクタに追加
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: buttonColor ?? colorScheme.primary, // 指定があればそれを使用、なければプライマリカラー
+        foregroundColor: colorScheme.onPrimary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(25.0),
+        ),
+        padding: padding,
+        elevation: 4.0,
+        shadowColor: colorScheme.shadow.withOpacity(0.3),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: fontSize * 1.2),
+            const SizedBox(width: 8),
+          ],
+          Text(
+            text,
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// スタイリッシュなテキスト入力ウィジェット
+class StylishInput extends StatefulWidget {
+  final TextEditingController controller; // 外部から渡されるコントローラー
   final String hint;
   final TextInputType keyboardType;
-  final List<TextInputFormatter>? inputFormatters; // 型定義を修正
+  final List<TextInputFormatter>? inputFormatters;
   final TextStyle? textStyle;
   final Color? fillColor;
-  final EdgeInsetsGeometry contentPadding;
+  final EdgeInsetsGeometry? contentPadding;
   final bool isSuggestionDisplay;
   final TextAlign textAlign;
   final ValueChanged<String>? onChanged;
@@ -95,53 +103,81 @@ class StylishInput extends StatelessWidget {
   const StylishInput({
     Key? key,
     required this.controller,
-    required this.hint,
+    this.hint = '',
     this.keyboardType = TextInputType.text,
     this.inputFormatters,
     this.textStyle,
     this.fillColor,
-    this.contentPadding = const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+    this.contentPadding,
     this.isSuggestionDisplay = false,
-    this.textAlign = TextAlign.left,
+    this.textAlign = TextAlign.center,
     this.onChanged,
     this.onTap,
   }) : super(key: key);
 
   @override
+  _StylishInputState createState() => _StylishInputState();
+}
+
+class _StylishInputState extends State<StylishInput> {
+  @override
+  void initState() {
+    super.initState();
+    // コントローラーの変更をリッスンしてUIを更新
+    widget.controller.addListener(_onControllerChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
+    super.dispose();
+  }
+
+  // コントローラーのテキストが変更されたときにUIを更新する
+  void _onControllerChanged() {
+    // setStateを呼び出してウィジェットを再ビルドし、hintTextの表示を更新
+    // ただし、ウィジェットがマウントされているか確認する
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final defaultTextStyle = TextStyle(color: colorScheme.onSurface, fontSize: 16.0);
-    final suggestionTextStyle = defaultTextStyle.copyWith(
-      color: colorScheme.onSurface.withOpacity(0.5), // 薄い色で表示
-    );
+    final effectiveTextStyle = widget.textStyle ?? Theme.of(context).textTheme.bodyLarge;
+    final effectiveFillColor = widget.fillColor ?? Theme.of(context).colorScheme.surfaceVariant;
 
     return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      style: isSuggestionDisplay ? suggestionTextStyle : (textStyle ?? defaultTextStyle),
-      textAlign: textAlign,
+      controller: widget.controller, // 外部から渡されたコントローラーを直接使用
+      keyboardType: widget.keyboardType,
+      inputFormatters: widget.inputFormatters,
+      style: widget.isSuggestionDisplay && widget.controller.text.isEmpty
+          ? effectiveTextStyle?.copyWith(color: effectiveTextStyle.color?.withOpacity(0.5) ?? Colors.grey) // 提案表示時は薄い色
+          : effectiveTextStyle, // 通常時は元の色
+      textAlign: widget.textAlign,
       decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant.withOpacity(0.7), fontSize: 14.0),
+        // コントローラーのテキストが空で、かつisSuggestionDisplayがtrueの場合のみヒントテキストを表示
+        hintText: (widget.isSuggestionDisplay && widget.controller.text.isEmpty) ? widget.hint : null,
+        hintStyle: effectiveTextStyle?.copyWith(color: effectiveTextStyle.color?.withOpacity(0.5) ?? Colors.grey),
         filled: true,
-        fillColor: fillColor ?? colorScheme.surfaceContainer,
+        fillColor: effectiveFillColor,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.0),
+          borderRadius: BorderRadius.circular(12.0),
           borderSide: BorderSide.none,
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.0),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.0),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: contentPadding,
+        contentPadding: widget.contentPadding,
       ),
-      onChanged: onChanged,
-      onTap: onTap,
+      onChanged: widget.onChanged,
+      onTap: widget.onTap,
     );
   }
+}
+
+// ドロップダウンメニューの項目ウィジェット
+class DropMenuItem<T> extends DropdownMenuItem<T> {
+  const DropMenuItem({
+    Key? key,
+    required T value,
+    required Widget child,
+  }) : super(key: key, value: value, child: child);
 }

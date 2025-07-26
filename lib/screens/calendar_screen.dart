@@ -1,231 +1,268 @@
 import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-// import 'package:hive/hive.dart'; // Unnecessary import, removed
+import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart'; // 日付フォーマット用
+import 'package:collection/collection.dart'; // firstWhereOrNull を使用するためにインポート
 
-import '../models/menu_data.dart'; // DailyRecordもこのファイルに統合
-// import '../models/daily_record.dart'; // DailyRecordモデルはmenu_data.dartに統合されているため削除
-import 'record_screen.dart';
-import 'settings_screen.dart';
+import '../models/menu_data.dart'; // MenuData and DailyRecord models
+import 'record_screen.dart'; // RecordScreen import
+import 'settings_screen.dart'; // SettingsScreen import
 import '../main.dart'; // currentThemeMode を使用するためにインポート
+
+// ignore_for_file: library_private_types_in_public_api
 
 class CalendarScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
-  final Box<List<MenuData>> lastUsedMenusBox;
-  final Box<Map<String, bool>> settingsBox; // 型はMap<String, bool>のまま
+  final Box<dynamic> lastUsedMenusBox;
+  final Box<Map<String, bool>> settingsBox;
   final Box<int> setCountBox;
-  final Box<int> themeModeBox; // ★新しいBoxを受け取る
+  final Box<int> themeModeBox;
 
   const CalendarScreen({
-    super.key,
+    Key? key,
     required this.recordsBox,
     required this.lastUsedMenusBox,
     required this.settingsBox,
     required this.setCountBox,
-    required this.themeModeBox, // ★新しいBoxを受け取る
-  });
+    required this.themeModeBox,
+  }) : super(key: key);
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
+  CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-
-  // 各部位に対応する色を定義 (機能の一部として維持)
-  final Map<String, Color> partColors = {
-    '有酸素運動': Colors.lightBlue, // 有酸素運動
-    '腕': Colors.orange,          // 腕
-    '胸': Colors.red,             // 胸
-    '肩': Colors.green,           // 肩
-    '背中': Colors.deepPurple,     // 背中
-    '足': Colors.amber,           // 足
-    '全身': Colors.teal,          // 全身
-    'その他１': Colors.brown,       // その他１
-    'その他２': Colors.pink,        // その他２
-    'その他３': Colors.cyan,        // その他３
-  };
 
   @override
   void initState() {
     super.initState();
-  }
-
-  // 日付キーを生成するヘルパー関数 (RecordScreenと共通)
-  String _getDateKey(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
-  // 指定された日付に記録されたすべての部位を取得するヘルパー関数
-  List<String> _getRecordedPartsForDate(DateTime date) {
-    final String dateKey = _getDateKey(date);
-    final DailyRecord? dailyRecord = widget.recordsBox.get(dateKey);
-
-    if (dailyRecord != null && dailyRecord.menus.isNotEmpty) {
-      return dailyRecord.menus.keys.where((part) => dailyRecord.menus[part]!.isNotEmpty).toList();
-    }
-    return [];
-  }
-
-  void navigateToRecord(BuildContext context, DateTime date) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => RecordScreen(
-          selectedDate: date,
-          recordsBox: widget.recordsBox, // Boxインスタンスを渡す
-          lastUsedMenusBox: widget.lastUsedMenusBox, // Boxインスタンスを渡す
-          settingsBox: widget.settingsBox, // Boxインスタンスを渡す
-          setCountBox: widget.setCountBox, // Boxインスタンスを渡す
-          themeModeBox: widget.themeModeBox, // ★themeModeBoxを渡す
-        ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(0.0, 1.0);
-          const end = Offset.zero;
-          const curve = Curves.easeOut;
-
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-          return SlideTransition(
-            position: animation.drive(tween),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 300),
-      ),
-    ).then((_) {
-      setState(() {
-        _selectedDay = date;
-        _focusedDay = date;
-      });
-    });
-  }
-
-  void navigateToSettings(BuildContext context) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
-          settingsBox: widget.settingsBox, // settingsBoxを渡す
-          setCountBox: widget.setCountBox, // setCountBoxを渡す
-          themeModeBox: widget.themeModeBox, // ★themeModeBoxを渡す
-          onThemeModeChanged: (newMode) {
-            currentThemeMode.value = newMode; // main.dartのValueNotifierを更新
-          },
-        ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(0.0, 1.0);
-          const end = Offset.zero;
-          const curve = Curves.easeOut;
-
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-          return SlideTransition(
-            position: animation.drive(tween),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 300),
-      ),
-    );
+    _selectedDay = _focusedDay;
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isLightMode = Theme.of(context).brightness == Brightness.light;
 
     return Scaffold(
-      backgroundColor: colorScheme.background, // 背景色をテーマから取得
+      backgroundColor: colorScheme.background,
       appBar: AppBar(
         title: Text(
-          'TrainingRecord',
-          style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0), // タイトル色をテーマから取得
+          'トレーニングカレンダー',
+          style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0),
         ),
-        backgroundColor: colorScheme.surface, // AppBar背景色をテーマから取得
+        backgroundColor: colorScheme.surface,
         elevation: 0.0,
-        iconTheme: IconThemeData(color: colorScheme.onSurface), // アイコン色をテーマから取得
+        iconTheme: IconThemeData(color: colorScheme.onSurface),
         actions: [
           IconButton(
-            icon: Icon(Icons.settings, color: colorScheme.onSurface), // アイコン色をテーマから取得
-            onPressed: () => navigateToSettings(context),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          ValueListenableBuilder<Box<DailyRecord>>(
-            valueListenable: widget.recordsBox.listenable(),
-            builder: (context, box, child) {
-              return TableCalendar(
-                firstDay: DateTime.utc(2020, 1, 1),
-                lastDay: DateTime.utc(2030, 12, 31),
-                focusedDay: _focusedDay,
-                selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                onDaySelected: (selectedDay, focusedDay) {
-                  setState(() {
-                    _selectedDay = selectedDay;
-                    _focusedDay = focusedDay;
-                  });
-                  navigateToRecord(context, selectedDay);
-                },
-                headerStyle: HeaderStyle( // HeaderStyleもColorSchemeを使用
-                  formatButtonVisible: false,
-                  titleCentered: true,
-                  titleTextStyle: TextStyle(color: colorScheme.onSurface, fontSize: 18.0, fontWeight: FontWeight.bold),
-                  leftChevronIcon: Icon(Icons.chevron_left, color: colorScheme.onSurface),
-                  rightChevronIcon: Icon(Icons.chevron_right, color: colorScheme.onSurface),
-                ),
-                calendarStyle: CalendarStyle( // CalendarStyleもColorSchemeを使用
-                  todayDecoration: BoxDecoration(
-                    color: colorScheme.secondary, // 今日の日付の色をsecondaryに
-                    shape: BoxShape.circle,
+            icon: Icon(Icons.settings, size: 24.0, color: colorScheme.onSurface),
+            onPressed: () {
+              Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
+                    settingsBox: widget.settingsBox,
+                    setCountBox: widget.setCountBox,
+                    themeModeBox: widget.themeModeBox,
+                    onThemeModeChanged: (newMode) {
+                      currentThemeMode.value = newMode;
+                    },
                   ),
-                  selectedDecoration: BoxDecoration(
-                    color: colorScheme.primary, // 選択された日付の色をprimaryに
-                    shape: BoxShape.circle,
-                  ),
-                  defaultTextStyle: TextStyle(color: colorScheme.onSurface), // デフォルトのテキスト色
-                  weekendTextStyle: TextStyle(color: colorScheme.onSurfaceVariant), // 週末のテキスト色
-                  outsideTextStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.5)), // 範囲外のテキスト色
-                ),
-                calendarBuilders: CalendarBuilders(
-                  markerBuilder: (context, date, events) {
-                    final recordedParts = _getRecordedPartsForDate(date);
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    const begin = Offset(0.0, 1.0);
+                    const end = Offset.zero;
+                    const curve = Curves.easeOut;
 
-                    if (recordedParts.isEmpty) {
-                      return null;
-                    }
+                    var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
 
-                    return Positioned(
-                      bottom: 1,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: recordedParts.map((part) {
-                          return Container(
-                            width: 6,
-                            height: 6,
-                            margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                            decoration: BoxDecoration(
-                              color: partColors[part] ?? colorScheme.onSurfaceVariant, // 部位の色、なければonSurfaceVariant
-                              shape: BoxShape.circle,
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                    return SlideTransition(
+                      position: animation.drive(tween),
+                      child: child,
                     );
                   },
+                  transitionDuration: const Duration(milliseconds: 300),
                 ),
               );
             },
           ),
         ],
       ),
-    );
-  }
+      body: Column(
+        children: [
+          Card(
+            margin: const EdgeInsets.all(8.0),
+            elevation: 4.0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.0),
+            ),
+            color: colorScheme.surfaceContainerHighest,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TableCalendar(
+                locale: 'ja_JP', // 日本語ロケールを設定
+                firstDay: DateTime.utc(2020, 1, 1),
+                lastDay: DateTime.utc(2030, 12, 31),
+                focusedDay: _focusedDay,
+                calendarFormat: _calendarFormat,
+                selectedDayPredicate: (day) {
+                  return isSameDay(_selectedDay, day);
+                },
+                onDaySelected: (selectedDay, focusedDay) {
+                  setState(() {
+                    _selectedDay = selectedDay;
+                    _focusedDay = focusedDay; // update `_focusedDay` as well
+                  });
+                  // 選択された日付の記録画面へ遷移
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) => RecordScreen(
+                        selectedDate: selectedDay,
+                        recordsBox: widget.recordsBox,
+                        lastUsedMenusBox: widget.lastUsedMenusBox,
+                        settingsBox: widget.settingsBox,
+                        setCountBox: widget.setCountBox,
+                        themeModeBox: widget.themeModeBox,
+                      ),
+                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        const begin = Offset(1.0, 0.0);
+                        const end = Offset.zero;
+                        const curve = Curves.easeOut;
 
-  @override
-  void dispose() {
-    super.dispose();
+                        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+
+                        return SlideTransition(
+                          position: animation.drive(tween),
+                          child: child,
+                        );
+                      },
+                      transitionDuration: const Duration(milliseconds: 300),
+                    ),
+                  );
+                },
+                onFormatChanged: (format) {
+                  if (_calendarFormat != format) {
+                    setState(() {
+                      _calendarFormat = format;
+                    });
+                  }
+                },
+                onPageChanged: (focusedDay) {
+                  _focusedDay = focusedDay;
+                },
+                // カレンダーのスタイル設定
+                headerStyle: HeaderStyle(
+                  formatButtonVisible: false,
+                  titleCentered: true,
+                  titleTextStyle: TextStyle(color: colorScheme.onSurface, fontSize: 18.0, fontWeight: FontWeight.bold),
+                  leftChevronIcon: Icon(Icons.chevron_left, color: colorScheme.onSurface),
+                  rightChevronIcon: Icon(Icons.chevron_right, color: colorScheme.onSurface),
+                ),
+                calendarStyle: CalendarStyle(
+                  outsideDaysVisible: false,
+                  weekendTextStyle: TextStyle(color: colorScheme.error), // 週末のテキスト色
+                  todayDecoration: BoxDecoration(
+                    color: colorScheme.primary.withOpacity(0.5), // 今日の日付の背景色
+                    shape: BoxShape.circle,
+                  ),
+                  selectedDecoration: BoxDecoration(
+                    color: colorScheme.primary, // 選択された日付の背景色
+                    shape: BoxShape.circle,
+                  ),
+                  defaultTextStyle: TextStyle(color: colorScheme.onSurface),
+                  // ★ 修正: マーカーの色を Colors.redAccent に変更 ★
+                  markerDecoration: BoxDecoration(
+                    color: Colors.redAccent, // マーカーの色を赤色に固定
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                // イベントマーカー
+                eventLoader: (day) {
+                  String dateKey = DateFormat('yyyy-MM-dd').format(day);
+                  DailyRecord? record = widget.recordsBox.get(dateKey);
+                  if (record != null && record.menus.isNotEmpty) {
+                    return ['event']; // イベントがある場合はマーカーを表示
+                  }
+                  return [];
+                },
+              ),
+            ),
+          ),
+          Expanded(
+            child: ValueListenableBuilder<Box<DailyRecord>>(
+              valueListenable: widget.recordsBox.listenable(),
+              builder: (context, box, _) {
+                String dateKey = DateFormat('yyyy-MM-dd').format(_selectedDay ?? DateTime.now());
+                DailyRecord? record = box.get(dateKey);
+
+                if (record == null || record.menus.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'この日の記録はありません。',
+                      style: TextStyle(color: colorScheme.onBackground, fontSize: 16.0),
+                    ),
+                  );
+                }
+
+                // 最後に編集した部位を最上位に表示し、それ以外はソート
+                List<String> sortedParts = record.menus.keys.toList();
+                if (record.lastModifiedPart != null && sortedParts.contains(record.lastModifiedPart)) {
+                  sortedParts.remove(record.lastModifiedPart);
+                  sortedParts.insert(0, record.lastModifiedPart!);
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(8.0),
+                  itemCount: sortedParts.length,
+                  itemBuilder: (context, index) {
+                    String part = sortedParts[index];
+                    List<MenuData> menus = record.menus[part]!;
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 4.0),
+                      elevation: 2.0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      color: isLightMode && part == '有酸素運動' ? Colors.grey[300] : colorScheme.surfaceContainer,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              part,
+                              style: TextStyle(
+                                color: colorScheme.onSurface,
+                                fontSize: 16.0,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8.0),
+                            ...menus.map((menu) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 4.0),
+                                child: Text(
+                                  '${menu.name}: ${menu.weights.join('/')} ${part == '有酸素運動' ? '分' : 'kg'} x ${menu.reps.join('/')} ${part == '有酸素運動' ? '秒' : '回'}',
+                                  style: TextStyle(color: colorScheme.onSurfaceVariant),
+                                ),
+                              );
+                            }).toList(),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
