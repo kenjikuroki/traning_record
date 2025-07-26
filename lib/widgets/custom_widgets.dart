@@ -84,17 +84,19 @@ class StylishButton extends StatelessWidget {
   }
 }
 
-// スタイリッシュなテキスト入力ウィジェット
+// スタイリッシュなテキスト入力ウィジェット (変更あり)
 class StylishInput extends StatefulWidget {
-  final TextEditingController controller; // 外部から渡されるコントローラー
+  final TextEditingController controller;
   final String hint;
   final TextInputType keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final TextStyle? textStyle;
   final Color? fillColor;
   final EdgeInsetsGeometry? contentPadding;
-  final bool isPlaceholder; // プレースホルダーとして扱うかどうかのフラグ
-  final TextAlign textAlign; // 追加: テキストアラインメント
+  final bool isSuggestionDisplay; // 新しいプロパティ: 提案データとして表示するかどうか
+  final TextAlign textAlign;
+  final VoidCallback? onTap; // 追加: タップイベントを通知するコールバック
+  final ValueChanged<String>? onChanged; // 追加: onChangedイベントを通知するコールバック
 
   const StylishInput({
     Key? key,
@@ -105,8 +107,10 @@ class StylishInput extends StatefulWidget {
     this.textStyle,
     this.fillColor,
     this.contentPadding,
-    this.isPlaceholder = false,
-    this.textAlign = TextAlign.center, // デフォルト値を中央揃えに設定
+    this.isSuggestionDisplay = false, // デフォルトはfalse
+    this.textAlign = TextAlign.center,
+    this.onTap, // 追加
+    this.onChanged, // 追加
   }) : super(key: key);
 
   @override
@@ -114,38 +118,53 @@ class StylishInput extends StatefulWidget {
 }
 
 class _StylishInputState extends State<StylishInput> {
+  late FocusNode _focusNode;
+
   @override
   void initState() {
     super.initState();
-    // コントローラーの変更をリッスンする（必要に応じて）
-    // widget.controller.addListener(_onControllerChanged);
+    _focusNode = FocusNode();
+    // フォーカスが変更されたときにウィジェットを再ビルドして色を更新
+    _focusNode.addListener(() {
+      setState(() {});
+      // フォーカスが当たったときにonTapコールバックをトリガー
+      if (_focusNode.hasFocus && widget.onTap != null) {
+        widget.onTap!();
+      }
+    });
   }
 
   @override
   void dispose() {
-    // widget.controller.removeListener(_onControllerChanged);
+    _focusNode.dispose();
     super.dispose();
   }
-
-  // コントローラーのテキストが変更されたときにUIを更新する（setStateを呼び出す）
-  // void _onControllerChanged() {
-  //   setState(() {}); // テキスト変更時にウィジェットを再ビルドしてhintTextの表示を更新
-  // }
 
   @override
   Widget build(BuildContext context) {
     final effectiveTextStyle = widget.textStyle ?? Theme.of(context).textTheme.bodyLarge;
     final effectiveFillColor = widget.fillColor ?? Theme.of(context).colorScheme.surfaceVariant;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    Color textColor;
+    // フォーカスがある場合、または提案表示ではない場合（ユーザーが入力済みの場合など）は濃い色
+    if (_focusNode.hasFocus || !widget.isSuggestionDisplay) {
+      textColor = effectiveTextStyle?.color ?? colorScheme.onSurface;
+    } else {
+      // フォーカスがなく、提案表示の場合は薄い色
+      textColor = (effectiveTextStyle?.color ?? colorScheme.onSurface).withOpacity(0.5);
+    }
 
     return TextField(
-      controller: widget.controller, // 外部から渡されたコントローラーを直接使用
+      controller: widget.controller,
+      focusNode: _focusNode, // FocusNodeをTextFieldに適用
       keyboardType: widget.keyboardType,
       inputFormatters: widget.inputFormatters,
-      style: effectiveTextStyle,
-      textAlign: widget.textAlign, // ここにtextAlignを適用
+      style: effectiveTextStyle?.copyWith(color: textColor), // 色を動的に適用
+      textAlign: widget.textAlign,
       decoration: InputDecoration(
-        // コントローラーのテキストが空で、かつisPlaceholderがtrueの場合のみヒントテキストを表示
-        hintText: (widget.isPlaceholder && widget.controller.text.isEmpty) ? widget.hint : null,
+        // コントローラーのテキストが空で、かつフォーカスがなく、提案表示の場合のみヒントテキストを表示
+        hintText: widget.controller.text.isEmpty && !_focusNode.hasFocus && widget.isSuggestionDisplay ? widget.hint : null,
         hintStyle: effectiveTextStyle?.copyWith(color: effectiveTextStyle.color?.withOpacity(0.5) ?? Colors.grey),
         filled: true,
         fillColor: effectiveFillColor,
@@ -156,8 +175,16 @@ class _StylishInputState extends State<StylishInput> {
         contentPadding: widget.contentPadding,
       ),
       onChanged: (value) {
-        // onChangedはコントローラーのテキストが変更されたときに自動的に呼び出される
-        // ここで特別なロジックは不要（RecordScreenで_handleInputChangedが処理する）
+        // 外部から渡されたonChangedコールバックを呼び出す
+        if (widget.onChanged != null) {
+          widget.onChanged!(value);
+        }
+      },
+      onTap: () {
+        // TextFieldがタップされたときにonTapコールバックをトリガー
+        if (widget.onTap != null) {
+          widget.onTap!();
+        }
       },
     );
   }
