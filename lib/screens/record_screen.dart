@@ -234,7 +234,6 @@ class _RecordScreenState extends State<RecordScreen> {
   void _loadInitialSections() {
     String dateKey = _getDateKey(widget.selectedDate);
     DailyRecord? record = widget.recordsBox.get(dateKey); // Saved data for today
-    // Box<dynamic> lastUsedMenusBox = widget.lastUsedMenusBox; // lastUsedMenusBox はこのメソッドでは直接使用しない
 
     _clearAllControllersAndMaps(); // Clear existing controllers and their suggestion states
     _sections.clear();
@@ -254,7 +253,7 @@ class _RecordScreenState extends State<RecordScreen> {
       final menuCtrl = TextEditingController(text: menuData.name);
       section.menuControllers.add(menuCtrl);
       section.menuKeys.add(UniqueKey());
-      _isSuggestionDisplayMap[menuCtrl] = false; // Exercise name is always confirmed (dark text)
+      _isSuggestionDisplayMap[menuCtrl] = isSuggestionForWeightReps; // ★ 修正: 種目名もisSuggestionDataに基づいて設定 ★
 
       List<SetInputData> setInputDataRow = [];
       int currentMenuSetCount = menuData.weights.length;
@@ -268,7 +267,6 @@ class _RecordScreenState extends State<RecordScreen> {
       section.setInputDataList.add(setInputDataRow);
     }
 
-    // ★ 修正: 選択された日付に記録がある場合のみ、その記録をロードする ★
     if (record != null && record.menus.isNotEmpty) {
       record.menus.forEach((part, menuList) {
         for (var menuData in menuList) {
@@ -277,12 +275,10 @@ class _RecordScreenState extends State<RecordScreen> {
       });
       _sections = tempSectionsMap.values.toList();
     } else {
-      // ★ 修正: 記録がない場合は、完全に空の初期画面を表示する ★
       _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
       _sections[0].initialSetCount = _currentSetCount;
     }
 
-    // Adjust set counts for all sections.
     for (var section in _sections) {
       int maxSetsInSection = _currentSetCount;
       for (var menuInputDataList in section.setInputDataList) {
@@ -322,7 +318,6 @@ class _RecordScreenState extends State<RecordScreen> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  // Set data to controllers
   void _setControllersFromData(List<TextEditingController> menuCtrls, List<List<SetInputData>> setInputDataList, List<Key> menuKeys, List<MenuData> list, int actualSetCount, bool isSuggestionData) {
     for (int i = 0; i < menuCtrls.length; i++) {
       menuCtrls[i].dispose();
@@ -346,9 +341,9 @@ class _RecordScreenState extends State<RecordScreen> {
       final newMenuController = TextEditingController();
       if (i < list.length) {
         newMenuController.text = list[i].name;
-        _isSuggestionDisplayMap[newMenuController] = false;
+        _isSuggestionDisplayMap[newMenuController] = isSuggestionData; // ★ 修正: 種目名もisSuggestionDataに基づいて設定 ★
       } else {
-        _isSuggestionDisplayMap[newMenuController] = false;
+        _isSuggestionDisplayMap[newMenuController] = false; // 新規追加の種目名は確定状態
       }
       menuCtrls.add(newMenuController);
       menuKeys.add(UniqueKey());
@@ -413,13 +408,11 @@ class _RecordScreenState extends State<RecordScreen> {
     }
   }
 
-  // ★ 修正された _saveAllSectionsData 関数 ★
   void _saveAllSectionsData() {
     String dateKey = _getDateKey(widget.selectedDate);
     Map<String, List<MenuData>> allMenusForDay = {};
     String? lastModifiedPart;
 
-    // --- Part 1: Prepare data for DailyRecord (only confirmed, non-suggestion data) ---
     for (var section in _sections) {
       if (section.selectedPart == null) continue;
 
@@ -430,12 +423,11 @@ class _RecordScreenState extends State<RecordScreen> {
         String name = section.menuControllers[i].text.trim();
         List<String> confirmedWeights = [];
         List<String> confirmedReps = [];
-        bool rowHasConfirmedContent = false;
+        bool menuHasConfirmedContent = false; // この種目全体に確定済みデータがあるか
 
-        // 種目名は常に確定状態なので、_isSuggestionDisplayMapはチェックしない
-        // ただし、空の種目名は記録として保存しない
-        if (name.isEmpty) {
-          name = '';
+        // 種目名が確定済みであれば、menuHasConfirmedContentをtrueにする
+        if (!(_isSuggestionDisplayMap[section.menuControllers[i]] ?? false) && name.isNotEmpty) {
+          menuHasConfirmedContent = true;
         }
 
         int currentSectionSetCount = section.initialSetCount ?? _currentSetCount;
@@ -448,26 +440,21 @@ class _RecordScreenState extends State<RecordScreen> {
           String r = '';
 
           if (setInputData != null) {
-            // ここが重要な修正ポイントです。
-            // 重量と回数が「提案（色が薄い状態）」ではなく、かつ入力内容が空でなければ、確定済みデータとして扱います。
-            // ユーザーがタップや入力を行った時点で、提案フラグはfalseになっています。
             if (!(_isSuggestionDisplayMap[setInputData.weightController] ?? false)) {
               w = setInputData.weightController.text;
+              if (w.isNotEmpty) menuHasConfirmedContent = true; // 重量も確定済みならtrue
             }
             if (!(_isSuggestionDisplayMap[setInputData.repController] ?? false)) {
               r = setInputData.repController.text;
+              if (r.isNotEmpty) menuHasConfirmedContent = true; // 回数も確定済みならtrue
             }
-          }
-
-          if (w.isNotEmpty || r.isNotEmpty) {
-            rowHasConfirmedContent = true;
           }
           confirmedWeights.add(w);
           confirmedReps.add(r);
         }
 
-        // 種目名が入力されているか、または少なくとも1つのセットに有効な入力があれば、その種目を記録として保存
-        if (name.isNotEmpty || rowHasConfirmedContent) {
+        // ★ 修正: この種目全体に確定済みデータがある場合のみ、記録として保存 ★
+        if (menuHasConfirmedContent) {
           sectionMenuListForRecord.add(MenuData(name: name, weights: confirmedWeights, reps: confirmedReps));
           lastModifiedPart = currentPart;
         }
@@ -476,20 +463,17 @@ class _RecordScreenState extends State<RecordScreen> {
       if (sectionMenuListForRecord.isNotEmpty) {
         allMenusForDay[currentPart!] = sectionMenuListForRecord;
       } else {
-        // その部位に確定済みデータがなければ、その日の記録からその部位を削除する
         allMenusForDay.remove(currentPart);
       }
     }
 
-    // --- Part 2: Save DailyRecord (確定済みデータのみ) ---
     if (allMenusForDay.isNotEmpty) {
       DailyRecord newRecord = DailyRecord(menus: allMenusForDay, lastModifiedPart: lastModifiedPart);
       widget.recordsBox.put(dateKey, newRecord);
     } else {
-      widget.recordsBox.delete(dateKey); // その日の記録が空になったら削除
+      widget.recordsBox.delete(dateKey);
     }
 
-    // --- Part 3: Update lastUsedMenusBox (現在表示されているすべてのメニュー、提案データも含む) ---
     for (var section in _sections) {
       if (section.selectedPart == null) continue;
 
@@ -1029,12 +1013,7 @@ class _RecordScreenState extends State<RecordScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: colorScheme.primary,
-        foregroundColor: colorScheme.onPrimary,
-        child: const Icon(Icons.save),
-        onPressed: _saveAllSectionsData,
-      ),
+      // FloatingActionButton は削除済み
     );
   }
 }
