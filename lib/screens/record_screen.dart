@@ -726,7 +726,8 @@ class _RecordScreenState extends State<RecordScreen> {
   }
 
   // Widget to build each set input row (独立した関数として定義)
-  Widget _buildSetRow(BuildContext context, List<List<SetInputData>> setInputDataList, int menuIndex, int setNumber, int setIndex, String? selectedPart, Map<TextEditingController, bool> isSuggestionDisplayMap) {
+  // この関数はsetStateを直接呼び出さず、isSuggestionDisplayMapの更新とsetStateのトリガーを呼び出し元に任せる
+  Widget _buildSetRow(BuildContext context, List<List<SetInputData>> setInputDataList, int menuIndex, int setNumber, int setIndex, String? selectedPart, Map<TextEditingController, bool> isSuggestionDisplayMap, VoidCallback triggerSetState) {
     final colorScheme = Theme.of(context).colorScheme;
     final setInputData = setInputDataList[menuIndex][setIndex];
 
@@ -736,13 +737,6 @@ class _RecordScreenState extends State<RecordScreen> {
     if (selectedPart == '有酸素運動') {
       weightUnit = '分';
       repUnit = '秒';
-    }
-
-    // _confirmInput を呼び出すためのコールバック
-    void confirmInput(TextEditingController controller) {
-      // setState は _RecordScreenState のコンテキストで呼び出す必要があるため、
-      // ここでは直接マップを更新するのみに留め、setState は呼び出し元で行う
-      isSuggestionDisplayMap[controller] = false;
     }
 
     return Row(
@@ -764,18 +758,12 @@ class _RecordScreenState extends State<RecordScreen> {
             isSuggestionDisplay: isSuggestionDisplayMap[setInputData.weightController] ?? false, // 提案表示状態を渡す
             textAlign: TextAlign.right, // 重量入力は右寄せ
             onChanged: (value) {
-              confirmInput(setInputData.weightController);
-              // onChanged が発生したらsetStateを呼び出す
-              if (context is StatefulElement) {
-                (context as StatefulElement).state.setState(() {});
-              }
+              isSuggestionDisplayMap[setInputData.weightController] = false; // 入力で確定
+              triggerSetState(); // setStateを呼び出し元でトリガー
             },
             onTap: () {
-              confirmInput(setInputData.weightController);
-              // onTap が発生したらsetStateを呼び出す
-              if (context is StatefulElement) {
-                (context as StatefulElement).state.setState(() {});
-              }
+              isSuggestionDisplayMap[setInputData.weightController] = false; // タップで確定
+              triggerSetState(); // setStateを呼び出し元でトリガー
             },
           ),
         ),
@@ -792,18 +780,12 @@ class _RecordScreenState extends State<RecordScreen> {
             isSuggestionDisplay: isSuggestionDisplayMap[setInputData.repController] ?? false, // 提案表示状態を渡す
             textAlign: TextAlign.right, // 回数入力は右寄せ
             onChanged: (value) {
-              confirmInput(setInputData.repController);
-              // onChanged が発生したらsetStateを呼び出す
-              if (context is StatefulElement) {
-                (context as StatefulElement).state.setState(() {});
-              }
+              isSuggestionDisplayMap[setInputData.repController] = false; // 入力で確定
+              triggerSetState(); // setStateを呼び出し元でトリガー
             },
             onTap: () {
-              confirmInput(setInputData.repController);
-              // onTap が発生したらsetStateを呼び出す
-              if (context is StatefulElement) {
-                (context as StatefulElement).state.setState(() {});
-              }
+              isSuggestionDisplayMap[setInputData.repController] = false; // タップで確定
+              triggerSetState(); // setStateを呼び出し元でトリガー
             },
           ),
         ),
@@ -914,6 +896,8 @@ class _RecordScreenState extends State<RecordScreen> {
             else
               Expanded(
                 child: ListView.builder(
+                    primary: true, // 追加: ListViewが主要なスクロールビューであることを示す
+                    physics: const AlwaysScrollableScrollPhysics(), // 追加: コンテンツが少なくても常にスクロール可能にする
                     itemCount: _sections.length + 1, // Add 1 for "部位を追加" button
                     itemBuilder: (context, index) {
                       // This handles the "部位を追加" button as the last item in the list
@@ -1029,6 +1013,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                   children: [
                                     ListView.builder(
                                       shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(), // 追加: 内側のリストはスクロールしない
                                       itemCount: section.menuControllers.length,
                                       itemBuilder: (context, menuIndex) {
                                         return AnimatedListItem(
@@ -1055,16 +1040,18 @@ class _RecordScreenState extends State<RecordScreen> {
                                                 const SizedBox(height: 8),
                                                 ListView.separated(
                                                   shrinkWrap: true,
+                                                  physics: const NeverScrollableScrollPhysics(), // 追加: 最も内側のリストもスクロールしない
                                                   itemCount: section.setInputDataList[menuIndex].length,
                                                   separatorBuilder: (context, s) => const SizedBox(height: 8),
-                                                  itemBuilder: (context, s) => _buildSetRow( // 'this.' を削除し、独立した関数として呼び出し
-                                                    context, // context を渡す
-                                                    section.setInputDataList,
-                                                    menuIndex,
-                                                    s + 1,
-                                                    s,
-                                                    section.selectedPart,
-                                                    _isSuggestionDisplayMap, // _isSuggestionDisplayMap を渡す
+                                                  itemBuilder: (context, s) => _buildSetRow( // 独立した関数として呼び出し
+                                                      context, // context を渡す
+                                                      section.setInputDataList,
+                                                      menuIndex,
+                                                      s + 1,
+                                                      s,
+                                                      section.selectedPart,
+                                                      _isSuggestionDisplayMap, // _isSuggestionDisplayMap を渡す
+                                                          () => setState(() {}) // setStateをトリガーするコールバックを渡す
                                                   ),
                                                 ),
                                                 const SizedBox(height: 8),
