@@ -36,6 +36,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
+  // ★ 追加: 部位ごとの色を定義するマップ ★
+  final Map<String, Color> _bodyPartColors = {
+    '有酸素運動': Colors.green.shade400,
+    '腕': Colors.blue.shade400,
+    '胸': Colors.red.shade400,
+    '背中': Colors.purple.shade400,
+    '肩': Colors.orange.shade400,
+    '足': Colors.teal.shade400,
+    '全身': Colors.pink.shade400,
+    'その他１': Colors.brown.shade400,
+    'その他２': Colors.indigo.shade400,
+    'その他３': Colors.lime.shade400,
+  };
+
   @override
   void initState() {
     super.initState();
@@ -174,21 +188,51 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     shape: BoxShape.circle,
                   ),
                   defaultTextStyle: TextStyle(color: colorScheme.onSurface),
-                  // ★ 修正: マーカーの色を Colors.redAccent に変更 ★
-                  markerDecoration: BoxDecoration(
-                    color: Colors.redAccent, // マーカーの色を赤色に固定
-                    shape: BoxShape.circle,
-                  ),
+                  // markerDecoration は calendarBuilders で置き換えるため削除
+                  // markerDecoration: BoxDecoration(
+                  //   color: Colors.redAccent, // マーカーの色を赤色に固定
+                  //   shape: BoxShape.circle,
+                  // ),
                 ),
-                // イベントマーカー
+                // ★ 修正: eventLoader で部位名を返すように変更 ★
                 eventLoader: (day) {
                   String dateKey = DateFormat('yyyy-MM-dd').format(day);
                   DailyRecord? record = widget.recordsBox.get(dateKey);
                   if (record != null && record.menus.isNotEmpty) {
-                    return ['event']; // イベントがある場合はマーカーを表示
+                    // 記録がある場合は、その日の部位のリストを返す
+                    return record.menus.keys.toList();
                   }
                   return [];
                 },
+                // ★ 追加: markerBuilder で部位ごとに色分けされたマーカーを生成 ★
+                calendarBuilders: CalendarBuilders(
+                  markerBuilder: (context, day, events) {
+                    if (events.isNotEmpty) {
+                      return Positioned(
+                        bottom: 1.0,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: events.map((event) {
+                            // event は部位名（String）として扱う
+                            String bodyPart = event.toString();
+                            // 部位名に対応する色を取得、見つからなければデフォルトでグレー
+                            Color markerColor = _bodyPartColors[bodyPart] ?? Colors.grey;
+                            return Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                              decoration: BoxDecoration(
+                                color: markerColor,
+                                shape: BoxShape.circle,
+                              ),
+                              width: 5.0, // マーカーのサイズ
+                              height: 5.0,
+                            );
+                          }).toList(),
+                        ),
+                      );
+                    }
+                    return null; // イベントがない場合はマーカーを表示しない
+                  },
+                ),
               ),
             ),
           ),
