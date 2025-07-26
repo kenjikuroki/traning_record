@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart'; // SystemChrome を使用するためにインポート
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:collection/collection.dart'; // firstWhereOrNull を使用するためにインポート
@@ -178,7 +178,21 @@ class _RecordScreenState extends State<RecordScreen> {
   @override
   void initState() {
     super.initState();
+    // 画面の向きを縦向きに固定
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
     _loadSettingsAndParts();
+  }
+
+  // アプリが破棄されるときに画面の向き設定をリセットする必要がある場合は、
+  // dispose メソッドで SystemChrome.setPreferredOrientations([]) を呼び出すことができます。
+  // ただし、アプリ全体で縦向き固定を意図している場合は不要です。
+  @override
+  void dispose() {
+    _saveAllSectionsData(); // アプリ終了時にデータを保存
+    _clearAllControllersAndMaps();
+    super.dispose();
   }
 
   void _loadSettingsAndParts() {
@@ -711,15 +725,8 @@ class _RecordScreenState extends State<RecordScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    _saveAllSectionsData(); // アプリ終了時にデータを保存
-    _clearAllControllersAndMaps();
-    super.dispose();
-  }
-
-  // Widget to build each set input row
-  Widget buildSetRow(List<List<SetInputData>> setInputDataList, int menuIndex, int setNumber, int setIndex, String? selectedPart) {
+  // Widget to build each set input row (独立した関数として定義)
+  Widget _buildSetRow(BuildContext context, List<List<SetInputData>> setInputDataList, int menuIndex, int setNumber, int setIndex, String? selectedPart, Map<TextEditingController, bool> isSuggestionDisplayMap) {
     final colorScheme = Theme.of(context).colorScheme;
     final setInputData = setInputDataList[menuIndex][setIndex];
 
@@ -729,6 +736,13 @@ class _RecordScreenState extends State<RecordScreen> {
     if (selectedPart == '有酸素運動') {
       weightUnit = '分';
       repUnit = '秒';
+    }
+
+    // _confirmInput を呼び出すためのコールバック
+    void confirmInput(TextEditingController controller) {
+      // setState は _RecordScreenState のコンテキストで呼び出す必要があるため、
+      // ここでは直接マップを更新するのみに留め、setState は呼び出し元で行う
+      isSuggestionDisplayMap[controller] = false;
     }
 
     return Row(
@@ -747,10 +761,22 @@ class _RecordScreenState extends State<RecordScreen> {
             textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
             fillColor: colorScheme.surfaceContainer,
             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-            isSuggestionDisplay: _isSuggestionDisplayMap[setInputData.weightController] ?? false, // 提案表示状態を渡す
+            isSuggestionDisplay: isSuggestionDisplayMap[setInputData.weightController] ?? false, // 提案表示状態を渡す
             textAlign: TextAlign.right, // 重量入力は右寄せ
-            onChanged: (value) => _confirmInput(setInputData.weightController), // 入力で確定
-            onTap: () => _confirmInput(setInputData.weightController), // タップで確定
+            onChanged: (value) {
+              confirmInput(setInputData.weightController);
+              // onChanged が発生したらsetStateを呼び出す
+              if (context is StatefulElement) {
+                (context as StatefulElement).state.setState(() {});
+              }
+            },
+            onTap: () {
+              confirmInput(setInputData.weightController);
+              // onTap が発生したらsetStateを呼び出す
+              if (context is StatefulElement) {
+                (context as StatefulElement).state.setState(() {});
+              }
+            },
           ),
         ),
         Text(' $weightUnit ', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
@@ -763,10 +789,22 @@ class _RecordScreenState extends State<RecordScreen> {
             textStyle: TextStyle(color: colorScheme.onSurface, fontSize: 16.0),
             fillColor: colorScheme.surfaceContainer,
             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-            isSuggestionDisplay: _isSuggestionDisplayMap[setInputData.repController] ?? false, // 提案表示状態を渡す
+            isSuggestionDisplay: isSuggestionDisplayMap[setInputData.repController] ?? false, // 提案表示状態を渡す
             textAlign: TextAlign.right, // 回数入力は右寄せ
-            onChanged: (value) => _confirmInput(setInputData.repController), // 入力で確定
-            onTap: () => _confirmInput(setInputData.repController), // タップで確定
+            onChanged: (value) {
+              confirmInput(setInputData.repController);
+              // onChanged が発生したらsetStateを呼び出す
+              if (context is StatefulElement) {
+                (context as StatefulElement).state.setState(() {});
+              }
+            },
+            onTap: () {
+              confirmInput(setInputData.repController);
+              // onTap が発生したらsetStateを呼び出す
+              if (context is StatefulElement) {
+                (context as StatefulElement).state.setState(() {});
+              }
+            },
           ),
         ),
         Text(' $repUnit', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
@@ -1019,8 +1057,15 @@ class _RecordScreenState extends State<RecordScreen> {
                                                   shrinkWrap: true,
                                                   itemCount: section.setInputDataList[menuIndex].length,
                                                   separatorBuilder: (context, s) => const SizedBox(height: 8),
-                                                  itemBuilder: (context, s) => buildSetRow(
-                                                      section.setInputDataList, menuIndex, s + 1, s, section.selectedPart),
+                                                  itemBuilder: (context, s) => _buildSetRow( // 'this.' を削除し、独立した関数として呼び出し
+                                                    context, // context を渡す
+                                                    section.setInputDataList,
+                                                    menuIndex,
+                                                    s + 1,
+                                                    s,
+                                                    section.selectedPart,
+                                                    _isSuggestionDisplayMap, // _isSuggestionDisplayMap を渡す
+                                                  ),
                                                 ),
                                                 const SizedBox(height: 8),
                                               ],
