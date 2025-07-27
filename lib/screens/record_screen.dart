@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:collection/collection.dart'; // firstWhereOrNull を使用するためにインポート
+import 'dart:math'; // max関数を使用するためにインポート
 
 import '../models/menu_data.dart';     // MenuData and DailyRecord models
 import 'settings_screen.dart'; // SettingsScreen import
@@ -104,7 +105,7 @@ class SectionData {
   String? selectedPart; // Selected training part for this section
   List<TextEditingController> menuControllers; // Controllers for exercise names in this section
   List<List<SetInputData>> setInputDataList; // SetInputDataのリストに変更
-  int? initialSetCount; // このセクションの初期セット数を保持
+  int? initialSetCount; // このセクションの表示セット数を保持 (max(実際のセット数, デフォルトセット数))
   List<Key> menuKeys; // 各メニューアイテムのキーを保持
 
   SectionData({
@@ -233,72 +234,68 @@ class _RecordScreenState extends State<RecordScreen> {
 
   void _loadInitialSections() {
     String dateKey = _getDateKey(widget.selectedDate);
-    DailyRecord? record = widget.recordsBox.get(dateKey); // Saved data for today
+    DailyRecord? record = widget.recordsBox.get(dateKey);
 
-    _clearAllControllersAndMaps(); // Clear existing controllers and their suggestion states
+    _clearAllControllersAndMaps(); // Always clear existing controllers
     _sections.clear();
 
-    Map<String, SectionData> tempSectionsMap = {}; // Use this to build sections
-
-    void addMenuToTempMap(String part, MenuData menuData, bool isSuggestionForWeightReps) {
-      SectionData section = tempSectionsMap.putIfAbsent(part, () => SectionData(
-        key: UniqueKey(),
-        selectedPart: part,
-        menuControllers: [],
-        setInputDataList: [],
-        initialSetCount: _currentSetCount,
-        menuKeys: [],
-      ));
-
-      final menuCtrl = TextEditingController(text: menuData.name);
-      section.menuControllers.add(menuCtrl);
-      section.menuKeys.add(UniqueKey());
-      _isSuggestionDisplayMap[menuCtrl] = isSuggestionForWeightReps; // 種目名もisSuggestionDataに基づいて設定
-
-      List<SetInputData> setInputDataRow = [];
-      int currentMenuSetCount = menuData.weights.length;
-      for (int s = 0; s < currentMenuSetCount; s++) {
-        final weightCtrl = TextEditingController(text: menuData.weights[s]);
-        final repCtrl = TextEditingController(text: menuData.reps[s]);
-        _isSuggestionDisplayMap[weightCtrl] = isSuggestionForWeightReps; // Mark as suggestion if it is
-        _isSuggestionDisplayMap[repCtrl] = isSuggestionForWeightReps; // Mark as suggestion if it is
-        setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
-      }
-      section.setInputDataList.add(setInputDataRow);
-    }
-
-    // 選択された日付に記録がある場合のみ、その記録をロードする。提案データはここではロードしない。
     if (record != null && record.menus.isNotEmpty) {
+      // シナリオ1: この日付に既存のDailyRecordがある場合
+      Map<String, SectionData> tempSectionsMap = {};
       record.menus.forEach((part, menuList) {
+        SectionData section = tempSectionsMap.putIfAbsent(part, () => SectionData(
+          key: UniqueKey(),
+          selectedPart: part,
+          menuControllers: [],
+          setInputDataList: [],
+          initialSetCount: _currentSetCount, // 仮の初期値
+          menuKeys: [],
+        ));
+
+        int maxSetsInThisSection = 0; // このセクション内の最大セット数を追跡
+
         for (var menuData in menuList) {
-          addMenuToTempMap(part, menuData, false); // Confirmed data is NOT a suggestion
+          final menuCtrl = TextEditingController(text: menuData.name);
+          section.menuControllers.add(menuCtrl);
+          section.menuKeys.add(UniqueKey());
+          _isSuggestionDisplayMap[menuCtrl] = false; // 確定済みデータ
+
+          List<SetInputData> setInputDataRow = [];
+          // 既存のデータをすべてロード
+          for (int s = 0; s < menuData.weights.length; s++) {
+            final weightCtrl = TextEditingController(text: menuData.weights[s]);
+            final repCtrl = TextEditingController(text: menuData.reps[s]);
+            _isSuggestionDisplayMap[weightCtrl] = false; // 確定済みデータ
+            _isSuggestionDisplayMap[repCtrl] = false; // 確定済みデータ
+            setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
+          }
+          section.setInputDataList.add(setInputDataRow);
+
+          // このメニューのセット数を考慮して、セクションの最大セット数を更新
+          maxSetsInThisSection = max(maxSetsInThisSection, setInputDataRow.length);
         }
+
+        // 既存データをロードした後、すべてのメニューが少なくとも_currentSetCountのセット数を持つことを保証
+        // 追加されるセットは空で、提案としてマークされる
+        for (var setInputDataRow in section.setInputDataList) {
+          while (setInputDataRow.length < _currentSetCount) { // 現在のデフォルトセット数までパディング
+            final weightCtrl = TextEditingController();
+            final repCtrl = TextEditingController();
+            _isSuggestionDisplayMap[weightCtrl] = true; // 提案としてマーク
+            _isSuggestionDisplayMap[repCtrl] = true; // 提案としてマーク
+            setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
+          }
+        }
+        // セクションのinitialSetCountは、ロードされた最大セット数と現在のデフォルトセット数の大きい方
+        section.initialSetCount = max(maxSetsInThisSection, _currentSetCount);
       });
       _sections = tempSectionsMap.values.toList();
+
     } else {
-      // 記録がない場合は、完全に空の初期画面を表示する
+      // シナリオ2: この日付にDailyRecordがない場合（新規の日）
+      // 1つの空のセクションから開始。部位が選択されたときに提案がロードされる
       _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
       _sections[0].initialSetCount = _currentSetCount;
-    }
-
-    for (var section in _sections) {
-      int maxSetsInSection = _currentSetCount;
-      for (var menuInputDataList in section.setInputDataList) {
-        if (menuInputDataList.isNotEmpty) {
-          maxSetsInSection = maxSetsInSection > menuInputDataList.length ? maxSetsInSection : menuInputDataList.length;
-        }
-      }
-      section.initialSetCount = maxSetsInSection > _currentSetCount ? maxSetsInSection : _currentSetCount;
-
-      for (var setInputDataRow in section.setInputDataList) {
-        while (setInputDataRow.length < section.initialSetCount!) {
-          final weightCtrl = TextEditingController();
-          final repCtrl = TextEditingController();
-          _isSuggestionDisplayMap[weightCtrl] = true;
-          _isSuggestionDisplayMap[repCtrl] = true;
-          setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
-        }
-      }
     }
 
     _sections.sort((a, b) {
@@ -320,23 +317,15 @@ class _RecordScreenState extends State<RecordScreen> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  void _setControllersFromData(List<TextEditingController> menuCtrls, List<List<SetInputData>> setInputDataList, List<Key> menuKeys, List<MenuData> list, int actualSetCount, bool isSuggestionData) {
-    for (int i = 0; i < menuCtrls.length; i++) {
-      menuCtrls[i].dispose();
-      _isSuggestionDisplayMap.remove(menuCtrls[i]);
-      if (i < setInputDataList.length) {
-        for (var data in setInputDataList[i]) {
-          data.weightController.dispose();
-          data.repController.dispose();
-          _isSuggestionDisplayMap.remove(data.weightController);
-          _isSuggestionDisplayMap.remove(data.repController);
-        }
-      }
-    }
-    menuCtrls.clear();
-    setInputDataList.clear();
-    menuKeys.clear();
+  // SectionDataを直接受け取るように変更
+  void _setControllersFromData(SectionData section, List<MenuData> list, bool isSuggestionData) {
+    // 既存のコントローラーを破棄
+    _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
+    section.menuKeys.clear();
 
+    int maxSetsInLoadedData = 0; // ロードされたデータ内の最大セット数を追跡 (確定データの場合のみ使用)
+
+    // ロードするメニューの数を決定。リストが空の場合は1つ（空のメニュー）を作成
     int itemsToCreate = list.isNotEmpty ? list.length : 1;
 
     for (int i = 0; i < itemsToCreate; i++) {
@@ -347,34 +336,51 @@ class _RecordScreenState extends State<RecordScreen> {
       } else {
         _isSuggestionDisplayMap[newMenuController] = false; // 新規追加の種目名は確定状態
       }
-      menuCtrls.add(newMenuController);
-      menuKeys.add(UniqueKey());
+      section.menuControllers.add(newMenuController);
+      section.menuKeys.add(UniqueKey());
 
       final newSetInputDataRow = <SetInputData>[];
-      for (int s = 0; s < actualSetCount; s++) {
+
+      // 既存のセットデータをすべてロード
+      if (i < list.length) {
+        for (int s = 0; s < list[i].weights.length; s++) {
+          final newWeightController = TextEditingController(text: list[i].weights[s]);
+          final newRepController = TextEditingController(text: list[i].reps[s]);
+          _isSuggestionDisplayMap[newWeightController] = isSuggestionData;
+          _isSuggestionDisplayMap[newRepController] = isSuggestionData;
+          newSetInputDataRow.add(SetInputData(weightController: newWeightController, repController: newRepController));
+        }
+        // 確定データの場合のみ、ロードされたデータ内の最大セット数を更新
+        if (!isSuggestionData) {
+          maxSetsInLoadedData = max(maxSetsInLoadedData, list[i].weights.length);
+        }
+      }
+
+      // _currentSetCount に満たない場合は、空の提案セットを追加
+      // isSuggestionDataがtrueの場合は_currentSetCountに厳密に合わせる
+      // isSuggestionDataがfalseの場合は、maxSetsInLoadedDataと_currentSetCountの大きい方までパディング
+      int targetSetCountForPadding = isSuggestionData ? _currentSetCount : max(maxSetsInLoadedData, _currentSetCount);
+
+      while (newSetInputDataRow.length < targetSetCountForPadding) {
         final newWeightController = TextEditingController();
         final newRepController = TextEditingController();
-
-        String loadedWeight = '';
-        String loadedRep = '';
-
-        if (i < list.length && s < list[i].weights.length) {
-          loadedWeight = list[i].weights[s];
-          loadedRep = list[i].reps[s];
-        }
-
-        newWeightController.text = loadedWeight;
-        newRepController.text = loadedRep;
-
-        _isSuggestionDisplayMap[newWeightController] = isSuggestionData;
-        _isSuggestionDisplayMap[newRepController] = isSuggestionData;
-
+        _isSuggestionDisplayMap[newWeightController] = true; // 新しいセットは提案としてマーク
+        _isSuggestionDisplayMap[newRepController] = true;
         newSetInputDataRow.add(SetInputData(
           weightController: newWeightController,
           repController: newRepController,
         ));
       }
-      setInputDataList.add(newSetInputDataRow);
+      section.setInputDataList.add(newSetInputDataRow);
+    }
+
+    // セクションのinitialSetCountを最終的に決定
+    if (isSuggestionData) {
+      // 提案データの場合、表示は現在のデフォルトセット数に合わせる
+      section.initialSetCount = _currentSetCount;
+    } else {
+      // 確定データの場合、ロードされた最大セット数と現在のデフォルトセット数の大きい方を表示
+      section.initialSetCount = max(maxSetsInLoadedData, _currentSetCount);
     }
   }
 
@@ -420,56 +426,58 @@ class _RecordScreenState extends State<RecordScreen> {
       if (section.selectedPart == null) continue;
 
       List<MenuData> sectionMenuListForRecord = [];
-      bool sectionHasConfirmedContent = false; // このセクションに確定済みデータがあるか
-      int currentSectionSetCount = section.initialSetCount ?? _currentSetCount;
+      String? currentPart = section.selectedPart;
 
       for (int i = 0; i < section.menuControllers.length; i++) {
         String name = section.menuControllers[i].text.trim();
         List<String> confirmedWeights = [];
         List<String> confirmedReps = [];
-        bool menuHasConfirmedContentInRow = false; // この種目行に確定済みデータがあるか
 
-        // 種目名が確定済み（提案ではない）かつ空でない場合
-        if (!(_isSuggestionDisplayMap[section.menuControllers[i]] ?? false) && name.isNotEmpty) {
-          menuHasConfirmedContentInRow = true;
-        }
-
-        for (int s = 0; s < currentSectionSetCount; s++) {
-          final setInputData = (section.setInputDataList.length > i && section.setInputDataList[i].length > s)
-              ? section.setInputDataList[i][s]
-              : null;
+        // setInputDataList の実際の長さまでループし、確定済みデータのみを収集
+        // ここでは、表示されている全てのセットをチェックするが、保存するのは確定データのみ
+        for (int s = 0; s < section.setInputDataList[i].length; s++) {
+          final setInputData = section.setInputDataList[i][s];
 
           String w = '';
           String r = '';
 
-          if (setInputData != null) {
-            // 重量と回数が確定済み（提案ではない）場合のみ、その値を採用
-            if (!(_isSuggestionDisplayMap[setInputData.weightController] ?? false)) {
-              w = setInputData.weightController.text;
-              if (w.isNotEmpty) menuHasConfirmedContentInRow = true; // 重量も確定済みならtrue
-            }
-            if (!(_isSuggestionDisplayMap[setInputData.repController] ?? false)) {
-              r = setInputData.repController.text;
-              if (r.isNotEmpty) menuHasConfirmedContentInRow = true; // 回数も確定済みならtrue
-            }
+          // 重量と回数が確定済み（提案ではない）場合のみ、その値を採用
+          if (!(_isSuggestionDisplayMap[setInputData.weightController] ?? false)) {
+            w = setInputData.weightController.text;
+          }
+          if (!(_isSuggestionDisplayMap[setInputData.repController] ?? false)) {
+            r = setInputData.repController.text;
           }
           confirmedWeights.add(w);
           confirmedReps.add(r);
         }
 
-        // この種目行に確定済みデータがある場合のみ、記録として保存
-        if (menuHasConfirmedContentInRow) {
-          sectionMenuListForRecord.add(MenuData(name: name, weights: confirmedWeights, reps: confirmedReps));
-          lastModifiedPart = section.selectedPart; // 最後に編集された部位を更新
-          sectionHasConfirmedContent = true; // このセクションにも確定済みデータがある
+        // 実際にデータがあるセットだけをフィルタリングして保存
+        List<String> finalWeights = [];
+        List<String> finalReps = [];
+        for (int k = 0; k < confirmedWeights.length; k++) {
+          // 重量または回数に値がある場合のみ追加
+          if (confirmedWeights[k].isNotEmpty || confirmedReps[k].isNotEmpty) {
+            finalWeights.add(confirmedWeights[k]);
+            finalReps.add(confirmedReps[k]);
+          }
+        }
+
+        // 種目名が確定済み（提案ではない）かつ空でない場合、またはセットに確定データがある場合
+        bool menuNameConfirmedAndNotEmpty = !(_isSuggestionDisplayMap[section.menuControllers[i]] ?? false) && name.isNotEmpty;
+        bool hasAnyConfirmedSetData = finalWeights.isNotEmpty || finalReps.isNotEmpty;
+
+        if (menuNameConfirmedAndNotEmpty || hasAnyConfirmedSetData) {
+          sectionMenuListForRecord.add(MenuData(name: name, weights: finalWeights, reps: finalReps));
+          lastModifiedPart = currentPart; // 最後に編集された部位を更新
         }
       }
 
       if (sectionMenuListForRecord.isNotEmpty) {
-        allMenusForDay[section.selectedPart!] = sectionMenuListForRecord;
+        allMenusForDay[currentPart!] = sectionMenuListForRecord;
       } else {
         // その部位に確定済みデータがなければ、その日の記録からその部位を削除する
-        allMenusForDay.remove(section.selectedPart);
+        allMenusForDay.remove(currentPart);
       }
     }
 
@@ -495,15 +503,12 @@ class _RecordScreenState extends State<RecordScreen> {
 
         List<String> weights = [];
         List<String> reps = [];
-        int currentSectionSetCount = section.initialSetCount ?? _currentSetCount;
+        // ここでは setInputDataList の実際の長さを基準にする
+        for (int s = 0; s < section.setInputDataList[i].length; s++) {
+          final setInputData = section.setInputDataList[i][s];
 
-        for (int s = 0; s < currentSectionSetCount; s++) {
-          final setInputData = (section.setInputDataList.length > i && section.setInputDataList[i].length > s)
-              ? section.setInputDataList[i][s]
-              : null;
-
-          String w = setInputData?.weightController.text ?? '';
-          String r = setInputData?.repController.text ?? '';
+          String w = setInputData.weightController.text;
+          String r = setInputData.repController.text;
 
           weights.add(w);
           reps.add(r);
@@ -573,19 +578,79 @@ class _RecordScreenState extends State<RecordScreen> {
             _filteredBodyParts = List.from(_allBodyParts);
           }
 
+          // 設定変更後、既存のセクションのセット数を調整
           for (var section in _sections) {
-            if (section.initialSetCount != null && section.initialSetCount! < _currentSetCount) {
-              section.initialSetCount = _currentSetCount;
-              for (var setInputDataRow in section.setInputDataList) {
-                while (setInputDataRow.length < _currentSetCount) {
-                  final weightCtrl = TextEditingController();
-                  final repCtrl = TextEditingController();
-                  _isSuggestionDisplayMap[weightCtrl] = true; // 新しく追加されるセットは提案としてマーク
-                  _isSuggestionDisplayMap[repCtrl] = true;
-                  setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
-                }
+            // まず、このセクションに確定データがあるかを確認
+            bool hasConfirmedData = false;
+            int maxConfirmedSets = 0;
+            for (var menuCtrl in section.menuControllers) {
+              if (!(_isSuggestionDisplayMap[menuCtrl] ?? false) && menuCtrl.text.isNotEmpty) {
+                hasConfirmedData = true;
+                break;
               }
             }
+            if (!hasConfirmedData) { // 種目名に確定データがない場合
+              for (var setInputDataRow in section.setInputDataList) {
+                for (var setInputData in setInputDataRow) {
+                  if (!(_isSuggestionDisplayMap[setInputData.weightController] ?? false) && setInputData.weightController.text.isNotEmpty) {
+                    hasConfirmedData = true;
+                    break;
+                  }
+                  if (!(_isSuggestionDisplayMap[setInputData.repController] ?? false) && setInputData.repController.text.isNotEmpty) {
+                    hasConfirmedData = true;
+                    break;
+                  }
+                }
+                if (hasConfirmedData) break;
+              }
+            }
+
+
+            // 各メニューのセット数を調整
+            for (int menuIndex = 0; menuIndex < section.menuControllers.length; menuIndex++) {
+              List<SetInputData> setInputDataRow = section.setInputDataList[menuIndex];
+
+              // _currentSetCountよりも多いセットを、それが「提案データ」（空の入力フィールド）であれば削除
+              // 後ろからイテレートすることで安全に要素を削除
+              for (int s = setInputDataRow.length - 1; s >= _currentSetCount; s--) {
+                final setInputData = setInputDataRow[s];
+                // 重量と回数コントローラーの両方が提案としてマークされており、かつ両方のテキストが空の場合のみ削除
+                if ((_isSuggestionDisplayMap[setInputData.weightController] ?? false) &&
+                    (_isSuggestionDisplayMap[setInputData.repController] ?? false) &&
+                    setInputData.weightController.text.isEmpty &&
+                    setInputData.repController.text.isEmpty) {
+                  setInputData.dispose(); // コントローラーを破棄してから削除
+                  setInputDataRow.removeAt(s);
+                } else {
+                  // 確定データであるか、内容がある場合は保持する。
+                  // 空の提案セットを末尾からのみ削除するため、ループを抜ける。
+                  break;
+                }
+              }
+
+              // 不足しているセットを追加
+              while (setInputDataRow.length < _currentSetCount) {
+                final weightCtrl = TextEditingController();
+                final repCtrl = TextEditingController();
+                _isSuggestionDisplayMap[weightCtrl] = true; // 新しく追加されるセットは提案としてマーク
+                _isSuggestionDisplayMap[repCtrl] = true;
+                setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
+              }
+
+              // このメニューの確定セット数を計算
+              int confirmedSetsInThisMenu = 0;
+              for (var data in setInputDataRow) {
+                if (!(_isSuggestionDisplayMap[data.weightController] ?? false) || !(_isSuggestionDisplayMap[data.repController] ?? false) || data.weightController.text.isNotEmpty || data.repController.text.isNotEmpty) {
+                  confirmedSetsInThisMenu++;
+                }
+              }
+              maxConfirmedSets = max(maxConfirmedSets, confirmedSetsInThisMenu);
+            }
+
+            // セクションのinitialSetCountを最終的に決定
+            // 確定データがある場合は、その最大セット数とデフォルトの大きい方
+            // 確定データがない場合は、デフォルトセット数
+            section.initialSetCount = hasConfirmedData ? max(maxConfirmedSets, _currentSetCount) : _currentSetCount;
           }
         });
       }
@@ -595,13 +660,14 @@ class _RecordScreenState extends State<RecordScreen> {
   void _addMenuItem(int sectionIndex) {
     if (mounted) {
       setState(() {
-        int currentSectionSetCount = _sections[sectionIndex].initialSetCount ?? _currentSetCount;
+        // 新しいメニューアイテムには、現在のデフォルトセット数分のセットを追加
+        int setsForNewMenu = _currentSetCount;
         final newMenuController = TextEditingController();
         _sections[sectionIndex].menuControllers.add(newMenuController);
         _sections[sectionIndex].menuKeys.add(UniqueKey());
 
         _isSuggestionDisplayMap[newMenuController] = false; // 新規追加の種目名は確定状態
-        final newSetInputDataList = List.generate(currentSectionSetCount, (_) {
+        final newSetInputDataList = List.generate(setsForNewMenu, (_) {
           final weightCtrl = TextEditingController();
           final repCtrl = TextEditingController();
           _isSuggestionDisplayMap[weightCtrl] = true; // 新規追加の入力は提案としてマーク
@@ -609,6 +675,10 @@ class _RecordScreenState extends State<RecordScreen> {
           return SetInputData(weightController: weightCtrl, repController: repCtrl);
         });
         _sections[sectionIndex].setInputDataList.add(newSetInputDataList);
+
+        // 新しいメニューが追加されたことで、セクションの表示セット数が変わる可能性がある
+        // ここでは、デフォルトセット数に合わせて追加されるため、max(_currentSetCount, ...) でOK
+        _sections[sectionIndex].initialSetCount = max(_sections[sectionIndex].initialSetCount ?? 0, setsForNewMenu);
       });
     }
   }
@@ -624,6 +694,8 @@ class _RecordScreenState extends State<RecordScreen> {
 
   Widget _buildSetRow(BuildContext context, List<List<SetInputData>> setInputDataList, int menuIndex, int setNumber, int setIndex, String? selectedPart, Map<TextEditingController, bool> isSuggestionDisplayMap, VoidCallback triggerSetState) {
     final colorScheme = Theme.of(context).colorScheme;
+    // setInputDataList[menuIndex][setIndex] が存在することを前提とする
+    // itemCount が section.initialSetCount に制限されているため、このインデックスは常に有効
     final setInputData = setInputDataList[menuIndex][setIndex];
 
     String weightUnit = 'kg';
@@ -762,6 +834,8 @@ class _RecordScreenState extends State<RecordScreen> {
                           setState(() {
                             _sections[0].selectedPart = value;
                             if (value != null) {
+                              final String actualSelectedPart = value;
+
                               _clearSectionControllersAndMaps(_sections[0].menuControllers, _sections[0].setInputDataList);
                               _sections[0].menuKeys.clear();
 
@@ -770,15 +844,15 @@ class _RecordScreenState extends State<RecordScreen> {
                               List<MenuData>? listToLoad;
                               bool isSuggestion = false;
 
-                              if (record != null && record.menus.containsKey(value)) {
-                                listToLoad = record.menus[value];
+                              if (record != null && record.menus.containsKey(actualSelectedPart)) {
+                                listToLoad = record.menus[actualSelectedPart];
                                 isSuggestion = false;
                               } else {
-                                final dynamic rawList = widget.lastUsedMenusBox.get(value);
+                                final dynamic rawList = widget.lastUsedMenusBox.get(actualSelectedPart);
                                 if (rawList is List) {
                                   listToLoad = rawList.map((e) {
                                     if (e is Map) {
-                                      return MenuData.fromJson(e);
+                                      return MenuData.fromJson(Map<String, dynamic>.from(e));
                                     }
                                     return e as MenuData;
                                   }).toList();
@@ -786,13 +860,9 @@ class _RecordScreenState extends State<RecordScreen> {
                                 isSuggestion = true;
                               }
 
-                              int newSectionSetCount = _currentSetCount;
-                              if (listToLoad != null && listToLoad.isNotEmpty) {
-                                newSectionSetCount = listToLoad[0].weights.length;
-                              }
-                              _sections[0].initialSetCount = newSectionSetCount;
+                              // _setControllersFromDataにSectionDataを直接渡す
+                              _setControllersFromData(_sections[0], listToLoad ?? [], isSuggestion);
 
-                              _setControllersFromData(_sections[0].menuControllers, _sections[0].setInputDataList, _sections[0].menuKeys, listToLoad ?? [], newSectionSetCount, isSuggestion);
                             } else {
                               _clearSectionControllersAndMaps(_sections[0].menuControllers, _sections[0].setInputDataList);
                               _sections[0].menuKeys.clear();
@@ -831,7 +901,6 @@ class _RecordScreenState extends State<RecordScreen> {
                         }
 
                         final section = _sections[index];
-                        final int sectionDisplaySetCount = section.initialSetCount ?? _currentSetCount;
 
                         return AnimatedListItem(
                           key: section.key,
@@ -872,6 +941,8 @@ class _RecordScreenState extends State<RecordScreen> {
                                       setState(() {
                                         section.selectedPart = value;
                                         if (section.selectedPart != null) {
+                                          final String actualSelectedPart = section.selectedPart!;
+
                                           _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
                                           section.menuKeys.clear();
 
@@ -880,15 +951,15 @@ class _RecordScreenState extends State<RecordScreen> {
                                           List<MenuData>? listToLoad;
                                           bool isSuggestion = false;
 
-                                          if (record != null && record.menus.containsKey(section.selectedPart!)) {
-                                            listToLoad = record.menus[section.selectedPart!];
+                                          if (record != null && record.menus.containsKey(actualSelectedPart)) {
+                                            listToLoad = record.menus[actualSelectedPart];
                                             isSuggestion = false;
                                           } else {
-                                            final dynamic rawList = widget.lastUsedMenusBox.get(section.selectedPart!);
+                                            final dynamic rawList = widget.lastUsedMenusBox.get(actualSelectedPart);
                                             if (rawList is List) {
                                               listToLoad = rawList.map((e) {
                                                 if (e is Map) {
-                                                  return MenuData.fromJson(e);
+                                                  return MenuData.fromJson(Map<String, dynamic>.from(e));
                                                 }
                                                 return e as MenuData;
                                               }).toList();
@@ -896,13 +967,9 @@ class _RecordScreenState extends State<RecordScreen> {
                                             isSuggestion = true;
                                           }
 
-                                          int newSectionSetCount = _currentSetCount;
-                                          if (listToLoad != null && listToLoad.isNotEmpty) {
-                                            newSectionSetCount = listToLoad[0].weights.length;
-                                          }
-                                          section.initialSetCount = newSectionSetCount;
+                                          // _setControllersFromDataにSectionDataを直接渡す
+                                          _setControllersFromData(section, listToLoad ?? [], isSuggestion);
 
-                                          _setControllersFromData(section.menuControllers, section.setInputDataList, section.menuKeys, listToLoad ?? [], newSectionSetCount, isSuggestion);
                                         } else {
                                           _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
                                           section.menuKeys.clear();
@@ -981,7 +1048,8 @@ class _RecordScreenState extends State<RecordScreen> {
                                                   ListView.separated(
                                                     shrinkWrap: true,
                                                     physics: const NeverScrollableScrollPhysics(),
-                                                    itemCount: section.setInputDataList[menuIndex].length,
+                                                    // ここを修正: section.initialSetCount を使用して表示されるセット数を制限
+                                                    itemCount: section.initialSetCount ?? _currentSetCount,
                                                     separatorBuilder: (context, s) => const SizedBox(height: 8),
                                                     itemBuilder: (context, s) => _buildSetRow(
                                                         context,
@@ -1022,25 +1090,6 @@ class _RecordScreenState extends State<RecordScreen> {
                                   )
                                       : const SizedBox.shrink(),
                                 ),
-                                // ゴミ箱ボタンを削除
-                                // Align(
-                                //   alignment: Alignment.centerLeft,
-                                //   child: Padding(
-                                //     padding: const EdgeInsets.only(top: 12.0),
-                                //     child: IconButton(
-                                //       icon: Icon(Icons.delete_outline, color: colorScheme.error),
-                                //       onPressed: () {
-                                //         setState(() {
-                                //           _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
-                                //           _sections.removeAt(index);
-                                //           if (_sections.isEmpty) {
-                                //             _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
-                                //           }
-                                //         });
-                                //       },
-                                //     ),
-                                //   ),
-                                // ),
                               ],
                             ),
                           ),
