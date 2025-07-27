@@ -36,7 +36,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
-  // ★ 追加: 部位ごとの色を定義するマップ ★
+  // 部位ごとの色を定義するマップ
   final Map<String, Color> _bodyPartColors = {
     '有酸素運動': Colors.green.shade400,
     '腕': Colors.blue.shade400,
@@ -65,7 +65,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       backgroundColor: colorScheme.background,
       appBar: AppBar(
         title: Text(
-          'トレーニングカレンダー',
+          'GoodTraining',
           style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0),
         ),
         backgroundColor: colorScheme.surface,
@@ -126,37 +126,41 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   return isSameDay(_selectedDay, day);
                 },
                 onDaySelected: (selectedDay, focusedDay) {
-                  setState(() {
-                    _selectedDay = selectedDay;
-                    _focusedDay = focusedDay; // update `_focusedDay` as well
-                  });
-                  // 選択された日付の記録画面へ遷移
-                  Navigator.push(
-                    context,
-                    PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) => RecordScreen(
-                        selectedDate: selectedDay,
-                        recordsBox: widget.recordsBox,
-                        lastUsedMenusBox: widget.lastUsedMenusBox,
-                        settingsBox: widget.settingsBox,
-                        setCountBox: widget.setCountBox,
-                        themeModeBox: widget.themeModeBox,
+                  // 変更点: 同じ日付が2回タップされた場合に記録画面へ遷移
+                  if (isSameDay(_selectedDay, selectedDay)) {
+                    // 同じ日付が再度タップされたら記録画面へ遷移
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) => RecordScreen(
+                          selectedDate: selectedDay,
+                          recordsBox: widget.recordsBox,
+                          lastUsedMenusBox: widget.lastUsedMenusBox,
+                          settingsBox: widget.settingsBox,
+                          setCountBox: widget.setCountBox,
+                          themeModeBox: widget.themeModeBox,
+                        ),
+                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                          // アニメーションを右から左から下から上へ変更
+                          const begin = Offset(0.0, 1.0); // 下から開始
+                          const end = Offset.zero; // 最終位置は元の場所
+                          const curve = Curves.easeOut;
+                          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                          return SlideTransition(
+                            position: animation.drive(tween),
+                            child: child,
+                          );
+                        },
+                        transitionDuration: const Duration(milliseconds: 300),
                       ),
-                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                        const begin = Offset(1.0, 0.0);
-                        const end = Offset.zero;
-                        const curve = Curves.easeOut;
-
-                        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-                        return SlideTransition(
-                          position: animation.drive(tween),
-                          child: child,
-                        );
-                      },
-                      transitionDuration: const Duration(milliseconds: 300),
-                    ),
-                  );
+                    );
+                  } else {
+                    // 異なる日付がタップされたら選択状態を更新
+                    setState(() {
+                      _selectedDay = selectedDay;
+                      _focusedDay = focusedDay;
+                    });
+                  }
                 },
                 onFormatChanged: (format) {
                   if (_calendarFormat != format) {
@@ -188,13 +192,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     shape: BoxShape.circle,
                   ),
                   defaultTextStyle: TextStyle(color: colorScheme.onSurface),
-                  // markerDecoration は calendarBuilders で置き換えるため削除
-                  // markerDecoration: BoxDecoration(
-                  //   color: Colors.redAccent, // マーカーの色を赤色に固定
-                  //   shape: BoxShape.circle,
-                  // ),
                 ),
-                // ★ 修正: eventLoader で部位名を返すように変更 ★
+                // eventLoader で部位名を返すように変更
                 eventLoader: (day) {
                   String dateKey = DateFormat('yyyy-MM-dd').format(day);
                   DailyRecord? record = widget.recordsBox.get(dateKey);
@@ -204,7 +203,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   }
                   return [];
                 },
-                // ★ 追加: markerBuilder で部位ごとに色分けされたマーカーを生成 ★
+                // markerBuilder で部位ごとに色分けされたマーカーを生成
                 calendarBuilders: CalendarBuilders(
                   markerBuilder: (context, day, events) {
                     if (events.isNotEmpty) {
@@ -287,14 +286,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               ),
                             ),
                             const SizedBox(height: 8.0),
-                            ...menus.map((menu) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 4.0),
-                                child: Text(
-                                  '${menu.name}: ${menu.weights.join('/')} ${part == '有酸素運動' ? '分' : 'kg'} x ${menu.reps.join('/')} ${part == '有酸素運動' ? '秒' : '回'}',
-                                  style: TextStyle(color: colorScheme.onSurfaceVariant),
+                            // 変更点: 各種目のセットを個別に表示
+                            ...menus.expand((menu) {
+                              List<Widget> menuWidgets = [
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 4.0),
+                                  child: Text(
+                                    menu.name, // 種目名
+                                    style: TextStyle(
+                                      color: colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
-                              );
+                              ];
+                              // 各セットの情報を表示
+                              for (int i = 0; i < menu.weights.length; i++) {
+                                // 有酸素運動の場合は「分」と「秒」を使用
+                                final weightUnit = part == '有酸素運動' ? '分' : 'Kg';
+                                final repUnit = part == '有酸素運動' ? '秒' : '回';
+
+                                menuWidgets.add(
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 16.0, bottom: 2.0), // インデント
+                                    child: Text(
+                                      '${i + 1}セット　${menu.weights[i]}$weightUnit     ${menu.reps[i]}$repUnit',
+                                      style: TextStyle(color: colorScheme.onSurfaceVariant),
+                                    ),
+                                  ),
+                                );
+                              }
+                              return menuWidgets;
                             }).toList(),
                           ],
                         ),
@@ -306,6 +328,65 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
         ],
+      ),
+      bottomNavigationBar: BottomAppBar( // フッターを追加
+        color: colorScheme.surface, // フッターの背景色
+        elevation: 10.0, // 影の深さ
+        child: Container(
+          height: 60.0, // フッターの高さを調整
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // コンテンツに合わせて高さを最小化
+            children: [
+              SizedBox( // ボタンのサイズを明示的に指定
+                width: 36.0, // ボタンの幅をさらに小さく
+                height: 36.0, // ボタンの高さをさらに小さく
+                child: FloatingActionButton( // FloatingActionButton を使用
+                  onPressed: () {
+                    // フッターの追加ボタンから記録画面へ遷移
+                    // 現在選択されている日付（_selectedDay）をRecordScreenに渡す
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) => RecordScreen(
+                          selectedDate: _selectedDay ?? DateTime.now(), // _selectedDayがnullの場合は現在の日付
+                          recordsBox: widget.recordsBox,
+                          lastUsedMenusBox: widget.lastUsedMenusBox,
+                          settingsBox: widget.settingsBox,
+                          setCountBox: widget.setCountBox,
+                          themeModeBox: widget.themeModeBox,
+                        ),
+                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                          // アニメーションを右から左から下から上へ変更
+                          const begin = Offset(0.0, 1.0); // 下から開始
+                          const end = Offset.zero; // 最終位置は元の場所
+                          const curve = Curves.easeOut;
+
+                          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+
+                          return SlideTransition(
+                            position: animation.drive(tween),
+                            child: child,
+                          );
+                        },
+                        transitionDuration: const Duration(milliseconds: 300),
+                      ),
+                    );
+                  },
+                  backgroundColor: Colors.blue.shade600, // ボタンの色を青に
+                  shape: const CircleBorder(), // 丸い形に
+                  elevation: 0.0, // 影をなくす
+                  child: const Icon(Icons.add, color: Colors.white, size: 18.0), // プラスアイコンのサイズを調整
+                )
+              ),
+              const SizedBox(height: 2.0), // ボタンとテキストの間のスペースを調整
+              Text(
+                '追加',
+                style: TextStyle(color: colorScheme.onSurface, fontSize: 12.0, fontWeight: FontWeight.bold), // テキストのサイズを調整
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

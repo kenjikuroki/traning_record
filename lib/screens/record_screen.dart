@@ -187,7 +187,7 @@ class _RecordScreenState extends State<RecordScreen> {
 
   @override
   void dispose() {
-    _saveAllSectionsData(); // アプリ終了時にデータを保存
+    // _saveAllSectionsData() は WillPopScope で呼び出すため、ここから削除
     _clearAllControllersAndMaps();
     super.dispose();
   }
@@ -253,7 +253,7 @@ class _RecordScreenState extends State<RecordScreen> {
       final menuCtrl = TextEditingController(text: menuData.name);
       section.menuControllers.add(menuCtrl);
       section.menuKeys.add(UniqueKey());
-      _isSuggestionDisplayMap[menuCtrl] = isSuggestionForWeightReps; // ★ 修正: 種目名もisSuggestionDataに基づいて設定 ★
+      _isSuggestionDisplayMap[menuCtrl] = isSuggestionForWeightReps; // 種目名もisSuggestionDataに基づいて設定
 
       List<SetInputData> setInputDataRow = [];
       int currentMenuSetCount = menuData.weights.length;
@@ -267,6 +267,7 @@ class _RecordScreenState extends State<RecordScreen> {
       section.setInputDataList.add(setInputDataRow);
     }
 
+    // 選択された日付に記録がある場合のみ、その記録をロードする。提案データはここではロードしない。
     if (record != null && record.menus.isNotEmpty) {
       record.menus.forEach((part, menuList) {
         for (var menuData in menuList) {
@@ -275,6 +276,7 @@ class _RecordScreenState extends State<RecordScreen> {
       });
       _sections = tempSectionsMap.values.toList();
     } else {
+      // 記録がない場合は、完全に空の初期画面を表示する
       _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
       _sections[0].initialSetCount = _currentSetCount;
     }
@@ -341,7 +343,7 @@ class _RecordScreenState extends State<RecordScreen> {
       final newMenuController = TextEditingController();
       if (i < list.length) {
         newMenuController.text = list[i].name;
-        _isSuggestionDisplayMap[newMenuController] = isSuggestionData; // ★ 修正: 種目名もisSuggestionDataに基づいて設定 ★
+        _isSuggestionDisplayMap[newMenuController] = isSuggestionData; // 種目名もisSuggestionDataに基づいて設定
       } else {
         _isSuggestionDisplayMap[newMenuController] = false; // 新規追加の種目名は確定状態
       }
@@ -413,24 +415,25 @@ class _RecordScreenState extends State<RecordScreen> {
     Map<String, List<MenuData>> allMenusForDay = {};
     String? lastModifiedPart;
 
+    // --- Part 1: Prepare data for DailyRecord (only confirmed data) ---
     for (var section in _sections) {
       if (section.selectedPart == null) continue;
 
       List<MenuData> sectionMenuListForRecord = [];
-      String? currentPart = section.selectedPart;
+      bool sectionHasConfirmedContent = false; // このセクションに確定済みデータがあるか
+      int currentSectionSetCount = section.initialSetCount ?? _currentSetCount;
 
       for (int i = 0; i < section.menuControllers.length; i++) {
         String name = section.menuControllers[i].text.trim();
         List<String> confirmedWeights = [];
         List<String> confirmedReps = [];
-        bool menuHasConfirmedContent = false; // この種目全体に確定済みデータがあるか
+        bool menuHasConfirmedContentInRow = false; // この種目行に確定済みデータがあるか
 
-        // 種目名が確定済みであれば、menuHasConfirmedContentをtrueにする
+        // 種目名が確定済み（提案ではない）かつ空でない場合
         if (!(_isSuggestionDisplayMap[section.menuControllers[i]] ?? false) && name.isNotEmpty) {
-          menuHasConfirmedContent = true;
+          menuHasConfirmedContentInRow = true;
         }
 
-        int currentSectionSetCount = section.initialSetCount ?? _currentSetCount;
         for (int s = 0; s < currentSectionSetCount; s++) {
           final setInputData = (section.setInputDataList.length > i && section.setInputDataList[i].length > s)
               ? section.setInputDataList[i][s]
@@ -440,46 +443,54 @@ class _RecordScreenState extends State<RecordScreen> {
           String r = '';
 
           if (setInputData != null) {
+            // 重量と回数が確定済み（提案ではない）場合のみ、その値を採用
             if (!(_isSuggestionDisplayMap[setInputData.weightController] ?? false)) {
               w = setInputData.weightController.text;
-              if (w.isNotEmpty) menuHasConfirmedContent = true; // 重量も確定済みならtrue
+              if (w.isNotEmpty) menuHasConfirmedContentInRow = true; // 重量も確定済みならtrue
             }
             if (!(_isSuggestionDisplayMap[setInputData.repController] ?? false)) {
               r = setInputData.repController.text;
-              if (r.isNotEmpty) menuHasConfirmedContent = true; // 回数も確定済みならtrue
+              if (r.isNotEmpty) menuHasConfirmedContentInRow = true; // 回数も確定済みならtrue
             }
           }
           confirmedWeights.add(w);
           confirmedReps.add(r);
         }
 
-        // ★ 修正: この種目全体に確定済みデータがある場合のみ、記録として保存 ★
-        if (menuHasConfirmedContent) {
+        // この種目行に確定済みデータがある場合のみ、記録として保存
+        if (menuHasConfirmedContentInRow) {
           sectionMenuListForRecord.add(MenuData(name: name, weights: confirmedWeights, reps: confirmedReps));
-          lastModifiedPart = currentPart;
+          lastModifiedPart = section.selectedPart; // 最後に編集された部位を更新
+          sectionHasConfirmedContent = true; // このセクションにも確定済みデータがある
         }
       }
 
       if (sectionMenuListForRecord.isNotEmpty) {
-        allMenusForDay[currentPart!] = sectionMenuListForRecord;
+        allMenusForDay[section.selectedPart!] = sectionMenuListForRecord;
       } else {
-        allMenusForDay.remove(currentPart);
+        // その部位に確定済みデータがなければ、その日の記録からその部位を削除する
+        allMenusForDay.remove(section.selectedPart);
       }
     }
 
+    // --- Part 2: Save DailyRecord (確定済みデータのみ) ---
     if (allMenusForDay.isNotEmpty) {
       DailyRecord newRecord = DailyRecord(menus: allMenusForDay, lastModifiedPart: lastModifiedPart);
       widget.recordsBox.put(dateKey, newRecord);
     } else {
-      widget.recordsBox.delete(dateKey);
+      widget.recordsBox.delete(dateKey); // その日の記録が空になったら削除
     }
 
+    // --- Part 3: Update lastUsedMenusBox (現在表示されているすべてのメニュー、提案データも含む) ---
+    // lastUsedMenusBoxには、現在画面に表示されている（入力されている、または提案として表示されている）
+    // 各部位のメニューを保存します。これは、次回の提案のために使用されます。
     for (var section in _sections) {
       if (section.selectedPart == null) continue;
 
       List<MenuData> displayedMenuList = [];
       for (int i = 0; i < section.menuControllers.length; i++) {
         String name = section.menuControllers[i].text.trim();
+        // 種目名が空の場合は、lastUsedMenusBoxに保存しない
         if (name.isEmpty) continue;
 
         List<String> weights = [];
@@ -500,9 +511,11 @@ class _RecordScreenState extends State<RecordScreen> {
         displayedMenuList.add(MenuData(name: name, weights: weights, reps: reps));
       }
 
+      // 表示されているメニューリストが空でなければ、lastUsedMenusBoxを更新
       if (displayedMenuList.isNotEmpty) {
         widget.lastUsedMenusBox.put(section.selectedPart!, displayedMenuList);
       }
+      // もしdisplayedMenuListが空の場合、その部位のlastUsedMenusBoxは更新しない（既存の提案を保持）
     }
   }
 
@@ -567,7 +580,7 @@ class _RecordScreenState extends State<RecordScreen> {
                 while (setInputDataRow.length < _currentSetCount) {
                   final weightCtrl = TextEditingController();
                   final repCtrl = TextEditingController();
-                  _isSuggestionDisplayMap[weightCtrl] = true;
+                  _isSuggestionDisplayMap[weightCtrl] = true; // 新しく追加されるセットは提案としてマーク
                   _isSuggestionDisplayMap[repCtrl] = true;
                   setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
                 }
@@ -587,11 +600,11 @@ class _RecordScreenState extends State<RecordScreen> {
         _sections[sectionIndex].menuControllers.add(newMenuController);
         _sections[sectionIndex].menuKeys.add(UniqueKey());
 
-        _isSuggestionDisplayMap[newMenuController] = false;
+        _isSuggestionDisplayMap[newMenuController] = false; // 新規追加の種目名は確定状態
         final newSetInputDataList = List.generate(currentSectionSetCount, (_) {
           final weightCtrl = TextEditingController();
           final repCtrl = TextEditingController();
-          _isSuggestionDisplayMap[weightCtrl] = true;
+          _isSuggestionDisplayMap[weightCtrl] = true; // 新規追加の入力は提案としてマーク
           _isSuggestionDisplayMap[repCtrl] = true;
           return SetInputData(weightController: weightCtrl, repController: repCtrl);
         });
@@ -689,331 +702,356 @@ class _RecordScreenState extends State<RecordScreen> {
 
     bool isInitialEmptyState = _sections.length == 1 && _sections[0].selectedPart == null;
 
-    return Scaffold(
-      backgroundColor: colorScheme.background,
-      appBar: AppBar(
-        title: Text(
-          '${widget.selectedDate.year}/${widget.selectedDate.month}/${widget.selectedDate.day}',
-          style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0),
-        ),
-        backgroundColor: colorScheme.surface,
-        elevation: 0.0,
-        iconTheme: IconThemeData(color: colorScheme.onSurface),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings, size: 24.0, color: colorScheme.onSurface),
-            onPressed: () => _navigateToSettings(context),
+    return WillPopScope( // WillPopScope を追加
+      onWillPop: () async {
+        _saveAllSectionsData(); // 画面を離れる際にデータを保存
+        return true; // true を返すと画面がポップされる
+      },
+      child: Scaffold(
+        backgroundColor: colorScheme.background,
+        appBar: AppBar(
+          title: Text(
+            '${widget.selectedDate.year}/${widget.selectedDate.month}/${widget.selectedDate.day}',
+            style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0),
           ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            if (isInitialEmptyState)
-              Padding(
-                padding: const EdgeInsets.only(top: 20.0),
-                child: GlassCard(
-                  borderRadius: 12.0,
-                  backgroundColor: colorScheme.surfaceContainerHighest,
-                  padding: const EdgeInsets.all(20.0),
-                  child: DropdownButtonFormField<String>(
-                    decoration: InputDecoration(
-                      hintText: 'トレーニング部位を選択',
-                      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
-                      filled: true,
-                      fillColor: colorScheme.surfaceContainer,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25.0),
-                        borderSide: BorderSide.none,
+          backgroundColor: colorScheme.surface,
+          elevation: 0.0,
+          iconTheme: IconThemeData(color: colorScheme.onSurface),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.settings, size: 24.0, color: colorScheme.onSurface),
+              onPressed: () => _navigateToSettings(context),
+            ),
+          ],
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              if (isInitialEmptyState)
+                Padding(
+                  padding: const EdgeInsets.only(top: 20.0),
+                  child: GlassCard(
+                    borderRadius: 12.0,
+                    backgroundColor: colorScheme.surfaceContainerHighest,
+                    padding: const EdgeInsets.all(20.0),
+                    child: DropdownButtonFormField<String>(
+                      decoration: InputDecoration(
+                        hintText: 'トレーニング部位を選択',
+                        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
+                        filled: true,
+                        fillColor: colorScheme.surfaceContainer,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25.0),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25.0),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25.0),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25.0),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25.0),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                    ),
-                    value: _sections[0].selectedPart,
-                    items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold)))).toList(),
-                    onChanged: (value) {
-                      if (mounted) {
-                        setState(() {
-                          _sections[0].selectedPart = value;
-                          if (value != null) {
-                            _clearSectionControllersAndMaps(_sections[0].menuControllers, _sections[0].setInputDataList);
-                            _sections[0].menuKeys.clear();
+                      value: _sections[0].selectedPart,
+                      items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold)))).toList(),
+                      onChanged: (value) {
+                        if (mounted) {
+                          setState(() {
+                            _sections[0].selectedPart = value;
+                            if (value != null) {
+                              _clearSectionControllersAndMaps(_sections[0].menuControllers, _sections[0].setInputDataList);
+                              _sections[0].menuKeys.clear();
 
-                            String dateKey = _getDateKey(widget.selectedDate);
-                            DailyRecord? record = widget.recordsBox.get(dateKey);
-                            List<MenuData>? listToLoad;
-                            bool isSuggestion = false;
+                              String dateKey = _getDateKey(widget.selectedDate);
+                              DailyRecord? record = widget.recordsBox.get(dateKey);
+                              List<MenuData>? listToLoad;
+                              bool isSuggestion = false;
 
-                            if (record != null && record.menus.containsKey(value)) {
-                              listToLoad = record.menus[value];
-                              isSuggestion = false;
-                            } else {
-                              final dynamic rawList = widget.lastUsedMenusBox.get(value);
-                              if (rawList is List) {
-                                listToLoad = rawList.map((e) {
-                                  if (e is Map) {
-                                    return MenuData.fromJson(e);
-                                  }
-                                  return e as MenuData;
-                                }).toList();
+                              if (record != null && record.menus.containsKey(value)) {
+                                listToLoad = record.menus[value];
+                                isSuggestion = false;
+                              } else {
+                                final dynamic rawList = widget.lastUsedMenusBox.get(value);
+                                if (rawList is List) {
+                                  listToLoad = rawList.map((e) {
+                                    if (e is Map) {
+                                      return MenuData.fromJson(e);
+                                    }
+                                    return e as MenuData;
+                                  }).toList();
+                                }
+                                isSuggestion = true;
                               }
-                              isSuggestion = true;
-                            }
 
-                            int newSectionSetCount = _currentSetCount;
-                            if (listToLoad != null && listToLoad.isNotEmpty) {
-                              newSectionSetCount = listToLoad[0].weights.length;
-                            }
-                            _sections[0].initialSetCount = newSectionSetCount;
+                              int newSectionSetCount = _currentSetCount;
+                              if (listToLoad != null && listToLoad.isNotEmpty) {
+                                newSectionSetCount = listToLoad[0].weights.length;
+                              }
+                              _sections[0].initialSetCount = newSectionSetCount;
 
-                            _setControllersFromData(_sections[0].menuControllers, _sections[0].setInputDataList, _sections[0].menuKeys, listToLoad ?? [], newSectionSetCount, isSuggestion);
-                          } else {
-                            _clearSectionControllersAndMaps(_sections[0].menuControllers, _sections[0].setInputDataList);
-                            _sections[0].menuKeys.clear();
-                            _sections[0].initialSetCount = _currentSetCount;
-                          }
-                        });
-                      }
-                    },
-                    dropdownColor: colorScheme.surfaceContainer,
-                    style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
-                    borderRadius: BorderRadius.circular(15.0),
+                              _setControllersFromData(_sections[0].menuControllers, _sections[0].setInputDataList, _sections[0].menuKeys, listToLoad ?? [], newSectionSetCount, isSuggestion);
+                            } else {
+                              _clearSectionControllersAndMaps(_sections[0].menuControllers, _sections[0].setInputDataList);
+                              _sections[0].menuKeys.clear();
+                              _sections[0].initialSetCount = _currentSetCount;
+                            }
+                          });
+                        }
+                      },
+                      dropdownColor: colorScheme.surfaceContainer,
+                      style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
                   ),
-                ),
-              )
-            else
-              Expanded(
-                child: ListView.builder(
-                    primary: true,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: _sections.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == _sections.length) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: StylishButton(
-                              text: '＋部位',
-                              onPressed: _addTargetSection,
-                              fontSize: 12.0,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              buttonColor: Colors.blue.shade700,
+                )
+              else
+                Expanded(
+                  child: ListView.builder(
+                      primary: true,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: _sections.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == _sections.length) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: StylishButton(
+                                text: '＋部位',
+                                onPressed: _addTargetSection,
+                                fontSize: 12.0,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                buttonColor: Colors.blue.shade700,
+                              ),
+                            ),
+                          );
+                        }
+
+                        final section = _sections[index];
+                        final int sectionDisplaySetCount = section.initialSetCount ?? _currentSetCount;
+
+                        return AnimatedListItem(
+                          key: section.key,
+                          direction: AnimationDirection.bottomToTop,
+                          child: GlassCard(
+                            borderRadius: 12.0,
+                            backgroundColor: section.selectedPart == '有酸素運動' && isLightMode
+                                ? Colors.grey[400]!
+                                : colorScheme.surfaceContainerHighest,
+                            padding: const EdgeInsets.all(20.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                DropdownButtonFormField<String>(
+                                  decoration: InputDecoration(
+                                    hintText: 'トレーニング部位を選択',
+                                    hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
+                                    filled: true,
+                                    fillColor: colorScheme.surfaceContainer,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(25.0),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(25.0),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(25.0),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                                  ),
+                                  value: section.selectedPart,
+                                  items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold)))).toList(),
+                                  onChanged: (value) {
+                                    if (mounted) {
+                                      setState(() {
+                                        section.selectedPart = value;
+                                        if (section.selectedPart != null) {
+                                          _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
+                                          section.menuKeys.clear();
+
+                                          String dateKey = _getDateKey(widget.selectedDate);
+                                          DailyRecord? record = widget.recordsBox.get(dateKey);
+                                          List<MenuData>? listToLoad;
+                                          bool isSuggestion = false;
+
+                                          if (record != null && record.menus.containsKey(section.selectedPart!)) {
+                                            listToLoad = record.menus[section.selectedPart!];
+                                            isSuggestion = false;
+                                          } else {
+                                            final dynamic rawList = widget.lastUsedMenusBox.get(section.selectedPart!);
+                                            if (rawList is List) {
+                                              listToLoad = rawList.map((e) {
+                                                if (e is Map) {
+                                                  return MenuData.fromJson(e);
+                                                }
+                                                return e as MenuData;
+                                              }).toList();
+                                            }
+                                            isSuggestion = true;
+                                          }
+
+                                          int newSectionSetCount = _currentSetCount;
+                                          if (listToLoad != null && listToLoad.isNotEmpty) {
+                                            newSectionSetCount = listToLoad[0].weights.length;
+                                          }
+                                          section.initialSetCount = newSectionSetCount;
+
+                                          _setControllersFromData(section.menuControllers, section.setInputDataList, section.menuKeys, listToLoad ?? [], newSectionSetCount, isSuggestion);
+                                        } else {
+                                          _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
+                                          section.menuKeys.clear();
+                                          section.initialSetCount = _currentSetCount;
+                                        }
+                                      });
+                                    }
+                                  },
+                                  dropdownColor: colorScheme.surfaceContainer,
+                                  style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
+                                  borderRadius: BorderRadius.circular(15.0),
+                                ),
+                                const SizedBox(height: 20),
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 400),
+                                  transitionBuilder: (Widget child, Animation<double> animation) {
+                                    final offsetAnimation = Tween<Offset>(
+                                      begin: const Offset(0.0, -0.2),
+                                      end: Offset.zero,
+                                    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut));
+                                    return FadeTransition(
+                                      opacity: animation,
+                                      child: SlideTransition(
+                                        position: offsetAnimation,
+                                        child: child,
+                                      ),
+                                    );
+                                  },
+                                  child: section.selectedPart != null
+                                      ? Column(
+                                    children: [
+                                      ListView.builder(
+                                        shrinkWrap: true,
+                                        physics: const NeverScrollableScrollPhysics(),
+                                        itemCount: section.menuControllers.length,
+                                        itemBuilder: (context, menuIndex) {
+                                          return AnimatedListItem(
+                                            key: section.menuKeys[menuIndex],
+                                            direction: AnimationDirection.topToBottom,
+                                            child: GlassCard(
+                                              borderRadius: 10.0,
+                                              backgroundColor: colorScheme.surface,
+                                              padding: const EdgeInsets.all(16.0),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  StylishInput(
+                                                    controller: section.menuControllers[menuIndex],
+                                                    hint: '種目名を記入', // ヒントテキスト
+                                                    inputFormatters: [LengthLimitingTextInputFormatter(50)],
+                                                    textStyle: TextStyle(
+                                                      color: (_isSuggestionDisplayMap[section.menuControllers[menuIndex]] ?? false) ? colorScheme.onSurfaceVariant.withOpacity(0.5) : colorScheme.onSurface,
+                                                      fontSize: 16.0,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                    fillColor: colorScheme.surfaceContainer,
+                                                    contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                                    isSuggestionDisplay: _isSuggestionDisplayMap[section.menuControllers[menuIndex]] ?? false,
+                                                    textAlign: TextAlign.left, // 左寄せ
+                                                    onChanged: (value) {
+                                                      if (mounted) {
+                                                        setState(() {
+                                                          _isSuggestionDisplayMap[section.menuControllers[menuIndex]] = false;
+                                                        });
+                                                      }
+                                                    },
+                                                    onTap: () {
+                                                      if (mounted) {
+                                                        setState(() {
+                                                          _isSuggestionDisplayMap[section.menuControllers[menuIndex]] = false;
+                                                        });
+                                                      }
+                                                    },
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  ListView.separated(
+                                                    shrinkWrap: true,
+                                                    physics: const NeverScrollableScrollPhysics(),
+                                                    itemCount: section.setInputDataList[menuIndex].length,
+                                                    separatorBuilder: (context, s) => const SizedBox(height: 8),
+                                                    itemBuilder: (context, s) => _buildSetRow(
+                                                        context,
+                                                        section.setInputDataList,
+                                                        menuIndex,
+                                                        s + 1,
+                                                        s,
+                                                        section.selectedPart,
+                                                        _isSuggestionDisplayMap,
+                                                            () {
+                                                          if (mounted) {
+                                                            setState(() {});
+                                                          }
+                                                        }
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(top: 12.0),
+                                          child: StylishButton(
+                                            text: '＋種目',
+                                            onPressed: () => _addMenuItem(index),
+                                            fontSize: 12.0,
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                            buttonColor: Colors.blue.shade400,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                      : const SizedBox.shrink(),
+                                ),
+                                // ゴミ箱ボタンを削除
+                                // Align(
+                                //   alignment: Alignment.centerLeft,
+                                //   child: Padding(
+                                //     padding: const EdgeInsets.only(top: 12.0),
+                                //     child: IconButton(
+                                //       icon: Icon(Icons.delete_outline, color: colorScheme.error),
+                                //       onPressed: () {
+                                //         setState(() {
+                                //           _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
+                                //           _sections.removeAt(index);
+                                //           if (_sections.isEmpty) {
+                                //             _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
+                                //           }
+                                //         });
+                                //       },
+                                //     ),
+                                //   ),
+                                // ),
+                              ],
                             ),
                           ),
                         );
                       }
-
-                      final section = _sections[index];
-                      final int sectionDisplaySetCount = section.initialSetCount ?? _currentSetCount;
-
-                      return AnimatedListItem(
-                        key: section.key,
-                        direction: AnimationDirection.bottomToTop,
-                        child: GlassCard(
-                          borderRadius: 12.0,
-                          backgroundColor: section.selectedPart == '有酸素運動' && isLightMode
-                              ? Colors.grey[400]!
-                              : colorScheme.surfaceContainerHighest,
-                          padding: const EdgeInsets.all(20.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              DropdownButtonFormField<String>(
-                                decoration: InputDecoration(
-                                  hintText: 'トレーニング部位を選択',
-                                  hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
-                                  filled: true,
-                                  fillColor: colorScheme.surfaceContainer,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(25.0),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(25.0),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(25.0),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                                ),
-                                value: section.selectedPart,
-                                items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold)))).toList(),
-                                onChanged: (value) {
-                                  if (mounted) {
-                                    setState(() {
-                                      section.selectedPart = value;
-                                      if (section.selectedPart != null) {
-                                        _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
-                                        section.menuKeys.clear();
-
-                                        String dateKey = _getDateKey(widget.selectedDate);
-                                        DailyRecord? record = widget.recordsBox.get(dateKey);
-                                        List<MenuData>? listToLoad;
-                                        bool isSuggestion = false;
-
-                                        if (record != null && record.menus.containsKey(section.selectedPart!)) {
-                                          listToLoad = record.menus[section.selectedPart!];
-                                          isSuggestion = false;
-                                        } else {
-                                          final dynamic rawList = widget.lastUsedMenusBox.get(section.selectedPart!);
-                                          if (rawList is List) {
-                                            listToLoad = rawList.map((e) {
-                                              if (e is Map) {
-                                                return MenuData.fromJson(e);
-                                              }
-                                              return e as MenuData;
-                                            }).toList();
-                                          }
-                                          isSuggestion = true;
-                                        }
-
-                                        int newSectionSetCount = _currentSetCount;
-                                        if (listToLoad != null && listToLoad.isNotEmpty) {
-                                          newSectionSetCount = listToLoad[0].weights.length;
-                                        }
-                                        section.initialSetCount = newSectionSetCount;
-
-                                        _setControllersFromData(section.menuControllers, section.setInputDataList, section.menuKeys, listToLoad ?? [], newSectionSetCount, isSuggestion);
-                                      } else {
-                                        _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
-                                        section.menuKeys.clear();
-                                        section.initialSetCount = _currentSetCount;
-                                      }
-                                    });
-                                  }
-                                },
-                                dropdownColor: colorScheme.surfaceContainer,
-                                style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
-                                borderRadius: BorderRadius.circular(15.0),
-                              ),
-                              const SizedBox(height: 20),
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 400),
-                                transitionBuilder: (Widget child, Animation<double> animation) {
-                                  final offsetAnimation = Tween<Offset>(
-                                    begin: const Offset(0.0, -0.2),
-                                    end: Offset.zero,
-                                  ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut));
-                                  return FadeTransition(
-                                    opacity: animation,
-                                    child: SlideTransition(
-                                      position: offsetAnimation,
-                                      child: child,
-                                    ),
-                                  );
-                                },
-                                child: section.selectedPart != null
-                                    ? Column(
-                                  children: [
-                                    ListView.builder(
-                                      shrinkWrap: true,
-                                      physics: const NeverScrollableScrollPhysics(),
-                                      itemCount: section.menuControllers.length,
-                                      itemBuilder: (context, menuIndex) {
-                                        return AnimatedListItem(
-                                          key: section.menuKeys[menuIndex],
-                                          direction: AnimationDirection.topToBottom,
-                                          child: GlassCard(
-                                            borderRadius: 10.0,
-                                            backgroundColor: colorScheme.surface,
-                                            padding: const EdgeInsets.all(16.0),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                StylishInput(
-                                                  controller: section.menuControllers[menuIndex],
-                                                  hint: '種目名',
-                                                  inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                                                  textStyle: TextStyle(
-                                                    color: (section.selectedPart == '有酸素運動' && isLightMode) ? Colors.black : colorScheme.onSurface,
-                                                    fontSize: 16.0,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                  fillColor: colorScheme.surfaceContainer,
-                                                  contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                                                  isSuggestionDisplay: _isSuggestionDisplayMap[section.menuControllers[menuIndex]] ?? false,
-                                                  onChanged: (value) {
-                                                    if (mounted) {
-                                                      setState(() {
-                                                        _isSuggestionDisplayMap[section.menuControllers[menuIndex]] = false;
-                                                      });
-                                                    }
-                                                  },
-                                                  onTap: () {
-                                                    if (mounted) {
-                                                      setState(() {
-                                                        _isSuggestionDisplayMap[section.menuControllers[menuIndex]] = false;
-                                                      });
-                                                    }
-                                                  },
-                                                ),
-                                                const SizedBox(height: 8),
-                                                ListView.separated(
-                                                  shrinkWrap: true,
-                                                  physics: const NeverScrollableScrollPhysics(),
-                                                  itemCount: section.setInputDataList[menuIndex].length,
-                                                  separatorBuilder: (context, s) => const SizedBox(height: 8),
-                                                  itemBuilder: (context, s) => _buildSetRow(
-                                                      context,
-                                                      section.setInputDataList,
-                                                      menuIndex,
-                                                      s + 1,
-                                                      s,
-                                                      section.selectedPart,
-                                                      _isSuggestionDisplayMap,
-                                                          () {
-                                                        if (mounted) {
-                                                          setState(() {});
-                                                        }
-                                                      }
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 8),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(top: 12.0),
-                                        child: StylishButton(
-                                          text: '＋種目',
-                                          onPressed: () => _addMenuItem(index),
-                                          fontSize: 12.0,
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                          buttonColor: Colors.blue.shade400,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                                    : const SizedBox.shrink(),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
-      // FloatingActionButton は削除済み
     );
   }
 }
