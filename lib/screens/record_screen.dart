@@ -854,8 +854,7 @@ class _RecordScreenState extends State<RecordScreen> {
                             if (value != null) {
                               final String actualSelectedPart = value;
 
-                              // _clearSectionControllersAndMaps(_sections[0].menuControllers, _sections[0].setInputDataList);
-                              _clearSectionControllersAndMaps(_sections[0]); // 修正
+                              _clearSectionControllersAndMaps(_sections[0]);
                               _sections[0].menuKeys.clear();
 
                               String dateKey = _getDateKey(widget.selectedDate);
@@ -883,8 +882,7 @@ class _RecordScreenState extends State<RecordScreen> {
                               _setControllersFromData(_sections[0], listToLoad ?? [], isSuggestion);
 
                             } else {
-                              // _clearSectionControllersAndMaps(_sections[0].menuControllers, _sections[0].setInputDataList);
-                              _clearSectionControllersAndMaps(_sections[0]); // 修正
+                              _clearSectionControllersAndMaps(_sections[0]);
                               _sections[0].menuKeys.clear();
                               _sections[0].initialSetCount = _currentSetCount;
                             }
@@ -909,12 +907,11 @@ class _RecordScreenState extends State<RecordScreen> {
                             padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
                             child: Align(
                               alignment: Alignment.centerRight,
-                              child: StylishButton(
-                                text: '＋部位',
+                              child: CircularAddButtonWithText( // StylishButtonを置き換え
+                                label: '部位',
                                 onPressed: _addTargetSection,
-                                fontSize: 12.0,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                 buttonColor: Colors.blue.shade700,
+                                textColor: colorScheme.onSurface, // テキストの色を調整
                               ),
                             ),
                           );
@@ -963,8 +960,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                         if (section.selectedPart != null) {
                                           final String actualSelectedPart = section.selectedPart!;
 
-                                          // _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
-                                          _clearSectionControllersAndMaps(section); // 修正
+                                          _clearSectionControllersAndMaps(section);
                                           section.menuKeys.clear();
 
                                           String dateKey = _getDateKey(widget.selectedDate);
@@ -992,8 +988,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                           _setControllersFromData(section, listToLoad ?? [], isSuggestion);
 
                                         } else {
-                                          // _clearSectionControllersAndMaps(section.menuControllers, section.setInputDataList);
-                                          _clearSectionControllersAndMaps(section); // 修正
+                                          _clearSectionControllersAndMaps(section);
                                           section.menuKeys.clear();
                                           section.initialSetCount = _currentSetCount;
                                         }
@@ -1101,12 +1096,11 @@ class _RecordScreenState extends State<RecordScreen> {
                                         alignment: Alignment.centerRight,
                                         child: Padding(
                                           padding: const EdgeInsets.only(top: 12.0),
-                                          child: StylishButton(
-                                            text: '＋種目',
+                                          child: CircularAddButtonWithText( // StylishButtonを置き換え
+                                            label: '種目',
                                             onPressed: () => _addMenuItem(index),
-                                            fontSize: 12.0,
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                             buttonColor: Colors.blue.shade400,
+                                            textColor: colorScheme.onSurface, // テキストの色を調整
                                           ),
                                         ),
                                       ),
