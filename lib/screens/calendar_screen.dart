@@ -217,7 +217,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final isLightMode = Theme.of(context).brightness == Brightness.light;
 
     return Scaffold(
       backgroundColor: colorScheme.background,
@@ -246,7 +245,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             selectedDayPredicate: (day) {
               return isSameDay(_selectedDay, day);
             },
-            onDaySelected: _onDaySelected, // 修正: 2回タップで遷移するロジックを適用
+            onDaySelected: _onDaySelected, // 2回タップで遷移するロジックを適用
             onPageChanged: (focusedDay) {
               _focusedDay = focusedDay;
             },
@@ -372,45 +371,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat, // 修正: ボタンを中央に配置
-      floatingActionButton: CircularAddButtonWithText(
-        label: '追加',
-        onPressed: () async {
-          if (_selectedDay != null) {
-            await Navigator.push(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) => RecordScreen(
-                  selectedDate: _selectedDay!,
-                  recordsBox: widget.recordsBox,
-                  lastUsedMenusBox: widget.lastUsedMenusBox,
-                  settingsBox: widget.settingsBox,
-                  setCountBox: widget.setCountBox,
-                  themeModeBox: widget.themeModeBox,
-                ),
-                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                  const begin = Offset(0.0, 1.0);
-                  const end = Offset.zero;
-                  const curve = Curves.easeOut;
-
-                  var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-                  return SlideTransition(
-                    position: animation.drive(tween),
-                    child: child,
-                  );
-                },
-                transitionDuration: const Duration(milliseconds: 300),
-              ),
-            );
-            // RecordScreenから戻ったらイベントと記録を再ロード
-            _loadEvents();
-            _loadDailyRecordForSelectedDay();
-          }
-        },
-        buttonColor: colorScheme.primary,
-        textColor: isLightMode ? Colors.black : Colors.white, // 修正: 文字色をライトモードで黒、ダークモードで白に
-      ),
+      // floatingActionButtonLocation と floatingActionButton は完全に削除
     );
   }
 }
