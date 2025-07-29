@@ -144,7 +144,7 @@ class RecordScreen extends StatefulWidget {
   final DateTime selectedDate;
   final Box<DailyRecord> recordsBox;
   final Box<dynamic> lastUsedMenusBox;
-  final Box<Map<String, bool>> settingsBox;
+  final Box<dynamic> settingsBox; // 修正: Boxの型をdynamicに合わせる
   final Box<int> setCountBox;
   final Box<int> themeModeBox;
 
@@ -198,18 +198,15 @@ class _RecordScreenState extends State<RecordScreen> {
   }
 
   void _loadSettingsAndParts() {
-    Map<dynamic, dynamic>? savedDynamicBodyPartsSettings = widget.settingsBox.get('selectedBodyParts');
+    // 型安全にMap<String, bool>を構築
     Map<String, bool>? savedBodyPartsSettings;
+    final dynamic rawSettings = widget.settingsBox.get('selectedBodyParts');
 
-    if (savedDynamicBodyPartsSettings != null) {
-      savedBodyPartsSettings = {}; // 明示的に新しいマップを初期化
-      savedDynamicBodyPartsSettings.forEach((key, value) {
-        // キーがString、値がboolであることを確認してから追加
+    if (rawSettings != null && rawSettings is Map) {
+      savedBodyPartsSettings = {};
+      rawSettings.forEach((key, value) {
         if (key is String && value is bool) {
           savedBodyPartsSettings![key] = value;
-        } else {
-          // ログ出力などでデバッグ情報を残すことも可能
-          // print('Warning: Invalid type for body part setting - Key: $key, Value: $value');
         }
       });
     }
@@ -361,9 +358,9 @@ class _RecordScreenState extends State<RecordScreen> {
           _isSuggestionDisplayMap[newRepController] = isSuggestionData;
           newSetInputDataRow.add(SetInputData(weightController: newWeightController, repController: newRepController));
         }
-        // 確定データの場合のみ、ロードされたデータ内の最大セット数を更新
-        if (!isSuggestionData) {
-          maxSetsInLoadedData = max(maxSetsInLoadedData, list[i].weights.length);
+        // 修正: 確定データの場合のみ、ロードされたデータ内の最大セット数を更新
+        if (!isSuggestionData) { // ここを修正しました
+          maxSetsInLoadedData = max(maxSetsInLoadedData, newSetInputDataRow.length); // setInputDataRow.length を使用
         }
       }
 
@@ -489,8 +486,7 @@ class _RecordScreenState extends State<RecordScreen> {
       if (sectionMenuListForRecord.isNotEmpty) {
         allMenusForDay[currentPart!] = sectionMenuListForRecord;
       } else {
-        // その部位に確定済みデータがなければ、その日の記録からその部位を削除する
-        allMenusForDay.remove(currentPart);
+        widget.recordsBox.delete(dateKey); // その日の記録が空になったら削除
       }
     }
 
@@ -568,12 +564,13 @@ class _RecordScreenState extends State<RecordScreen> {
         setState(() {
           _currentSetCount = widget.setCountBox.get('setCount') ?? 3;
 
-          Map<dynamic, dynamic>? savedDynamicBodyPartsSettings = widget.settingsBox.get('selectedBodyParts');
+          // 型安全にMap<String, bool>を構築
           Map<String, bool>? savedBodyPartsSettings;
+          final dynamic rawSettings = widget.settingsBox.get('selectedBodyParts');
 
-          if (savedDynamicBodyPartsSettings != null) {
+          if (rawSettings != null && rawSettings is Map) {
             savedBodyPartsSettings = {};
-            savedDynamicBodyPartsSettings.forEach((key, value) {
+            rawSettings.forEach((key, value) {
               if (key is String && value is bool) {
                 savedBodyPartsSettings![key] = value;
               }
@@ -593,80 +590,65 @@ class _RecordScreenState extends State<RecordScreen> {
 
           // 設定変更後、既存のセクションのセット数を調整
           for (var section in _sections) {
-            // まず、このセクションに確定データがあるかを確認
-            bool hasConfirmedData = false;
-            int maxConfirmedSets = 0;
-            for (var menuCtrl in section.menuControllers) {
-              if (!(_isSuggestionDisplayMap[menuCtrl] ?? false) && menuCtrl.text.isNotEmpty) {
-                hasConfirmedData = true;
-                break;
-              }
-            }
-            if (!hasConfirmedData) { // 種目名に確定データがない場合
-              for (var setInputDataRow in section.setInputDataList) {
-                for (var setInputData in setInputDataRow) {
-                  if (!(_isSuggestionDisplayMap[setInputData.weightController] ?? false) && setInputData.weightController.text.isNotEmpty) {
-                    hasConfirmedData = true;
-                    break;
-                  }
-                  if (!(_isSuggestionDisplayMap[setInputData.repController] ?? false) && setInputData.repController.text.isNotEmpty) {
-                    hasConfirmedData = true;
-                    break;
-                  }
-                }
-                if (hasConfirmedData) break;
-              }
-            }
-
+            int maxSetsForSectionDisplay = _currentSetCount; // Initialize with default
 
             // 各メニューのセット数を調整
             for (int menuIndex = 0; menuIndex < section.menuControllers.length; menuIndex++) {
               List<SetInputData> setInputDataRow = section.setInputDataList[menuIndex];
 
-              // _currentSetCountよりも多いセットを、それが「提案データ」（空の入力フィールド）であれば削除
-              // 後ろからイテレートすることで安全に要素を削除
-              for (int s = setInputDataRow.length - 1; s >= _currentSetCount; s--) {
+              // 確定済みセットの最大数を計算 (1-based index)
+              int actualMaxSetsInThisMenu = 0;
+              for (int s = 0; s < setInputDataRow.length; s++) {
                 final setInputData = setInputDataRow[s];
-                // 重量と回数コントローラーの両方が提案としてマークされており、かつ両方のテキストが空の場合のみ削除
-                if ((_isSuggestionDisplayMap[setInputData.weightController] ?? false) &&
-                    (_isSuggestionDisplayMap[setInputData.repController] ?? false) &&
-                    setInputData.weightController.text.isEmpty &&
-                    setInputData.repController.text.isEmpty) {
-                  setInputData.dispose(); // コントローラーを破棄してから削除
-                  setInputDataRow.removeAt(s);
-                } else {
-                  // 確定データであるか、内容がある場合は保持する。
-                  // 空の提案セットを末尾からのみ削除するため、ループを抜ける。
-                  break;
+                // 重量または回数に値がある、または明示的に提案ではないとマークされている場合
+                if (setInputData.weightController.text.isNotEmpty ||
+                    setInputData.repController.text.isNotEmpty ||
+                    !(_isSuggestionDisplayMap[setInputData.weightController] ?? true) ||
+                    !(_isSuggestionDisplayMap[setInputData.repController] ?? true)) {
+                  actualMaxSetsInThisMenu = s + 1; // 1-based index
                 }
               }
 
-              // 不足しているセットを追加
-              while (setInputDataRow.length < _currentSetCount) {
-                final weightCtrl = TextEditingController();
-                final repCtrl = TextEditingController();
-                _isSuggestionDisplayMap[weightCtrl] = true; // 新しく追加されるセットは提案としてマーク
-                _isSuggestionDisplayMap[repCtrl] = true;
-                setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
-              }
+              // 目標とするセット数: 既存のデータがある場合はそれを維持し、そうでなければ新しいデフォルトセット数に従う
+              int targetSetCountForThisMenu = max(actualMaxSetsInThisMenu, _currentSetCount);
 
-              // このメニューの確定セット数を計算
-              int confirmedSetsInThisMenu = 0;
-              for (var data in setInputDataRow) {
-                // 値が入力されている、またはコントローラーが確定済みとしてマークされている場合
-                if (data.weightController.text.isNotEmpty || data.repController.text.isNotEmpty ||
-                    !(_isSuggestionDisplayMap[data.weightController] ?? true) ||
-                    !(_isSuggestionDisplayMap[data.repController] ?? true)) {
-                  confirmedSetsInThisMenu++;
+              // 現在のセット数と目標セット数を比較して調整
+              if (setInputDataRow.length > targetSetCountForThisMenu) {
+                // 余分なセットを削除 (ただし、確定済みデータは削除しない)
+                // 後ろからループして削除
+                for (int s = setInputDataRow.length - 1; s >= targetSetCountForThisMenu; s--) {
+                  final setInputData = setInputDataRow[s];
+                  // 削除対象は、完全に空で、かつ「提案」としてマークされているセットのみ
+                  bool isSuggestionAndEmpty = (_isSuggestionDisplayMap[setInputData.weightController] ?? true) &&
+                      (_isSuggestionDisplayMap[setInputData.repController] ?? true) &&
+                      setInputData.weightController.text.isEmpty &&
+                      setInputData.repController.text.isEmpty;
+
+                  if (isSuggestionAndEmpty) {
+                    setInputData.dispose(); // コントローラーを破棄
+                    _isSuggestionDisplayMap.remove(setInputData.weightController);
+                    _isSuggestionDisplayMap.remove(setInputData.repController);
+                    setInputDataRow.removeAt(s); // リストから削除
+                  } else {
+                    // 確定データであるか、内容がある場合は削除しない（ループを抜ける）
+                    break;
+                  }
+                }
+              } else if (setInputDataRow.length < targetSetCountForThisMenu) {
+                // 不足しているセットを追加
+                while (setInputDataRow.length < targetSetCountForThisMenu) {
+                  final weightCtrl = TextEditingController();
+                  final repCtrl = TextEditingController();
+                  _isSuggestionDisplayMap[weightCtrl] = true; // 新しく追加されるセットは提案としてマーク
+                  _isSuggestionDisplayMap[repCtrl] = true;
+                  setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl));
                 }
               }
-              maxConfirmedSets = max(maxConfirmedSets, confirmedSetsInThisMenu);
+              // このメニューアイテムの最終的なセット数を考慮して、セクション全体の表示セット数を更新
+              maxSetsForSectionDisplay = max(maxSetsForSectionDisplay, setInputDataRow.length);
             }
-
             // セクションのinitialSetCountを最終的に決定
-            // 確定データがある場合は、その最大セット数とデフォルトの大きい方
-            // 確定データがない場合は、デフォルトセット数
-            section.initialSetCount = hasConfirmedData ? max(maxConfirmedSets, _currentSetCount) : _currentSetCount;
+            section.initialSetCount = maxSetsForSectionDisplay;
           }
         });
       }
@@ -683,6 +665,13 @@ class _RecordScreenState extends State<RecordScreen> {
         _sections[sectionIndex].menuKeys.add(UniqueKey());
 
         _isSuggestionDisplayMap[newMenuController] = false; // 新規追加の種目名は確定状態
+
+        // setInputDataList の長さが menuControllers の長さと一致するように調整
+        // これにより、新しい menuController に対応する setInputDataList のエントリが確実に存在するようにする
+        while (_sections[sectionIndex].setInputDataList.length < _sections[sectionIndex].menuControllers.length) {
+          _sections[sectionIndex].setInputDataList.add([]); // 空のリストを追加してインデックスを合わせる
+        }
+
         final newSetInputDataList = List.generate(setsForNewMenu, (_) {
           final weightCtrl = TextEditingController();
           final repCtrl = TextEditingController();
@@ -690,7 +679,8 @@ class _RecordScreenState extends State<RecordScreen> {
           _isSuggestionDisplayMap[repCtrl] = true;
           return SetInputData(weightController: weightCtrl, repController: repCtrl);
         });
-        _sections[sectionIndex].setInputDataList.add(newSetInputDataList);
+        // 正しいインデックスに新しいセットデータを追加
+        _sections[sectionIndex].setInputDataList[_sections[sectionIndex].menuControllers.length - 1] = newSetInputDataList;
 
         // 新しいメニューが追加されたことで、セクションの表示セット数が変わる可能性がある
         // ここでは、デフォルトセット数に合わせて追加されるため、max(_currentSetCount, ...) でOK
@@ -907,11 +897,11 @@ class _RecordScreenState extends State<RecordScreen> {
                             padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
                             child: Align(
                               alignment: Alignment.centerRight,
-                              child: CircularAddButtonWithText( // StylishButtonを置き換え
+                              child: CircularAddButtonWithText(
                                 label: '部位',
                                 onPressed: _addTargetSection,
                                 buttonColor: Colors.blue.shade700,
-                                textColor: colorScheme.onSurface, // テキストの色を調整
+                                textColor: colorScheme.onSurface,
                               ),
                             ),
                           );
@@ -922,193 +912,199 @@ class _RecordScreenState extends State<RecordScreen> {
                         return AnimatedListItem(
                           key: section.key,
                           direction: AnimationDirection.bottomToTop,
-                          child: GlassCard(
-                            borderRadius: 12.0,
-                            backgroundColor: section.selectedPart == '有酸素運動' && isLightMode
-                                ? Colors.grey[400]!
-                                : colorScheme.surfaceContainerHighest,
-                            padding: const EdgeInsets.all(20.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                DropdownButtonFormField<String>(
-                                  decoration: InputDecoration(
-                                    hintText: 'トレーニング部位を選択',
-                                    hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
-                                    filled: true,
-                                    fillColor: colorScheme.surfaceContainer,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(25.0),
-                                      borderSide: BorderSide.none,
+                          child: Padding( // ここにPaddingを追加
+                            padding: const EdgeInsets.symmetric(vertical: 8.0), // セクション間の縦方向の余白
+                            child: GlassCard(
+                              borderRadius: 12.0,
+                              backgroundColor: section.selectedPart == '有酸素運動' && isLightMode
+                                  ? Colors.grey[400]!
+                                  : colorScheme.surfaceContainerHighest,
+                              padding: const EdgeInsets.all(16.0), // ここを20.0から16.0に修正
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  DropdownButtonFormField<String>(
+                                    decoration: InputDecoration(
+                                      hintText: 'トレーニング部位を選択',
+                                      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
+                                      filled: true,
+                                      fillColor: colorScheme.surfaceContainer,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(25.0),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(25.0),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(25.0),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                                     ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(25.0),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(25.0),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                                  ),
-                                  value: section.selectedPart,
-                                  items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold)))).toList(),
-                                  onChanged: (value) {
-                                    if (mounted) {
-                                      setState(() {
-                                        section.selectedPart = value;
-                                        if (section.selectedPart != null) {
-                                          final String actualSelectedPart = section.selectedPart!;
+                                    value: section.selectedPart,
+                                    items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold)))).toList(),
+                                    onChanged: (value) {
+                                      if (mounted) {
+                                        setState(() {
+                                          section.selectedPart = value;
+                                          if (section.selectedPart != null) {
+                                            final String actualSelectedPart = section.selectedPart!;
 
-                                          _clearSectionControllersAndMaps(section);
-                                          section.menuKeys.clear();
+                                            _clearSectionControllersAndMaps(section);
+                                            section.menuKeys.clear();
 
-                                          String dateKey = _getDateKey(widget.selectedDate);
-                                          DailyRecord? record = widget.recordsBox.get(dateKey);
-                                          List<MenuData>? listToLoad;
-                                          bool isSuggestion = false;
+                                            String dateKey = _getDateKey(widget.selectedDate);
+                                            DailyRecord? record = widget.recordsBox.get(dateKey);
+                                            List<MenuData>? listToLoad;
+                                            bool isSuggestion = false;
 
-                                          if (record != null && record.menus.containsKey(actualSelectedPart)) {
-                                            listToLoad = record.menus[actualSelectedPart];
-                                            isSuggestion = false;
-                                          } else {
-                                            final dynamic rawList = widget.lastUsedMenusBox.get(actualSelectedPart);
-                                            if (rawList is List) {
-                                              listToLoad = rawList.map((e) {
-                                                if (e is Map) {
-                                                  return MenuData.fromJson(Map<String, dynamic>.from(e));
-                                                }
-                                                return e as MenuData;
-                                              }).toList();
+                                            if (record != null && record.menus.containsKey(actualSelectedPart)) {
+                                              listToLoad = record.menus[actualSelectedPart];
+                                              isSuggestion = false;
+                                            } else {
+                                              final dynamic rawList = widget.lastUsedMenusBox.get(actualSelectedPart);
+                                              if (rawList is List) {
+                                                listToLoad = rawList.map((e) {
+                                                  if (e is Map) {
+                                                    return MenuData.fromJson(Map<String, dynamic>.from(e));
+                                                  }
+                                                  return e as MenuData;
+                                                }).toList();
+                                              }
+                                              isSuggestion = true;
                                             }
-                                            isSuggestion = true;
+
+                                            // _setControllersFromDataにSectionDataを直接渡す
+                                            _setControllersFromData(section, listToLoad ?? [], isSuggestion);
+
+                                          } else {
+                                            _clearSectionControllersAndMaps(section);
+                                            section.menuKeys.clear();
+                                            section.initialSetCount = _currentSetCount;
                                           }
-
-                                          // _setControllersFromDataにSectionDataを直接渡す
-                                          _setControllersFromData(section, listToLoad ?? [], isSuggestion);
-
-                                        } else {
-                                          _clearSectionControllersAndMaps(section);
-                                          section.menuKeys.clear();
-                                          section.initialSetCount = _currentSetCount;
-                                        }
-                                      });
-                                    }
-                                  },
-                                  dropdownColor: colorScheme.surfaceContainer,
-                                  style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
-                                  borderRadius: BorderRadius.circular(15.0),
-                                ),
-                                const SizedBox(height: 20),
-                                AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 400),
-                                  transitionBuilder: (Widget child, Animation<double> animation) {
-                                    final offsetAnimation = Tween<Offset>(
-                                      begin: const Offset(0.0, -0.2),
-                                      end: Offset.zero,
-                                    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut));
-                                    return FadeTransition(
-                                      opacity: animation,
-                                      child: SlideTransition(
-                                        position: offsetAnimation,
-                                        child: child,
-                                      ),
-                                    );
-                                  },
-                                  key: ValueKey(section.selectedPart), // selectedPartが変更されたらアニメーションをトリガー
-                                  child: section.selectedPart != null
-                                      ? Column(
-                                    children: [
-                                      ListView.builder(
-                                        shrinkWrap: true,
-                                        physics: const NeverScrollableScrollPhysics(),
-                                        itemCount: section.menuControllers.length,
-                                        itemBuilder: (context, menuIndex) {
-                                          return AnimatedListItem(
-                                            key: section.menuKeys[menuIndex],
-                                            direction: AnimationDirection.topToBottom,
-                                            child: GlassCard(
-                                              borderRadius: 10.0,
-                                              backgroundColor: colorScheme.surface,
-                                              padding: const EdgeInsets.all(16.0),
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  StylishInput(
-                                                    key: ValueKey('${section.menuControllers[menuIndex].hashCode}_menuName'), // ここにキーを追加
-                                                    controller: section.menuControllers[menuIndex],
-                                                    hint: '種目名を記入', // ヒントテキスト
-                                                    inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                                                    normalTextColor: colorScheme.onSurface, // 新しいプロパティ
-                                                    suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5), // 新しいプロパティ
-                                                    fillColor: colorScheme.surfaceContainer,
-                                                    contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                                                    // 種目名はlastUsedMenusBoxからロードされた場合でも確定済みとする
-                                                    isSuggestionDisplay: _isSuggestionDisplayMap[section.menuControllers[menuIndex]] ?? false,
-                                                    textAlign: TextAlign.left, // 左寄せ
-                                                    onChanged: (value) {
-                                                      print('Menu controller changed. Was suggestion: ${_isSuggestionDisplayMap[section.menuControllers[menuIndex]]}, New value: $value'); // デバッグログ
-                                                      if (mounted) {
-                                                        setState(() {
-                                                          _isSuggestionDisplayMap[section.menuControllers[menuIndex]] = false;
-                                                        });
-                                                      }
-                                                    },
-                                                    onTap: () {
-                                                      print('Menu controller tapped. Was suggestion: ${_isSuggestionDisplayMap[section.menuControllers[menuIndex]]}'); // デバッグログ
-                                                      if (mounted) {
-                                                        setState(() {
-                                                          _isSuggestionDisplayMap[section.menuControllers[menuIndex]] = false;
-                                                        });
-                                                      }
-                                                    },
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  ListView.separated(
-                                                    shrinkWrap: true,
-                                                    physics: const NeverScrollableScrollPhysics(),
-                                                    // ここを修正: section.initialSetCount を使用して表示されるセット数を制限
-                                                    itemCount: section.initialSetCount ?? _currentSetCount,
-                                                    separatorBuilder: (context, s) => const SizedBox(height: 8),
-                                                    itemBuilder: (context, s) => _buildSetRow(
-                                                        context,
-                                                        section.setInputDataList,
-                                                        menuIndex,
-                                                        s + 1,
-                                                        s,
-                                                        section.selectedPart,
-                                                        _isSuggestionDisplayMap,
-                                                            () {
+                                        });
+                                      }
+                                    },
+                                    dropdownColor: colorScheme.surfaceContainer,
+                                    style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
+                                    borderRadius: BorderRadius.circular(15.0),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 400),
+                                    transitionBuilder: (Widget child, Animation<double> animation) {
+                                      final offsetAnimation = Tween<Offset>(
+                                        begin: const Offset(0.0, -0.2),
+                                        end: Offset.zero,
+                                      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut));
+                                      return FadeTransition(
+                                        opacity: animation,
+                                        child: SlideTransition(
+                                          position: offsetAnimation,
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                                    key: ValueKey(section.selectedPart), // selectedPartが変更されたらアニメーションをトリガー
+                                    child: section.selectedPart != null
+                                        ? Column(
+                                      children: [
+                                        ListView.builder(
+                                          shrinkWrap: true,
+                                          physics: const NeverScrollableScrollPhysics(),
+                                          itemCount: section.menuControllers.length,
+                                          itemBuilder: (context, menuIndex) {
+                                            return AnimatedListItem(
+                                              key: section.menuKeys[menuIndex],
+                                              direction: AnimationDirection.topToBottom,
+                                              child: Padding( // ここにPaddingを追加
+                                                padding: const EdgeInsets.symmetric(vertical: 8.0), // メニューアイテム間の縦方向の余白
+                                                child: GlassCard(
+                                                  borderRadius: 10.0,
+                                                  backgroundColor: colorScheme.surface,
+                                                  padding: const EdgeInsets.all(16.0),
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      StylishInput(
+                                                        key: ValueKey('${section.menuControllers[menuIndex].hashCode}_menuName'), // ここにキーを追加
+                                                        controller: section.menuControllers[menuIndex],
+                                                        hint: '種目名を記入', // ヒントテキスト
+                                                        inputFormatters: [LengthLimitingTextInputFormatter(50)],
+                                                        normalTextColor: colorScheme.onSurface, // 新しいプロパティ
+                                                        suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5), // 新しいプロパティ
+                                                        fillColor: colorScheme.surfaceContainer,
+                                                        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                                        // 種目名はlastUsedMenusBoxからロードされた場合でも確定済みとする
+                                                        isSuggestionDisplay: _isSuggestionDisplayMap[section.menuControllers[menuIndex]] ?? false,
+                                                        textAlign: TextAlign.left, // 左寄せ
+                                                        onChanged: (value) {
+                                                          print('Menu controller changed. Was suggestion: ${_isSuggestionDisplayMap[section.menuControllers[menuIndex]]}, New value: $value'); // デバッグログ
                                                           if (mounted) {
-                                                            setState(() {});
+                                                            setState(() {
+                                                              _isSuggestionDisplayMap[section.menuControllers[menuIndex]] = false;
+                                                            });
                                                           }
-                                                        }
-                                                    ),
+                                                        },
+                                                        onTap: () {
+                                                          print('Menu controller tapped. Was suggestion: ${_isSuggestionDisplayMap[section.menuControllers[menuIndex]]}'); // デバッグログ
+                                                          if (mounted) {
+                                                            setState(() {
+                                                              _isSuggestionDisplayMap[section.menuControllers[menuIndex]] = false;
+                                                            });
+                                                          }
+                                                        },
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      ListView.separated(
+                                                        shrinkWrap: true,
+                                                        physics: const NeverScrollableScrollPhysics(),
+                                                        // ここを修正: section.initialSetCount を使用して表示されるセット数を制限
+                                                        itemCount: section.setInputDataList[menuIndex].length, // 実際のリストの長さを参照
+                                                        separatorBuilder: (context, s) => const SizedBox(height: 8),
+                                                        itemBuilder: (context, s) => _buildSetRow(
+                                                            context,
+                                                            section.setInputDataList,
+                                                            menuIndex,
+                                                            s + 1,
+                                                            s,
+                                                            section.selectedPart,
+                                                            _isSuggestionDisplayMap,
+                                                                () {
+                                                              if (mounted) {
+                                                                setState(() {});
+                                                              }
+                                                            }
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                    ],
                                                   ),
-                                                  const SizedBox(height: 8),
-                                                ],
+                                                ),
                                               ),
+                                            );
+                                          },
+                                        ),
+                                        Align(
+                                          alignment: Alignment.centerRight,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(top: 12.0),
+                                            child: CircularAddButtonWithText(
+                                              label: '種目',
+                                              onPressed: () => _addMenuItem(index),
+                                              buttonColor: Colors.blue.shade400,
+                                              textColor: colorScheme.onSurface,
                                             ),
-                                          );
-                                        },
-                                      ),
-                                      Align(
-                                        alignment: Alignment.centerRight,
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(top: 12.0),
-                                          child: CircularAddButtonWithText( // StylishButtonを置き換え
-                                            label: '種目',
-                                            onPressed: () => _addMenuItem(index),
-                                            buttonColor: Colors.blue.shade400,
-                                            textColor: colorScheme.onSurface, // テキストの色を調整
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  )
-                                      : const SizedBox.shrink(),
-                                ),
-                              ],
+                                      ],
+                                    )
+                                        : const SizedBox.shrink(),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         );

@@ -36,6 +36,7 @@ dependencies:
   table_calendar: ^3.1.2
   hive: ^2.2.3
   hive_flutter: ^1.1.0
+  intl: ^0.19.0 # ★この行を追加してください
 
 dev_dependencies:
   flutter_test:
@@ -45,19 +46,19 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   build_runner: ^2.4.11
   hive_generator: ^2.0.1
-  flutter_launcher_icons: ^0.13.1 # この行はそのまま (バージョンは最新の安定版を確認してください)
+  flutter_launcher_icons: ^0.13.1
 
 # flutter_launcher_icons セクション
 flutter_launcher_icons:
-  android: true # Androidのアイコンを生成するかどうか (true/false)
-  ios: true     # iOSのアイコンを生成するかどうか (true/false)
-  image_path: "assets/images/icon_1.png" # 通常のアイコン（iOSや古いAndroidバージョン用）のパス
+  android: true
+  ios: true
+  image_path: "assets/images/icon_1.png"
 
   # Android 8.0 (API 26) 以降のアダプティブアイコンに関する設定
   # アダプティブアイコンの前景に 'icon_1.png' を使用します。
   # 'icon_1.png' は、背景が透過された前景画像として機能する必要があります。
-  adaptive_icon_background: "#ffffff" # アダプティブアイコンの背景色 (Hexコード)。ここでは白に設定。
-  adaptive_icon_foreground: "assets/images/icon_1.png" # ★ここを 'icon_1.png' に修正しました
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: "assets/images/icon_1.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -70,5 +71,4 @@ flutter:
   # アプリ内で画像を使用する場合、assetsセクションで宣言します。
   # ランチャーアイコンの画像もここに含めることをお勧めします。
   assets:
-    - assets/images/icon_1.png # ★このパスはそのままです
-    # - assets/images/app_launcher_icon_foreground.png # ★この行は不要になったため削除しました
+    - assets/images/icon_1.png

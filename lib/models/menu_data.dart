@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 
-part 'menu_data.g.dart';
+part 'menu_data.g.dart'; // この行があることを確認
 
 @HiveType(typeId: 0)
 class MenuData extends HiveObject {
@@ -16,9 +16,7 @@ class MenuData extends HiveObject {
   factory MenuData.fromJson(Map<String, dynamic> json) {
     return MenuData(
       name: json['name'] as String,
-      // 修正: nullまたは0の場合は空文字列に変換
       weights: (json['weights'] as List).map((e) => e == null || e == 0 ? '' : e.toString()).toList(),
-      // 修正: nullまたは0の場合は空文字列に変換
       reps: (json['reps'] as List).map((e) => e == null || e == 0 ? '' : e.toString()).toList(),
     );
   }
