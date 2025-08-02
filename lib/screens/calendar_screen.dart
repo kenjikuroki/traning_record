@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hive/hive.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:intl/intl.dart'; // DateFormat を使用するためにインポート
+import 'package:intl/intl.dart'; // To use DateFormat
 
 import '../models/menu_data.dart'; // MenuData and DailyRecord models
 import 'record_screen.dart'; // RecordScreen import
 import 'settings_screen.dart'; // SettingsScreen import
-import '../widgets/custom_widgets.dart'; // カスタムウィジェットをインポート
-import '../main.dart'; // currentThemeMode を使用するためにインポート
+import '../widgets/custom_widgets.dart'; // Import custom widgets
+import '../main.dart'; // To use currentThemeMode
 
 // ignore_for_file: library_private_types_in_public_api
 
 class CalendarScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
   final Box<dynamic> lastUsedMenusBox;
-  final Box<dynamic> settingsBox; // Boxの型をdynamicに合わせる
+  final Box<dynamic> settingsBox; // Match Box type to dynamic
   final Box<int> setCountBox;
   final Box<int> themeModeBox;
 
@@ -35,8 +35,8 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  Map<DateTime, List<String>> _events = {}; // 記録がある日付のイベント（部位名）を保存
-  DailyRecord? _currentDayRecord; // 選択された日付のDailyRecordを保持
+  Map<DateTime, List<String>> _events = {}; // Store events (part names) for dates with records
+  DailyRecord? _currentDayRecord; // Hold the DailyRecord for the selected day
 
   List<String> _filteredBodyParts = [];
   final List<String> _allBodyParts = [
@@ -47,15 +47,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _loadEvents(); // カレンダーマーカー用
-    _loadSettingsAndParts(); // フィルタリングされた部位用
-    _loadDailyRecordForSelectedDay(); // 初期表示日の記録をロード
+    _loadEvents(); // For calendar markers
+    _loadSettingsAndParts(); // For filtered parts
+    _loadDailyRecordForSelectedDay(); // Load record for initial display day
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // テーマモード変更を検知してUIを更新
+    // Listen for theme mode changes to update the UI
     currentThemeMode.addListener(_onThemeModeChanged);
   }
 
@@ -67,18 +67,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   void _onThemeModeChanged() {
     if (mounted) {
-      setState(() {}); // テーマモードが変更されたらUIを再構築
+      setState(() {}); // Rebuild the UI when the theme mode changes
     }
   }
 
   void _loadEvents() {
     _events.clear();
-    for (var record in widget.recordsBox.values) {
-      try {
-        DateTime date = DateTime.parse(record.key);
-        _events[DateTime(date.year, date.month, date.day)] = record.menus.keys.toList(); // 日付を正規化して保存
-      } catch (e) {
-        print('Error parsing date key from Hive: ${record.key}, Error: $e');
+    for (int i = 0; i < widget.recordsBox.length; i++) {
+      final key = widget.recordsBox.keyAt(i);
+      final record = widget.recordsBox.getAt(i);
+
+      if (key is String && record != null) {
+        try {
+          DateTime date = DateTime.parse(key);
+          _events[DateTime(date.year, date.month, date.day)] = record.menus.keys.toList();
+        } catch (e) {
+          print('Error parsing date key from Hive: $key, Error: $e');
+        }
       }
     }
     if (mounted) {
@@ -100,13 +105,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   List<String> _getEventsForDay(DateTime day) {
-    // _eventsのキーをDateTime型に正規化して比較
     final normalizedDay = DateTime(day.year, day.month, day.day);
     return _events[normalizedDay] ?? [];
   }
 
   void _loadSettingsAndParts() {
-    // 型安全にMap<String, bool>を構築
     Map<String, bool>? savedBodyPartsSettings;
     final dynamic rawSettings = widget.settingsBox.get('selectedBodyParts');
 
@@ -135,9 +138,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  // --- 修正された _onDaySelected メソッド ---
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     if (isSameDay(_selectedDay, selectedDay)) {
-      // 同じ日付を2回タップ -> RecordScreenへ遷移
       if (_selectedDay != null) {
         Navigator.push(
           context,
@@ -148,7 +151,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               lastUsedMenusBox: widget.lastUsedMenusBox,
               settingsBox: widget.settingsBox,
               setCountBox: widget.setCountBox,
-              themeModeBox: widget.themeModeBox,
+              themeModeBox: widget.themeModeBox, // この行が正しく追加されていることを確認してください
             ),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               const begin = Offset(0.0, 1.0);
@@ -161,17 +164,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ).then((_) {
           if (mounted) {
-            _loadEvents(); // RecordScreenから戻ったらイベントを再ロード
-            _loadDailyRecordForSelectedDay(); // 記録も再ロード
+            _loadEvents();
+            _loadDailyRecordForSelectedDay();
           }
         });
       }
     } else {
-      // 異なる日付をタップ、または初回タップ -> 日付を選択
       setState(() {
         _selectedDay = selectedDay;
         _focusedDay = focusedDay;
-        _loadDailyRecordForSelectedDay(); // 新しく選択された日の記録をロード
+        _loadDailyRecordForSelectedDay();
       });
     }
   }
@@ -204,8 +206,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     ).then((_) {
       if (mounted) {
-        _loadSettingsAndParts(); // 設定画面から戻ったら設定を再ロード
-        _loadDailyRecordForSelectedDay(); // 記録も再ロード
+        _loadSettingsAndParts();
+        _loadDailyRecordForSelectedDay();
       }
     });
   }
@@ -238,14 +240,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       body: Column(
         children: [
           TableCalendar(
-            locale: 'ja_JP', // 日本語ロケールを設定
+            locale: 'ja_JP',
             firstDay: DateTime.utc(2020, 1, 1),
             lastDay: DateTime.utc(2030, 12, 31),
             focusedDay: _focusedDay,
             selectedDayPredicate: (day) {
               return isSameDay(_selectedDay, day);
             },
-            onDaySelected: _onDaySelected, // 2回タップで遷移するロジックを適用
+            onDaySelected: _onDaySelected,
             onPageChanged: (focusedDay) {
               _focusedDay = focusedDay;
             },
@@ -260,7 +262,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
             calendarStyle: CalendarStyle(
               outsideDaysVisible: false,
-              weekendTextStyle: TextStyle(color: colorScheme.error), // 土日の色
+              weekendTextStyle: TextStyle(color: colorScheme.error),
               todayDecoration: BoxDecoration(
                 color: colorScheme.primary.withOpacity(0.2),
                 shape: BoxShape.circle,
@@ -270,11 +272,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 shape: BoxShape.circle,
               ),
               markerDecoration: BoxDecoration(
-                color: colorScheme.secondary, // イベントマーカーの色
+                color: colorScheme.secondary,
                 shape: BoxShape.circle,
               ),
               defaultTextStyle: TextStyle(color: colorScheme.onSurface),
-              rowDecoration: BoxDecoration(color: colorScheme.surface), // カレンダーの行の背景色
+              rowDecoration: BoxDecoration(color: colorScheme.surface),
             ),
             daysOfWeekStyle: DaysOfWeekStyle(
               weekdayStyle: TextStyle(color: colorScheme.onSurfaceVariant),
@@ -301,7 +303,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            part, // 部位名
+                            part,
                             style: TextStyle(
                               color: colorScheme.onSurface,
                               fontSize: 18.0,
@@ -319,7 +321,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    menu.name, // 種目名
+                                    menu.name,
                                     style: TextStyle(
                                       color: colorScheme.onSurfaceVariant,
                                       fontSize: 16.0,
@@ -332,9 +334,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                     physics: const NeverScrollableScrollPhysics(),
                                     itemCount: menu.weights.length,
                                     itemBuilder: (context, setIndex) {
-                                      // インデックスが有効であることを確認
                                       if (setIndex >= menu.weights.length || setIndex >= menu.reps.length) {
-                                        return const SizedBox.shrink(); // 範囲外の場合は何も表示しない
+                                        return const SizedBox.shrink();
                                       }
                                       final weight = menu.weights[setIndex];
                                       final rep = menu.reps[setIndex];
@@ -350,7 +351,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       );
                                     },
                                   ),
-                                  if (menuIndex < menuList.length - 1) const SizedBox(height: 12), // メニュー間のスペース
+                                  if (menuIndex < menuList.length - 1) const SizedBox(height: 12),
                                 ],
                               );
                             },
@@ -371,7 +372,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-      // floatingActionButtonLocation と floatingActionButton は完全に削除
     );
   }
 }

@@ -1,114 +1,82 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // TextInputFormatter を使用するためにインポート
+import 'package:flutter/services.dart'; // FilteringTextInputFormatter を使用するためにインポート
 
-// StylishButton ウィジェット
-class StylishButton extends StatelessWidget {
-  final String text;
+// CircularAddButtonWithText ウィジェット (ライトモード時の背景を暗めに + テキストサイズに合わせる)
+class CircularAddButtonWithText extends StatefulWidget {
+  final String label;
   final VoidCallback onPressed;
-  final double fontSize;
-  final EdgeInsetsGeometry padding;
-  final Color? buttonColor;
-  final Color? textColor;
+  final Color? normalBgColorOverride;
+  final Color? pressedBgColorOverride;
+  final Color? textColorOverride;
+  final Color? accentColorOverride;
 
-  const StylishButton({
+  const CircularAddButtonWithText({
     Key? key,
-    required this.text,
+    required this.label,
     required this.onPressed,
-    this.fontSize = 16.0,
-    this.padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-    this.buttonColor,
-    this.textColor,
+    this.normalBgColorOverride,
+    this.pressedBgColorOverride,
+    this.textColorOverride,
+    this.accentColorOverride,
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: buttonColor ?? colorScheme.primary,
-        foregroundColor: textColor ?? colorScheme.onPrimary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(25.0),
-        ),
-        padding: padding,
-        elevation: 5, // シャドウを追加
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
+  _CircularAddButtonWithTextState createState() => _CircularAddButtonWithTextState();
 }
 
-// StylishInput ウィジェット
-class StylishInput extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final TextInputType keyboardType;
-  final List<TextInputFormatter>? inputFormatters;
-  final Color normalTextColor;
-  final Color suggestionTextColor;
-  final Color fillColor;
-  final EdgeInsetsGeometry contentPadding;
-  final bool isSuggestionDisplay;
-  final TextAlign textAlign;
-  final ValueChanged<String>? onChanged;
-  final VoidCallback? onTap;
-
-  const StylishInput({
-    Key? key,
-    required this.controller,
-    required this.hint,
-    this.keyboardType = TextInputType.text,
-    this.inputFormatters,
-    required this.normalTextColor,
-    required this.suggestionTextColor,
-    required this.fillColor,
-    this.contentPadding = const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-    this.isSuggestionDisplay = false,
-    this.textAlign = TextAlign.left,
-    this.onChanged,
-    this.onTap,
-  }) : super(key: key);
+class _CircularAddButtonWithTextState extends State<CircularAddButtonWithText> {
+  bool _isPressed = false;
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters ?? [],
-      style: TextStyle(
-        color: isSuggestionDisplay ? suggestionTextColor : normalTextColor,
-        fontSize: 14.0,
-        fontWeight: isSuggestionDisplay ? FontWeight.normal : FontWeight.bold,
+    final bool isLightMode = Theme.of(context).brightness == Brightness.light;
+
+    final Color normalBgColor = widget.normalBgColorOverride ??
+        (isLightMode ? const Color(0xFFCCCCCC) : const Color(0xFF2C2F33));
+    final Color pressedBgColor = widget.pressedBgColorOverride ??
+        (isLightMode ? const Color(0xFFE0E0E0) : const Color(0xFF383C40));
+    final Color textColor = widget.textColorOverride ??
+        (isLightMode ? const Color(0xFF555555) : const Color(0xFFCCCCCC));
+    final Color accentColor = widget.accentColorOverride ??
+        (isLightMode ? const Color(0xFF3B82F6) : const Color(0xFF60A5FA));
+
+    return GestureDetector(
+      onTapDown: (_) {
+        setState(() {
+          _isPressed = true;
+        });
+      },
+      onTapUp: (_) {
+        setState(() {
+          _isPressed = false;
+        });
+        widget.onPressed();
+      },
+      onTapCancel: () {
+        setState(() {
+          _isPressed = false;
+        });
+      },
+      child: IntrinsicWidth(
+        child: IntrinsicHeight(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: _isPressed ? pressedBgColor : normalBgColor,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              widget.label,
+              style: TextStyle(
+                color: _isPressed ? accentColor : textColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ),
       ),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: suggestionTextColor, fontSize: 14.0),
-        filled: true,
-        fillColor: fillColor,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.0),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.0),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.0),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: contentPadding,
-      ),
-      textAlign: textAlign,
-      onChanged: onChanged,
-      onTap: onTap,
     );
   }
 }
@@ -123,7 +91,7 @@ class GlassCard extends StatelessWidget {
   const GlassCard({
     Key? key,
     required this.child,
-    this.borderRadius = 12.0,
+    this.borderRadius = 8.0,
     required this.backgroundColor,
     this.padding = const EdgeInsets.all(16.0),
   }) : super(key: key);
@@ -131,7 +99,6 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(borderRadius),
@@ -139,7 +106,7 @@ class GlassCard extends StatelessWidget {
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
             blurRadius: 10,
-            offset: const Offset(0, 5),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -151,55 +118,124 @@ class GlassCard extends StatelessWidget {
   }
 }
 
-// CircularAddButtonWithText ウィジェット
-class CircularAddButtonWithText extends StatelessWidget {
-  final String label;
-  final VoidCallback onPressed;
-  final Color? buttonColor;
-  final Color? textColor;
-  final double iconSize;
-  final double circleSize;
-  final double fontSize;
+// StylishInput ウィジェット
+class StylishInput extends StatefulWidget {
+  final TextEditingController controller;
+  final String hint;
+  final TextInputType keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+  final Color normalTextColor;
+  final Color suggestionTextColor;
+  final Color fillColor;
+  final EdgeInsetsGeometry contentPadding;
+  final TextAlign textAlign;
+  final ValueChanged<String>? onChanged;
+  final VoidCallback? onTap;
 
-  const CircularAddButtonWithText({
+  const StylishInput({
     Key? key,
-    required this.label,
-    required this.onPressed,
-    this.buttonColor,
-    this.textColor,
-    this.iconSize = 20.0, // アイコンサイズを小さくしました
-    this.circleSize = 40.0, // 丸のサイズをさらに小さくしました
-    this.fontSize = 12.0,
+    required this.controller,
+    this.hint = '',
+    this.keyboardType = TextInputType.text,
+    this.inputFormatters,
+    required this.normalTextColor,
+    required this.suggestionTextColor,
+    required this.fillColor,
+    this.contentPadding = const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+    required this.textAlign,
+    this.onChanged,
+    this.onTap,
   }) : super(key: key);
 
   @override
+  _StylishInputState createState() => _StylishInputState();
+}
+
+class _StylishInputState extends State<StylishInput> {
+  late bool _isSuggestionDisplay;
+
+  @override
+  void initState() {
+    super.initState();
+    _isSuggestionDisplay = widget.controller.text.isEmpty && widget.hint.isNotEmpty;
+    widget.controller.addListener(_handleControllerChange);
+  }
+
+  @override
+  void didUpdateWidget(covariant StylishInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_handleControllerChange);
+      widget.controller.addListener(_handleControllerChange);
+      _isSuggestionDisplay = widget.controller.text.isEmpty && widget.hint.isNotEmpty;
+    }
+    if (oldWidget.hint != widget.hint) {
+      _isSuggestionDisplay = widget.controller.text.isEmpty && widget.hint.isNotEmpty;
+    }
+  }
+
+  void _handleControllerChange() {
+    if (_isSuggestionDisplay && widget.controller.text.isNotEmpty) {
+      setState(() {
+        _isSuggestionDisplay = false;
+      });
+    } else if (!_isSuggestionDisplay && widget.controller.text.isEmpty && widget.hint.isNotEmpty) {
+      setState(() {
+        _isSuggestionDisplay = true;
+      });
+    }
+    widget.onChanged?.call(widget.controller.text);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handleControllerChange);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox( // Fixed: Added SizedBox to control the size of the FloatingActionButton
-          width: circleSize,
-          height: circleSize,
-          child: FloatingActionButton(
-            onPressed: onPressed,
-            backgroundColor: buttonColor ?? colorScheme.primary,
-            foregroundColor: Colors.white, // 「+」記号を白文字にする
-            shape: const CircleBorder(),
-            elevation: 0, // 影をなくす
-            child: Icon(Icons.add, size: iconSize),
-          ),
+    return TextField(
+      controller: widget.controller,
+      keyboardType: widget.keyboardType,
+      inputFormatters: widget.inputFormatters,
+      textAlign: widget.textAlign,
+      style: TextStyle(
+        color: _isSuggestionDisplay ? widget.suggestionTextColor : widget.normalTextColor,
+        fontSize: 16.0,
+        fontWeight: FontWeight.bold,
+      ),
+      decoration: InputDecoration(
+        hintText: _isSuggestionDisplay ? widget.hint : null,
+        hintStyle: TextStyle(
+          color: widget.suggestionTextColor,
+          fontSize: 16.0,
+          fontWeight: FontWeight.bold,
         ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: textColor ?? colorScheme.onSurface,
-            fontSize: fontSize,
-            fontWeight: FontWeight.bold,
-          ),
+        filled: true,
+        fillColor: widget.fillColor,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10.0),
+          borderSide: BorderSide.none,
         ),
-      ],
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10.0),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10.0),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: widget.contentPadding,
+      ),
+      onTap: () {
+        if (_isSuggestionDisplay) {
+          setState(() {
+            _isSuggestionDisplay = false;
+          });
+        }
+        widget.onTap?.call();
+      },
     );
   }
 }
