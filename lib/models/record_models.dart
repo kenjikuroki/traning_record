@@ -5,12 +5,12 @@ import 'dart:math';
 class SetInputData {
   final TextEditingController weightController;
   final TextEditingController repController;
-  final bool isSuggestion; // Flag to indicate if this set is a suggestion
+  bool isSuggestion; // ★ここから 'final' キーワードを削除する
 
   SetInputData({
     required this.weightController,
     required this.repController,
-    this.isSuggestion = false, // Default is false
+    this.isSuggestion = false, // ★この引数はこのままでOK
   });
 
   void dispose() {

@@ -118,10 +118,11 @@ class GlassCard extends StatelessWidget {
   }
 }
 
-// StylishInput ウィジェット
+// lib/widgets/custom_widgets.dart
+
 class StylishInput extends StatefulWidget {
   final TextEditingController controller;
-  final String hint;
+  final String? hint; // ここを String? に変更
   final TextInputType keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final Color normalTextColor;
@@ -135,7 +136,7 @@ class StylishInput extends StatefulWidget {
   const StylishInput({
     Key? key,
     required this.controller,
-    this.hint = '',
+    this.hint, // ここも required を外し、null を許容するように
     this.keyboardType = TextInputType.text,
     this.inputFormatters,
     required this.normalTextColor,
@@ -157,7 +158,8 @@ class _StylishInputState extends State<StylishInput> {
   @override
   void initState() {
     super.initState();
-    _isSuggestionDisplay = widget.controller.text.isEmpty && widget.hint.isNotEmpty;
+    // hint が null でない場合にのみ _isSuggestionDisplay を初期化
+    _isSuggestionDisplay = widget.controller.text.isEmpty && (widget.hint != null && widget.hint!.isNotEmpty);
     widget.controller.addListener(_handleControllerChange);
   }
 
@@ -167,22 +169,34 @@ class _StylishInputState extends State<StylishInput> {
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.removeListener(_handleControllerChange);
       widget.controller.addListener(_handleControllerChange);
-      _isSuggestionDisplay = widget.controller.text.isEmpty && widget.hint.isNotEmpty;
+      // hint が null でない場合にのみ _isSuggestionDisplay を更新
+      _isSuggestionDisplay = widget.controller.text.isEmpty && (widget.hint != null && widget.hint!.isNotEmpty);
     }
     if (oldWidget.hint != widget.hint) {
-      _isSuggestionDisplay = widget.controller.text.isEmpty && widget.hint.isNotEmpty;
+      // hint が null でない場合にのみ _isSuggestionDisplay を更新
+      _isSuggestionDisplay = widget.controller.text.isEmpty && (widget.hint != null && widget.hint!.isNotEmpty);
     }
   }
 
   void _handleControllerChange() {
-    if (_isSuggestionDisplay && widget.controller.text.isNotEmpty) {
-      setState(() {
-        _isSuggestionDisplay = false;
-      });
-    } else if (!_isSuggestionDisplay && widget.controller.text.isEmpty && widget.hint.isNotEmpty) {
-      setState(() {
-        _isSuggestionDisplay = true;
-      });
+    // hint が null でない場合のみロジックを実行
+    if (widget.hint != null && widget.hint!.isNotEmpty) {
+      if (_isSuggestionDisplay && widget.controller.text.isNotEmpty) {
+        setState(() {
+          _isSuggestionDisplay = false;
+        });
+      } else if (!_isSuggestionDisplay && widget.controller.text.isEmpty) {
+        setState(() {
+          _isSuggestionDisplay = true;
+        });
+      }
+    } else {
+      // hint がない場合は常に通常の表示
+      if (_isSuggestionDisplay) {
+        setState(() {
+          _isSuggestionDisplay = false;
+        });
+      }
     }
     widget.onChanged?.call(widget.controller.text);
   }
@@ -206,7 +220,7 @@ class _StylishInputState extends State<StylishInput> {
         fontWeight: FontWeight.bold,
       ),
       decoration: InputDecoration(
-        hintText: _isSuggestionDisplay ? widget.hint : null,
+        hintText: _isSuggestionDisplay ? widget.hint : null, // hintText は String? を受け入れる
         hintStyle: TextStyle(
           color: widget.suggestionTextColor,
           fontSize: 16.0,
@@ -229,7 +243,8 @@ class _StylishInputState extends State<StylishInput> {
         contentPadding: widget.contentPadding,
       ),
       onTap: () {
-        if (_isSuggestionDisplay) {
+        // hint が null でない場合のみロジックを実行
+        if (widget.hint != null && _isSuggestionDisplay) {
           setState(() {
             _isSuggestionDisplay = false;
           });
