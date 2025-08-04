@@ -519,15 +519,25 @@ class _RecordScreenState extends State<RecordScreen> {
   }
 
   void _addMenuItem(int sectionIndex) {
-    print('DEBUG: _addMenuItem called for section $sectionIndex.'); // ★追加
+    // 種目の上限チェック
+    if (_sections[sectionIndex].menuControllers.length >= 15) { // MAXを15とする
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('種目は15個までしか追加できません。')),
+      );
+      return; // ここで処理を終了し、新しい種目を追加しない
+    }
+
     if (mounted) {
       setState(() {
-        int setsForNewMenu = _currentSetCount;
+        // この行のコメントアウトを外します
+        int setsForNewMenu = _currentSetCount; // ★修正: この行のコメントアウトを外す
+
         final newMenuController = TextEditingController();
         _sections[sectionIndex].menuControllers.add(newMenuController);
         _sections[sectionIndex].menuKeys.add(UniqueKey());
-        print('DEBUG: Added new menu controller for section $sectionIndex. Total menus: ${_sections[sectionIndex].menuControllers.length}'); // ★追加
 
+        // このwhileループは既存のロジックで必要であれば残します。
+        // 新しいメニューが追加された際に、対応するsetInputDataListが不足しないようにするためです。
         while (_sections[sectionIndex].menuControllers.length > _sections[sectionIndex].setInputDataList.length) {
           _sections[sectionIndex].setInputDataList.add([]);
         }
@@ -539,25 +549,30 @@ class _RecordScreenState extends State<RecordScreen> {
           return SetInputData(weightController: weightCtrl, repController: repCtrl, isSuggestion: false);
         });
         _sections[sectionIndex].setInputDataList[_sections[sectionIndex].menuControllers.length - 1] = newSetInputDataList;
-        print('DEBUG: Added ${newSetInputDataList.length} sets for new menu. All sets initialized as CONFIRMED.'); // ★追加
+        // print('DEBUG: Added ${newSetInputDataList.length} sets for new menu. All sets initialized as CONFIRMED.'); // ★これを削除
 
         _sections[sectionIndex].initialSetCount = max(_sections[sectionIndex].initialSetCount ?? 0, setsForNewMenu);
-        print('DEBUG: Section $sectionIndex initialSetCount updated to ${_sections[sectionIndex].initialSetCount}'); // ★追加
+        // print('DEBUG: Section $sectionIndex initialSetCount updated to ${_sections[sectionIndex].initialSetCount}'); // ★これを削除
       });
     }
   }
 
   void _addTargetSection() {
-    print('DEBUG: _addTargetSection called.'); // ★追加
+    // 部位の上限チェック
+    if (_sections.length >= 10) { // MAXを10とする
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('部位は10個までしか追加できません。')),
+      );
+      return; // ここで処理を終了し、新しい部位を追加しない
+    }
+
     if (mounted) {
       setState(() {
         final newSection = SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false);
         _sections.add(newSection);
-        print('DEBUG: Added new empty section. Total sections: ${_sections.length}'); // ★追加
       });
     }
   }
-
   Widget _buildSetRow(BuildContext context, List<List<SetInputData>> setInputDataList, int menuIndex, int setNumber, int setIndex, String? selectedPart) {
     final colorScheme = Theme.of(context).colorScheme;
     final setInputData = setInputDataList[menuIndex][setIndex];
