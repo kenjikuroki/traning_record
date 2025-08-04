@@ -67,7 +67,6 @@ class _RecordScreenState extends State<RecordScreen> {
   }
 
   void _loadSettingsAndParts() {
-    print('DEBUG: _loadSettingsAndParts started.'); // ★追加
     // Build a type-safe Map<String, bool>
     Map<String, bool>? savedBodyPartsSettings;
     final dynamic rawSettings = widget.settingsBox.get('selectedBodyParts');
@@ -95,31 +94,25 @@ class _RecordScreenState extends State<RecordScreen> {
     }
 
     _currentSetCount = savedSetCount ?? 3;
-    print('DEBUG: _currentSetCount loaded: $_currentSetCount'); // ★追加
 
     if (mounted) {
       setState(() {
         _loadInitialSections();
       });
     }
-    print('DEBUG: _loadSettingsAndParts completed.'); // ★追加
   }
 
   void _loadInitialSections() {
-    print('DEBUG: _loadInitialSections started.'); // ★追加
     String dateKey = _getDateKey(widget.selectedDate);
     DailyRecord? record = widget.recordsBox.get(dateKey);
-    print('DEBUG: recordsBox.get($dateKey) returned: ${record?.menus}'); // ★追加
 
     // Clear existing sections and controllers
     for (var section in _sections) {
       section.dispose();
     }
     _sections.clear();
-    print('DEBUG: Cleared existing _sections. Count: ${_sections.length}'); // ★追加
 
     if (record != null && record.menus.isNotEmpty) {
-      print('DEBUG: DailyRecord found for $dateKey. Loading confirmed data.'); // ★追加
       // シナリオ1: 選択された日付にDailyRecordがある場合 (確定データ)
       Map<String, SectionData> tempSectionsMap = {};
       record.menus.forEach((part, menuList) {
@@ -131,7 +124,6 @@ class _RecordScreenState extends State<RecordScreen> {
           initialSetCount: _currentSetCount, // Temporary initial value
           menuKeys: [],
         ));
-        print('DEBUG: Processing DailyRecord for part: $part with ${menuList.length} menus.'); // ★追加
 
         int maxSetsInThisSection = 0;
 
@@ -148,7 +140,6 @@ class _RecordScreenState extends State<RecordScreen> {
             setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl, isSuggestion: false));
           }
           section.setInputDataList.add(setInputDataRow);
-          print('DEBUG: Loaded menu from DailyRecord: ${menuData.name}, sets: ${menuData.weights.length}'); // ★追加
 
           maxSetsInThisSection = max(maxSetsInThisSection, setInputDataRow.length);
         }
@@ -167,12 +158,10 @@ class _RecordScreenState extends State<RecordScreen> {
       _sections = tempSectionsMap.values.toList();
 
     } else {
-      print('DEBUG: No DailyRecord found for $dateKey. Creating initial empty section.'); // ★追加
       // シナリオ2: 選択された日付にDailyRecordがない場合 (新しい日)
       // まずは空のセクションを1つ追加し、部位選択時にlastUsedMenusBoxから提案をロードする
       _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
       _sections[0].initialSetCount = _currentSetCount;
-      print('DEBUG: Added initial empty section. _sections count: ${_sections.length}'); // ★追加
     }
 
     _sections.sort((a, b) {
@@ -183,11 +172,9 @@ class _RecordScreenState extends State<RecordScreen> {
       int indexB = _allBodyParts.indexOf(b.selectedPart!);
       return indexA.compareTo(indexB);
     });
-    print('DEBUG: _sections sorted.'); // ★追加
 
     if (mounted) {
       setState(() {
-        print('DEBUG: _loadInitialSections setState called. Final _sections count: ${_sections.length}'); // ★追加
       });
     }
   }
@@ -198,16 +185,11 @@ class _RecordScreenState extends State<RecordScreen> {
 
   // Modified to directly accept SectionData
   void _setControllersFromData(SectionData section, List<MenuData> list, bool isMenuNameSuggestion) {
-    print('DEBUG: _setControllersFromData called for part: ${section.selectedPart}, isMenuNameSuggestion: $isMenuNameSuggestion'); // ★Debug log
-    print('DEBUG: list (passed in to _setControllersFromData): $list'); // ★追加
-
     _clearSectionControllersAndMaps(section); // Pass the entire section
     section.menuKeys.clear();
-    print('DEBUG: Cleared controllers for section: ${section.selectedPart}'); // ★追加
 
     // ロードするメニューの数を決定。リストが空の場合は1つの空のメニューを作成
     int itemsToCreate = list.isNotEmpty ? list.length : 1;
-    print('DEBUG: itemsToCreate: $itemsToCreate'); // ★追加
 
     for (int i = 0; i < itemsToCreate; i++) {
       final newMenuController = TextEditingController();
@@ -216,7 +198,6 @@ class _RecordScreenState extends State<RecordScreen> {
       }
       section.menuControllers.add(newMenuController);
       section.menuKeys.add(UniqueKey());
-      print('DEBUG: Added menu controller for menu $i, name: ${newMenuController.text}'); // ★追加
 
       final newSetInputDataRow = <SetInputData>[];
 
@@ -224,20 +205,17 @@ class _RecordScreenState extends State<RecordScreen> {
       // DailyRecordからのロードの場合、このメソッドに渡されるisMenuNameSuggestionがfalseになり、その際はセットも確定扱いになる
       // このisSetsSuggestionはあくまでlastUsedMenusBoxからのロード時のデフォルト挙動を定義
       bool isSetsSuggestion = isMenuNameSuggestion; // メニュー名が提案なら、セットも提案
-      print('DEBUG: isSetsSuggestion for current menu: $isSetsSuggestion'); // ★追加
 
       if (i < list.length) {
         for (int s = 0; s < list[i].weights.length; s++) {
           final newWeightController = TextEditingController(text: list[i].weights[s]);
           final newRepController = TextEditingController(text: list[i].reps[s]);
           newSetInputDataRow.add(SetInputData(weightController: newWeightController, repController: newRepController, isSuggestion: isSetsSuggestion));
-          print('DEBUG: Added set $s for menu $i: W=${list[i].weights[s]}, R=${list[i].reps[s]}, isSuggestion=$isSetsSuggestion'); // ★追加
         }
       }
 
       int targetSetCountForThisMenu;
       targetSetCountForThisMenu = max(newSetInputDataRow.length, _currentSetCount);
-      print('DEBUG: targetSetCountForThisMenu: $targetSetCountForThisMenu (current: ${newSetInputDataRow.length}, default: $_currentSetCount)'); // ★追加
 
       while (newSetInputDataRow.length < targetSetCountForThisMenu) {
         final newWeightController = TextEditingController();
@@ -247,7 +225,6 @@ class _RecordScreenState extends State<RecordScreen> {
           repController: newRepController,
           isSuggestion: true, // 追加される空のセットは常に提案
         ));
-        print('DEBUG: Added empty suggestion set. Current set count: ${newSetInputDataRow.length}'); // ★追加
       }
       section.setInputDataList.add(newSetInputDataRow);
     }
@@ -258,13 +235,11 @@ class _RecordScreenState extends State<RecordScreen> {
       maxSetsInLoadedMenus = max(maxSetsInLoadedMenus, menuSets.length);
     }
     section.initialSetCount = max(maxSetsInLoadedMenus, _currentSetCount);
-    print('DEBUG: Final initialSetCount for section: ${section.initialSetCount}'); // ★追加
   }
 
 
   // Modified to accept SectionData as an argument
   void _clearSectionControllersAndMaps(SectionData section) {
-    print('DEBUG: _clearSectionControllersAndMaps called for part: ${section.selectedPart}'); // ★追加
     for (var c in section.menuControllers) {
       c.dispose();
     }
@@ -275,11 +250,9 @@ class _RecordScreenState extends State<RecordScreen> {
     }
     section.menuControllers.clear();
     section.setInputDataList.clear();
-    print('DEBUG: Controllers and data cleared.'); // ★追加
   }
 
   void _saveAllSectionsData() {
-    print('DEBUG: _saveAllSectionsData started.'); // ★追加
     String dateKey = _getDateKey(widget.selectedDate);
     Map<String, List<MenuData>> allMenusForDay = {};
     String? lastModifiedPart;
@@ -290,7 +263,6 @@ class _RecordScreenState extends State<RecordScreen> {
 
       List<MenuData> sectionMenuListForRecord = [];
       String? currentPart = section.selectedPart;
-      print('DEBUG: Preparing DailyRecord data for part: $currentPart'); // ★追加
 
       for (int i = 0; i < section.menuControllers.length; i++) {
         String name = section.menuControllers[i].text.trim();
@@ -309,9 +281,7 @@ class _RecordScreenState extends State<RecordScreen> {
           if (!setInputData.isSuggestion) {
             confirmedWeights.add(w);
             confirmedReps.add(r); // <-- ここも confirmedReps に修正済み
-            print('DEBUG: Set $s for menu $i (name: $name) is CONFIRMED. W:$w, R:$r'); // ★追加
           } else {
-            print('DEBUG: Set $s for menu $i (name: $name) is SUGGESTION. Not saving to DailyRecord. W:$w, R:$r'); // ★追加
           }
         }
 
@@ -332,18 +302,14 @@ class _RecordScreenState extends State<RecordScreen> {
         if (name.isNotEmpty && hasAnyConfirmedSetData) {
           sectionMenuListForRecord.add(MenuData(name: name, weights: finalWeights, reps: finalReps));
           lastModifiedPart = currentPart;
-          print('DEBUG: Menu "$name" added to DailyRecord for part "$currentPart" with ${finalWeights.length} final confirmed sets.'); // ★追加
         } else {
-          print('DEBUG: Menu "$name" skipped for DailyRecord (name empty or no confirmed sets).'); // ★追加
         }
       }
 
       if (sectionMenuListForRecord.isNotEmpty) {
         allMenusForDay[currentPart!] = sectionMenuListForRecord;
-        print('DEBUG: All confirmed menus for part "$currentPart" added to allMenusForDay.'); // ★追加
       } else {
         widget.recordsBox.delete(dateKey); // その部位の確定メニューが空の場合、DailyRecordからその部位を削除
-        print('DEBUG: No confirmed menus for part "$currentPart". Not adding to allMenusForDay.'); // ★追加
       }
     }
 
@@ -351,25 +317,20 @@ class _RecordScreenState extends State<RecordScreen> {
     if (allMenusForDay.isNotEmpty) {
       DailyRecord newRecord = DailyRecord(menus: allMenusForDay, lastModifiedPart: lastModifiedPart);
       widget.recordsBox.put(dateKey, newRecord);
-      print('DEBUG: Saved DailyRecord for $dateKey: $newRecord'); // ★追加
     } else {
       widget.recordsBox.delete(dateKey); // 全てのメニューが空の場合、日付の記録を削除
-      print('DEBUG: DailyRecord for $dateKey deleted (allMenusForDay was empty).'); // ★追加
     }
 
     // --- Part 3: Update lastUsedMenusBox (all currently displayed menus, including suggestions) ---
     // lastUsedMenusBoxには、画面に表示されている全てのメニューの現在の状態を保存する
     // (種目名と、各セットの現在の入力値。isSuggestionの状態は考慮しない)
-    print('DEBUG: Starting update for lastUsedMenusBox.'); // ★追加
     for (var section in _sections) {
       if (section.selectedPart == null) continue;
-      print('DEBUG: Processing section for lastUsedMenusBox: ${section.selectedPart}'); // ★追加
 
       List<MenuData> displayedMenuList = [];
       for (int i = 0; i < section.menuControllers.length; i++) {
         String name = section.menuControllers[i].text.trim();
         if (name.isEmpty) {
-          print('DEBUG: Skipping empty menu name for lastUsedMenusBox save. Index: $i'); // ★追加
           continue; // 種目名が空の場合は保存しない
         }
 
@@ -385,22 +346,17 @@ class _RecordScreenState extends State<RecordScreen> {
           reps.add(r);
         }
         displayedMenuList.add(MenuData(name: name, weights: weights, reps: reps));
-        print('DEBUG: Added menu to displayedMenuList for lastUsedMenusBox: "$name", Sets: $weights/$reps'); // ★追加
       }
 
       if (displayedMenuList.isNotEmpty) {
         widget.lastUsedMenusBox.put(section.selectedPart!, displayedMenuList);
-        print('DEBUG: Saved to lastUsedMenusBox for ${section.selectedPart}: $displayedMenuList'); // ★追加
       } else {
         widget.lastUsedMenusBox.delete(section.selectedPart!); // その部位のlastUsedMenusBoxも削除
-        print('DEBUG: Deleted from lastUsedMenusBox for ${section.selectedPart} (displayedMenuList was empty).'); // ★追加
       }
     }
-    print('DEBUG: _saveAllSectionsData completed.'); // ★追加
   }
 
   void _navigateToSettings(BuildContext context) {
-    print('DEBUG: _navigateToSettings started.'); // ★追加
     Navigator.push(
       context,
       PageRouteBuilder(
@@ -429,9 +385,7 @@ class _RecordScreenState extends State<RecordScreen> {
     ).then((_) {
       if (mounted) {
         setState(() {
-          print('DEBUG: Back from settings. Updating UI based on settings.'); // ★追加
           _currentSetCount = widget.setCountBox.get('setCount') ?? 3;
-          print('DEBUG: _currentSetCount updated to $_currentSetCount'); // ★追加
 
           Map<String, bool>? savedBodyPartsSettings;
           final dynamic rawSettings = widget.settingsBox.get('selectedBodyParts');
@@ -455,11 +409,9 @@ class _RecordScreenState extends State<RecordScreen> {
           } else {
             _filteredBodyParts = List.from(_allBodyParts);
           }
-          print('DEBUG: _filteredBodyParts updated: $_filteredBodyParts'); // ★追加
 
           for (var section in _sections) {
             int maxSetsForSectionDisplay = _currentSetCount;
-            print('DEBUG: Processing section ${section.selectedPart} for set count adjustment.'); // ★追加
 
             for (int menuIndex = 0; menuIndex < section.menuControllers.length; menuIndex++) {
               List<SetInputData> setInputDataRow = section.setInputDataList[menuIndex];
@@ -476,11 +428,9 @@ class _RecordScreenState extends State<RecordScreen> {
 
               // 表示ターゲットは、現在の入力状況とデフォルトセット数の大きい方
               int targetSetCountForThisMenu = max(actualMaxSetsInThisMenu, _currentSetCount);
-              print('DEBUG: Menu $menuIndex (actual: $actualMaxSetsInThisMenu, target: $targetSetCountForThisMenu, current default: $_currentSetCount)'); // ★追加
 
               // ターゲットより多い不要な空のセットを削除
               if (setInputDataRow.length > targetSetCountForThisMenu) {
-                print('DEBUG: Reducing sets for menu $menuIndex from ${setInputDataRow.length} to $targetSetCountForThisMenu.'); // ★追加
                 for (int s = setInputDataRow.length - 1; s >= targetSetCountForThisMenu; s--) {
                   final setInputData = setInputDataRow[s];
                   bool isEmpty = setInputData.weightController.text.isEmpty &&
@@ -490,32 +440,26 @@ class _RecordScreenState extends State<RecordScreen> {
                   if (isEmpty && setInputData.isSuggestion) {
                     setInputData.dispose();
                     setInputDataRow.removeAt(s);
-                    print('DEBUG: Removed empty suggestion set at index $s.'); // ★追加
                   } else {
                     // 空でない、または確定のセットは残す
-                    print('DEBUG: Keeping set at index $s (not empty or not suggestion).'); // ★追加
                     break;
                   }
                 }
               } else if (setInputDataRow.length < targetSetCountForThisMenu) {
                 // ターゲットより少ない場合に空の提案セットを追加
-                print('DEBUG: Adding sets for menu $menuIndex from ${setInputDataRow.length} to $targetSetCountForThisMenu.'); // ★追加
                 while (setInputDataRow.length < targetSetCountForThisMenu) {
                   final weightCtrl = TextEditingController();
                   final repCtrl = TextEditingController();
                   setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl, isSuggestion: true)); // New sets are suggestions
-                  print('DEBUG: Added new empty suggestion set. Current count: ${setInputDataRow.length}'); // ★追加
                 }
               }
               maxSetsForSectionDisplay = max(maxSetsForSectionDisplay, setInputDataRow.length);
             }
             section.initialSetCount = maxSetsForSectionDisplay;
-            print('DEBUG: Section ${section.selectedPart} final initialSetCount: ${section.initialSetCount}'); // ★追加
           }
         });
       }
     });
-    print('DEBUG: _navigateToSettings completed.'); // ★追加
   }
 
   void _addMenuItem(int sectionIndex) {
@@ -529,8 +473,7 @@ class _RecordScreenState extends State<RecordScreen> {
 
     if (mounted) {
       setState(() {
-        // この行のコメントアウトを外します
-        int setsForNewMenu = _currentSetCount; // ★修正: この行のコメントアウトを外す
+        int setsForNewMenu = _currentSetCount; // コメントアウトを解除
 
         final newMenuController = TextEditingController();
         _sections[sectionIndex].menuControllers.add(newMenuController);
@@ -549,10 +492,8 @@ class _RecordScreenState extends State<RecordScreen> {
           return SetInputData(weightController: weightCtrl, repController: repCtrl, isSuggestion: false);
         });
         _sections[sectionIndex].setInputDataList[_sections[sectionIndex].menuControllers.length - 1] = newSetInputDataList;
-        // print('DEBUG: Added ${newSetInputDataList.length} sets for new menu. All sets initialized as CONFIRMED.'); // ★これを削除
 
         _sections[sectionIndex].initialSetCount = max(_sections[sectionIndex].initialSetCount ?? 0, setsForNewMenu);
-        // print('DEBUG: Section $sectionIndex initialSetCount updated to ${_sections[sectionIndex].initialSetCount}'); // ★これを削除
       });
     }
   }
@@ -667,12 +608,10 @@ class _RecordScreenState extends State<RecordScreen> {
     final Color partAccentColor = isLightMode ? const Color(0xFF60A5FA) : const Color(0xFF60A5FA);
 
     bool isInitialEmptyState = _sections.length == 1 && _sections[0].selectedPart == null;
-    print('DEBUG: Building RecordScreen. isInitialEmptyState: $isInitialEmptyState, _sections count: ${_sections.length}'); // ★追加
 
     return PopScope( // WillPopScope は PopScope に置き換えられました
       canPop: true, // ポップ可能
       onPopInvoked: (didPop) {
-        print('DEBUG: PopScope onPopInvoked. didPop: $didPop'); // ★追加
         if (didPop) {
           _saveAllSectionsData();
         }
@@ -728,7 +667,6 @@ class _RecordScreenState extends State<RecordScreen> {
                       value: _sections[0].selectedPart,
                       items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold)))).toList(),
                       onChanged: (value) {
-                        print('DEBUG: Dropdown onChanged for initial empty state. Value: $value'); // ★追加
                         if (mounted) {
                           setState(() {
                             _sections[0].selectedPart = value;
@@ -747,19 +685,14 @@ class _RecordScreenState extends State<RecordScreen> {
                               bool isMenuNameSuggestion;
 
                               if (record != null && record.menus.containsKey(actualSelectedPart)) {
-                                print('DEBUG: DailyRecord has data for $actualSelectedPart. Loading confirmed data.'); // ★追加
                                 listToLoad = record.menus[actualSelectedPart];
                                 isMenuNameSuggestion = false; // DailyRecordからなので確定
                               } else {
-                                print('DEBUG: DailyRecord does NOT have data for $actualSelectedPart. Attempting to load from lastUsedMenusBox.'); // ★追加
                                 final dynamic rawList = widget.lastUsedMenusBox.get(actualSelectedPart);
-                                print('DEBUG: Attempting to load from lastUsedMenusBox for $actualSelectedPart. rawList: $rawList (Type: ${rawList.runtimeType})');
                                 // ★ここを修正しました★
                                 if (rawList is List) {
                                   listToLoad = rawList.whereType<MenuData>().toList();
-                                  print('DEBUG: Successfully loaded MenuData list from lastUsedMenusBox: $listToLoad');
                                 } else {
-                                  print('DEBUG: rawList is not a List or is null for $actualSelectedPart. Value: $rawList, Type: ${rawList.runtimeType}');
                                   listToLoad = []; // rawListがListでない場合もlistToLoadを初期化
                                 }
                                 isMenuNameSuggestion = true; // lastUsedMenusBoxからなので提案
@@ -767,7 +700,6 @@ class _RecordScreenState extends State<RecordScreen> {
                               _setControllersFromData(_sections[0], listToLoad ?? [], isMenuNameSuggestion);
 
                             } else {
-                              print('DEBUG: Value is null. Clearing section controllers.'); // ★追加
                               _clearSectionControllersAndMaps(_sections[0]);
                               _sections[0].menuKeys.clear();
                               _sections[0].initialSetCount = _currentSetCount;
@@ -809,7 +741,6 @@ class _RecordScreenState extends State<RecordScreen> {
                         final String dateKey = _getDateKey(widget.selectedDate);
                         final DailyRecord? record = widget.recordsBox.get(dateKey);
                         final String? actualSelectedPart = section.selectedPart;
-                        print('DEBUG: Building section $index for part: $actualSelectedPart'); // ★追加
 
 
                         return AnimatedListItem(
@@ -849,7 +780,6 @@ class _RecordScreenState extends State<RecordScreen> {
                                     value: section.selectedPart,
                                     items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold)))).toList(),
                                     onChanged: (value) {
-                                      print('DEBUG: Dropdown onChanged for section $index. Value: $value'); // ★追加
                                       if (mounted) {
                                         setState(() {
                                           section.selectedPart = value;
@@ -865,19 +795,14 @@ class _RecordScreenState extends State<RecordScreen> {
 
                                             bool isMenuNameSuggestion;
                                             if (record != null && record.menus.containsKey(currentSelectedPart)) {
-                                              print('DEBUG: DailyRecord has data for $currentSelectedPart. Loading confirmed data.'); // ★追加
                                               listToLoad = record.menus[currentSelectedPart];
                                               isMenuNameSuggestion = false; // DailyRecordからなので確定
                                             } else {
-                                              print('DEBUG: DailyRecord does NOT have data for $currentSelectedPart. Attempting to load from lastUsedMenusBox.'); // ★追加
                                               final dynamic rawList = widget.lastUsedMenusBox.get(currentSelectedPart);
-                                              print('DEBUG: Attempting to load from lastUsedMenusBox for $currentSelectedPart. rawList: $rawList (Type: ${rawList.runtimeType})');
                                               // ★ここを修正しました★
                                               if (rawList is List) {
                                                 listToLoad = rawList.whereType<MenuData>().toList();
-                                                print('DEBUG: Successfully loaded MenuData list from lastUsedMenusBox: $listToLoad');
                                               } else {
-                                                print('DEBUG: rawList is not a List or is null for $currentSelectedPart. Value: $rawList, Type: ${rawList.runtimeType}');
                                                 listToLoad = []; // rawListがListでない場合もlistToLoadを初期化
                                               }
                                               isMenuNameSuggestion = true; // lastUsedMenusBoxからなので提案
@@ -885,7 +810,6 @@ class _RecordScreenState extends State<RecordScreen> {
                                             _setControllersFromData(section, listToLoad ?? [], isMenuNameSuggestion);
 
                                           } else {
-                                            print('DEBUG: Value is null. Clearing section controllers.'); // ★追加
                                             _clearSectionControllersAndMaps(section);
                                             section.menuKeys.clear();
                                             _sections[index].initialSetCount = _currentSetCount;
@@ -924,7 +848,6 @@ class _RecordScreenState extends State<RecordScreen> {
                                           itemBuilder: (context, menuIndex) {
                                             // この時点での isMenuNameSuggestion を決定
                                             bool isCurrentMenuNameSuggestion = (record == null || !record.menus.containsKey(actualSelectedPart));
-                                            print('DEBUG: Building menu $menuIndex for section ${section.selectedPart}. isCurrentMenuNameSuggestion: $isCurrentMenuNameSuggestion'); // ★追加
 
                                             return AnimatedListItem(
                                               key: section.menuKeys[menuIndex],
