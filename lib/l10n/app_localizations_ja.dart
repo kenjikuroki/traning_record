@@ -94,4 +94,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get menuName => '種目名を記入';
+
+  @override
+  String get calendar => 'カレンダー';
+
+  @override
+  String get noRecordMessage => '選択された日付には記録がありません。';
 }

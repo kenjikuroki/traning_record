@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:collection/collection.dart'; // To use firstWhereOrNull
-import 'dart:math'; // To use the max function
+import 'package:collection/collection.dart';
+import 'dart:math';
+import 'package:ttraining_record/l10n/app_localizations.dart'; // ★追加: 多言語化対応のため
 
-import '../models/menu_data.dart';     // MenuData and DailyRecord models
-import '../models/record_models.dart'; // New: Importing the data models
-import '../widgets/animated_list_item.dart'; // New: Importing the animated widget
-import 'settings_screen.dart'; // SettingsScreen import
-import '../widgets/custom_widgets.dart'; // Custom widgets
-import '../main.dart'; // To use currentThemeMode
+import '../models/menu_data.dart';
+import '../models/record_models.dart';
+import '../widgets/animated_list_item.dart';
+import 'settings_screen.dart';
+import '../widgets/custom_widgets.dart';
+import '../main.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -18,7 +19,7 @@ class RecordScreen extends StatefulWidget {
   final DateTime selectedDate;
   final Box<DailyRecord> recordsBox;
   final Box<dynamic> lastUsedMenusBox;
-  final Box<dynamic> settingsBox; // Correct type for the Box
+  final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
   final Box<int> themeModeBox;
 
@@ -37,11 +38,9 @@ class RecordScreen extends StatefulWidget {
 }
 
 class _RecordScreenState extends State<RecordScreen> {
+  // ★修正: リストをfinalから動的に変更できるようにする
   List<String> _filteredBodyParts = [];
-  // Corrected order and names of training parts
-  final List<String> _allBodyParts = [
-    '有酸素運動', '腕', '胸', '背中', '肩', '足', '全身', 'その他１', 'その他２', 'その他３',
-  ];
+  List<String> _allBodyParts = [];
 
   List<SectionData> _sections = [];
 
@@ -50,24 +49,71 @@ class _RecordScreenState extends State<RecordScreen> {
   @override
   void initState() {
     super.initState();
-    // Lock screen orientation to portrait
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
     ]);
+  }
+
+  // ★修正: didChangeDependenciesで多言語対応のリストを構築
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _loadSettingsAndParts();
   }
 
   @override
   void dispose() {
     for (var section in _sections) {
-      section.dispose(); // Dispose controllers for each section
+      section.dispose();
     }
-    _sections.clear(); // Clear the sections list
+    _sections.clear();
     super.dispose();
   }
 
+  // ★追加: 翻訳された部位名から元の日本語キーに変換するヘルパー関数
+  String _getOriginalPartName(BuildContext context, String translatedPart) {
+    final l10n = AppLocalizations.of(context)!;
+    if (translatedPart == l10n.aerobicExercise) return '有酸素運動';
+    if (translatedPart == l10n.arm) return '腕';
+    if (translatedPart == l10n.chest) return '胸';
+    if (translatedPart == l10n.back) return '背中';
+    if (translatedPart == l10n.shoulder) return '肩';
+    if (translatedPart == l10n.leg) return '足';
+    if (translatedPart == l10n.fullBody) return '全身';
+    if (translatedPart == l10n.other1) return 'その他１';
+    if (translatedPart == l10n.other2) return 'その他２';
+    if (translatedPart == l10n.other3) return 'その他３';
+    return translatedPart;
+  }
+
+  // ★追加: Hiveキー（日本語）を翻訳された文字列に変換するヘルパー関数
+  String _translatePartToLocale(BuildContext context, String part) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (part) {
+      case '有酸素運動': return l10n.aerobicExercise;
+      case '腕': return l10n.arm;
+      case '胸': return l10n.chest;
+      case '背中': return l10n.back;
+      case '肩': return l10n.shoulder;
+      case '足': return l10n.leg;
+      case '全身': return l10n.fullBody;
+      case 'その他１': return l10n.other1;
+      case 'その他２': return l10n.other2;
+      case 'その他３': return l10n.other3;
+      default: return part;
+    }
+  }
+
+
+  // ★修正: _loadSettingsAndParts
   void _loadSettingsAndParts() {
-    // Build a type-safe Map<String, bool>
+    final l10n = AppLocalizations.of(context)!;
+
+    _allBodyParts = [
+      l10n.aerobicExercise, l10n.arm, l10n.chest, l10n.back, l10n.shoulder, l10n.leg,
+      l10n.fullBody, l10n.other1, l10n.other2, l10n.other3,
+    ];
+
     Map<String, bool>? savedBodyPartsSettings;
     final dynamic rawSettings = widget.settingsBox.get('selectedBodyParts');
 
@@ -84,7 +130,10 @@ class _RecordScreenState extends State<RecordScreen> {
 
     if (savedBodyPartsSettings != null && savedBodyPartsSettings.isNotEmpty) {
       _filteredBodyParts = _allBodyParts
-          .where((part) => savedBodyPartsSettings![part] == true)
+          .where((translatedPart) {
+        final originalPart = _getOriginalPartName(context, translatedPart);
+        return savedBodyPartsSettings![originalPart] == true;
+      })
           .toList();
       if (_filteredBodyParts.isEmpty) {
         _filteredBodyParts = List.from(_allBodyParts);
@@ -106,22 +155,22 @@ class _RecordScreenState extends State<RecordScreen> {
     String dateKey = _getDateKey(widget.selectedDate);
     DailyRecord? record = widget.recordsBox.get(dateKey);
 
-    // Clear existing sections and controllers
     for (var section in _sections) {
       section.dispose();
     }
     _sections.clear();
 
     if (record != null && record.menus.isNotEmpty) {
-      // シナリオ1: 選択された日付にDailyRecordがある場合 (確定データ)
       Map<String, SectionData> tempSectionsMap = {};
       record.menus.forEach((part, menuList) {
-        SectionData section = tempSectionsMap.putIfAbsent(part, () => SectionData(
+        final translatedPart = _translatePartToLocale(context, part);
+
+        SectionData section = tempSectionsMap.putIfAbsent(translatedPart, () => SectionData(
           key: UniqueKey(),
-          selectedPart: part,
+          selectedPart: translatedPart,
           menuControllers: [],
           setInputDataList: [],
-          initialSetCount: _currentSetCount, // Temporary initial value
+          initialSetCount: _currentSetCount,
           menuKeys: [],
         ));
 
@@ -133,33 +182,26 @@ class _RecordScreenState extends State<RecordScreen> {
           section.menuKeys.add(UniqueKey());
 
           List<SetInputData> setInputDataRow = [];
-          // DailyRecordからのロードは確定データなので isSuggestion: false
           for (int s = 0; s < menuData.weights.length; s++) {
             final weightCtrl = TextEditingController(text: menuData.weights[s]);
             final repCtrl = TextEditingController(text: menuData.reps[s]);
             setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl, isSuggestion: false));
           }
           section.setInputDataList.add(setInputDataRow);
-
           maxSetsInThisSection = max(maxSetsInThisSection, setInputDataRow.length);
         }
 
-        // 既存のデータをロードした後、全てのメニューが少なくとも _currentSetCount のセット数を持つようにする
-        // 追加のセットは空で、提案としてマークされる
         for (var setInputDataRow in section.setInputDataList) {
           while (setInputDataRow.length < _currentSetCount) {
             final weightCtrl = TextEditingController();
             final repCtrl = TextEditingController();
-            setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl, isSuggestion: true)); // 追加される空のセットは提案
+            setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl, isSuggestion: true));
           }
         }
         section.initialSetCount = max(maxSetsInThisSection, _currentSetCount);
       });
       _sections = tempSectionsMap.values.toList();
-
     } else {
-      // シナリオ2: 選択された日付にDailyRecordがない場合 (新しい日)
-      // まずは空のセクションを1つ追加し、部位選択時にlastUsedMenusBoxから提案をロードする
       _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
       _sections[0].initialSetCount = _currentSetCount;
     }
@@ -174,8 +216,7 @@ class _RecordScreenState extends State<RecordScreen> {
     });
 
     if (mounted) {
-      setState(() {
-      });
+      setState(() {});
     }
   }
 
@@ -183,12 +224,10 @@ class _RecordScreenState extends State<RecordScreen> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  // Modified to directly accept SectionData
   void _setControllersFromData(SectionData section, List<MenuData> list, bool isMenuNameSuggestion) {
-    _clearSectionControllersAndMaps(section); // Pass the entire section
+    _clearSectionControllersAndMaps(section);
     section.menuKeys.clear();
 
-    // ロードするメニューの数を決定。リストが空の場合は1つの空のメニューを作成
     int itemsToCreate = list.isNotEmpty ? list.length : 1;
 
     for (int i = 0; i < itemsToCreate; i++) {
@@ -200,11 +239,7 @@ class _RecordScreenState extends State<RecordScreen> {
       section.menuKeys.add(UniqueKey());
 
       final newSetInputDataRow = <SetInputData>[];
-
-      // lastUsedMenusBoxからのロードは提案なので isSetsSuggestion は true
-      // DailyRecordからのロードの場合、このメソッドに渡されるisMenuNameSuggestionがfalseになり、その際はセットも確定扱いになる
-      // このisSetsSuggestionはあくまでlastUsedMenusBoxからのロード時のデフォルト挙動を定義
-      bool isSetsSuggestion = isMenuNameSuggestion; // メニュー名が提案なら、セットも提案
+      bool isSetsSuggestion = isMenuNameSuggestion;
 
       if (i < list.length) {
         for (int s = 0; s < list[i].weights.length; s++) {
@@ -223,13 +258,12 @@ class _RecordScreenState extends State<RecordScreen> {
         newSetInputDataRow.add(SetInputData(
           weightController: newWeightController,
           repController: newRepController,
-          isSuggestion: true, // 追加される空のセットは常に提案
+          isSuggestion: true,
         ));
       }
       section.setInputDataList.add(newSetInputDataRow);
     }
 
-    // ロードされたメニューの最大セット数とデフォルトの大きい方で初期化
     int maxSetsInLoadedMenus = 0;
     for (var menuSets in section.setInputDataList) {
       maxSetsInLoadedMenus = max(maxSetsInLoadedMenus, menuSets.length);
@@ -237,15 +271,13 @@ class _RecordScreenState extends State<RecordScreen> {
     section.initialSetCount = max(maxSetsInLoadedMenus, _currentSetCount);
   }
 
-
-  // Modified to accept SectionData as an argument
   void _clearSectionControllersAndMaps(SectionData section) {
     for (var c in section.menuControllers) {
       c.dispose();
     }
     for (var list in section.setInputDataList) {
       for (var data in list) {
-        data.dispose(); // SetInputData の dispose を呼び出す
+        data.dispose();
       }
     }
     section.menuControllers.clear();
@@ -256,8 +288,8 @@ class _RecordScreenState extends State<RecordScreen> {
     String dateKey = _getDateKey(widget.selectedDate);
     Map<String, List<MenuData>> allMenusForDay = {};
     String? lastModifiedPart;
+    final l10n = AppLocalizations.of(context)!;
 
-    // --- Part 1: Prepare data for DailyRecord (only confirmed data) ---
     for (var section in _sections) {
       if (section.selectedPart == null) continue;
 
@@ -267,25 +299,19 @@ class _RecordScreenState extends State<RecordScreen> {
       for (int i = 0; i < section.menuControllers.length; i++) {
         String name = section.menuControllers[i].text.trim();
         List<String> confirmedWeights = [];
-        List<String> confirmedReps = []; // <-- ここは confirmedReps に修正済み
+        List<String> confirmedReps = [];
 
-        // Loop through the actual length of setInputDataList and collect only confirmed data
         for (int s = 0; s < section.setInputDataList[i].length; s++) {
           final setInputData = section.setInputDataList[i][s];
-
           String w = setInputData.weightController.text;
           String r = setInputData.repController.text;
 
-          // isSuggestion: false のセットのみ、確定データとして保存
-          // isSuggestion: true の場合は、値が入っていても保存しない
           if (!setInputData.isSuggestion) {
             confirmedWeights.add(w);
-            confirmedReps.add(r); // <-- ここも confirmedReps に修正済み
-          } else {
+            confirmedReps.add(r);
           }
         }
 
-        // Filter and save only sets that actually have data
         List<String> finalWeights = [];
         List<String> finalReps = [];
         bool hasAnyConfirmedSetData = false;
@@ -298,50 +324,50 @@ class _RecordScreenState extends State<RecordScreen> {
           }
         }
 
-        // 種目名があり、かつ確定セットデータが存在する場合のみ保存
+        // ★修正: 保存するキーは日本語のまま
+        final originalPartName = _getOriginalPartName(context, currentPart!);
+
         if (name.isNotEmpty && hasAnyConfirmedSetData) {
           sectionMenuListForRecord.add(MenuData(name: name, weights: finalWeights, reps: finalReps));
-          lastModifiedPart = currentPart;
+          lastModifiedPart = originalPartName; // 保存するキーは日本語
         } else {
+          // その部位の確定メニューが空の場合、DailyRecordからその部位を削除
+          widget.recordsBox.delete(dateKey);
         }
       }
 
       if (sectionMenuListForRecord.isNotEmpty) {
-        allMenusForDay[currentPart!] = sectionMenuListForRecord;
+        final originalPartName = _getOriginalPartName(context, currentPart!);
+        allMenusForDay[originalPartName] = sectionMenuListForRecord; // 保存するキーは日本語
       } else {
-        widget.recordsBox.delete(dateKey); // その部位の確定メニューが空の場合、DailyRecordからその部位を削除
+        widget.recordsBox.delete(dateKey);
       }
     }
 
-    // --- Part 2: Save DailyRecord (only confirmed data) ---
     if (allMenusForDay.isNotEmpty) {
       DailyRecord newRecord = DailyRecord(menus: allMenusForDay, lastModifiedPart: lastModifiedPart);
       widget.recordsBox.put(dateKey, newRecord);
     } else {
-      widget.recordsBox.delete(dateKey); // 全てのメニューが空の場合、日付の記録を削除
+      widget.recordsBox.delete(dateKey);
     }
 
-    // --- Part 3: Update lastUsedMenusBox (all currently displayed menus, including suggestions) ---
-    // lastUsedMenusBoxには、画面に表示されている全てのメニューの現在の状態を保存する
-    // (種目名と、各セットの現在の入力値。isSuggestionの状態は考慮しない)
     for (var section in _sections) {
       if (section.selectedPart == null) continue;
+      final originalPartName = _getOriginalPartName(context, section.selectedPart!);
 
       List<MenuData> displayedMenuList = [];
       for (int i = 0; i < section.menuControllers.length; i++) {
         String name = section.menuControllers[i].text.trim();
         if (name.isEmpty) {
-          continue; // 種目名が空の場合は保存しない
+          continue;
         }
 
         List<String> weights = [];
         List<String> reps = [];
         for (int s = 0; s < section.setInputDataList[i].length; s++) {
           final setInputData = section.setInputDataList[i][s];
-
           String w = setInputData.weightController.text;
           String r = setInputData.repController.text;
-
           weights.add(w);
           reps.add(r);
         }
@@ -349,9 +375,9 @@ class _RecordScreenState extends State<RecordScreen> {
       }
 
       if (displayedMenuList.isNotEmpty) {
-        widget.lastUsedMenusBox.put(section.selectedPart!, displayedMenuList);
+        widget.lastUsedMenusBox.put(originalPartName, displayedMenuList); // 保存するキーは日本語
       } else {
-        widget.lastUsedMenusBox.delete(section.selectedPart!); // その部位のlastUsedMenusBoxも削除
+        widget.lastUsedMenusBox.delete(originalPartName);
       }
     }
   }
@@ -372,9 +398,7 @@ class _RecordScreenState extends State<RecordScreen> {
           const begin = Offset(0.0, 1.0);
           const end = Offset.zero;
           const curve = Curves.easeOut;
-
           var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
           return SlideTransition(
             position: animation.drive(tween),
             child: child,
@@ -401,7 +425,10 @@ class _RecordScreenState extends State<RecordScreen> {
 
           if (savedBodyPartsSettings != null) {
             _filteredBodyParts = _allBodyParts
-                .where((part) => savedBodyPartsSettings![part] == true)
+                .where((translatedPart) {
+              final originalPart = _getOriginalPartName(context, translatedPart);
+              return savedBodyPartsSettings![originalPart] == true;
+            })
                 .toList();
             if (_filteredBodyParts.isEmpty) {
               _filteredBodyParts = List.from(_allBodyParts);
@@ -415,9 +442,7 @@ class _RecordScreenState extends State<RecordScreen> {
 
             for (int menuIndex = 0; menuIndex < section.menuControllers.length; menuIndex++) {
               List<SetInputData> setInputDataRow = section.setInputDataList[menuIndex];
-
               int actualMaxSetsInThisMenu = 0;
-              // 実際に値が入力されているセット数（isSuggestionに関わらず）を把握
               for (int s = 0; s < setInputDataRow.length; s++) {
                 final setInputData = setInputDataRow[s];
                 if (setInputData.weightController.text.isNotEmpty ||
@@ -426,31 +451,26 @@ class _RecordScreenState extends State<RecordScreen> {
                 }
               }
 
-              // 表示ターゲットは、現在の入力状況とデフォルトセット数の大きい方
               int targetSetCountForThisMenu = max(actualMaxSetsInThisMenu, _currentSetCount);
 
-              // ターゲットより多い不要な空のセットを削除
               if (setInputDataRow.length > targetSetCountForThisMenu) {
                 for (int s = setInputDataRow.length - 1; s >= targetSetCountForThisMenu; s--) {
                   final setInputData = setInputDataRow[s];
                   bool isEmpty = setInputData.weightController.text.isEmpty &&
                       setInputData.repController.text.isEmpty;
 
-                  // 空の提案セットのみ削除対象とする
                   if (isEmpty && setInputData.isSuggestion) {
                     setInputData.dispose();
                     setInputDataRow.removeAt(s);
                   } else {
-                    // 空でない、または確定のセットは残す
                     break;
                   }
                 }
               } else if (setInputDataRow.length < targetSetCountForThisMenu) {
-                // ターゲットより少ない場合に空の提案セットを追加
                 while (setInputDataRow.length < targetSetCountForThisMenu) {
                   final weightCtrl = TextEditingController();
                   final repCtrl = TextEditingController();
-                  setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl, isSuggestion: true)); // New sets are suggestions
+                  setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl, isSuggestion: true));
                 }
               }
               maxSetsForSectionDisplay = max(maxSetsForSectionDisplay, setInputDataRow.length);
@@ -463,24 +483,22 @@ class _RecordScreenState extends State<RecordScreen> {
   }
 
   void _addMenuItem(int sectionIndex) {
-    // 種目の上限チェック
-    if (_sections[sectionIndex].menuControllers.length >= 15) { // MAXを15とする
+    final l10n = AppLocalizations.of(context)!;
+
+    if (_sections[sectionIndex].menuControllers.length >= 15) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('種目は15個までしか追加できません。')),
+        SnackBar(content: Text(l10n.exerciseLimitReached)),
       );
-      return; // ここで処理を終了し、新しい種目を追加しない
+      return;
     }
 
     if (mounted) {
       setState(() {
-        int setsForNewMenu = _currentSetCount; // コメントアウトを解除
-
+        int setsForNewMenu = _currentSetCount;
         final newMenuController = TextEditingController();
         _sections[sectionIndex].menuControllers.add(newMenuController);
         _sections[sectionIndex].menuKeys.add(UniqueKey());
 
-        // このwhileループは既存のロジックで必要であれば残します。
-        // 新しいメニューが追加された際に、対応するsetInputDataListが不足しないようにするためです。
         while (_sections[sectionIndex].menuControllers.length > _sections[sectionIndex].setInputDataList.length) {
           _sections[sectionIndex].setInputDataList.add([]);
         }
@@ -488,7 +506,6 @@ class _RecordScreenState extends State<RecordScreen> {
         final newSetInputDataList = List.generate(setsForNewMenu, (_) {
           final weightCtrl = TextEditingController();
           final repCtrl = TextEditingController();
-          // 新規追加されるセットは「確定」とするため、isSuggestion: false に変更
           return SetInputData(weightController: weightCtrl, repController: repCtrl, isSuggestion: false);
         });
         _sections[sectionIndex].setInputDataList[_sections[sectionIndex].menuControllers.length - 1] = newSetInputDataList;
@@ -499,12 +516,13 @@ class _RecordScreenState extends State<RecordScreen> {
   }
 
   void _addTargetSection() {
-    // 部位の上限チェック
-    if (_sections.length >= 10) { // MAXを10とする
+    final l10n = AppLocalizations.of(context)!;
+
+    if (_sections.length >= 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('部位は10個までしか追加できません。')),
+        SnackBar(content: Text(l10n.partLimitReached)),
       );
-      return; // ここで処理を終了し、新しい部位を追加しない
+      return;
     }
 
     if (mounted) {
@@ -514,27 +532,30 @@ class _RecordScreenState extends State<RecordScreen> {
       });
     }
   }
+
   Widget _buildSetRow(BuildContext context, List<List<SetInputData>> setInputDataList, int menuIndex, int setNumber, int setIndex, String? selectedPart) {
     final colorScheme = Theme.of(context).colorScheme;
     final setInputData = setInputDataList[menuIndex][setIndex];
+    final l10n = AppLocalizations.of(context)!;
 
-    String weightUnit = 'kg';
-    String repUnit = '回';
+    String weightUnit = l10n.kg;
+    String repUnit = l10n.reps;
 
-    if (selectedPart == '有酸素運動') {
-      weightUnit = '分';
-      repUnit = '秒';
+    // ★修正: 部位名の比較を多言語化
+    if (selectedPart == l10n.aerobicExercise) {
+      weightUnit = l10n.min;
+      repUnit = l10n.sec;
     }
 
-    // Determine text color based on the isSuggestion flag
     final Color textColor = setInputData.isSuggestion
         ? colorScheme.onSurfaceVariant.withOpacity(0.5)
         : colorScheme.onSurface;
 
     return Row(
       children: [
+        // ★修正: セット数を多言語化
         Text(
-          '${setNumber}セット：',
+          '${setNumber}${l10n.sets}：',
           style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
         ),
         const SizedBox(width: 8),
@@ -542,27 +563,20 @@ class _RecordScreenState extends State<RecordScreen> {
           child: StylishInput(
             key: ValueKey('${setInputData.weightController.hashCode}_weight_${menuIndex}_$setIndex'),
             controller: setInputData.weightController,
-            hint: '', // このhintは使用されないので空でOK
+            hint: '',
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            normalTextColor: textColor, // isSuggestionに応じて変わる色
+            normalTextColor: textColor,
             suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
             fillColor: colorScheme.surfaceContainer,
             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             textAlign: TextAlign.right,
             onChanged: (text) {
-              // 値が入力され、かつisSuggestionがtrueの場合にisSuggestionをfalseに
               if (text.isNotEmpty && setInputData.isSuggestion) {
                 setState(() {
                   setInputData.isSuggestion = false;
                 });
-              } else if (text.isEmpty && !setInputData.isSuggestion) {
-                // 値が空になり、かつisSuggestionがfalseの場合にisSuggestionをtrueに（元に戻す）
-                // ただし、DailyRecordからロードされたものは戻さないロジックも検討が必要
-                // 現在のロジックでは、一度確定されると手動で値を消してもSuggestionには戻らない
-                // このロジックはDailyRecordとlastUsedMenusBoxの区別を考慮する必要があります
-                // 現状維持で、一度確定したら薄くならない、で良いでしょう
-              }
+              } else if (text.isEmpty && !setInputData.isSuggestion) {}
             },
           ),
         ),
@@ -571,23 +585,20 @@ class _RecordScreenState extends State<RecordScreen> {
           child: StylishInput(
             key: ValueKey('${setInputData.repController.hashCode}_rep_${menuIndex}_$setIndex'),
             controller: setInputData.repController,
-            hint: '', // このhintは使用されないので空でOK
+            hint: '',
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            normalTextColor: textColor, // isSuggestionに応じて変わる色
+            normalTextColor: textColor,
             suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
             fillColor: colorScheme.surfaceContainer,
             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             textAlign: TextAlign.right,
             onChanged: (text) {
-              // 値が入力され、かつisSuggestionがtrueの場合にisSuggestionをfalseに
               if (text.isNotEmpty && setInputData.isSuggestion) {
                 setState(() {
                   setInputData.isSuggestion = false;
                 });
-              } else if (text.isEmpty && !setInputData.isSuggestion) {
-                // 上記と同様に、一度確定したら薄くならない現状維持で良いでしょう
-              }
+              } else if (text.isEmpty && !setInputData.isSuggestion) {}
             },
           ),
         ),
@@ -600,8 +611,8 @@ class _RecordScreenState extends State<RecordScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isLightMode = Theme.of(context).brightness == Brightness.light;
+    final l10n = AppLocalizations.of(context)!; // ★追加: l10nインスタンスを取得
 
-    // Define colors for the "+ Part" button (darker in light mode)
     final Color partNormalBgColor = isLightMode ? const Color(0xFF333333) : const Color(0xFF2C2F33);
     final Color partPressedBgColor = isLightMode ? const Color(0xFF1A1A1A) : const Color(0xFF383C40);
     final Color partTextColor = isLightMode ? Colors.white : const Color(0xFFCCCCCC);
@@ -609,8 +620,8 @@ class _RecordScreenState extends State<RecordScreen> {
 
     bool isInitialEmptyState = _sections.length == 1 && _sections[0].selectedPart == null;
 
-    return PopScope( // WillPopScope は PopScope に置き換えられました
-      canPop: true, // ポップ可能
+    return PopScope(
+      canPop: true,
       onPopInvoked: (didPop) {
         if (didPop) {
           _saveAllSectionsData();
@@ -619,6 +630,7 @@ class _RecordScreenState extends State<RecordScreen> {
       child: Scaffold(
         backgroundColor: colorScheme.background,
         appBar: AppBar(
+          // ★修正: アプリバーのタイトルを日付表示に
           title: Text(
             '${widget.selectedDate.year}/${widget.selectedDate.month}/${widget.selectedDate.day}',
             style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0),
@@ -629,6 +641,8 @@ class _RecordScreenState extends State<RecordScreen> {
           actions: [
             IconButton(
               icon: Icon(Icons.settings, size: 24.0, color: colorScheme.onSurface),
+              // ★修正: SettingsScreenのタイトルを多言語化
+              tooltip: l10n.settings,
               onPressed: () => _navigateToSettings(context),
             ),
           ],
@@ -646,7 +660,8 @@ class _RecordScreenState extends State<RecordScreen> {
                     padding: const EdgeInsets.all(20.0),
                     child: DropdownButtonFormField<String>(
                       decoration: InputDecoration(
-                        hintText: 'トレーニング部位を選択',
+                        // ★修正: ヒントテキストを多言語化
+                        hintText: l10n.selectTrainingPart,
                         hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
                         filled: true,
                         fillColor: colorScheme.surfaceContainer,
@@ -672,33 +687,29 @@ class _RecordScreenState extends State<RecordScreen> {
                             _sections[0].selectedPart = value;
                             if (value != null) {
                               final String actualSelectedPart = value;
-
                               _clearSectionControllersAndMaps(_sections[0]);
                               _sections[0].menuKeys.clear();
-
                               String dateKey = _getDateKey(widget.selectedDate);
                               DailyRecord? record = widget.recordsBox.get(dateKey);
                               List<MenuData>? listToLoad;
-
-                              // メニュー名のヒント表示を制御するフラグ
-                              // DailyRecordにデータがある場合は種目名は確定（false）、なければ提案（true）
                               bool isMenuNameSuggestion;
 
-                              if (record != null && record.menus.containsKey(actualSelectedPart)) {
-                                listToLoad = record.menus[actualSelectedPart];
-                                isMenuNameSuggestion = false; // DailyRecordからなので確定
+                              // ★修正: Hiveのキーは日本語
+                              final originalPartName = _getOriginalPartName(context, actualSelectedPart);
+
+                              if (record != null && record.menus.containsKey(originalPartName)) {
+                                listToLoad = record.menus[originalPartName];
+                                isMenuNameSuggestion = false;
                               } else {
-                                final dynamic rawList = widget.lastUsedMenusBox.get(actualSelectedPart);
-                                // ★ここを修正しました★
+                                final dynamic rawList = widget.lastUsedMenusBox.get(originalPartName);
                                 if (rawList is List) {
                                   listToLoad = rawList.whereType<MenuData>().toList();
                                 } else {
-                                  listToLoad = []; // rawListがListでない場合もlistToLoadを初期化
+                                  listToLoad = [];
                                 }
-                                isMenuNameSuggestion = true; // lastUsedMenusBoxからなので提案
+                                isMenuNameSuggestion = true;
                               }
                               _setControllersFromData(_sections[0], listToLoad ?? [], isMenuNameSuggestion);
-
                             } else {
                               _clearSectionControllersAndMaps(_sections[0]);
                               _sections[0].menuKeys.clear();
@@ -726,7 +737,8 @@ class _RecordScreenState extends State<RecordScreen> {
                             child: Align(
                               alignment: Alignment.centerRight,
                               child: CircularAddButtonWithText(
-                                label: '＋部位',
+                                // ★修正: ラベルを多言語化
+                                label: l10n.addPart,
                                 onPressed: _addTargetSection,
                                 normalBgColorOverride: partNormalBgColor,
                                 pressedBgColorOverride: partPressedBgColor,
@@ -742,7 +754,6 @@ class _RecordScreenState extends State<RecordScreen> {
                         final DailyRecord? record = widget.recordsBox.get(dateKey);
                         final String? actualSelectedPart = section.selectedPart;
 
-
                         return AnimatedListItem(
                           key: section.key,
                           direction: AnimationDirection.bottomToTop,
@@ -750,7 +761,7 @@ class _RecordScreenState extends State<RecordScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 8.0),
                             child: GlassCard(
                               borderRadius: 12.0,
-                              backgroundColor: section.selectedPart == '有酸素運動' && isLightMode
+                              backgroundColor: section.selectedPart == l10n.aerobicExercise && isLightMode
                                   ? Colors.grey[400]!
                                   : colorScheme.surfaceContainerHighest,
                               padding: const EdgeInsets.all(16.0),
@@ -759,7 +770,8 @@ class _RecordScreenState extends State<RecordScreen> {
                                 children: [
                                   DropdownButtonFormField<String>(
                                     decoration: InputDecoration(
-                                      hintText: 'トレーニング部位を選択',
+                                      // ★修正: ヒントテキストを多言語化
+                                      hintText: l10n.selectTrainingPart,
                                       hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
                                       filled: true,
                                       fillColor: colorScheme.surfaceContainer,
@@ -794,21 +806,22 @@ class _RecordScreenState extends State<RecordScreen> {
                                             List<MenuData>? listToLoad;
 
                                             bool isMenuNameSuggestion;
-                                            if (record != null && record.menus.containsKey(currentSelectedPart)) {
-                                              listToLoad = record.menus[currentSelectedPart];
-                                              isMenuNameSuggestion = false; // DailyRecordからなので確定
+                                            // ★修正: Hiveのキーは日本語
+                                            final originalPartName = _getOriginalPartName(context, currentSelectedPart);
+
+                                            if (record != null && record.menus.containsKey(originalPartName)) {
+                                              listToLoad = record.menus[originalPartName];
+                                              isMenuNameSuggestion = false;
                                             } else {
-                                              final dynamic rawList = widget.lastUsedMenusBox.get(currentSelectedPart);
-                                              // ★ここを修正しました★
+                                              final dynamic rawList = widget.lastUsedMenusBox.get(originalPartName);
                                               if (rawList is List) {
                                                 listToLoad = rawList.whereType<MenuData>().toList();
                                               } else {
-                                                listToLoad = []; // rawListがListでない場合もlistToLoadを初期化
+                                                listToLoad = [];
                                               }
-                                              isMenuNameSuggestion = true; // lastUsedMenusBoxからなので提案
+                                              isMenuNameSuggestion = true;
                                             }
                                             _setControllersFromData(section, listToLoad ?? [], isMenuNameSuggestion);
-
                                           } else {
                                             _clearSectionControllersAndMaps(section);
                                             section.menuKeys.clear();
@@ -846,8 +859,8 @@ class _RecordScreenState extends State<RecordScreen> {
                                           physics: const NeverScrollableScrollPhysics(),
                                           itemCount: section.menuControllers.length,
                                           itemBuilder: (context, menuIndex) {
-                                            // この時点での isMenuNameSuggestion を決定
-                                            bool isCurrentMenuNameSuggestion = (record == null || !record.menus.containsKey(actualSelectedPart));
+                                            final originalPartName = _getOriginalPartName(context, actualSelectedPart);
+                                            bool isCurrentMenuNameSuggestion = (record == null || !record.menus.containsKey(originalPartName));
 
                                             return AnimatedListItem(
                                               key: section.menuKeys[menuIndex],
@@ -864,8 +877,8 @@ class _RecordScreenState extends State<RecordScreen> {
                                                       StylishInput(
                                                         key: ValueKey('${section.menuControllers[menuIndex].hashCode}_menuName'),
                                                         controller: section.menuControllers[menuIndex],
-                                                        // hint を isCurrentMenuNameSuggestion に応じて設定
-                                                        hint: isCurrentMenuNameSuggestion ? '種目名を記入' : null,
+                                                        // ★修正: ヒントを多言語化
+                                                        hint: isCurrentMenuNameSuggestion ? l10n.menuName : null,
                                                         inputFormatters: [LengthLimitingTextInputFormatter(50)],
                                                         normalTextColor: colorScheme.onSurface,
                                                         suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
@@ -901,7 +914,8 @@ class _RecordScreenState extends State<RecordScreen> {
                                           child: Padding(
                                             padding: const EdgeInsets.only(top: 12.0),
                                             child: CircularAddButtonWithText(
-                                              label: '＋種目',
+                                              // ★修正: ラベルを多言語化
+                                              label: l10n.addExercise,
                                               onPressed: () => _addMenuItem(index),
                                             ),
                                           ),

@@ -28,5 +28,7 @@
   "min": "分",
   "sec": "秒",
   "sets": "セット",
-  "menuName": "種目名を記入"
+  "menuName": "種目名を記入",
+  "calendar": "カレンダー",
+  "noRecordMessage": "選択された日付には記録がありません。"
 }

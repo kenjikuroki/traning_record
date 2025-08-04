@@ -94,4 +94,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get menuName => 'Menu Name';
+
+  @override
+  String get calendar => 'Calendar';
+
+  @override
+  String get noRecordMessage => 'No records found for the selected date.';
 }

@@ -268,6 +268,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Menu Name'**
   String get menuName;
+
+  /// No description provided for @calendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get calendar;
+
+  /// No description provided for @noRecordMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No records found for the selected date.'**
+  String get noRecordMessage;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

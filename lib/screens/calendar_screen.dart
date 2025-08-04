@@ -2,20 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hive/hive.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:intl/intl.dart'; // To use DateFormat
+import 'package:intl/intl.dart';
+import 'package:ttraining_record/l10n/app_localizations.dart'; // ★修正: プロジェクト名と実際のパスに合わせる
 
-import '../models/menu_data.dart'; // MenuData and DailyRecord models
-import 'record_screen.dart'; // RecordScreen import
-import 'settings_screen.dart'; // SettingsScreen import
-import '../widgets/custom_widgets.dart'; // Import custom widgets
-import '../main.dart'; // To use currentThemeMode
+import '../models/menu_data.dart';
+import 'record_screen.dart';
+import 'settings_screen.dart';
+import '../widgets/custom_widgets.dart';
+import '../main.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
 class CalendarScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
   final Box<dynamic> lastUsedMenusBox;
-  final Box<dynamic> settingsBox; // Match Box type to dynamic
+  final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
   final Box<int> themeModeBox;
 
@@ -35,28 +36,26 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  Map<DateTime, List<String>> _events = {}; // Store events (part names) for dates with records
-  DailyRecord? _currentDayRecord; // Hold the DailyRecord for the selected day
+  Map<DateTime, List<String>> _events = {};
+  DailyRecord? _currentDayRecord;
 
+  // ★修正: リストをfinalから動的に変更できるようにする
   List<String> _filteredBodyParts = [];
-  final List<String> _allBodyParts = [
-    '有酸素運動', '腕', '胸', '背中', '肩', '足', '全身', 'その他１', 'その他２', 'その他３',
-  ];
+  List<String> _allBodyParts = [];
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _loadEvents(); // For calendar markers
-    _loadSettingsAndParts(); // For filtered parts
-    _loadDailyRecordForSelectedDay(); // Load record for initial display day
+    _loadEvents();
+    _loadDailyRecordForSelectedDay();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Listen for theme mode changes to update the UI
     currentThemeMode.addListener(_onThemeModeChanged);
+    _loadSettingsAndParts(); // ★didChangeDependenciesで呼び出す
   }
 
   @override
@@ -67,10 +66,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   void _onThemeModeChanged() {
     if (mounted) {
-      setState(() {}); // Rebuild the UI when the theme mode changes
+      setState(() {});
     }
   }
 
+  // ★追加: 翻訳された部位名から元の日本語キーに変換するヘルパー関数
+  String _getOriginalPartName(BuildContext context, String translatedPart) {
+    final l10n = AppLocalizations.of(context)!;
+    if (translatedPart == l10n.aerobicExercise) return '有酸素運動';
+    if (translatedPart == l10n.arm) return '腕';
+    if (translatedPart == l10n.chest) return '胸';
+    if (translatedPart == l10n.back) return '背中';
+    if (translatedPart == l10n.shoulder) return '肩';
+    if (translatedPart == l10n.leg) return '足';
+    if (translatedPart == l10n.fullBody) return '全身';
+    if (translatedPart == l10n.other1) return 'その他１';
+    if (translatedPart == l10n.other2) return 'その他２';
+    if (translatedPart == l10n.other3) return 'その他３';
+    return translatedPart;
+  }
+
+  // ★修正: _loadEventsメソッド
   void _loadEvents() {
     _events.clear();
     for (int i = 0; i < widget.recordsBox.length; i++) {
@@ -80,7 +96,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (key is String && record != null) {
         try {
           DateTime date = DateTime.parse(key);
-          _events[DateTime(date.year, date.month, date.day)] = record.menus.keys.toList();
+          final partNames = record.menus.keys.toList();
+          _events[DateTime(date.year, date.month, date.day)] = partNames;
         } catch (e) {
           print('Error parsing date key from Hive: $key, Error: $e');
         }
@@ -109,7 +126,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return _events[normalizedDay] ?? [];
   }
 
+  // ★修正: _loadSettingsAndPartsメソッド
   void _loadSettingsAndParts() {
+    // AppLocalizationsが利用可能になったらリストを構築
+    final l10n = AppLocalizations.of(context)!;
+    _allBodyParts = [
+      l10n.aerobicExercise, l10n.arm, l10n.chest, l10n.back, l10n.shoulder, l10n.leg,
+      l10n.fullBody, l10n.other1, l10n.other2, l10n.other3,
+    ];
+
     Map<String, bool>? savedBodyPartsSettings;
     final dynamic rawSettings = widget.settingsBox.get('selectedBodyParts');
 
@@ -124,7 +149,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     if (savedBodyPartsSettings != null && savedBodyPartsSettings.isNotEmpty) {
       _filteredBodyParts = _allBodyParts
-          .where((part) => savedBodyPartsSettings![part] == true)
+          .where((translatedPart) {
+        final originalPart = _getOriginalPartName(context, translatedPart);
+        return savedBodyPartsSettings![originalPart] == true;
+      })
           .toList();
       if (_filteredBodyParts.isEmpty) {
         _filteredBodyParts = List.from(_allBodyParts);
@@ -138,7 +166,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  // --- 修正された _onDaySelected メソッド ---
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     if (isSameDay(_selectedDay, selectedDay)) {
       if (_selectedDay != null) {
@@ -151,7 +178,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               lastUsedMenusBox: widget.lastUsedMenusBox,
               settingsBox: widget.settingsBox,
               setCountBox: widget.setCountBox,
-              themeModeBox: widget.themeModeBox, // この行が正しく追加されていることを確認してください
+              themeModeBox: widget.themeModeBox,
             ),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               const begin = Offset(0.0, 1.0);
@@ -166,6 +193,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           if (mounted) {
             _loadEvents();
             _loadDailyRecordForSelectedDay();
+            _loadSettingsAndParts(); // 設定画面から戻った際に再読み込み
           }
         });
       }
@@ -219,12 +247,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!; // ★追加: l10nインスタンスを取得
 
     return Scaffold(
       backgroundColor: colorScheme.background,
       appBar: AppBar(
+        // ★修正: アプリバーのタイトルを多言語化
         title: Text(
-          'カレンダー',
+          l10n.calendar,
           style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0),
         ),
         backgroundColor: colorScheme.surface,
@@ -233,6 +263,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.settings, size: 24.0, color: colorScheme.onSurface),
+            // ★修正: SettingsScreenのタイトルも多言語化
+            tooltip: l10n.settings,
             onPressed: () => _navigateToSettings(context),
           ),
         ],
@@ -240,7 +272,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       body: Column(
         children: [
           TableCalendar(
-            locale: 'ja_JP',
+            // ★修正: ロケールを動的に設定
+            locale: Localizations.localeOf(context).toString(),
             firstDay: DateTime.utc(2020, 1, 1),
             lastDay: DateTime.utc(2030, 12, 31),
             focusedDay: _focusedDay,
@@ -303,7 +336,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            part,
+                            // ★修正: part名を多言語化して表示
+                            _translatePartToLocale(context, part),
                             style: TextStyle(
                               color: colorScheme.onSurface,
                               fontSize: 18.0,
@@ -339,11 +373,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       }
                                       final weight = menu.weights[setIndex];
                                       final rep = menu.reps[setIndex];
-                                      String weightUnit = (part == '有酸素運動') ? '分' : 'kg';
-                                      String repUnit = (part == '有酸素運動') ? '秒' : '回';
+
+                                      // ★修正: 単位を多言語化
+                                      String weightUnit = (part == l10n.aerobicExercise) ? l10n.min : l10n.kg;
+                                      String repUnit = (part == l10n.aerobicExercise) ? l10n.sec : l10n.reps;
 
                                       return Text(
-                                        '${setIndex + 1}セット：$weight $weightUnit $rep $repUnit',
+                                        '${setIndex + 1}${l10n.sets}：$weight $weightUnit $rep $repUnit',
                                         style: TextStyle(
                                           color: colorScheme.onSurfaceVariant,
                                           fontSize: 14.0,
@@ -365,7 +401,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             )
                 : Center(
               child: Text(
-                '選択された日付には記録がありません。',
+                // ★修正: メッセージを多言語化
+                l10n.noRecordMessage,
                 style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
               ),
             ),
@@ -373,5 +410,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ],
       ),
     );
+  }
+
+  // ★追加: Hiveキー（日本語）を翻訳された文字列に変換するヘルパー関数
+  String _translatePartToLocale(BuildContext context, String part) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (part) {
+      case '有酸素運動': return l10n.aerobicExercise;
+      case '腕': return l10n.arm;
+      case '胸': return l10n.chest;
+      case '背中': return l10n.back;
+      case '肩': return l10n.shoulder;
+      case '足': return l10n.leg;
+      case '全身': return l10n.fullBody;
+      case 'その他１': return l10n.other1;
+      case 'その他２': return l10n.other2;
+      case 'その他３': return l10n.other3;
+      default: return part;
+    }
   }
 }
