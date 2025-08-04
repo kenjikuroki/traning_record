@@ -4,6 +4,12 @@ description: "A new Flutter project."
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
+# The following section is an automatically generated one by the
+# Flutter tool in order to align your application with the
+# Flutter internationalization standard.
+flutter_intl:
+  enabled: true # ★多言語化を有効にする設定
+
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
 # followed by an optional build number separated by a +.
@@ -36,7 +42,9 @@ dependencies:
   table_calendar: ^3.1.2
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  intl: ^0.19.0 # ★この行を追加してください
+  intl: ^0.20.2 # ★バージョン競合解決のため 0.20.2 に固定
+  flutter_localizations: # ★多言語対応のため
+    sdk: flutter # ★多言語対応のため
 
 dev_dependencies:
   flutter_test:
@@ -67,6 +75,8 @@ flutter_launcher_icons:
 flutter:
 
   uses-material-design: true
+
+  generate: true # ★L10nコード生成を有効にするため追加
 
   # アプリ内で画像を使用する場合、assetsセクションで宣言します。
   # ランチャーアイコンの画像もここに含めることをお勧めします。

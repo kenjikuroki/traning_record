@@ -1,0 +1,97 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for Japanese (`ja`).
+class AppLocalizationsJa extends AppLocalizations {
+  AppLocalizationsJa([String locale = 'ja']) : super(locale);
+
+  @override
+  String get appTitle => 'T-トレーニング記録';
+
+  @override
+  String get selectTrainingPart => 'トレーニング部位を選択';
+
+  @override
+  String get addPart => '＋部位';
+
+  @override
+  String get addExercise => '＋種目';
+
+  @override
+  String get partLimitReached => '部位は10個までしか追加できません。';
+
+  @override
+  String get exerciseLimitReached => '種目は15個までしか追加できません。';
+
+  @override
+  String get settings => '設定';
+
+  @override
+  String get trainingParts => 'トレーニング部位';
+
+  @override
+  String get setCount => 'セット数';
+
+  @override
+  String get themeMode => 'テーマ';
+
+  @override
+  String get light => 'ライト';
+
+  @override
+  String get dark => 'ダーク';
+
+  @override
+  String get systemDefault => 'システムデフォルト';
+
+  @override
+  String get aerobicExercise => '有酸素運動';
+
+  @override
+  String get arm => '腕';
+
+  @override
+  String get chest => '胸';
+
+  @override
+  String get back => '背中';
+
+  @override
+  String get shoulder => '肩';
+
+  @override
+  String get leg => '足';
+
+  @override
+  String get fullBody => '全身';
+
+  @override
+  String get other1 => 'その他１';
+
+  @override
+  String get other2 => 'その他２';
+
+  @override
+  String get other3 => 'その他３';
+
+  @override
+  String get kg => 'kg';
+
+  @override
+  String get reps => '回';
+
+  @override
+  String get min => '分';
+
+  @override
+  String get sec => '秒';
+
+  @override
+  String get sets => 'セット';
+
+  @override
+  String get menuName => '種目名を記入';
+}

@@ -3,6 +3,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hive/hive.dart';
 import 'package:flutter/services.dart'; // SystemChrome を使用するためにインポート
 import 'package:intl/date_symbol_data_local.dart'; // ロケールデータ初期化のためにインポート
+import 'package:flutter_localizations/flutter_localizations.dart'; // ★追加: 多言語対応のため
+import 'l10n/app_localizations.dart'; // ★追加: 生成されるAppLocalizationsクラスのインポート
 
 import 'models/menu_data.dart'; // MenuDataとDailyRecordのHiveAdapterをインポート
 import 'screens/calendar_screen.dart'; // CalendarScreenをインポート
@@ -105,7 +107,8 @@ class _MyAppState extends State<MyApp> {
       valueListenable: currentThemeMode,
       builder: (context, themeMode, child) {
         return MaterialApp(
-          title: 'トレーニング記録アプリ',
+          // アプリタイトルを多言語化
+          title: AppLocalizations.of(context)?.appTitle ?? 'トレーニング記録アプリ', // ★修正: アプリタイトルを多言語化
           themeMode: themeMode,
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
@@ -123,6 +126,18 @@ class _MyAppState extends State<MyApp> {
             useMaterial3: true,
             fontFamily: 'Inter', // フォント設定
           ),
+          // ★追加: 多言語対応のための設定
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          // ★追加: サポートするロケールを定義
+          supportedLocales: const [
+            Locale('en', ''), // English
+            Locale('ja', ''), // Japanese
+          ],
           home: CalendarScreen(
             recordsBox: widget.recordsBox,
             lastUsedMenusBox: widget.lastUsedMenusBox,
