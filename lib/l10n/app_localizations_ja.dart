@@ -100,4 +100,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get noRecordMessage => '選択された日付には記録がありません。';
+
+  @override
+  String get weightUnit => '重量単位';
+
+  @override
+  String get lbs => 'lbs';
 }

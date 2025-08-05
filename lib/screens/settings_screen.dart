@@ -1,9 +1,12 @@
+// lib/screens/settings_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hive/hive.dart';
-import 'package:ttraining_record/l10n/app_localizations.dart'; // ★追加: 多言語化対応のため
+import 'package:ttraining_record/l10n/app_localizations.dart';
+import 'package:ttraining_record/settings_manager.dart';
 
-import '../main.dart'; // currentThemeMode を使用するためにインポート
+import '../main.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -26,7 +29,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // ★修正: リストをfinalから動的に変更できるようにする
   List<String> _allBodyParts = [];
   Map<String, bool> _selectedBodyParts = {};
   int _currentSetCount = 3;
@@ -38,14 +40,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadSettings();
   }
 
-  // ★修正: didChangeDependenciesでリストを初期化
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _loadAllBodyParts();
   }
 
-  // ★追加: 翻訳された部位名から元の日本語キーに変換するヘルパー関数
   String _getOriginalPartName(BuildContext context, String translatedPart) {
     final l10n = AppLocalizations.of(context)!;
     if (translatedPart == l10n.aerobicExercise) return '有酸素運動';
@@ -61,29 +61,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return translatedPart;
   }
 
-  // ★追加: Hiveキー（日本語）を翻訳された文字列に変換するヘルパー関数
   String _translatePartToLocale(BuildContext context, String part) {
     final l10n = AppLocalizations.of(context)!;
     switch (part) {
-      case '有酸素運動': return l10n.aerobicExercise;
-      case '腕': return l10n.arm;
-      case '胸': return l10n.chest;
-      case '背中': return l10n.back;
-      case '肩': return l10n.shoulder;
-      case '足': return l10n.leg;
-      case '全身': return l10n.fullBody;
-      case 'その他１': return l10n.other1;
-      case 'その他２': return l10n.other2;
-      case 'その他３': return l10n.other3;
-      default: return part;
+      case '有酸素運動':
+        return l10n.aerobicExercise;
+      case '腕':
+        return l10n.arm;
+      case '胸':
+        return l10n.chest;
+      case '背中':
+        return l10n.back;
+      case '肩':
+        return l10n.shoulder;
+      case '足':
+        return l10n.leg;
+      case '全身':
+        return l10n.fullBody;
+      case 'その他１':
+        return l10n.other1;
+      case 'その他２':
+        return l10n.other2;
+      case 'その他３':
+        return l10n.other3;
+      default:
+        return part;
     }
   }
 
   void _loadAllBodyParts() {
     final l10n = AppLocalizations.of(context)!;
     _allBodyParts = [
-      l10n.aerobicExercise, l10n.arm, l10n.chest, l10n.back, l10n.shoulder, l10n.leg,
-      l10n.fullBody, l10n.other1, l10n.other2, l10n.other3,
+      l10n.aerobicExercise,
+      l10n.arm,
+      l10n.chest,
+      l10n.back,
+      l10n.shoulder,
+      l10n.leg,
+      l10n.fullBody,
+      l10n.other1,
+      l10n.other2,
+      l10n.other3,
     ];
   }
 
@@ -103,6 +121,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     int? savedSetCount = widget.setCountBox.get('setCount');
     int? savedThemeModeIndex = widget.themeModeBox.get('themeMode');
 
+    final dynamic savedUnit = SettingsManager.currentUnit;
+    if (savedUnit is String) {
+      SettingsManager.setUnit(savedUnit);
+    }
+
     setState(() {
       if (savedBodyPartsSettings != null && savedBodyPartsSettings.isNotEmpty) {
         _selectedBodyParts.clear();
@@ -111,7 +134,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _selectedBodyParts[translatedPart] = savedBodyPartsSettings[part]!;
         }
       } else {
-        // デフォルトで全ての部位を選択状態にする
         for (var translatedPart in _allBodyParts) {
           _selectedBodyParts[translatedPart] = true;
         }
@@ -122,7 +144,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           : ThemeMode.system;
     });
   }
-
 
   void _saveSettings() {
     final Map<String, bool> settingsToSave = {};
@@ -135,14 +156,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     widget.setCountBox.put('setCount', _currentSetCount);
     widget.themeModeBox.put('themeMode', _selectedThemeMode.index);
     widget.onThemeModeChanged(_selectedThemeMode);
+
+    SettingsManager.setUnit(SettingsManager.currentUnit);
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final l10n = AppLocalizations.of(context)!; // ★追加: l10nインスタンスを取得
+    final l10n = AppLocalizations.of(context)!;
 
-    // _allBodyPartsリストが空の場合、ここで初期化
     if (_allBodyParts.isEmpty) {
       _loadAllBodyParts();
     }
@@ -155,8 +177,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Scaffold(
         backgroundColor: colorScheme.background,
         appBar: AppBar(
-          // ★修正: アプリバーのタイトルを多言語化
-          title: Text(l10n.settings, style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0)),
+          title: Text(l10n.settings,
+              style: TextStyle(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20.0)),
           backgroundColor: colorScheme.surface,
           elevation: 0.0,
           iconTheme: IconThemeData(color: colorScheme.onSurface),
@@ -169,16 +194,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Card(
                 color: colorScheme.surfaceContainerHighest,
                 margin: const EdgeInsets.only(bottom: 16.0),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0)),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ★修正: タイトルを多言語化
                       Text(
                         l10n.trainingParts,
-                        style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                        style: TextStyle(
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface),
                       ),
                       const SizedBox(height: 10),
                       Wrap(
@@ -195,14 +223,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             },
                             selectedColor: colorScheme.primary,
                             labelStyle: TextStyle(
-                              color: (_selectedBodyParts[part] ?? false) ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
+                              color: (_selectedBodyParts[part] ?? false)
+                                  ? colorScheme.onPrimary
+                                  : colorScheme.onSurfaceVariant,
                               fontWeight: FontWeight.bold,
                             ),
                             backgroundColor: colorScheme.surfaceContainer,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20.0),
                               side: BorderSide(
-                                color: (_selectedBodyParts[part] ?? false) ? colorScheme.primary : colorScheme.outline,
+                                color: (_selectedBodyParts[part] ?? false)
+                                    ? colorScheme.primary
+                                    : colorScheme.outline,
                               ),
                             ),
                             elevation: 2,
@@ -219,16 +251,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Card(
                 color: colorScheme.surfaceContainerHighest,
                 margin: const EdgeInsets.only(bottom: 16.0),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0)),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ★修正: タイトルを多言語化
                       Text(
                         l10n.setCount,
-                        style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                        style: TextStyle(
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface),
                       ),
                       const SizedBox(height: 10),
                       Row(
@@ -246,12 +281,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 });
                               },
                               activeColor: colorScheme.primary,
-                              inactiveColor: colorScheme.primary.withOpacity(0.3),
+                              inactiveColor:
+                              colorScheme.primary.withOpacity(0.3),
                             ),
                           ),
                           Text(
                             _currentSetCount.toString(),
-                            style: TextStyle(fontSize: 16.0, color: colorScheme.onSurface),
+                            style: TextStyle(
+                                fontSize: 16.0, color: colorScheme.onSurface),
                           ),
                         ],
                       ),
@@ -264,16 +301,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Card(
                 color: colorScheme.surfaceContainerHighest,
                 margin: const EdgeInsets.only(bottom: 16.0),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0)),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ★修正: タイトルを多言語化
                       Text(
                         l10n.themeMode,
-                        style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                        style: TextStyle(
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface),
                       ),
                       const SizedBox(height: 10),
                       Column(
@@ -281,20 +321,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           String modeText;
                           switch (mode) {
                             case ThemeMode.system:
-                            // ★修正: ラベルを多言語化
                               modeText = l10n.systemDefault;
                               break;
                             case ThemeMode.light:
-                            // ★修正: ラベルを多言語化
                               modeText = l10n.light;
                               break;
                             case ThemeMode.dark:
-                            // ★修正: ラベルを多言語化
                               modeText = l10n.dark;
                               break;
                           }
                           return RadioListTile<ThemeMode>(
-                            title: Text(modeText, style: TextStyle(color: colorScheme.onSurface)),
+                            title: Text(modeText,
+                                style:
+                                TextStyle(color: colorScheme.onSurface)),
                             value: mode,
                             groupValue: _selectedThemeMode,
                             onChanged: (ThemeMode? value) {
@@ -307,6 +346,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             activeColor: colorScheme.primary,
                           );
                         }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // 重量単位設定
+              Card(
+                color: colorScheme.surfaceContainerHighest,
+                margin: const EdgeInsets.only(bottom: 16.0),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.weightUnit,
+                        style: TextStyle(
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface),
+                      ),
+                      const SizedBox(height: 10),
+                      ValueListenableBuilder<String>(
+                        valueListenable: SettingsManager.unitNotifier,
+                        builder: (context, currentUnit, child) {
+                          return ToggleButtons(
+                            // ★修正: 'barrel'を'lbs'に変更
+                            isSelected: [currentUnit == 'kg', currentUnit == 'lbs'],
+                            onPressed: (int index) async {
+                              // ★修正: 'barrel'を'lbs'に変更
+                              final newUnit = index == 0 ? 'kg' : 'lbs';
+                              await SettingsManager.setUnit(newUnit);
+                              setState(() {}); // 変更をUIに反映
+                            },
+                            borderRadius: BorderRadius.circular(8.0),
+                            borderColor: colorScheme.primary.withOpacity(0.5),
+                            selectedBorderColor: colorScheme.primary,
+                            fillColor: colorScheme.primary,
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                                child: Text('KG',
+                                    style:
+                                    TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                // ★修正: 'バレル'をl10n.lbsに変更
+                                child: Text(l10n.lbs,
+                                    style:
+                                    const TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),

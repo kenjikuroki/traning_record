@@ -30,5 +30,7 @@
   "sets": "sets",
   "menuName": "Menu Name",
   "calendar": "Calendar",
-  "noRecordMessage": "No records found for the selected date."
+  "noRecordMessage": "No records found for the selected date.",
+  "weightUnit": "Weight Unit",
+  "lbs": "lbs"
 }

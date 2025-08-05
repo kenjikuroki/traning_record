@@ -280,6 +280,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No records found for the selected date.'**
   String get noRecordMessage;
+
+  /// No description provided for @weightUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight Unit'**
+  String get weightUnit;
+
+  /// No description provided for @lbs.
+  ///
+  /// In en, this message translates to:
+  /// **'lbs'**
+  String get lbs;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

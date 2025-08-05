@@ -100,4 +100,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noRecordMessage => 'No records found for the selected date.';
+
+  @override
+  String get weightUnit => 'Weight Unit';
+
+  @override
+  String get lbs => 'lbs';
 }

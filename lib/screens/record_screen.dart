@@ -1,10 +1,12 @@
+// lib/screens/record_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:collection/collection.dart';
 import 'dart:math';
-import 'package:ttraining_record/l10n/app_localizations.dart'; // ★追加: 多言語化対応のため
+import 'package:ttraining_record/l10n/app_localizations.dart';
 
 import '../models/menu_data.dart';
 import '../models/record_models.dart';
@@ -12,6 +14,7 @@ import '../widgets/animated_list_item.dart';
 import 'settings_screen.dart';
 import '../widgets/custom_widgets.dart';
 import '../main.dart';
+import '../settings_manager.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -38,7 +41,6 @@ class RecordScreen extends StatefulWidget {
 }
 
 class _RecordScreenState extends State<RecordScreen> {
-  // ★修正: リストをfinalから動的に変更できるようにする
   List<String> _filteredBodyParts = [];
   List<String> _allBodyParts = [];
 
@@ -49,12 +51,13 @@ class _RecordScreenState extends State<RecordScreen> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
+    });
   }
 
-  // ★修正: didChangeDependenciesで多言語対応のリストを構築
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -70,7 +73,6 @@ class _RecordScreenState extends State<RecordScreen> {
     super.dispose();
   }
 
-  // ★追加: 翻訳された部位名から元の日本語キーに変換するヘルパー関数
   String _getOriginalPartName(BuildContext context, String translatedPart) {
     final l10n = AppLocalizations.of(context)!;
     if (translatedPart == l10n.aerobicExercise) return '有酸素運動';
@@ -86,32 +88,48 @@ class _RecordScreenState extends State<RecordScreen> {
     return translatedPart;
   }
 
-  // ★追加: Hiveキー（日本語）を翻訳された文字列に変換するヘルパー関数
   String _translatePartToLocale(BuildContext context, String part) {
     final l10n = AppLocalizations.of(context)!;
     switch (part) {
-      case '有酸素運動': return l10n.aerobicExercise;
-      case '腕': return l10n.arm;
-      case '胸': return l10n.chest;
-      case '背中': return l10n.back;
-      case '肩': return l10n.shoulder;
-      case '足': return l10n.leg;
-      case '全身': return l10n.fullBody;
-      case 'その他１': return l10n.other1;
-      case 'その他２': return l10n.other2;
-      case 'その他３': return l10n.other3;
-      default: return part;
+      case '有酸素運動':
+        return l10n.aerobicExercise;
+      case '腕':
+        return l10n.arm;
+      case '胸':
+        return l10n.chest;
+      case '背中':
+        return l10n.back;
+      case '肩':
+        return l10n.shoulder;
+      case '足':
+        return l10n.leg;
+      case '全身':
+        return l10n.fullBody;
+      case 'その他１':
+        return l10n.other1;
+      case 'その他２':
+        return l10n.other2;
+      case 'その他３':
+        return l10n.other3;
+      default:
+        return part;
     }
   }
 
-
-  // ★修正: _loadSettingsAndParts
   void _loadSettingsAndParts() {
     final l10n = AppLocalizations.of(context)!;
 
     _allBodyParts = [
-      l10n.aerobicExercise, l10n.arm, l10n.chest, l10n.back, l10n.shoulder, l10n.leg,
-      l10n.fullBody, l10n.other1, l10n.other2, l10n.other3,
+      l10n.aerobicExercise,
+      l10n.arm,
+      l10n.chest,
+      l10n.back,
+      l10n.shoulder,
+      l10n.leg,
+      l10n.fullBody,
+      l10n.other1,
+      l10n.other2,
+      l10n.other3,
     ];
 
     Map<String, bool>? savedBodyPartsSettings;
@@ -165,14 +183,16 @@ class _RecordScreenState extends State<RecordScreen> {
       record.menus.forEach((part, menuList) {
         final translatedPart = _translatePartToLocale(context, part);
 
-        SectionData section = tempSectionsMap.putIfAbsent(translatedPart, () => SectionData(
-          key: UniqueKey(),
-          selectedPart: translatedPart,
-          menuControllers: [],
-          setInputDataList: [],
-          initialSetCount: _currentSetCount,
-          menuKeys: [],
-        ));
+        SectionData section = tempSectionsMap.putIfAbsent(
+            translatedPart,
+                () => SectionData(
+              key: UniqueKey(),
+              selectedPart: translatedPart,
+              menuControllers: [],
+              setInputDataList: [],
+              initialSetCount: _currentSetCount,
+              menuKeys: [],
+            ));
 
         int maxSetsInThisSection = 0;
 
@@ -185,24 +205,32 @@ class _RecordScreenState extends State<RecordScreen> {
           for (int s = 0; s < menuData.weights.length; s++) {
             final weightCtrl = TextEditingController(text: menuData.weights[s]);
             final repCtrl = TextEditingController(text: menuData.reps[s]);
-            setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl, isSuggestion: false));
+            setInputDataRow.add(SetInputData(
+                weightController: weightCtrl,
+                repController: repCtrl,
+                isSuggestion: false));
           }
           section.setInputDataList.add(setInputDataRow);
-          maxSetsInThisSection = max(maxSetsInThisSection, setInputDataRow.length);
+          maxSetsInThisSection =
+              max(maxSetsInThisSection, setInputDataRow.length);
         }
 
         for (var setInputDataRow in section.setInputDataList) {
           while (setInputDataRow.length < _currentSetCount) {
             final weightCtrl = TextEditingController();
             final repCtrl = TextEditingController();
-            setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl, isSuggestion: true));
+            setInputDataRow.add(SetInputData(
+                weightController: weightCtrl,
+                repController: repCtrl,
+                isSuggestion: true));
           }
         }
         section.initialSetCount = max(maxSetsInThisSection, _currentSetCount);
       });
       _sections = tempSectionsMap.values.toList();
     } else {
-      _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
+      _sections.add(SectionData.createEmpty(_currentSetCount,
+          shouldPopulateDefaults: false));
       _sections[0].initialSetCount = _currentSetCount;
     }
 
@@ -224,7 +252,8 @@ class _RecordScreenState extends State<RecordScreen> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  void _setControllersFromData(SectionData section, List<MenuData> list, bool isMenuNameSuggestion) {
+  void _setControllersFromData(
+      SectionData section, List<MenuData> list, bool isMenuNameSuggestion) {
     _clearSectionControllersAndMaps(section);
     section.menuKeys.clear();
 
@@ -243,14 +272,19 @@ class _RecordScreenState extends State<RecordScreen> {
 
       if (i < list.length) {
         for (int s = 0; s < list[i].weights.length; s++) {
-          final newWeightController = TextEditingController(text: list[i].weights[s]);
+          final newWeightController =
+          TextEditingController(text: list[i].weights[s]);
           final newRepController = TextEditingController(text: list[i].reps[s]);
-          newSetInputDataRow.add(SetInputData(weightController: newWeightController, repController: newRepController, isSuggestion: isSetsSuggestion));
+          newSetInputDataRow.add(SetInputData(
+              weightController: newWeightController,
+              repController: newRepController,
+              isSuggestion: isSetsSuggestion));
         }
       }
 
       int targetSetCountForThisMenu;
-      targetSetCountForThisMenu = max(newSetInputDataRow.length, _currentSetCount);
+      targetSetCountForThisMenu =
+          max(newSetInputDataRow.length, _currentSetCount);
 
       while (newSetInputDataRow.length < targetSetCountForThisMenu) {
         final newWeightController = TextEditingController();
@@ -324,28 +358,28 @@ class _RecordScreenState extends State<RecordScreen> {
           }
         }
 
-        // ★修正: 保存するキーは日本語のまま
         final originalPartName = _getOriginalPartName(context, currentPart!);
 
         if (name.isNotEmpty && hasAnyConfirmedSetData) {
-          sectionMenuListForRecord.add(MenuData(name: name, weights: finalWeights, reps: finalReps));
-          lastModifiedPart = originalPartName; // 保存するキーは日本語
+          sectionMenuListForRecord.add(
+              MenuData(name: name, weights: finalWeights, reps: finalReps));
+          lastModifiedPart = originalPartName;
         } else {
-          // その部位の確定メニューが空の場合、DailyRecordからその部位を削除
           widget.recordsBox.delete(dateKey);
         }
       }
 
       if (sectionMenuListForRecord.isNotEmpty) {
         final originalPartName = _getOriginalPartName(context, currentPart!);
-        allMenusForDay[originalPartName] = sectionMenuListForRecord; // 保存するキーは日本語
+        allMenusForDay[originalPartName] = sectionMenuListForRecord;
       } else {
         widget.recordsBox.delete(dateKey);
       }
     }
 
     if (allMenusForDay.isNotEmpty) {
-      DailyRecord newRecord = DailyRecord(menus: allMenusForDay, lastModifiedPart: lastModifiedPart);
+      DailyRecord newRecord =
+      DailyRecord(menus: allMenusForDay, lastModifiedPart: lastModifiedPart);
       widget.recordsBox.put(dateKey, newRecord);
     } else {
       widget.recordsBox.delete(dateKey);
@@ -353,7 +387,8 @@ class _RecordScreenState extends State<RecordScreen> {
 
     for (var section in _sections) {
       if (section.selectedPart == null) continue;
-      final originalPartName = _getOriginalPartName(context, section.selectedPart!);
+      final originalPartName =
+      _getOriginalPartName(context, section.selectedPart!);
 
       List<MenuData> displayedMenuList = [];
       for (int i = 0; i < section.menuControllers.length; i++) {
@@ -371,11 +406,13 @@ class _RecordScreenState extends State<RecordScreen> {
           weights.add(w);
           reps.add(r);
         }
-        displayedMenuList.add(MenuData(name: name, weights: weights, reps: reps));
+        displayedMenuList
+            .add(MenuData(name: name, weights: weights, reps: reps));
       }
 
       if (displayedMenuList.isNotEmpty) {
-        widget.lastUsedMenusBox.put(originalPartName, displayedMenuList); // 保存するキーは日本語
+        widget.lastUsedMenusBox
+            .put(originalPartName, displayedMenuList);
       } else {
         widget.lastUsedMenusBox.delete(originalPartName);
       }
@@ -398,7 +435,8 @@ class _RecordScreenState extends State<RecordScreen> {
           const begin = Offset(0.0, 1.0);
           const end = Offset.zero;
           const curve = Curves.easeOut;
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var tween =
+          Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
           return SlideTransition(
             position: animation.drive(tween),
             child: child,
@@ -440,8 +478,11 @@ class _RecordScreenState extends State<RecordScreen> {
           for (var section in _sections) {
             int maxSetsForSectionDisplay = _currentSetCount;
 
-            for (int menuIndex = 0; menuIndex < section.menuControllers.length; menuIndex++) {
-              List<SetInputData> setInputDataRow = section.setInputDataList[menuIndex];
+            for (int menuIndex = 0;
+            menuIndex < section.menuControllers.length;
+            menuIndex++) {
+              List<SetInputData> setInputDataRow =
+              section.setInputDataList[menuIndex];
               int actualMaxSetsInThisMenu = 0;
               for (int s = 0; s < setInputDataRow.length; s++) {
                 final setInputData = setInputDataRow[s];
@@ -451,10 +492,13 @@ class _RecordScreenState extends State<RecordScreen> {
                 }
               }
 
-              int targetSetCountForThisMenu = max(actualMaxSetsInThisMenu, _currentSetCount);
+              int targetSetCountForThisMenu =
+              max(actualMaxSetsInThisMenu, _currentSetCount);
 
               if (setInputDataRow.length > targetSetCountForThisMenu) {
-                for (int s = setInputDataRow.length - 1; s >= targetSetCountForThisMenu; s--) {
+                for (int s = setInputDataRow.length - 1;
+                s >= targetSetCountForThisMenu;
+                s--) {
                   final setInputData = setInputDataRow[s];
                   bool isEmpty = setInputData.weightController.text.isEmpty &&
                       setInputData.repController.text.isEmpty;
@@ -470,10 +514,14 @@ class _RecordScreenState extends State<RecordScreen> {
                 while (setInputDataRow.length < targetSetCountForThisMenu) {
                   final weightCtrl = TextEditingController();
                   final repCtrl = TextEditingController();
-                  setInputDataRow.add(SetInputData(weightController: weightCtrl, repController: repCtrl, isSuggestion: true));
+                  setInputDataRow.add(SetInputData(
+                      weightController: weightCtrl,
+                      repController: repCtrl,
+                      isSuggestion: true));
                 }
               }
-              maxSetsForSectionDisplay = max(maxSetsForSectionDisplay, setInputDataRow.length);
+              maxSetsForSectionDisplay =
+                  max(maxSetsForSectionDisplay, setInputDataRow.length);
             }
             section.initialSetCount = maxSetsForSectionDisplay;
           }
@@ -499,18 +547,25 @@ class _RecordScreenState extends State<RecordScreen> {
         _sections[sectionIndex].menuControllers.add(newMenuController);
         _sections[sectionIndex].menuKeys.add(UniqueKey());
 
-        while (_sections[sectionIndex].menuControllers.length > _sections[sectionIndex].setInputDataList.length) {
+        while (_sections[sectionIndex].menuControllers.length >
+            _sections[sectionIndex].setInputDataList.length) {
           _sections[sectionIndex].setInputDataList.add([]);
         }
 
         final newSetInputDataList = List.generate(setsForNewMenu, (_) {
           final weightCtrl = TextEditingController();
           final repCtrl = TextEditingController();
-          return SetInputData(weightController: weightCtrl, repController: repCtrl, isSuggestion: false);
+          return SetInputData(
+              weightController: weightCtrl,
+              repController: repCtrl,
+              isSuggestion: false);
         });
-        _sections[sectionIndex].setInputDataList[_sections[sectionIndex].menuControllers.length - 1] = newSetInputDataList;
+        _sections[sectionIndex].setInputDataList[
+        _sections[sectionIndex].menuControllers.length - 1] =
+            newSetInputDataList;
 
-        _sections[sectionIndex].initialSetCount = max(_sections[sectionIndex].initialSetCount ?? 0, setsForNewMenu);
+        _sections[sectionIndex].initialSetCount =
+            max(_sections[sectionIndex].initialSetCount ?? 0, setsForNewMenu);
       });
     }
   }
@@ -527,23 +582,26 @@ class _RecordScreenState extends State<RecordScreen> {
 
     if (mounted) {
       setState(() {
-        final newSection = SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false);
+        final newSection =
+        SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false);
         _sections.add(newSection);
       });
     }
   }
 
-  Widget _buildSetRow(BuildContext context, List<List<SetInputData>> setInputDataList, int menuIndex, int setNumber, int setIndex, String? selectedPart) {
+  Widget _buildSetRow(BuildContext context,
+      List<List<SetInputData>> setInputDataList, int menuIndex, int setNumber,
+      int setIndex, String? selectedPart) {
     final colorScheme = Theme.of(context).colorScheme;
     final setInputData = setInputDataList[menuIndex][setIndex];
     final l10n = AppLocalizations.of(context)!;
 
-    String weightUnit = l10n.kg;
+    final String currentUnit = SettingsManager.currentUnit;
+    String weightUnitText = currentUnit == 'kg' ? l10n.kg : l10n.lbs;
     String repUnit = l10n.reps;
 
-    // ★修正: 部位名の比較を多言語化
     if (selectedPart == l10n.aerobicExercise) {
-      weightUnit = l10n.min;
+      weightUnitText = l10n.min;
       repUnit = l10n.sec;
     }
 
@@ -553,7 +611,6 @@ class _RecordScreenState extends State<RecordScreen> {
 
     return Row(
       children: [
-        // ★修正: セット数を多言語化
         Text(
           '${setNumber}${l10n.sets}：',
           style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
@@ -561,7 +618,8 @@ class _RecordScreenState extends State<RecordScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: StylishInput(
-            key: ValueKey('${setInputData.weightController.hashCode}_weight_${menuIndex}_$setIndex'),
+            key: ValueKey(
+                '${setInputData.weightController.hashCode}_weight_${menuIndex}_$setIndex'),
             controller: setInputData.weightController,
             hint: '',
             keyboardType: TextInputType.number,
@@ -569,7 +627,8 @@ class _RecordScreenState extends State<RecordScreen> {
             normalTextColor: textColor,
             suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
             fillColor: colorScheme.surfaceContainer,
-            contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            contentPadding:
+            const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             textAlign: TextAlign.right,
             onChanged: (text) {
               if (text.isNotEmpty && setInputData.isSuggestion) {
@@ -580,10 +639,15 @@ class _RecordScreenState extends State<RecordScreen> {
             },
           ),
         ),
-        Text(' $weightUnit ', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
+        Text(' $weightUnitText ',
+            style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 14.0,
+                fontWeight: FontWeight.bold)),
         Expanded(
           child: StylishInput(
-            key: ValueKey('${setInputData.repController.hashCode}_rep_${menuIndex}_$setIndex'),
+            key: ValueKey(
+                '${setInputData.repController.hashCode}_rep_${menuIndex}_$setIndex'),
             controller: setInputData.repController,
             hint: '',
             keyboardType: TextInputType.number,
@@ -591,7 +655,8 @@ class _RecordScreenState extends State<RecordScreen> {
             normalTextColor: textColor,
             suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
             fillColor: colorScheme.surfaceContainer,
-            contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            contentPadding:
+            const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             textAlign: TextAlign.right,
             onChanged: (text) {
               if (text.isNotEmpty && setInputData.isSuggestion) {
@@ -602,7 +667,11 @@ class _RecordScreenState extends State<RecordScreen> {
             },
           ),
         ),
-        Text(' $repUnit', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
+        Text(' $repUnit',
+            style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 14.0,
+                fontWeight: FontWeight.bold)),
       ],
     );
   }
@@ -611,14 +680,19 @@ class _RecordScreenState extends State<RecordScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isLightMode = Theme.of(context).brightness == Brightness.light;
-    final l10n = AppLocalizations.of(context)!; // ★追加: l10nインスタンスを取得
+    final l10n = AppLocalizations.of(context)!;
 
-    final Color partNormalBgColor = isLightMode ? const Color(0xFF333333) : const Color(0xFF2C2F33);
-    final Color partPressedBgColor = isLightMode ? const Color(0xFF1A1A1A) : const Color(0xFF383C40);
-    final Color partTextColor = isLightMode ? Colors.white : const Color(0xFFCCCCCC);
-    final Color partAccentColor = isLightMode ? const Color(0xFF60A5FA) : const Color(0xFF60A5FA);
+    final Color partNormalBgColor =
+    isLightMode ? const Color(0xFF333333) : const Color(0xFF2C2F33);
+    final Color partPressedBgColor =
+    isLightMode ? const Color(0xFF1A1A1A) : const Color(0xFF383C40);
+    final Color partTextColor =
+    isLightMode ? Colors.white : const Color(0xFFCCCCCC);
+    final Color partAccentColor =
+    isLightMode ? const Color(0xFF60A5FA) : const Color(0xFF60A5FA);
 
-    bool isInitialEmptyState = _sections.length == 1 && _sections[0].selectedPart == null;
+    bool isInitialEmptyState =
+        _sections.length == 1 && _sections[0].selectedPart == null;
 
     return PopScope(
       canPop: true,
@@ -630,18 +704,20 @@ class _RecordScreenState extends State<RecordScreen> {
       child: Scaffold(
         backgroundColor: colorScheme.background,
         appBar: AppBar(
-          // ★修正: アプリバーのタイトルを日付表示に
           title: Text(
             '${widget.selectedDate.year}/${widget.selectedDate.month}/${widget.selectedDate.day}',
-            style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0),
+            style: TextStyle(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+                fontSize: 20.0),
           ),
           backgroundColor: colorScheme.surface,
           elevation: 0.0,
           iconTheme: IconThemeData(color: colorScheme.onSurface),
           actions: [
             IconButton(
-              icon: Icon(Icons.settings, size: 24.0, color: colorScheme.onSurface),
-              // ★修正: SettingsScreenのタイトルを多言語化
+              icon: Icon(Icons.settings,
+                  size: 24.0, color: colorScheme.onSurface),
               tooltip: l10n.settings,
               onPressed: () => _navigateToSettings(context),
             ),
@@ -660,9 +736,10 @@ class _RecordScreenState extends State<RecordScreen> {
                     padding: const EdgeInsets.all(20.0),
                     child: DropdownButtonFormField<String>(
                       decoration: InputDecoration(
-                        // ★修正: ヒントテキストを多言語化
                         hintText: l10n.selectTrainingPart,
-                        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
+                        hintStyle: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 14.0),
                         filled: true,
                         fillColor: colorScheme.surfaceContainer,
                         border: OutlineInputBorder(
@@ -677,10 +754,19 @@ class _RecordScreenState extends State<RecordScreen> {
                           borderRadius: BorderRadius.circular(25.0),
                           borderSide: BorderSide.none,
                         ),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 20),
                       ),
                       value: _sections[0].selectedPart,
-                      items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold)))).toList(),
+                      items: _filteredBodyParts
+                          .map((p) => DropdownMenuItem(
+                          value: p,
+                          child: Text(p,
+                              style: TextStyle(
+                                  color: colorScheme.onSurface,
+                                  fontSize: 14.0,
+                                  fontWeight: FontWeight.bold))))
+                          .toList(),
                       onChanged: (value) {
                         if (mounted) {
                           setState(() {
@@ -694,22 +780,26 @@ class _RecordScreenState extends State<RecordScreen> {
                               List<MenuData>? listToLoad;
                               bool isMenuNameSuggestion;
 
-                              // ★修正: Hiveのキーは日本語
-                              final originalPartName = _getOriginalPartName(context, actualSelectedPart);
+                              final originalPartName =
+                              _getOriginalPartName(context, actualSelectedPart);
 
-                              if (record != null && record.menus.containsKey(originalPartName)) {
+                              if (record != null &&
+                                  record.menus.containsKey(originalPartName)) {
                                 listToLoad = record.menus[originalPartName];
                                 isMenuNameSuggestion = false;
                               } else {
-                                final dynamic rawList = widget.lastUsedMenusBox.get(originalPartName);
+                                final dynamic rawList =
+                                widget.lastUsedMenusBox.get(originalPartName);
                                 if (rawList is List) {
-                                  listToLoad = rawList.whereType<MenuData>().toList();
+                                  listToLoad =
+                                      rawList.whereType<MenuData>().toList();
                                 } else {
                                   listToLoad = [];
                                 }
                                 isMenuNameSuggestion = true;
                               }
-                              _setControllersFromData(_sections[0], listToLoad ?? [], isMenuNameSuggestion);
+                              _setControllersFromData(_sections[0],
+                                  listToLoad ?? [], isMenuNameSuggestion);
                             } else {
                               _clearSectionControllersAndMaps(_sections[0]);
                               _sections[0].menuKeys.clear();
@@ -719,7 +809,10 @@ class _RecordScreenState extends State<RecordScreen> {
                         }
                       },
                       dropdownColor: colorScheme.surfaceContainer,
-                      style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.bold),
                       borderRadius: BorderRadius.circular(15.0),
                     ),
                   ),
@@ -737,7 +830,6 @@ class _RecordScreenState extends State<RecordScreen> {
                             child: Align(
                               alignment: Alignment.centerRight,
                               child: CircularAddButtonWithText(
-                                // ★修正: ラベルを多言語化
                                 label: l10n.addPart,
                                 onPressed: _addTargetSection,
                                 normalBgColorOverride: partNormalBgColor,
@@ -761,7 +853,9 @@ class _RecordScreenState extends State<RecordScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 8.0),
                             child: GlassCard(
                               borderRadius: 12.0,
-                              backgroundColor: section.selectedPart == l10n.aerobicExercise && isLightMode
+                              backgroundColor:
+                              section.selectedPart == l10n.aerobicExercise &&
+                                  isLightMode
                                   ? Colors.grey[400]!
                                   : colorScheme.surfaceContainerHighest,
                               padding: const EdgeInsets.all(16.0),
@@ -770,78 +864,111 @@ class _RecordScreenState extends State<RecordScreen> {
                                 children: [
                                   DropdownButtonFormField<String>(
                                     decoration: InputDecoration(
-                                      // ★修正: ヒントテキストを多言語化
                                       hintText: l10n.selectTrainingPart,
-                                      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
+                                      hintStyle: TextStyle(
+                                          color: colorScheme.onSurfaceVariant,
+                                          fontSize: 14.0),
                                       filled: true,
                                       fillColor: colorScheme.surfaceContainer,
                                       border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(25.0),
+                                        borderRadius:
+                                        BorderRadius.circular(25.0),
                                         borderSide: BorderSide.none,
                                       ),
                                       enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(25.0),
+                                        borderRadius:
+                                        BorderRadius.circular(25.0),
                                         borderSide: BorderSide.none,
                                       ),
                                       focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(25.0),
+                                        borderRadius:
+                                        BorderRadius.circular(25.0),
                                         borderSide: BorderSide.none,
                                       ),
-                                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                                      contentPadding:
+                                      const EdgeInsets.symmetric(
+                                          vertical: 12, horizontal: 20),
                                     ),
                                     value: section.selectedPart,
-                                    items: _filteredBodyParts.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold)))).toList(),
+                                    items: _filteredBodyParts
+                                        .map((p) => DropdownMenuItem(
+                                        value: p,
+                                        child: Text(p,
+                                            style: TextStyle(
+                                                color: colorScheme.onSurface,
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.bold))))
+                                        .toList(),
                                     onChanged: (value) {
                                       if (mounted) {
                                         setState(() {
                                           section.selectedPart = value;
                                           if (section.selectedPart != null) {
-                                            final String currentSelectedPart = section.selectedPart!;
+                                            final String currentSelectedPart =
+                                            section.selectedPart!;
 
-                                            _clearSectionControllersAndMaps(section);
+                                            _clearSectionControllersAndMaps(
+                                                section);
                                             section.menuKeys.clear();
 
-                                            String dateKey = _getDateKey(widget.selectedDate);
-                                            DailyRecord? record = widget.recordsBox.get(dateKey);
+                                            String dateKey =
+                                            _getDateKey(widget.selectedDate);
+                                            DailyRecord? record =
+                                            widget.recordsBox.get(dateKey);
                                             List<MenuData>? listToLoad;
 
                                             bool isMenuNameSuggestion;
-                                            // ★修正: Hiveのキーは日本語
-                                            final originalPartName = _getOriginalPartName(context, currentSelectedPart);
+                                            final originalPartName =
+                                            _getOriginalPartName(
+                                                context, currentSelectedPart);
 
-                                            if (record != null && record.menus.containsKey(originalPartName)) {
-                                              listToLoad = record.menus[originalPartName];
+                                            if (record != null &&
+                                                record.menus.containsKey(
+                                                    originalPartName)) {
+                                              listToLoad =
+                                              record.menus[originalPartName];
                                               isMenuNameSuggestion = false;
                                             } else {
-                                              final dynamic rawList = widget.lastUsedMenusBox.get(originalPartName);
+                                              final dynamic rawList = widget
+                                                  .lastUsedMenusBox
+                                                  .get(originalPartName);
                                               if (rawList is List) {
-                                                listToLoad = rawList.whereType<MenuData>().toList();
+                                                listToLoad =
+                                                    rawList.whereType<MenuData>().toList();
                                               } else {
                                                 listToLoad = [];
                                               }
                                               isMenuNameSuggestion = true;
                                             }
-                                            _setControllersFromData(section, listToLoad ?? [], isMenuNameSuggestion);
+                                            _setControllersFromData(section,
+                                                listToLoad ?? [], isMenuNameSuggestion);
                                           } else {
                                             _clearSectionControllersAndMaps(section);
                                             section.menuKeys.clear();
-                                            _sections[index].initialSetCount = _currentSetCount;
+                                            _sections[index].initialSetCount =
+                                                _currentSetCount;
                                           }
                                         });
                                       }
                                     },
                                     dropdownColor: colorScheme.surfaceContainer,
-                                    style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                        color: colorScheme.onSurface,
+                                        fontSize: 14.0,
+                                        fontWeight: FontWeight.bold),
                                     borderRadius: BorderRadius.circular(15.0),
                                   ),
                                   const SizedBox(height: 20),
                                   AnimatedSwitcher(
                                     duration: const Duration(milliseconds: 400),
-                                    transitionBuilder: (Widget child, Animation<double> animation) {
+                                    transitionBuilder: (Widget child,
+                                        Animation<double> animation) {
                                       final offsetAnimation = Tween<Offset>(
                                         begin: const Offset(0.0, -0.2),
                                         end: Offset.zero,
-                                      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut));
+                                      ).animate(CurvedAnimation(
+                                          parent: animation,
+                                          curve: Curves.easeOut));
                                       return FadeTransition(
                                         opacity: animation,
                                         child: SlideTransition(
@@ -851,7 +978,8 @@ class _RecordScreenState extends State<RecordScreen> {
                                       );
                                     },
                                     key: ValueKey(section.selectedPart),
-                                    child: section.selectedPart != null && actualSelectedPart != null
+                                    child: section.selectedPart != null &&
+                                        actualSelectedPart != null
                                         ? Column(
                                       children: [
                                         ListView.builder(
@@ -859,47 +987,82 @@ class _RecordScreenState extends State<RecordScreen> {
                                           physics: const NeverScrollableScrollPhysics(),
                                           itemCount: section.menuControllers.length,
                                           itemBuilder: (context, menuIndex) {
-                                            final originalPartName = _getOriginalPartName(context, actualSelectedPart);
-                                            bool isCurrentMenuNameSuggestion = (record == null || !record.menus.containsKey(originalPartName));
+                                            final originalPartName =
+                                            _getOriginalPartName(
+                                                context, actualSelectedPart);
+                                            bool isCurrentMenuNameSuggestion =
+                                            (record == null ||
+                                                !record.menus.containsKey(
+                                                    originalPartName));
 
                                             return AnimatedListItem(
                                               key: section.menuKeys[menuIndex],
-                                              direction: AnimationDirection.topToBottom,
+                                              direction:
+                                              AnimationDirection.topToBottom,
                                               child: Padding(
-                                                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                                padding: const EdgeInsets.symmetric(
+                                                    vertical: 8.0),
                                                 child: GlassCard(
                                                   borderRadius: 10.0,
-                                                  backgroundColor: colorScheme.surface,
-                                                  padding: const EdgeInsets.all(16.0),
+                                                  backgroundColor:
+                                                  colorScheme.surface,
+                                                  padding:
+                                                  const EdgeInsets.all(
+                                                      16.0),
                                                   child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                     children: [
                                                       StylishInput(
-                                                        key: ValueKey('${section.menuControllers[menuIndex].hashCode}_menuName'),
-                                                        controller: section.menuControllers[menuIndex],
-                                                        // ★修正: ヒントを多言語化
-                                                        hint: isCurrentMenuNameSuggestion ? l10n.menuName : null,
-                                                        inputFormatters: [LengthLimitingTextInputFormatter(50)],
-                                                        normalTextColor: colorScheme.onSurface,
-                                                        suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                                                        fillColor: colorScheme.surfaceContainer,
-                                                        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                                                        textAlign: TextAlign.left,
+                                                        key: ValueKey(
+                                                            '${section.menuControllers[menuIndex].hashCode}_menuName'),
+                                                        controller: section
+                                                            .menuControllers[
+                                                        menuIndex],
+                                                        hint: isCurrentMenuNameSuggestion
+                                                            ? l10n.menuName
+                                                            : null,
+                                                        inputFormatters: [
+                                                          LengthLimitingTextInputFormatter(
+                                                              50)
+                                                        ],
+                                                        normalTextColor:
+                                                        colorScheme.onSurface,
+                                                        suggestionTextColor:
+                                                        colorScheme.onSurfaceVariant
+                                                            .withOpacity(0.5),
+                                                        fillColor:
+                                                        colorScheme.surfaceContainer,
+                                                        contentPadding:
+                                                        const EdgeInsets.symmetric(
+                                                            vertical: 14,
+                                                            horizontal: 16),
+                                                        textAlign:
+                                                        TextAlign.left,
                                                       ),
                                                       const SizedBox(height: 8),
                                                       ListView.separated(
                                                         shrinkWrap: true,
                                                         physics: const NeverScrollableScrollPhysics(),
-                                                        itemCount: section.setInputDataList[menuIndex].length,
-                                                        separatorBuilder: (context, s) => const SizedBox(height: 8),
-                                                        itemBuilder: (context, s) => _buildSetRow(
-                                                            context,
-                                                            section.setInputDataList,
-                                                            menuIndex,
-                                                            s + 1,
-                                                            s,
-                                                            section.selectedPart
-                                                        ),
+                                                        itemCount: section
+                                                            .setInputDataList[
+                                                        menuIndex]
+                                                            .length,
+                                                        separatorBuilder:
+                                                            (context, s) =>
+                                                        const SizedBox(
+                                                            height: 8),
+                                                        itemBuilder:
+                                                            (context, s) =>
+                                                            _buildSetRow(
+                                                                context,
+                                                                section
+                                                                    .setInputDataList,
+                                                                menuIndex,
+                                                                s + 1,
+                                                                s,
+                                                                section
+                                                                    .selectedPart),
                                                       ),
                                                       const SizedBox(height: 8),
                                                     ],
@@ -912,11 +1075,12 @@ class _RecordScreenState extends State<RecordScreen> {
                                         Align(
                                           alignment: Alignment.centerRight,
                                           child: Padding(
-                                            padding: const EdgeInsets.only(top: 12.0),
+                                            padding: const EdgeInsets.only(
+                                                top: 12.0),
                                             child: CircularAddButtonWithText(
-                                              // ★修正: ラベルを多言語化
                                               label: l10n.addExercise,
-                                              onPressed: () => _addMenuItem(index),
+                                              onPressed: () =>
+                                                  _addMenuItem(index),
                                             ),
                                           ),
                                         ),
@@ -929,8 +1093,7 @@ class _RecordScreenState extends State<RecordScreen> {
                             ),
                           ),
                         );
-                      }
-                  ),
+                      }),
                 ),
             ],
           ),

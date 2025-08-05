@@ -1,26 +1,22 @@
+// lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hive/hive.dart';
-import 'package:flutter/services.dart'; // SystemChrome を使用するためにインポート
-import 'package:intl/date_symbol_data_local.dart'; // ロケールデータ初期化のためにインポート
-import 'package:flutter_localizations/flutter_localizations.dart'; // ★追加: 多言語対応のため
-import 'l10n/app_localizations.dart'; // ★追加: 生成されるAppLocalizationsクラスのインポート
+import 'package:flutter/services.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/app_localizations.dart';
 
-import 'models/menu_data.dart'; // MenuDataとDailyRecordのHiveAdapterをインポート
-import 'screens/calendar_screen.dart'; // CalendarScreenをインポート
-import 'screens/record_screen.dart'; // RecordScreenをインポート
-import 'screens/settings_screen.dart'; // SettingsScreenをインポート (もしCalendarScreenから直接遷移する場合)
+import 'models/menu_data.dart';
+import 'models/record_models.dart';
+import 'screens/calendar_screen.dart';
+import 'package:ttraining_record/settings_manager.dart';
 
-
-// 現在のテーマモードを管理するValueNotifier
 final ValueNotifier<ThemeMode> currentThemeMode = ValueNotifier(ThemeMode.system);
 
-void main() async {
-  // Flutterエンジンの初期化を保証
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // ロケールデータ初期化
-  await initializeDateFormatting('ja_JP', null); // 日本語ロケールを初期化
 
   // Hiveの初期化
   await Hive.initFlutter();
@@ -33,38 +29,38 @@ void main() async {
     Hive.registerAdapter(DailyRecordAdapter());
   }
 
-  // ボックスを開く
+  // ★修正: 設定マネージャーの初期化を呼び出し
+  await SettingsManager.initialize();
+
+  // アプリの向きを縦向きに固定
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
+
   final recordsBox = await Hive.openBox<DailyRecord>('dailyRecords');
   final lastUsedMenusBox = await Hive.openBox<dynamic>('lastUsedMenus');
-  // 修正: settingsBoxをdynamic型で開くことで、既存のデータ型との不一致を防ぐ
   final settingsBox = await Hive.openBox<dynamic>('settings');
   final setCountBox = await Hive.openBox<int>('setCount');
   final themeModeBox = await Hive.openBox<int>('themeMode');
 
-  // 保存されているテーマモードをロード
-  int? savedThemeModeIndex = themeModeBox.get('themeMode');
+  final savedThemeModeIndex = themeModeBox.get('themeMode');
   if (savedThemeModeIndex != null) {
     currentThemeMode.value = ThemeMode.values[savedThemeModeIndex];
   }
 
-  // アプリの向きを縦向きに固定
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]).then((_) {
-    runApp(MyApp(
-      recordsBox: recordsBox,
-      lastUsedMenusBox: lastUsedMenusBox,
-      settingsBox: settingsBox,
-      setCountBox: setCountBox,
-      themeModeBox: themeModeBox,
-    ));
-  });
+  runApp(MyApp(
+    recordsBox: recordsBox,
+    lastUsedMenusBox: lastUsedMenusBox,
+    settingsBox: settingsBox,
+    setCountBox: setCountBox,
+    themeModeBox: themeModeBox,
+  ));
 }
 
 class MyApp extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
   final Box<dynamic> lastUsedMenusBox;
-  final Box<dynamic> settingsBox; // 修正: Boxの型をdynamicに合わせる
+  final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
   final Box<int> themeModeBox;
 
@@ -85,7 +81,6 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    // テーマモードの変更をリッスン
     currentThemeMode.addListener(_onThemeModeChanged);
   }
 
@@ -97,7 +92,7 @@ class _MyAppState extends State<MyApp> {
 
   void _onThemeModeChanged() {
     if (mounted) {
-      setState(() {}); // テーマモードが変更されたらUIを再構築
+      setState(() {});
     }
   }
 
@@ -107,8 +102,7 @@ class _MyAppState extends State<MyApp> {
       valueListenable: currentThemeMode,
       builder: (context, themeMode, child) {
         return MaterialApp(
-          // アプリタイトルを多言語化
-          title: AppLocalizations.of(context)?.appTitle ?? 'トレーニング記録アプリ', // ★修正: アプリタイトルを多言語化
+          title: 'Training Record', // ここは固定値でも良いですが、多言語化する場合は変更
           themeMode: themeMode,
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
@@ -116,7 +110,7 @@ class _MyAppState extends State<MyApp> {
               brightness: Brightness.light,
             ),
             useMaterial3: true,
-            fontFamily: 'Inter', // フォント設定
+            fontFamily: 'Inter',
           ),
           darkTheme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
@@ -124,19 +118,17 @@ class _MyAppState extends State<MyApp> {
               brightness: Brightness.dark,
             ),
             useMaterial3: true,
-            fontFamily: 'Inter', // フォント設定
+            fontFamily: 'Inter',
           ),
-          // ★追加: 多言語対応のための設定
           localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          // ★追加: サポートするロケールを定義
           supportedLocales: const [
-            Locale('en', ''), // English
-            Locale('ja', ''), // Japanese
+            Locale('en', ''),
+            Locale('ja', ''),
           ],
           home: CalendarScreen(
             recordsBox: widget.recordsBox,
@@ -145,7 +137,7 @@ class _MyAppState extends State<MyApp> {
             setCountBox: widget.setCountBox,
             themeModeBox: widget.themeModeBox,
           ),
-          debugShowCheckedModeBanner: false, // デバッグバナーを非表示
+          debugShowCheckedModeBanner: false,
         );
       },
     );

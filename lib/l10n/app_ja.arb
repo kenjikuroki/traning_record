@@ -30,5 +30,7 @@
   "sets": "セット",
   "menuName": "種目名を記入",
   "calendar": "カレンダー",
+  "weightUnit": "重量単位",
+  "lbs": "lbs",
   "noRecordMessage": "選択された日付には記録がありません。"
 }
