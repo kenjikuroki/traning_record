@@ -49,16 +49,6 @@ class _RecordScreenState extends State<RecordScreen> {
   int _currentSetCount = 3;
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-      ]);
-    });
-  }
-
-  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _loadSettingsAndParts();

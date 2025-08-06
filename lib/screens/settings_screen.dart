@@ -37,13 +37,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    // contextに依存しない初期化処理のみをここに記述する
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // ★修正箇所: contextに依存する初期化処理をdidChangeDependenciesに移動
     _loadAllBodyParts();
+    _loadSettings();
   }
 
   String _getOriginalPartName(BuildContext context, String translatedPart) {
@@ -127,8 +129,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     setState(() {
+      _selectedBodyParts.clear();
       if (savedBodyPartsSettings != null && savedBodyPartsSettings.isNotEmpty) {
-        _selectedBodyParts.clear();
         for (var part in savedBodyPartsSettings.keys) {
           final translatedPart = _translatePartToLocale(context, part);
           _selectedBodyParts[translatedPart] = savedBodyPartsSettings[part]!;
@@ -138,6 +140,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _selectedBodyParts[translatedPart] = true;
         }
       }
+
       _currentSetCount = savedSetCount ?? 3;
       _selectedThemeMode = savedThemeModeIndex != null
           ? ThemeMode.values[savedThemeModeIndex]
@@ -167,6 +170,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (_allBodyParts.isEmpty) {
       _loadAllBodyParts();
+    }
+    if (_selectedBodyParts.isEmpty && _allBodyParts.isNotEmpty) {
+      for (var translatedPart in _allBodyParts) {
+        _selectedBodyParts[translatedPart] = true;
+      }
     }
 
     return WillPopScope(
@@ -375,10 +383,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         valueListenable: SettingsManager.unitNotifier,
                         builder: (context, currentUnit, child) {
                           return ToggleButtons(
-                            // ★修正: 'barrel'を'lbs'に変更
                             isSelected: [currentUnit == 'kg', currentUnit == 'lbs'],
                             onPressed: (int index) async {
-                              // ★修正: 'barrel'を'lbs'に変更
                               final newUnit = index == 0 ? 'kg' : 'lbs';
                               await SettingsManager.setUnit(newUnit);
                               setState(() {}); // 変更をUIに反映
@@ -396,7 +402,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                // ★修正: 'バレル'をl10n.lbsに変更
                                 child: Text(l10n.lbs,
                                     style:
                                     const TextStyle(fontWeight: FontWeight.bold)),
