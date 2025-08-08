@@ -1,27 +1,19 @@
-// lib/screens/settings_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hive/hive.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
 import 'package:ttraining_record/settings_manager.dart';
 
-import '../main.dart';
-
 // ignore_for_file: library_private_types_in_public_api
 
 class SettingsScreen extends StatefulWidget {
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
-  final Box<int> themeModeBox;
-  final ValueChanged<ThemeMode> onThemeModeChanged;
 
   const SettingsScreen({
     super.key,
     required this.settingsBox,
     required this.setCountBox,
-    required this.themeModeBox,
-    required this.onThemeModeChanged,
   });
 
   @override
@@ -32,18 +24,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<String> _allBodyParts = [];
   Map<String, bool> _selectedBodyParts = {};
   int _currentSetCount = 3;
-  ThemeMode _selectedThemeMode = ThemeMode.system;
 
   @override
   void initState() {
     super.initState();
-    // contextに依存しない初期化処理のみをここに記述する
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // ★修正箇所: contextに依存する初期化処理をdidChangeDependenciesに移動
     _loadAllBodyParts();
     _loadSettings();
   }
@@ -121,7 +110,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     int? savedSetCount = widget.setCountBox.get('setCount');
-    int? savedThemeModeIndex = widget.themeModeBox.get('themeMode');
 
     final dynamic savedUnit = SettingsManager.currentUnit;
     if (savedUnit is String) {
@@ -142,9 +130,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       _currentSetCount = savedSetCount ?? 3;
-      _selectedThemeMode = savedThemeModeIndex != null
-          ? ThemeMode.values[savedThemeModeIndex]
-          : ThemeMode.system;
     });
   }
 
@@ -157,8 +142,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     widget.settingsBox.put('selectedBodyParts', settingsToSave);
     widget.setCountBox.put('setCount', _currentSetCount);
-    widget.themeModeBox.put('themeMode', _selectedThemeMode.index);
-    widget.onThemeModeChanged(_selectedThemeMode);
 
     SettingsManager.setUnit(SettingsManager.currentUnit);
   }
@@ -177,10 +160,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     }
 
-    return WillPopScope(
-      onWillPop: () async {
-        _saveSettings();
-        return true;
+    return PopScope(
+      canPop: true,
+      onPopInvoked: (didPop) {
+        if (didPop) {
+          _saveSettings();
+        }
       },
       child: Scaffold(
         backgroundColor: colorScheme.background,
@@ -324,36 +309,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: colorScheme.onSurface),
                       ),
                       const SizedBox(height: 10),
-                      Column(
-                        children: ThemeMode.values.map((mode) {
-                          String modeText;
-                          switch (mode) {
-                            case ThemeMode.system:
-                              modeText = l10n.systemDefault;
-                              break;
-                            case ThemeMode.light:
-                              modeText = l10n.light;
-                              break;
-                            case ThemeMode.dark:
-                              modeText = l10n.dark;
-                              break;
-                          }
-                          return RadioListTile<ThemeMode>(
-                            title: Text(modeText,
-                                style:
-                                TextStyle(color: colorScheme.onSurface)),
-                            value: mode,
-                            groupValue: _selectedThemeMode,
-                            onChanged: (ThemeMode? value) {
-                              if (value != null) {
-                                setState(() {
-                                  _selectedThemeMode = value;
-                                });
+                      ValueListenableBuilder<ThemeMode>(
+                        valueListenable: SettingsManager.themeModeNotifier,
+                        builder: (context, currentThemeMode, child) {
+                          return Column(
+                            children: ThemeMode.values.map((mode) {
+                              String modeText;
+                              switch (mode) {
+                                case ThemeMode.system:
+                                  modeText = l10n.systemDefault;
+                                  break;
+                                case ThemeMode.light:
+                                  modeText = l10n.light;
+                                  break;
+                                case ThemeMode.dark:
+                                  modeText = l10n.dark;
+                                  break;
                               }
-                            },
-                            activeColor: colorScheme.primary,
+                              return RadioListTile<ThemeMode>(
+                                title: Text(modeText,
+                                    style: TextStyle(color: colorScheme.onSurface)),
+                                value: mode,
+                                groupValue: currentThemeMode,
+                                onChanged: (ThemeMode? value) {
+                                  if (value != null) {
+                                    SettingsManager.setThemeMode(value);
+                                  }
+                                },
+                                activeColor: colorScheme.primary,
+                              );
+                            }).toList(),
                           );
-                        }).toList(),
+                        },
                       ),
                     ],
                   ),
@@ -387,7 +374,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             onPressed: (int index) async {
                               final newUnit = index == 0 ? 'kg' : 'lbs';
                               await SettingsManager.setUnit(newUnit);
-                              setState(() {}); // 変更をUIに反映
                             },
                             borderRadius: BorderRadius.circular(8.0),
                             borderColor: colorScheme.primary.withOpacity(0.5),

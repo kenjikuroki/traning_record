@@ -1,18 +1,20 @@
-// lib/settings_manager.dart
-
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class SettingsManager {
   static const String _boxName = 'app_settings';
   static const String _unitKey = 'unit_of_weight';
+  static const String _themeModeKey = 'theme_mode';
 
   static final ValueNotifier<String> unitNotifier = ValueNotifier<String>('kg');
+  static final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
 
   static Future<void> initialize() async {
-    // main.dartでHiveが初期化されていることを前提とする
-    await Hive.openBox(_boxName);
+    if (!Hive.isBoxOpen(_boxName)) {
+      await Hive.openBox(_boxName);
+    }
     _loadUnit();
+    _loadThemeMode();
   }
 
   static void _loadUnit() {
@@ -22,7 +24,6 @@ class SettingsManager {
   }
 
   static Future<void> setUnit(String unit) async {
-    // ★修正: 単位を 'kg' または 'lbs' に変更
     if (unit != 'kg' && unit != 'lbs') {
       throw ArgumentError('単位は "kg" または "lbs" のみ設定可能です。');
     }
@@ -32,4 +33,16 @@ class SettingsManager {
   }
 
   static String get currentUnit => unitNotifier.value;
+
+  static void _loadThemeMode() {
+    final box = Hive.box(_boxName);
+    final savedThemeModeIndex = box.get(_themeModeKey, defaultValue: ThemeMode.system.index);
+    themeModeNotifier.value = ThemeMode.values[savedThemeModeIndex as int];
+  }
+
+  static Future<void> setThemeMode(ThemeMode mode) async {
+    final box = Hive.box(_boxName);
+    await box.put(_themeModeKey, mode.index);
+    themeModeNotifier.value = mode;
+  }
 }

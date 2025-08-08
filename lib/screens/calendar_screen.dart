@@ -3,13 +3,14 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hive/hive.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
-import 'package:ttraining_record/l10n/app_localizations.dart'; // ★修正: プロジェクト名と実際のパスに合わせる
+import 'package:ttraining_record/l10n/app_localizations.dart';
 
 import '../models/menu_data.dart';
+import '../models/record_models.dart';
+import '../settings_manager.dart';
 import 'record_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/custom_widgets.dart';
-import '../main.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -18,7 +19,6 @@ class CalendarScreen extends StatefulWidget {
   final Box<dynamic> lastUsedMenusBox;
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
-  final Box<int> themeModeBox;
 
   const CalendarScreen({
     super.key,
@@ -26,7 +26,6 @@ class CalendarScreen extends StatefulWidget {
     required this.lastUsedMenusBox,
     required this.settingsBox,
     required this.setCountBox,
-    required this.themeModeBox,
   });
 
   @override
@@ -39,7 +38,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Map<DateTime, List<String>> _events = {};
   DailyRecord? _currentDayRecord;
 
-  // ★修正: リストをfinalから動的に変更できるようにする
   List<String> _filteredBodyParts = [];
   List<String> _allBodyParts = [];
 
@@ -54,23 +52,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    currentThemeMode.addListener(_onThemeModeChanged);
-    _loadSettingsAndParts(); // ★didChangeDependenciesで呼び出す
+    _loadSettingsAndParts();
   }
 
   @override
   void dispose() {
-    currentThemeMode.removeListener(_onThemeModeChanged);
     super.dispose();
   }
 
-  void _onThemeModeChanged() {
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  // ★追加: 翻訳された部位名から元の日本語キーに変換するヘルパー関数
   String _getOriginalPartName(BuildContext context, String translatedPart) {
     final l10n = AppLocalizations.of(context)!;
     if (translatedPart == l10n.aerobicExercise) return '有酸素運動';
@@ -86,7 +75,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return translatedPart;
   }
 
-  // ★修正: _loadEventsメソッド
   void _loadEvents() {
     _events.clear();
     for (int i = 0; i < widget.recordsBox.length; i++) {
@@ -126,9 +114,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return _events[normalizedDay] ?? [];
   }
 
-  // ★修正: _loadSettingsAndPartsメソッド
   void _loadSettingsAndParts() {
-    // AppLocalizationsが利用可能になったらリストを構築
     final l10n = AppLocalizations.of(context)!;
     _allBodyParts = [
       l10n.aerobicExercise, l10n.arm, l10n.chest, l10n.back, l10n.shoulder, l10n.leg,
@@ -178,7 +164,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
               lastUsedMenusBox: widget.lastUsedMenusBox,
               settingsBox: widget.settingsBox,
               setCountBox: widget.setCountBox,
-              themeModeBox: widget.themeModeBox,
             ),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               const begin = Offset(0.0, 1.0);
@@ -193,7 +178,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           if (mounted) {
             _loadEvents();
             _loadDailyRecordForSelectedDay();
-            _loadSettingsAndParts(); // 設定画面から戻った際に再読み込み
+            _loadSettingsAndParts();
           }
         });
       }
@@ -213,10 +198,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
           settingsBox: widget.settingsBox,
           setCountBox: widget.setCountBox,
-          themeModeBox: widget.themeModeBox,
-          onThemeModeChanged: (newMode) {
-            currentThemeMode.value = newMode;
-          },
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(0.0, 1.0);
@@ -247,12 +228,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final l10n = AppLocalizations.of(context)!; // ★追加: l10nインスタンスを取得
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: colorScheme.background,
       appBar: AppBar(
-        // ★修正: アプリバーのタイトルを多言語化
         title: Text(
           l10n.calendar,
           style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0),
@@ -263,7 +243,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.settings, size: 24.0, color: colorScheme.onSurface),
-            // ★修正: SettingsScreenのタイトルも多言語化
             tooltip: l10n.settings,
             onPressed: () => _navigateToSettings(context),
           ),
@@ -272,7 +251,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       body: Column(
         children: [
           TableCalendar(
-            // ★修正: ロケールを動的に設定
             locale: Localizations.localeOf(context).toString(),
             firstDay: DateTime.utc(2020, 1, 1),
             lastDay: DateTime.utc(2030, 12, 31),
@@ -336,7 +314,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            // ★修正: part名を多言語化して表示
                             _translatePartToLocale(context, part),
                             style: TextStyle(
                               color: colorScheme.onSurface,
@@ -374,9 +351,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       final weight = menu.weights[setIndex];
                                       final rep = menu.reps[setIndex];
 
-                                      // ★修正: 単位を多言語化
-                                      String weightUnit = (part == l10n.aerobicExercise) ? l10n.min : l10n.kg;
-                                      String repUnit = (part == l10n.aerobicExercise) ? l10n.sec : l10n.reps;
+                                      String weightUnit = (part == '有酸素運動') ? l10n.min : l10n.kg;
+                                      String repUnit = (part == '有酸素運動') ? l10n.sec : l10n.reps;
 
                                       return Text(
                                         '${setIndex + 1}${l10n.sets}：$weight $weightUnit $rep $repUnit',
@@ -401,7 +377,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             )
                 : Center(
               child: Text(
-                // ★修正: メッセージを多言語化
                 l10n.noRecordMessage,
                 style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
               ),
@@ -412,7 +387,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  // ★追加: Hiveキー（日本語）を翻訳された文字列に変換するヘルパー関数
   String _translatePartToLocale(BuildContext context, String part) {
     final l10n = AppLocalizations.of(context)!;
     switch (part) {

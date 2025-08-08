@@ -1,9 +1,6 @@
-// lib/screens/record_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:collection/collection.dart';
 import 'dart:math';
 import 'package:ttraining_record/l10n/app_localizations.dart';
@@ -13,7 +10,6 @@ import '../models/record_models.dart';
 import '../widgets/animated_list_item.dart';
 import 'settings_screen.dart';
 import '../widgets/custom_widgets.dart';
-import '../main.dart';
 import '../settings_manager.dart';
 
 // ignore_for_file: library_private_types_in_public_api
@@ -24,7 +20,6 @@ class RecordScreen extends StatefulWidget {
   final Box<dynamic> lastUsedMenusBox;
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
-  final Box<int> themeModeBox;
 
   const RecordScreen({
     super.key,
@@ -33,7 +28,6 @@ class RecordScreen extends StatefulWidget {
     required this.lastUsedMenusBox,
     required this.settingsBox,
     required this.setCountBox,
-    required this.themeModeBox,
   });
 
   @override
@@ -416,10 +410,6 @@ class _RecordScreenState extends State<RecordScreen> {
         pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
           settingsBox: widget.settingsBox,
           setCountBox: widget.setCountBox,
-          themeModeBox: widget.themeModeBox,
-          onThemeModeChanged: (newMode) {
-            currentThemeMode.value = newMode;
-          },
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(0.0, 1.0);
