@@ -245,7 +245,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 children: [
                   AppBar(
                     title: Text(
-                      l10n.calendar,
+                      'TrainingRecord',
                       style: TextStyle(
                         color: colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
