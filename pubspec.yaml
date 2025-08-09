@@ -36,7 +36,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  google_mobile_ads: ^3.0.0
+  google_mobile_ads: ^6.0.0
   numberpicker: ^2.1.2
   # 基本パッケージ
   cupertino_icons: ^1.0.8
@@ -52,10 +52,10 @@ dev_dependencies:
     sdk: flutter
 
   # コード生成とリンティング
-  flutter_lints: ^4.0.0
+  flutter_lints: ^6.0.0
   build_runner: ^2.4.11
   hive_generator: ^2.0.1
-  flutter_launcher_icons: ^0.13.1
+  flutter_launcher_icons: ^0.14.4
 
 # flutter_launcher_icons セクション
 flutter_launcher_icons:
