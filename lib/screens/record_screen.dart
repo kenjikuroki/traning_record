@@ -130,19 +130,37 @@ class _RecordScreenState extends State<RecordScreen> {
 
     int? savedSetCount = widget.setCountBox.get('setCount');
 
+    String dateKey = _getDateKey(widget.selectedDate);
+    DailyRecord? record = widget.recordsBox.get(dateKey);
+    Set<String> partsInRecord = {};
+    if (record != null) {
+      partsInRecord = record.menus.keys.toSet();
+    }
+
+    _filteredBodyParts = [];
+
     if (savedBodyPartsSettings != null && savedBodyPartsSettings.isNotEmpty) {
       _filteredBodyParts = _allBodyParts
           .where((translatedPart) {
         final originalPart = _getOriginalPartName(context, translatedPart);
         return savedBodyPartsSettings![originalPart] == true;
-      })
-          .toList();
-      if (_filteredBodyParts.isEmpty) {
-        _filteredBodyParts = List.from(_allBodyParts);
-      }
+      }).toList();
     } else {
       _filteredBodyParts = List.from(_allBodyParts);
     }
+
+    for (String originalPart in partsInRecord) {
+      final translatedPart = _translatePartToLocale(context, originalPart);
+      if (!_filteredBodyParts.contains(translatedPart)) {
+        _filteredBodyParts.add(translatedPart);
+      }
+    }
+
+    _filteredBodyParts.sort((a, b) {
+      int indexA = _allBodyParts.indexOf(a);
+      int indexB = _allBodyParts.indexOf(b);
+      return indexA.compareTo(indexB);
+    });
 
     _currentSetCount = savedSetCount ?? 3;
 
@@ -454,6 +472,26 @@ class _RecordScreenState extends State<RecordScreen> {
           } else {
             _filteredBodyParts = List.from(_allBodyParts);
           }
+
+          String dateKey = _getDateKey(widget.selectedDate);
+          DailyRecord? record = widget.recordsBox.get(dateKey);
+          Set<String> partsInRecord = {};
+          if (record != null) {
+            partsInRecord = record.menus.keys.toSet();
+          }
+
+          for (String originalPart in partsInRecord) {
+            final translatedPart = _translatePartToLocale(context, originalPart);
+            if (!_filteredBodyParts.contains(translatedPart)) {
+              _filteredBodyParts.add(translatedPart);
+            }
+          }
+
+          _filteredBodyParts.sort((a, b) {
+            int indexA = _allBodyParts.indexOf(a);
+            int indexB = _allBodyParts.indexOf(b);
+            return indexA.compareTo(indexB);
+          });
 
           for (var section in _sections) {
             int maxSetsForSectionDisplay = _currentSetCount;
