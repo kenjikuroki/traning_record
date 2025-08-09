@@ -9,12 +9,17 @@ import 'models/menu_data.dart';
 import 'models/record_models.dart';
 import 'screens/calendar_screen.dart';
 import 'settings_manager.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Hiveの初期化
   await Hive.initFlutter();
+
+  // Mobile Ads SDKを初期化
+  await MobileAds.instance.initialize();
 
   // Hiveアダプターの登録
   if (!Hive.isAdapterRegistered(0)) {

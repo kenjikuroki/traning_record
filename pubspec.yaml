@@ -36,6 +36,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  google_mobile_ads: ^3.0.0
   numberpicker: ^2.1.2
   # 基本パッケージ
   cupertino_icons: ^1.0.8

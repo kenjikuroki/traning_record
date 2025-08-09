@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive/hive.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
+import 'package:ttraining_record/widgets/ad_banner.dart'; // ★ AdBannerをインポート
 
 import '../models/menu_data.dart';
 import '../models/record_models.dart';
@@ -232,24 +233,41 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     return Scaffold(
       backgroundColor: colorScheme.background,
-      appBar: AppBar(
-        title: Text(
-          l10n.calendar,
-          style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0),
-        ),
-        backgroundColor: colorScheme.surface,
-        elevation: 0.0,
-        iconTheme: IconThemeData(color: colorScheme.onSurface),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings, size: 24.0, color: colorScheme.onSurface),
-            tooltip: l10n.settings,
-            onPressed: () => _navigateToSettings(context),
-          ),
-        ],
-      ),
+      // ★ appbarを削除し、bodyをColumnで置き換えます
       body: Column(
         children: [
+          // AppBarと広告をまとめたヘッダー部分
+          Container(
+            color: colorScheme.surface,
+            child: SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  AppBar(
+                    title: Text(
+                      l10n.calendar,
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20.0,
+                      ),
+                    ),
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    iconTheme: IconThemeData(color: colorScheme.onSurface),
+                    actions: [
+                      IconButton(
+                        icon: Icon(Icons.settings, size: 24.0, color: colorScheme.onSurface),
+                        tooltip: l10n.settings,
+                        onPressed: () => _navigateToSettings(context),
+                      ),
+                    ],
+                  ),
+                  const AdBanner(), // ★ ここに広告を追加
+                ],
+              ),
+            ),
+          ),
           TableCalendar(
             locale: Localizations.localeOf(context).toString(),
             firstDay: DateTime.utc(2020, 1, 1),
