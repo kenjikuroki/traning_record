@@ -404,7 +404,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ),
-        bottomNavigationBar: const AdBanner(), // ★ ここにバナー広告ウィジェットを配置
+        bottomNavigationBar: const AdBanner(screenName: 'settings'), // ★ ここにバナー広告ウィジェットを配置
       ),
     );
   }

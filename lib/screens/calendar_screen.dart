@@ -263,7 +263,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
                     ],
                   ),
-                  const AdBanner(), // ★ ここに広告を追加
+                  const AdBanner(screenName: 'calendar')// ★ ここに広告を追加
                 ],
               ),
             ),

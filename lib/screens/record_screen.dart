@@ -1117,7 +1117,7 @@ class _RecordScreenState extends State<RecordScreen> {
             ],
           ),
         ),
-        bottomNavigationBar: const AdBanner(),
+        bottomNavigationBar: const AdBanner(screenName: 'record'),
       ),
     );
   }
