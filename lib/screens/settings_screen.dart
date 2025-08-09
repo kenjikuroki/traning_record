@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hive/hive.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
 import 'package:ttraining_record/settings_manager.dart';
+import '../widgets/ad_banner.dart'; // バナー広告ウィジェットをインポート
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -403,6 +404,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ),
+        bottomNavigationBar: const AdBanner(), // ★ ここにバナー広告ウィジェットを配置
       ),
     );
   }

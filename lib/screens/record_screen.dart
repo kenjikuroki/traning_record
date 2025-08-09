@@ -11,6 +11,7 @@ import '../widgets/animated_list_item.dart';
 import 'settings_screen.dart';
 import '../widgets/custom_widgets.dart';
 import '../settings_manager.dart';
+import '../widgets/ad_banner.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -1116,6 +1117,7 @@ class _RecordScreenState extends State<RecordScreen> {
             ],
           ),
         ),
+        bottomNavigationBar: const AdBanner(),
       ),
     );
   }
