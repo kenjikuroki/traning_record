@@ -233,10 +233,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     return Scaffold(
       backgroundColor: colorScheme.background,
-      // ★ appbarを削除し、bodyをColumnで置き換えます
       body: Column(
         children: [
-          // AppBarと広告をまとめたヘッダー部分
           Container(
             color: colorScheme.surface,
             child: SafeArea(
@@ -263,7 +261,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
                     ],
                   ),
-                  const AdBanner(screenName: 'calendar')// ★ ここに広告を追加
                 ],
               ),
             ),
@@ -369,8 +366,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       final weight = menu.weights[setIndex];
                                       final rep = menu.reps[setIndex];
 
-                                      String weightUnit = (part == '有酸素運動') ? l10n.min : l10n.kg;
+                                      // ★ 修正箇所ここから
+                                      String weightUnit;
+                                      if (part == '有酸素運動') {
+                                        weightUnit = l10n.min;
+                                      } else {
+                                        weightUnit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
+                                      }
                                       String repUnit = (part == '有酸素運動') ? l10n.sec : l10n.reps;
+                                      // ★ 修正箇所ここまで
 
                                       return Text(
                                         '${setIndex + 1}${l10n.sets}：$weight $weightUnit $rep $repUnit',
