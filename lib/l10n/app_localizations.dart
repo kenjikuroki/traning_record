@@ -272,7 +272,7 @@ abstract class AppLocalizations {
   /// No description provided for @calendar.
   ///
   /// In en, this message translates to:
-  /// **'Calendar'**
+  /// **'calendar'**
   String get calendar;
 
   /// No description provided for @noRecordMessage.
@@ -292,6 +292,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'lbs'**
   String get lbs;
+
+  /// No description provided for @deleteMenuConfirmationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Exercise?'**
+  String get deleteMenuConfirmationTitle;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

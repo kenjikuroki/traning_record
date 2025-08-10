@@ -96,7 +96,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get menuName => 'Menu Name';
 
   @override
-  String get calendar => 'Calendar';
+  String get calendar => 'calendar';
 
   @override
   String get noRecordMessage => 'No records found for the selected date.';
@@ -106,4 +106,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lbs => 'lbs';
+
+  @override
+  String get deleteMenuConfirmationTitle => 'Delete Exercise?';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get delete => 'Delete';
 }

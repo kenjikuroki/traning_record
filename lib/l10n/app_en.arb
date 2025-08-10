@@ -32,5 +32,8 @@
   "calendar": "calendar",
   "noRecordMessage": "No records found for the selected date.",
   "weightUnit": "Weight Unit",
-  "lbs": "lbs"
+  "lbs": "lbs",
+  "deleteMenuConfirmationTitle": "Delete Exercise?",
+  "cancel": "Cancel",
+  "delete": "Delete"
 }

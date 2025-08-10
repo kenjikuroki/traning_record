@@ -1149,11 +1149,38 @@ class _RecordScreenState extends State<RecordScreen> {
                                                               TextAlign.left,
                                                             ),
                                                           ),
-                                                          if(section.menuControllers.length > 1)
-                                                            IconButton(
-                                                              icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
-                                                              onPressed: () => _removeMenuItem(index, menuIndex),
+                                                          // 修正ここから
+                                                          IconButton(
+                                                            icon: Icon(
+                                                              Icons.close,
+                                                              size: 16.0,
+                                                              color: colorScheme.onSurfaceVariant,
                                                             ),
+                                                            onPressed: () {
+                                                              showDialog(
+                                                                context: context,
+                                                                builder: (context) => AlertDialog(
+                                                                  title: Text(l10n.deleteMenuConfirmationTitle),
+                                                                  actions: [
+                                                                    TextButton(
+                                                                      onPressed: () {
+                                                                        Navigator.of(context).pop();
+                                                                      },
+                                                                      child: Text(l10n.cancel),
+                                                                    ),
+                                                                    TextButton(
+                                                                      onPressed: () {
+                                                                        Navigator.of(context).pop();
+                                                                        _removeMenuItem(index, menuIndex);
+                                                                      },
+                                                                      child: Text(l10n.delete),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              );
+                                                            },
+                                                          ),
+                                                          // 修正ここまで
                                                         ],
                                                       ),
                                                       const SizedBox(height: 8),

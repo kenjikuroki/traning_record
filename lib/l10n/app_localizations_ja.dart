@@ -106,4 +106,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get lbs => 'lbs';
+
+  @override
+  String get deleteMenuConfirmationTitle => '種目を削除しますか？';
+
+  @override
+  String get cancel => 'キャンセル';
+
+  @override
+  String get delete => '削除';
 }
