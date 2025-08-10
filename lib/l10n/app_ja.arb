@@ -35,5 +35,6 @@
   "noRecordMessage": "選択された日付には記録がありません。",
   "deleteMenuConfirmationTitle": "種目を削除しますか？",
   "cancel": "キャンセル",
-  "delete": "削除"
+  "delete": "削除",
+  "graph": "グラフ"
 }

@@ -1,27 +1,25 @@
+// lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:hive/hive.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'l10n/app_localizations.dart';
 import 'models/menu_data.dart';
 import 'models/record_models.dart';
 import 'screens/calendar_screen.dart';
+import 'screens/settings_screen.dart';
 import 'settings_manager.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-
+import 'widgets/bottom_navigation_bar.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Hiveの初期化
   await Hive.initFlutter();
-
-  // Mobile Ads SDKを初期化
   await MobileAds.instance.initialize();
 
-  // Hiveアダプターの登録
   if (!Hive.isAdapterRegistered(0)) {
     Hive.registerAdapter(MenuDataAdapter());
   }
@@ -29,10 +27,8 @@ Future<void> main() async {
     Hive.registerAdapter(DailyRecordAdapter());
   }
 
-  // 設定マネージャーの初期化
   await SettingsManager.initialize();
 
-  // アプリの向きを縦向きに固定
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
@@ -69,6 +65,37 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  // 画面リストのインデックスを2つに修正
+  // 0:カレンダー, 1:設定
+  int _selectedIndex = 0;
+
+  late final List<Widget> _widgetOptions;
+
+  @override
+  void initState() {
+    super.initState();
+    _widgetOptions = <Widget>[
+      // インデックス0: CalendarScreen
+      CalendarScreen(
+        recordsBox: widget.recordsBox,
+        lastUsedMenusBox: widget.lastUsedMenusBox,
+        settingsBox: widget.settingsBox,
+        setCountBox: widget.setCountBox,
+      ),
+      // インデックス1: SettingsScreen
+      SettingsScreen(
+        settingsBox: widget.settingsBox,
+        setCountBox: widget.setCountBox,
+      ),
+    ];
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
@@ -103,11 +130,15 @@ class _MyAppState extends State<MyApp> {
             Locale('en', ''),
             Locale('ja', ''),
           ],
-          home: CalendarScreen(
-            recordsBox: widget.recordsBox,
-            lastUsedMenusBox: widget.lastUsedMenusBox,
-            settingsBox: widget.settingsBox,
-            setCountBox: widget.setCountBox,
+          home: Scaffold(
+            body: IndexedStack(
+              index: _selectedIndex,
+              children: _widgetOptions,
+            ),
+            bottomNavigationBar: AppBottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
+            ),
           ),
           debugShowCheckedModeBanner: false,
         );

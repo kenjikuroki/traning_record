@@ -1,3 +1,5 @@
+// lib/screens/record_screen.dart (修正版)
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
@@ -12,6 +14,7 @@ import 'settings_screen.dart';
 import '../widgets/custom_widgets.dart';
 import '../settings_manager.dart';
 import '../widgets/ad_banner.dart';
+import '../widgets/bottom_navigation_bar.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -435,8 +438,9 @@ class _RecordScreenState extends State<RecordScreen> {
     }
   }
 
-  void _navigateToSettings(BuildContext context) {
-    Navigator.push(
+  // async関数として修正
+  Future<void> _navigateToSettings(BuildContext context) async {
+    await Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
@@ -771,7 +775,6 @@ class _RecordScreenState extends State<RecordScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final isLightMode = Theme.of(context).brightness == Brightness.light;
     final l10n = AppLocalizations.of(context)!;
-
     final Color partNormalBgColor =
     isLightMode ? const Color(0xFF333333) : const Color(0xFF2C2F33);
     final Color partPressedBgColor =
@@ -804,14 +807,7 @@ class _RecordScreenState extends State<RecordScreen> {
           backgroundColor: colorScheme.surface,
           elevation: 0.0,
           iconTheme: IconThemeData(color: colorScheme.onSurface),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.settings,
-                  size: 24.0, color: colorScheme.onSurface),
-              tooltip: l10n.settings,
-              onPressed: () => _navigateToSettings(context),
-            ),
-          ],
+          actions: [], // actionsは空のリスト
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -1149,7 +1145,6 @@ class _RecordScreenState extends State<RecordScreen> {
                                                               TextAlign.left,
                                                             ),
                                                           ),
-                                                          // 修正ここから
                                                           IconButton(
                                                             icon: Icon(
                                                               Icons.close,
@@ -1180,7 +1175,6 @@ class _RecordScreenState extends State<RecordScreen> {
                                                               );
                                                             },
                                                           ),
-                                                          // 修正ここまで
                                                         ],
                                                       ),
                                                       const SizedBox(height: 8),
@@ -1241,7 +1235,17 @@ class _RecordScreenState extends State<RecordScreen> {
             ],
           ),
         ),
-        bottomNavigationBar: const AdBanner(screenName: 'record'),
+        bottomNavigationBar: AppBottomNavigationBar(
+          currentIndex: 0,
+          onTap: (index) async { // async関数として呼び出し
+            if (index == 0) {
+              // 記録画面が押された場合、何もしない
+            } else if (index == 1) {
+              // 設定画面が押された場合
+              await _navigateToSettings(context);
+            }
+          },
+        ),
       ),
     );
   }

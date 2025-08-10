@@ -35,5 +35,6 @@
   "lbs": "lbs",
   "deleteMenuConfirmationTitle": "Delete Exercise?",
   "cancel": "Cancel",
-  "delete": "Delete"
+  "delete": "Delete",
+  "graph": "Graph"
 }

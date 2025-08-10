@@ -4,7 +4,7 @@ import 'package:hive/hive.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
-import 'package:ttraining_record/widgets/ad_banner.dart'; // ★ AdBannerをインポート
+import 'package:ttraining_record/widgets/ad_banner.dart';
 
 import '../models/menu_data.dart';
 import '../models/record_models.dart';
@@ -192,36 +192,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  void _navigateToSettings(BuildContext context) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
-          settingsBox: widget.settingsBox,
-          setCountBox: widget.setCountBox,
-        ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(0.0, 1.0);
-          const end = Offset.zero;
-          const curve = Curves.easeOut;
-
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-          return SlideTransition(
-            position: animation.drive(tween),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 300),
-      ),
-    ).then((_) {
-      if (mounted) {
-        _loadSettingsAndParts();
-        _loadDailyRecordForSelectedDay();
-      }
-    });
-  }
-
   String _getDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
@@ -253,15 +223,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     backgroundColor: Colors.transparent,
                     elevation: 0,
                     iconTheme: IconThemeData(color: colorScheme.onSurface),
-                    actions: [
-                      IconButton(
-                        icon: Icon(Icons.settings, size: 24.0, color: colorScheme.onSurface),
-                        tooltip: l10n.settings,
-                        onPressed: () => _navigateToSettings(context),
-                      ),
-                    ],
+                    // 設定ボタンを削除
+                    actions: const [],
                   ),
-                  const AdBanner(screenName: 'calendar')// ★ ここに広告を追加
+                  const AdBanner(screenName: 'calendar')
                 ],
               ),
             ),
@@ -367,15 +332,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       final weight = menu.weights[setIndex];
                                       final rep = menu.reps[setIndex];
 
-                                      // ★ 修正箇所ここから
                                       String weightUnit;
+                                      String repUnit;
                                       if (part == '有酸素運動') {
                                         weightUnit = l10n.min;
+                                        repUnit = l10n.sec;
                                       } else {
                                         weightUnit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
+                                        repUnit = l10n.reps;
                                       }
-                                      String repUnit = (part == '有酸素運動') ? l10n.sec : l10n.reps;
-                                      // ★ 修正箇所ここまで
 
                                       return Text(
                                         '${setIndex + 1}${l10n.sets}：$weight $weightUnit $rep $repUnit',
