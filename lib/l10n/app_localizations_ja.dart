@@ -130,4 +130,26 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get graph => 'グラフ';
+
+  @override
+  String get favorites => 'お気に入り';
+
+  @override
+  String get selectExercise => '種目を選択';
+
+  @override
+  String get noGraphData => '記録がありません';
+
+  @override
+  String get graphScreenTitle => 'グラフ';
+
+  @override
+  String favorited(Object menuName) {
+    return '$menuNameをお気に入りに登録しました';
+  }
+
+  @override
+  String unfavorited(Object menuName) {
+    return '$menuNameのお気に入りを解除しました';
+  }
 }

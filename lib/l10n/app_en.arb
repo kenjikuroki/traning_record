@@ -40,5 +40,11 @@
   "time": "Time",
   "minutesHint": "Min",
   "secondsHint": "Sec",
-  "graph": "graph"
+  "graph": "graph",
+  "favorites": "favorites",
+  "selectExercise": "Select Exercise",
+  "noGraphData": "No records found",
+  "graphScreenTitle": "Graph",
+  "favorited": "{menuName} added to favorites",
+  "unfavorited": "{menuName} removed from favorites"
 }

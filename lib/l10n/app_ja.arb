@@ -40,5 +40,11 @@
   "time": "時間",
   "minutesHint": "分",
   "secondsHint": "秒",
-  "graph": "グラフ"
+  "graph": "グラフ",
+  "favorites": "お気に入り",
+  "selectExercise": "種目を選択",
+  "noGraphData": "記録がありません",
+  "graphScreenTitle": "グラフ",
+  "favorited": "{menuName}をお気に入りに登録しました",
+  "unfavorited": "{menuName}のお気に入りを解除しました"
 }

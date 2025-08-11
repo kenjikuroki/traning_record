@@ -4,9 +4,9 @@ import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
 
-/// The translations for English (`en`).
-class AppLocalizationsEn extends AppLocalizations {
-  AppLocalizationsEn([String locale = 'en']) : super(locale);
+/// The translations for Kalaallisut Greenlandic (`kl`).
+class AppLocalizationsKl extends AppLocalizations {
+  AppLocalizationsKl([String locale = 'kl']) : super(locale);
 
   @override
   String get appTitle => 'T-Training Record';

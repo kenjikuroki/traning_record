@@ -9,7 +9,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # Flutter internationalization standard.
 flutter_intl:
   enabled: true # ★多言語化を有効にする設定
-
+  main_locale: kl
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
 # followed by an optional build number separated by a +.
@@ -36,6 +36,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  fl_chart: ^0.68.0
   google_mobile_ads: ^6.0.0
   numberpicker: ^2.1.2
   # 基本パッケージ

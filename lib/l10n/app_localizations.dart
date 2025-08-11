@@ -7,6 +7,7 @@ import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_en.dart';
 import 'app_localizations_ja.dart';
+import 'app_localizations_kl.dart';
 
 // ignore_for_file: type=lint
 
@@ -92,7 +93,8 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
-    Locale('ja')
+    Locale('ja'),
+    Locale('kl')
   ];
 
   /// No description provided for @appTitle.
@@ -340,6 +342,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'graph'**
   String get graph;
+
+  /// No description provided for @favorites.
+  ///
+  /// In en, this message translates to:
+  /// **'favorites'**
+  String get favorites;
+
+  /// No description provided for @selectExercise.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Exercise'**
+  String get selectExercise;
+
+  /// No description provided for @noGraphData.
+  ///
+  /// In en, this message translates to:
+  /// **'No records found'**
+  String get noGraphData;
+
+  /// No description provided for @graphScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Graph'**
+  String get graphScreenTitle;
+
+  /// No description provided for @favorited.
+  ///
+  /// In en, this message translates to:
+  /// **'{menuName} added to favorites'**
+  String favorited(Object menuName);
+
+  /// No description provided for @unfavorited.
+  ///
+  /// In en, this message translates to:
+  /// **'{menuName} removed from favorites'**
+  String unfavorited(Object menuName);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
@@ -351,7 +389,7 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'ja'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'ja', 'kl'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -364,6 +402,7 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   switch (locale.languageCode) {
     case 'en': return AppLocalizationsEn();
     case 'ja': return AppLocalizationsJa();
+    case 'kl': return AppLocalizationsKl();
   }
 
   throw FlutterError(
