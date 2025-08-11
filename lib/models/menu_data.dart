@@ -57,9 +57,14 @@ class DailyRecord extends HiveObject {
   @HiveField(2)
   final String? lastModifiedPart;
 
+  @HiveField(3)
+  final double? weight;
+
+
   DailyRecord({
     required this.date,
     required this.menus,
-    this.lastModifiedPart
+    this.lastModifiedPart,
+    this.weight,
   });
 }

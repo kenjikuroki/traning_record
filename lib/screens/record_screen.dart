@@ -44,7 +44,7 @@ class _RecordScreenState extends State<RecordScreen> {
   List<SectionData> _sections = [];
   int _currentSetCount = 3;
 
-  // 💡 有酸素運動用のコントローラーを追加
+  final TextEditingController _weightController = TextEditingController();
   final TextEditingController _distanceController = TextEditingController();
   final TextEditingController _durationController = TextEditingController();
 
@@ -60,7 +60,7 @@ class _RecordScreenState extends State<RecordScreen> {
       section.dispose();
     }
     _sections.clear();
-    // 💡 新しく追加したコントローラーを破棄
+    _weightController.dispose();
     _distanceController.dispose();
     _durationController.dispose();
     super.dispose();
@@ -171,6 +171,12 @@ class _RecordScreenState extends State<RecordScreen> {
       section.dispose();
     }
     _sections.clear();
+
+    if (record?.weight != null) {
+      _weightController.text = record!.weight.toString();
+    } else {
+      _weightController.clear();
+    }
 
     if (record == null || record.menus.isEmpty) {
       _sections.add(SectionData.createEmpty(_currentSetCount,
@@ -328,7 +334,7 @@ class _RecordScreenState extends State<RecordScreen> {
     }
     int maxSetsInLoadedMenus = 0;
     for (var menuSets in section.setInputDataList) {
-      maxSetsInLoadedMenus = max(maxSetsInLoadedMenus, menuSets.length);
+      maxSetsInLoadedMenus = max(maxSetsInLoadedMenus, _currentSetCount);
     }
     section.initialSetCount = max(maxSetsInLoadedMenus, _currentSetCount);
   }
@@ -375,14 +381,12 @@ class _RecordScreenState extends State<RecordScreen> {
         bool hasConfirmedSet = false;
 
         if (isAerobic) {
-          // 💡 有酸素運動の場合
           distance = _distanceController.text;
           duration = _durationController.text;
           if (distance.isNotEmpty || duration.isNotEmpty) {
             hasConfirmedSet = true;
           }
         } else {
-          // 筋トレの場合 (既存のロジック)
           for (int s = 0; s < section.setInputDataList[i].length; s++) {
             final setInputData = section.setInputDataList[i][s];
             String w = setInputData.weightController.text;
@@ -406,7 +410,6 @@ class _RecordScreenState extends State<RecordScreen> {
         } else {
           sectionMenuListForLastUsed.add(MenuData(name: name, weights: weights, reps: reps));
         }
-
 
         if (hasConfirmedSet) {
           if (isAerobic) {
@@ -436,8 +439,21 @@ class _RecordScreenState extends State<RecordScreen> {
       }
     }
 
+    double? weightValue;
+    if (_weightController.text.isNotEmpty) {
+      weightValue = double.tryParse(_weightController.text);
+      if (weightValue != null) {
+        hasAnyRecordData = true;
+      }
+    }
+
     if (hasAnyRecordData) {
-      DailyRecord newRecord = DailyRecord( date: widget.selectedDate,menus: allMenusForRecord, lastModifiedPart: lastModifiedPart);
+      DailyRecord newRecord = DailyRecord(
+        date: widget.selectedDate,
+        menus: allMenusForRecord,
+        lastModifiedPart: lastModifiedPart,
+        weight: weightValue,
+      );
       widget.recordsBox.put(dateKey, newRecord);
     } else {
       widget.recordsBox.delete(dateKey);
@@ -602,7 +618,58 @@ class _RecordScreenState extends State<RecordScreen> {
           child: Column(
             children: [
               const AdBanner(screenName: 'record'),
-              const SizedBox(height: 16.0),
+              // 💡 間隔を修正
+              const SizedBox(height: 8.0),
+
+              Card(
+                color: colorScheme.surfaceContainerHighest,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Text(
+                        l10n.bodyWeight,
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16.0,
+                        ),
+                      ),
+                      const SizedBox(width: 16.0),
+                      Expanded(
+                        child: StylishInput(
+                          controller: _weightController,
+                          // 💡 ヒントテキストを削除
+                          hint: '',
+                          keyboardType: TextInputType.numberWithOptions(decimal: true),
+                          normalTextColor: colorScheme.onSurface,
+                          suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                          fillColor: colorScheme.surfaceContainer,
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 12, horizontal: 16),
+                          textAlign: TextAlign.right,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        ' ${SettingsManager.currentUnit}',
+                        style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // 💡 間隔を修正
+              const SizedBox(height: 8.0),
+
               Expanded(
                 child: ListView.builder(
                   primary: true,
@@ -780,7 +847,6 @@ class _RecordScreenState extends State<RecordScreen> {
                                                   section.setInputDataList[menuIndex],
                                                   isAerobic: section.selectedPart ==
                                                       l10n.aerobicExercise,
-                                                  // 💡 新しいコントローラーをMenuListに渡す
                                                   distanceController: _distanceController,
                                                   durationController: _durationController,
                                                 ),
@@ -979,7 +1045,6 @@ class MenuList extends StatefulWidget {
 }
 
 class _MenuListState extends State<MenuList> {
-  // 💡 分と秒、kmとmを個別のコントローラーで管理
   final TextEditingController _kmController = TextEditingController();
   final TextEditingController _mController = TextEditingController();
   final TextEditingController _minController = TextEditingController();
@@ -988,9 +1053,7 @@ class _MenuListState extends State<MenuList> {
   @override
   void initState() {
     super.initState();
-    // 💡 既存のdurationControllerとdistanceControllerから値を分割して設定
     _parseDurationAndDistance();
-    // 💡 変更を検知して元のコントローラーを更新
     _kmController.addListener(_updateDistanceController);
     _mController.addListener(_updateDistanceController);
     _minController.addListener(_updateDurationController);
@@ -1007,7 +1070,6 @@ class _MenuListState extends State<MenuList> {
   }
 
   void _parseDurationAndDistance() {
-    // 時間 (分:秒) をパース
     final parts = widget.durationController.text.split(':');
     if (parts.length == 2) {
       _minController.text = parts[0];
@@ -1016,7 +1078,6 @@ class _MenuListState extends State<MenuList> {
       _minController.text = widget.durationController.text;
     }
 
-    // 距離 (km.m) をパース
     final distParts = widget.distanceController.text.split('.');
     if (distParts.length == 2) {
       _kmController.text = distParts[0];
@@ -1085,10 +1146,9 @@ class _MenuListState extends State<MenuList> {
             child: widget.isAerobic
                 ? Column(
               children: [
-                // 💡 1行目: 距離の入力欄 (km と m に分割)
                 Row(
                   children: [
-                    Text(l10n.distance, // '距離'のローカライズ
+                    Text(l10n.distance,
                         style: TextStyle(
                             color: colorScheme.onSurface,
                             fontSize: 14.0,
@@ -1097,7 +1157,7 @@ class _MenuListState extends State<MenuList> {
                     Expanded(
                       flex: 2,
                       child: StylishInput(
-                        controller: _kmController, // 💡 km用コントローラー
+                        controller: _kmController,
                         hint: '例: 5',
                         keyboardType: TextInputType.number,
                         inputFormatters: [
@@ -1111,7 +1171,7 @@ class _MenuListState extends State<MenuList> {
                         textAlign: TextAlign.right,
                       ),
                     ),
-                    Text(' ${l10n.km} ', // 'km'のローカライズ
+                    Text(' ${l10n.km} ',
                         style: TextStyle(
                             color: colorScheme.onSurfaceVariant,
                             fontSize: 14.0,
@@ -1119,7 +1179,7 @@ class _MenuListState extends State<MenuList> {
                     Expanded(
                       flex: 2,
                       child: StylishInput(
-                        controller: _mController, // 💡 m用コントローラー
+                        controller: _mController,
                         hint: '例: 00',
                         keyboardType: TextInputType.number,
                         inputFormatters: [
@@ -1133,7 +1193,7 @@ class _MenuListState extends State<MenuList> {
                         textAlign: TextAlign.right,
                       ),
                     ),
-                    Text(' ${l10n.m}', // 'm'のローカライズ
+                    Text(' ${l10n.m}',
                         style: TextStyle(
                             color: colorScheme.onSurfaceVariant,
                             fontSize: 14.0,
@@ -1141,10 +1201,9 @@ class _MenuListState extends State<MenuList> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                // 💡 2行目: 時間の入力欄 (分と秒に分割)
                 Row(
                   children: [
-                    Text(l10n.time, // '時間'のローカライズ
+                    Text(l10n.time,
                         style: TextStyle(
                             color: colorScheme.onSurface,
                             fontSize: 14.0,
@@ -1153,7 +1212,7 @@ class _MenuListState extends State<MenuList> {
                     Expanded(
                       flex: 2,
                       child: StylishInput(
-                        controller: _minController, // 💡 分用コントローラー
+                        controller: _minController,
                         hint: '例: 30',
                         keyboardType: TextInputType.number,
                         inputFormatters: [
@@ -1167,7 +1226,7 @@ class _MenuListState extends State<MenuList> {
                         textAlign: TextAlign.right,
                       ),
                     ),
-                    Text(' ${l10n.min} ', // '分'のローカライズ
+                    Text(' ${l10n.min} ',
                         style: TextStyle(
                             color: colorScheme.onSurfaceVariant,
                             fontSize: 14.0,
@@ -1175,7 +1234,7 @@ class _MenuListState extends State<MenuList> {
                     Expanded(
                       flex: 2,
                       child: StylishInput(
-                        controller: _secController, // 💡 秒用コントローラー
+                        controller: _secController,
                         hint: '例: 00',
                         keyboardType: TextInputType.number,
                         inputFormatters: [
@@ -1189,7 +1248,7 @@ class _MenuListState extends State<MenuList> {
                         textAlign: TextAlign.right,
                       ),
                     ),
-                    Text(' ${l10n.sec}', // '秒'のローカライズ
+                    Text(' ${l10n.sec}',
                         style: TextStyle(
                             color: colorScheme.onSurfaceVariant,
                             fontSize: 14.0,

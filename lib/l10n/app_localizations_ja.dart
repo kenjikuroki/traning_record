@@ -167,4 +167,19 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get m => 'm';
+
+  @override
+  String get bodyWeight => '体重';
+
+  @override
+  String get bodyWeightTracking => '体重管理';
+
+  @override
+  String get selectBodyParts => '部位を選択';
+
+  @override
+  String get unit => '単位';
+
+  @override
+  String get defaultSets => 'Default Sets';
 }

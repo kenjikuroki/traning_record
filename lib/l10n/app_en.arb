@@ -51,5 +51,10 @@
   "weekDisplay": "Week",
   "distance": "distance",
   "km": "km",
-  "m": "m"
+  "m": "m",
+  "bodyWeight": "Body Weight",
+  "bodyWeightTracking": "Body Weight Tracking",
+  "selectBodyParts": "Select Body Parts",
+  "unit": "unit",
+  "defaultSets": "Default Sets"
 }

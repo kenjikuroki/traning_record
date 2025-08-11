@@ -167,4 +167,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get m => 'm';
+
+  @override
+  String get bodyWeight => 'Body Weight';
+
+  @override
+  String get bodyWeightTracking => 'Body Weight Tracking';
+
+  @override
+  String get selectBodyParts => 'Select Body Parts';
+
+  @override
+  String get unit => 'unit';
+
+  @override
+  String get defaultSets => 'Default Sets';
 }

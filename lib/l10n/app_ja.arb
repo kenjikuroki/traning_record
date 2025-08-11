@@ -51,5 +51,10 @@
   "weekDisplay": "週",
   "distance": "距離",
   "km": "km",
-  "m": "m"
+  "m": "m",
+  "bodyWeight": "体重",
+  "bodyWeightTracking": "体重管理",
+  "selectBodyParts": "部位を選択",
+  "unit": "単位",
+  "defaultSets": "Default Sets"
 }

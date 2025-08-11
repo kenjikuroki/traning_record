@@ -408,6 +408,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'m'**
   String get m;
+
+  /// No description provided for @bodyWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Body Weight'**
+  String get bodyWeight;
+
+  /// No description provided for @bodyWeightTracking.
+  ///
+  /// In en, this message translates to:
+  /// **'Body Weight Tracking'**
+  String get bodyWeightTracking;
+
+  /// No description provided for @selectBodyParts.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Body Parts'**
+  String get selectBodyParts;
+
+  /// No description provided for @unit.
+  ///
+  /// In en, this message translates to:
+  /// **'unit'**
+  String get unit;
+
+  /// No description provided for @defaultSets.
+  ///
+  /// In en, this message translates to:
+  /// **'Default Sets'**
+  String get defaultSets;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
