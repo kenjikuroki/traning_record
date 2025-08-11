@@ -16,6 +16,8 @@ import 'calendar_screen.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
+enum DisplayMode { day, week }
+
 class GraphScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
   final Box<dynamic> lastUsedMenusBox;
@@ -43,6 +45,7 @@ class _GraphScreenState extends State<GraphScreen> {
   double _maxY = 0;
   double _minY = 0;
   bool _isFavorite = false;
+  DisplayMode _displayMode = DisplayMode.day;
 
   @override
   void didChangeDependencies() {
@@ -188,17 +191,56 @@ class _GraphScreenState extends State<GraphScreen> {
     final translatedPart = _selectedPart;
     if (translatedPart == null) return;
 
-    final originalPartName = _getOriginalPartName(context, translatedPart);
     final Map<double, double> data = {};
     _maxY = 0;
     _minY = double.infinity;
 
-    widget.recordsBox.toMap().forEach((key, record) {
-      if (record is DailyRecord) {
-        final allBodyParts = [
-          '有酸素運動', '腕', '胸', '背中', '肩', '足',
-          '全身', 'その他１', 'その他２', 'その他３'
-        ];
+    final recordsMap = widget.recordsBox.toMap().values.whereType<DailyRecord>();
+    final allBodyParts = [
+      '有酸素運動', '腕', '胸', '背中', '肩', '足',
+      '全身', 'その他１', 'その他２', 'その他３'
+    ];
+
+    if (_displayMode == DisplayMode.day) {
+      for (var record in recordsMap) {
+        for (var part in allBodyParts) {
+          final List<MenuData>? menuList = record.menus[part];
+          if (menuList != null) {
+            final MenuData? foundMenu = menuList.firstWhereOrNull((m) => m.name == menuName);
+            if (foundMenu != null) {
+              double maxWeight = 0;
+              for (int i = 0; i < foundMenu.weights.length; i++) {
+                final weightStr = foundMenu.weights[i];
+                final repStr = foundMenu.reps[i];
+                if (weightStr.isNotEmpty && repStr.isNotEmpty) {
+                  final weight = double.tryParse(weightStr);
+                  final reps = int.tryParse(repStr);
+                  if (weight != null && reps != null && reps >= 1) {
+                    if (weight > maxWeight) {
+                      maxWeight = weight;
+                    }
+                  }
+                }
+              }
+              if (maxWeight > 0) {
+                final date = record.date;
+                final xValue = date.millisecondsSinceEpoch.toDouble();
+                data[xValue] = maxWeight;
+                _maxY = max(_maxY, maxWeight);
+                _minY = min(_minY, maxWeight);
+              }
+            }
+          }
+        }
+      }
+    } else if (_displayMode == DisplayMode.week) {
+      final Map<int, double> weeklyData = {};
+
+      for (var record in recordsMap) {
+        final DateTime date = record.date;
+        // 月曜日を週の始まりとする
+        final weekStart = date.subtract(Duration(days: date.weekday - 1));
+        final weekStartMs = weekStart.millisecondsSinceEpoch;
 
         for (var part in allBodyParts) {
           final List<MenuData>? menuList = record.menus[part];
@@ -220,9 +262,11 @@ class _GraphScreenState extends State<GraphScreen> {
                 }
               }
               if (maxWeight > 0) {
-                final date = DateTime.parse(key);
-                final xValue = date.millisecondsSinceEpoch.toDouble();
-                data[xValue] = maxWeight;
+                if (weeklyData.containsKey(weekStartMs)) {
+                  weeklyData[weekStartMs] = max(weeklyData[weekStartMs]!, maxWeight);
+                } else {
+                  weeklyData[weekStartMs] = maxWeight;
+                }
                 _maxY = max(_maxY, maxWeight);
                 _minY = min(_minY, maxWeight);
               }
@@ -230,7 +274,11 @@ class _GraphScreenState extends State<GraphScreen> {
           }
         }
       }
-    });
+
+      weeklyData.forEach((key, value) {
+        data[key.toDouble()] = value;
+      });
+    }
 
     if (data.isNotEmpty) {
       final sortedKeys = data.keys.toList()..sort();
@@ -321,6 +369,39 @@ class _GraphScreenState extends State<GraphScreen> {
             children: [
               const AdBanner(screenName: 'graph'),
               const SizedBox(height: 16.0),
+              ToggleButtons(
+                isSelected: [_displayMode == DisplayMode.day, _displayMode == DisplayMode.week],
+                onPressed: (index) {
+                  setState(() {
+                    if (index == 0) {
+                      _displayMode = DisplayMode.day;
+                    } else {
+                      _displayMode = DisplayMode.week;
+                    }
+                    if (_selectedMenu != null) {
+                      _loadGraphData(_selectedMenu!);
+                    }
+                  });
+                },
+                borderRadius: BorderRadius.circular(20.0),
+                selectedColor: colorScheme.onPrimary,
+                fillColor: colorScheme.primary,
+                color: colorScheme.onSurface,
+                borderColor: colorScheme.outlineVariant,
+                selectedBorderColor: colorScheme.primary,
+                splashColor: colorScheme.primary.withOpacity(0.2),
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text(l10n.dayDisplay),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text(l10n.weekDisplay),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16.0),
               Expanded(
                 child: Card(
                   color: colorScheme.surfaceContainerHighest,
@@ -370,16 +451,30 @@ class _GraphScreenState extends State<GraphScreen> {
                                       : 1,
                                   getTitlesWidget: (value, meta) {
                                     final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
-                                    if (_spots.map((spot) => spot.x).contains(value)) {
-                                      return SideTitleWidget(
-                                        axisSide: meta.axisSide,
-                                        child: Text(
-                                          DateFormat('MM/dd').format(date),
-                                          style: TextStyle(
-                                              color: colorScheme.onSurfaceVariant,
-                                              fontSize: 10),
-                                        ),
-                                      );
+                                    if (_displayMode == DisplayMode.day) {
+                                      if (_spots.map((spot) => spot.x).contains(value)) {
+                                        return SideTitleWidget(
+                                          axisSide: meta.axisSide,
+                                          child: Text(
+                                            DateFormat('MM/dd').format(date),
+                                            style: TextStyle(
+                                                color: colorScheme.onSurfaceVariant,
+                                                fontSize: 10),
+                                          ),
+                                        );
+                                      }
+                                    } else { // 週表示の場合
+                                      if (_spots.map((spot) => spot.x).contains(value)) {
+                                        return SideTitleWidget(
+                                          axisSide: meta.axisSide,
+                                          child: Text(
+                                            DateFormat('MM/dd').format(date),
+                                            style: TextStyle(
+                                                color: colorScheme.onSurfaceVariant,
+                                                fontSize: 10),
+                                          ),
+                                        );
+                                      }
                                     }
                                     return const SizedBox();
                                   },
@@ -395,7 +490,7 @@ class _GraphScreenState extends State<GraphScreen> {
                             lineBarsData: [
                               LineChartBarData(
                                 spots: _spots,
-                                isCurved: true,
+                                isCurved: false, // 週表示の場合は折れ線グラフが自然
                                 color: colorScheme.primary,
                                 barWidth: 3,
                                 dotData: const FlDotData(show: true),

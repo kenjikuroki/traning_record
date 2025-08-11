@@ -46,5 +46,7 @@
   "noGraphData": "No records found",
   "graphScreenTitle": "Graph",
   "favorited": "{menuName} added to favorites",
-  "unfavorited": "{menuName} removed from favorites"
+  "unfavorited": "{menuName} removed from favorites",
+  "dayDisplay": "Day",
+  "weekDisplay": "Week"
 }

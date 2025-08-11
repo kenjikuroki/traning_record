@@ -397,7 +397,7 @@ class _RecordScreenState extends State<RecordScreen> {
     }
 
     if (hasAnyRecordData) {
-      DailyRecord newRecord = DailyRecord(menus: allMenusForRecord, lastModifiedPart: lastModifiedPart);
+      DailyRecord newRecord = DailyRecord( date: widget.selectedDate,menus: allMenusForRecord, lastModifiedPart: lastModifiedPart);
       widget.recordsBox.put(dateKey, newRecord);
     } else {
       widget.recordsBox.delete(dateKey);

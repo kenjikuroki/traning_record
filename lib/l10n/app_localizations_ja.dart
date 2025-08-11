@@ -152,4 +152,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String unfavorited(Object menuName) {
     return '$menuNameのお気に入りを解除しました';
   }
+
+  @override
+  String get dayDisplay => '日';
+
+  @override
+  String get weekDisplay => '週';
 }

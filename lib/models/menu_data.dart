@@ -33,9 +33,17 @@ class MenuData extends HiveObject {
 @HiveType(typeId: 1)
 class DailyRecord extends HiveObject {
   @HiveField(0)
-  final Map<String, List<MenuData>> menus;
-  @HiveField(1)
-  final String? lastModifiedPart; // 追加
+  late DateTime date; // 💡 この行を追加
 
-  DailyRecord({required this.menus, this.lastModifiedPart});
+  @HiveField(1)
+  final Map<String, List<MenuData>> menus;
+
+  @HiveField(2)
+  final String? lastModifiedPart; // HiveFieldの番号を振り直す
+
+  DailyRecord({
+    required this.date,
+    required this.menus,
+    this.lastModifiedPart
+  });
 }

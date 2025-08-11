@@ -152,4 +152,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String unfavorited(Object menuName) {
     return '$menuName removed from favorites';
   }
+
+  @override
+  String get dayDisplay => 'Day';
+
+  @override
+  String get weekDisplay => 'Week';
 }

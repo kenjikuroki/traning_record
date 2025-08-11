@@ -378,6 +378,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{menuName} removed from favorites'**
   String unfavorited(Object menuName);
+
+  /// No description provided for @dayDisplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get dayDisplay;
+
+  /// No description provided for @weekDisplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Week'**
+  String get weekDisplay;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
