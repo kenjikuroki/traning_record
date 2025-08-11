@@ -108,6 +108,7 @@ class _MyAppState extends State<MyApp> {
             lastUsedMenusBox: widget.lastUsedMenusBox,
             settingsBox: widget.settingsBox,
             setCountBox: widget.setCountBox,
+            selectedDate: DateTime.now(),
           ),
           debugShowCheckedModeBanner: false,
         );

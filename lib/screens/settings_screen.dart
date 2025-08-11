@@ -3,16 +3,22 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hive/hive.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
 import 'package:ttraining_record/settings_manager.dart';
+import 'package:ttraining_record/screens/calendar_screen.dart';
+import '../models/menu_data.dart';
 import '../widgets/ad_banner.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
 class SettingsScreen extends StatefulWidget {
+  final Box<DailyRecord> recordsBox; // ここを修正
+  final Box<dynamic> lastUsedMenusBox; // 型が合うか確認
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
 
   const SettingsScreen({
     super.key,
+    required this.recordsBox,
+    required this.lastUsedMenusBox,
     required this.settingsBox,
     required this.setCountBox,
   });
@@ -428,7 +434,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           unselectedItemColor: colorScheme.onSurfaceVariant,
           backgroundColor: colorScheme.surface,
           onTap: (index) {
-            // アクションは未実装
+            if (index == 0) {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CalendarScreen(
+                    recordsBox: widget.recordsBox,
+                    lastUsedMenusBox: widget.lastUsedMenusBox,
+                    settingsBox: widget.settingsBox,
+                    setCountBox: widget.setCountBox,
+                    selectedDate: DateTime.now(),
+                  ),
+                ),
+                    (route) => false,
+              );
+            }
           },
         ),
       ),

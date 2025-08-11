@@ -35,5 +35,9 @@
   "noRecordMessage": "選択された日付には記録がありません。",
   "deleteMenuConfirmationTitle": "種目を削除しますか？",
   "cancel": "キャンセル",
-  "delete": "削除"
+  "delete": "削除",
+  "addExercisePlaceholder": "種目を追加",
+  "time": "時間",
+  "minutesHint": "分",
+  "secondsHint": "秒"
 }

@@ -310,6 +310,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete'**
   String get delete;
+
+  /// No description provided for @addExercisePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Add exercise'**
+  String get addExercisePlaceholder;
+
+  /// No description provided for @time.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get time;
+
+  /// No description provided for @minutesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Min'**
+  String get minutesHint;
+
+  /// No description provided for @secondsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sec'**
+  String get secondsHint;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -115,4 +115,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get delete => '削除';
+
+  @override
+  String get addExercisePlaceholder => '種目を追加';
+
+  @override
+  String get time => '時間';
+
+  @override
+  String get minutesHint => '分';
+
+  @override
+  String get secondsHint => '秒';
 }

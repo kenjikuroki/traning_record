@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 enum AnimationDirection {
   topToBottom,
   bottomToTop,
+  rightToLeft, // この行を追加
 }
 
 // Animated list item widget
@@ -38,6 +39,8 @@ class _AnimatedListItemState extends State<AnimatedListItem> with SingleTickerPr
     Offset beginOffset;
     if (widget.direction == AnimationDirection.topToBottom) {
       beginOffset = const Offset(0.0, -0.5); // Slide from top to bottom
+    } else if (widget.direction == AnimationDirection.rightToLeft) {
+      beginOffset = const Offset(1.0, 0.0); // Slide from right to left
     } else {
       beginOffset = const Offset(0.0, 0.5); // Slide from bottom to top
     }

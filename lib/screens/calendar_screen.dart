@@ -5,6 +5,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
 import 'package:ttraining_record/widgets/ad_banner.dart';
+import 'package:ttraining_record/screens/settings_screen.dart';
 
 import '../models/menu_data.dart';
 import '../models/record_models.dart';
@@ -20,6 +21,7 @@ class CalendarScreen extends StatefulWidget {
   final Box<dynamic> lastUsedMenusBox;
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
+  final DateTime selectedDate; // この行を追加
 
   const CalendarScreen({
     super.key,
@@ -27,8 +29,8 @@ class CalendarScreen extends StatefulWidget {
     required this.lastUsedMenusBox,
     required this.settingsBox,
     required this.setCountBox,
+    required this.selectedDate, // この行を追加
   });
-
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
 }
@@ -197,6 +199,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
+          recordsBox: widget.recordsBox,
+          lastUsedMenusBox: widget.lastUsedMenusBox,
           settingsBox: widget.settingsBox,
           setCountBox: widget.setCountBox,
         ),
@@ -407,32 +411,41 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-      items: const <BottomNavigationBarItem>[
-        BottomNavigationBarItem(
-          icon: Icon(Icons.calendar_today),
-          label: 'Calendar',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.edit_note),
-          label: 'Record',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.bar_chart),
-          label: 'Graph',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.settings),
-          label: 'Settings',
-        ),
-      ],
-      currentIndex: 0, // カレンダー画面は1番目
-      selectedItemColor: colorScheme.primary,
-      unselectedItemColor: colorScheme.onSurfaceVariant,
-      backgroundColor: colorScheme.surface,
-      onTap: (index) {
-          // アクションは未実装
-        },
+            bottomNavigationBar: BottomNavigationBar(
+    items: const <BottomNavigationBarItem>[
+    BottomNavigationBarItem(
+    icon: Icon(Icons.calendar_today),
+    label: 'Calendar',
+    ),
+    BottomNavigationBarItem(
+    icon: Icon(Icons.edit_note),
+    label: 'Record',
+    ),
+    BottomNavigationBarItem(
+    icon: Icon(Icons.bar_chart),
+    label: 'Graph',
+    ),
+    BottomNavigationBarItem(
+    icon: Icon(Icons.settings),
+    label: 'Settings',
+    ),
+    ],
+    currentIndex: 0,
+    selectedItemColor: colorScheme.primary,
+    unselectedItemColor: colorScheme.onSurfaceVariant,
+    backgroundColor: colorScheme.surface,
+    onTap: (index) {
+      if (index == 0) {
+        // 現在の画面なので何もしません。
+      } else if (index == 1) {
+        // 記録画面への遷移ロジックはまだ設定しません。
+      } else if (index == 2) {
+        // グラフ画面への遷移ロジックはまだ設定しません。
+      } else if (index == 3) {
+        // 設定画面への遷移ロジックはまだ設定しません。
+        // アクションは未実装
+      }
+    },
       ),
     );
   }

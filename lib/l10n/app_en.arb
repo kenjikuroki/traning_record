@@ -35,5 +35,9 @@
   "lbs": "lbs",
   "deleteMenuConfirmationTitle": "Delete Exercise?",
   "cancel": "Cancel",
-  "delete": "Delete"
+  "delete": "Delete",
+  "addExercisePlaceholder": "Add exercise",
+  "time": "Time",
+  "minutesHint": "Min",
+  "secondsHint": "Sec"
 }

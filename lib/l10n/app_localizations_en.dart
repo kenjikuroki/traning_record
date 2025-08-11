@@ -115,4 +115,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get delete => 'Delete';
+
+  @override
+  String get addExercisePlaceholder => 'Add exercise';
+
+  @override
+  String get time => 'Time';
+
+  @override
+  String get minutesHint => 'Min';
+
+  @override
+  String get secondsHint => 'Sec';
 }

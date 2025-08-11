@@ -12,6 +12,7 @@ import 'settings_screen.dart';
 import '../widgets/custom_widgets.dart';
 import '../settings_manager.dart';
 import '../widgets/ad_banner.dart';
+import 'calendar_screen.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -374,7 +375,6 @@ class _RecordScreenState extends State<RecordScreen> {
     String? lastModifiedPart;
     bool hasAnyRecordData = false;
 
-    // 現在画面に表示されている全てのデータをlastUsedMenusBoxに保存
     for (var section in _sections) {
       if (section.selectedPart == null) continue;
       final originalPartName = _getOriginalPartName(context, section.selectedPart!);
@@ -426,7 +426,6 @@ class _RecordScreenState extends State<RecordScreen> {
       }
     }
 
-    // 確定済みデータのみをrecordsBoxに保存
     if (hasAnyRecordData) {
       DailyRecord newRecord = DailyRecord(menus: allMenusForRecord, lastModifiedPart: lastModifiedPart);
       widget.recordsBox.put(dateKey, newRecord);
@@ -440,6 +439,8 @@ class _RecordScreenState extends State<RecordScreen> {
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
+          recordsBox: widget.recordsBox,
+          lastUsedMenusBox: widget.lastUsedMenusBox,
           settingsBox: widget.settingsBox,
           setCountBox: widget.setCountBox,
         ),
@@ -938,7 +939,7 @@ class _RecordScreenState extends State<RecordScreen> {
 
                         return AnimatedListItem(
                           key: section.key,
-                          direction: AnimationDirection.bottomToTop,
+                          direction: AnimationDirection.rightToLeft,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8.0),
                             child: GlassCard(
@@ -1026,8 +1027,9 @@ class _RecordScreenState extends State<RecordScreen> {
                                                         .lastUsedMenusBox
                                                         .get(originalPartName);
                                                     if (rawList is List) {
-                                                      listToLoad =
-                                                          rawList.whereType<MenuData>().toList();
+                                                      listToLoad = rawList
+                                                          .whereType<MenuData>()
+                                                          .toList();
                                                     } else {
                                                       listToLoad = [];
                                                     }
@@ -1036,9 +1038,10 @@ class _RecordScreenState extends State<RecordScreen> {
                                                   _setControllersFromData(section,
                                                       listToLoad ?? [], isMenuNameSuggestion);
                                                 } else {
-                                                  _clearSectionControllersAndMaps(section);
+                                                  _clearSectionControllersAndMaps(
+                                                      section);
                                                   section.menuKeys.clear();
-                                                  _sections[index].initialSetCount =
+                                                  section.initialSetCount =
                                                       _currentSetCount;
                                                 }
                                               });
@@ -1052,185 +1055,58 @@ class _RecordScreenState extends State<RecordScreen> {
                                           borderRadius: BorderRadius.circular(15.0),
                                         ),
                                       ),
-                                      if (_sections.length > 1)
+                                      if (index != 0 || !isInitialEmptyState)
                                         IconButton(
-                                          icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
+                                          icon: Icon(Icons.close,
+                                              color: colorScheme.onSurfaceVariant),
                                           onPressed: () => _removeSection(index),
                                         ),
                                     ],
                                   ),
-                                  const SizedBox(height: 20),
-                                  AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 400),
-                                    transitionBuilder: (Widget child,
-                                        Animation<double> animation) {
-                                      final offsetAnimation = Tween<Offset>(
-                                        begin: const Offset(0.0, -0.2),
-                                        end: Offset.zero,
-                                      ).animate(CurvedAnimation(
-                                          parent: animation,
-                                          curve: Curves.easeOut));
-                                      return FadeTransition(
-                                        opacity: animation,
-                                        child: SlideTransition(
-                                          position: offsetAnimation,
-                                          child: child,
-                                        ),
-                                      );
-                                    },
-                                    key: ValueKey(section.selectedPart),
-                                    child: section.selectedPart != null &&
-                                        actualSelectedPart != null
-                                        ? Column(
+                                  const SizedBox(height: 16.0),
+                                  if (section.selectedPart != null)
+                                    Column(
                                       children: [
                                         ListView.builder(
                                           shrinkWrap: true,
-                                          physics: const NeverScrollableScrollPhysics(),
-                                          itemCount: section.menuControllers.length,
+                                          physics:
+                                          const NeverScrollableScrollPhysics(),
+                                          itemCount:
+                                          section.menuControllers.length,
                                           itemBuilder: (context, menuIndex) {
-                                            final originalPartName =
-                                            _getOriginalPartName(
-                                                context, actualSelectedPart);
-                                            bool isCurrentMenuNameSuggestion =
-                                            (record == null ||
-                                                !record.menus.containsKey(
-                                                    originalPartName) ||
-                                                (record.menus.containsKey(originalPartName) &&
-                                                    !record.menus[originalPartName]!.any((m) =>
-                                                    m.name == section.menuControllers[menuIndex].text.trim())));
-
-
                                             return AnimatedListItem(
                                               key: section.menuKeys[menuIndex],
-                                              direction:
-                                              AnimationDirection.topToBottom,
-                                              child: Padding(
-                                                padding: const EdgeInsets.symmetric(
-                                                    vertical: 8.0),
-                                                child: GlassCard(
-                                                  borderRadius: 10.0,
-                                                  backgroundColor:
-                                                  colorScheme.surface,
-                                                  padding:
-                                                  const EdgeInsets.all(
-                                                      16.0),
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                    children: [
-                                                      Row(
-                                                        children: [
-                                                          Expanded(
-                                                            child: StylishInput(
-                                                              key: ValueKey(
-                                                                  '${section.menuControllers[menuIndex].hashCode}_menuName'),
-                                                              controller: section
-                                                                  .menuControllers[
-                                                              menuIndex],
-                                                              hint: isCurrentMenuNameSuggestion
-                                                                  ? l10n.menuName
-                                                                  : null,
-                                                              inputFormatters: [
-                                                                LengthLimitingTextInputFormatter(
-                                                                    50)
-                                                              ],
-                                                              normalTextColor:
-                                                              colorScheme.onSurface,
-                                                              suggestionTextColor:
-                                                              colorScheme.onSurfaceVariant
-                                                                  .withOpacity(0.5),
-                                                              fillColor:
-                                                              colorScheme.surfaceContainer,
-                                                              contentPadding:
-                                                              const EdgeInsets.symmetric(
-                                                                  vertical: 14,
-                                                                  horizontal: 16),
-                                                              textAlign:
-                                                              TextAlign.left,
-                                                            ),
-                                                          ),
-                                                          // 修正ここから
-                                                          IconButton(
-                                                            icon: Icon(
-                                                              Icons.close,
-                                                              size: 16.0,
-                                                              color: colorScheme.onSurfaceVariant,
-                                                            ),
-                                                            onPressed: () {
-                                                              showDialog(
-                                                                context: context,
-                                                                builder: (context) => AlertDialog(
-                                                                  title: Text(l10n.deleteMenuConfirmationTitle),
-                                                                  actions: [
-                                                                    TextButton(
-                                                                      onPressed: () {
-                                                                        Navigator.of(context).pop();
-                                                                      },
-                                                                      child: Text(l10n.cancel),
-                                                                    ),
-                                                                    TextButton(
-                                                                      onPressed: () {
-                                                                        Navigator.of(context).pop();
-                                                                        _removeMenuItem(index, menuIndex);
-                                                                      },
-                                                                      child: Text(l10n.delete),
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                              );
-                                                            },
-                                                          ),
-                                                          // 修正ここまで
-                                                        ],
-                                                      ),
-                                                      const SizedBox(height: 8),
-                                                      ListView.separated(
-                                                        shrinkWrap: true,
-                                                        physics: const NeverScrollableScrollPhysics(),
-                                                        itemCount: section
-                                                            .setInputDataList[
-                                                        menuIndex]
-                                                            .length,
-                                                        separatorBuilder:
-                                                            (context, s) =>
-                                                        const SizedBox(
-                                                            height: 8),
-                                                        itemBuilder:
-                                                            (context, s) =>
-                                                            _buildSetRow(
-                                                                context,
-                                                                section
-                                                                    .setInputDataList,
-                                                                menuIndex,
-                                                                s + 1,
-                                                                s,
-                                                                section
-                                                                    .selectedPart),
-                                                      ),
-                                                      const SizedBox(height: 8),
-                                                    ],
-                                                  ),
-                                                ),
+                                              direction: AnimationDirection.rightToLeft,
+                                              child: MenuList(
+                                                key: section.menuKeys[menuIndex],
+                                                menuController:
+                                                section.menuControllers[menuIndex],
+                                                removeMenuCallback: () =>
+                                                    _removeMenuItem(
+                                                        index, menuIndex),
+                                                setCount: section.initialSetCount ?? _currentSetCount,
+                                                setInputDataList:
+                                                section.setInputDataList[menuIndex],
+                                                isAerobic: section.selectedPart ==
+                                                    l10n.aerobicExercise,
                                               ),
                                             );
                                           },
                                         ),
+                                        const SizedBox(height: 16.0),
                                         Align(
-                                          alignment: Alignment.centerRight,
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(
-                                                top: 12.0),
-                                            child: CircularAddButtonWithText(
-                                              label: l10n.addExercise,
-                                              onPressed: () =>
-                                                  _addMenuItem(index),
-                                            ),
+                                          alignment: Alignment.centerLeft,
+                                          child: CircularAddButtonWithText(
+                                            label: l10n.addExercise,
+                                            onPressed: () => _addMenuItem(index),
+                                            normalBgColorOverride: partNormalBgColor,
+                                            pressedBgColorOverride: partPressedBgColor,
+                                            textColorOverride: partTextColor,
+                                            accentColorOverride: partAccentColor,
                                           ),
                                         ),
                                       ],
-                                    )
-                                        : const SizedBox.shrink(),
-                                  ),
+                                    ),
                                 ],
                               ),
                             ),
@@ -1260,14 +1136,314 @@ class _RecordScreenState extends State<RecordScreen> {
               label: 'Settings',
             ),
           ],
-          currentIndex: 1, // 記録画面は2番目
+          currentIndex: 1,
           selectedItemColor: colorScheme.primary,
           unselectedItemColor: colorScheme.onSurfaceVariant,
           backgroundColor: colorScheme.surface,
           onTap: (index) {
-            // アクションは未実装
+            if (index == 0) {
+              _saveAllSectionsData();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CalendarScreen(
+                    recordsBox: widget.recordsBox,
+                    lastUsedMenusBox: widget.lastUsedMenusBox,
+                    settingsBox: widget.settingsBox,
+                    setCountBox: widget.setCountBox,
+                    selectedDate: widget.selectedDate,
+                  ),
+                ),
+                    (route) => false,
+              );
+            } else if (index == 3) {
+              _saveAllSectionsData();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SettingsScreen(
+                    recordsBox: widget.recordsBox,
+                    lastUsedMenusBox: widget.lastUsedMenusBox,
+                    settingsBox: widget.settingsBox,
+                    setCountBox: widget.setCountBox,
+                  ),
+                ),
+                    (route) => false,
+              );
+            }
           },
         ),
+      ),
+    );
+  }
+}
+
+class SectionData {
+  Key key;
+  String? selectedPart;
+  List<TextEditingController> menuControllers;
+  List<List<SetInputData>> setInputDataList;
+  List<Key> menuKeys;
+  int? initialSetCount;
+
+  SectionData({
+    required this.key,
+    this.selectedPart,
+    required this.menuControllers,
+    required this.setInputDataList,
+    required this.menuKeys,
+    this.initialSetCount,
+  });
+
+  factory SectionData.createEmpty(int initialSetCount,
+      {required bool shouldPopulateDefaults}) {
+    return SectionData(
+      key: UniqueKey(),
+      selectedPart: null,
+      menuControllers: shouldPopulateDefaults ? [TextEditingController()] : [],
+      setInputDataList: shouldPopulateDefaults
+          ? [
+        List.generate(
+            initialSetCount,
+                (_) => SetInputData(
+                weightController: TextEditingController(),
+                repController: TextEditingController(),
+                isSuggestion: true))
+      ]
+          : [],
+      menuKeys: shouldPopulateDefaults ? [UniqueKey()] : [],
+      initialSetCount: initialSetCount,
+    );
+  }
+
+  void dispose() {
+    for (var controller in menuControllers) {
+      controller.dispose();
+    }
+    for (var list in setInputDataList) {
+      for (var data in list) {
+        data.dispose();
+      }
+    }
+  }
+}
+
+class SetInputData {
+  TextEditingController weightController;
+  TextEditingController repController;
+  bool isSuggestion;
+
+  SetInputData({
+    required this.weightController,
+    required this.repController,
+    this.isSuggestion = true,
+  });
+
+  void dispose() {
+    weightController.dispose();
+    repController.dispose();
+  }
+}
+
+class MenuList extends StatefulWidget {
+  final TextEditingController menuController;
+  final VoidCallback removeMenuCallback;
+  final int setCount;
+  final List<SetInputData> setInputDataList;
+  final bool isAerobic;
+
+  const MenuList({
+    super.key,
+    required this.menuController,
+    required this.removeMenuCallback,
+    required this.setCount,
+    required this.setInputDataList,
+    required this.isAerobic,
+  });
+
+  @override
+  State<MenuList> createState() => _MenuListState();
+}
+
+class _MenuListState extends State<MenuList> {
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final String currentUnit = SettingsManager.currentUnit;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: StylishInput(
+                  controller: widget.menuController,
+                  hint: l10n.addExercisePlaceholder,
+                  keyboardType: TextInputType.text,
+                  inputFormatters: [
+                    LengthLimitingTextInputFormatter(25)
+                  ],
+                  normalTextColor: colorScheme.onSurface,
+                  suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                  fillColor: colorScheme.surfaceContainer,
+                  contentPadding:
+                  const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  textAlign: TextAlign.left,
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
+                onPressed: widget.removeMenuCallback,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12.0),
+          Padding(
+            padding: const EdgeInsets.only(left: 12.0),
+            child: widget.isAerobic
+                ? Row(
+              children: [
+                Text(l10n.time,
+                    style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: StylishInput(
+                    controller: widget.setInputDataList.first.weightController,
+                    hint: l10n.minutesHint,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    normalTextColor: colorScheme.onSurface,
+                    suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                    fillColor: colorScheme.surfaceContainer,
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 10, horizontal: 12),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+                Text(' ${l10n.min} ',
+                    style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold)),
+                Expanded(
+                  child: StylishInput(
+                    controller: widget.setInputDataList.first.repController,
+                    hint: l10n.secondsHint,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    normalTextColor: colorScheme.onSurface,
+                    suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                    fillColor: colorScheme.surfaceContainer,
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 10, horizontal: 12),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+                Text(' ${l10n.sec}',
+                    style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold)),
+              ],
+            )
+                : Column(
+              children: List.generate(widget.setCount, (setIndex) {
+                final setInputData = widget.setInputDataList[setIndex];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Row(
+                    children: [
+                      Text('${setIndex + 1}${l10n.sets}：',
+                          style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                              fontSize: 14.0)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: StylishInput(
+                          controller: setInputData.weightController,
+                          hint: '',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          normalTextColor: setInputData.isSuggestion
+                              ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                              : colorScheme.onSurface,
+                          suggestionTextColor:
+                          colorScheme.onSurfaceVariant.withOpacity(0.5),
+                          fillColor: colorScheme.surfaceContainer,
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 12),
+                          textAlign: TextAlign.right,
+                          onChanged: (text) {
+                            setState(() {
+                              if (text.isNotEmpty && setInputData.isSuggestion) {
+                                setInputData.isSuggestion = false;
+                              } else if (text.isEmpty && !setInputData.isSuggestion && setInputData.repController.text.isEmpty) {
+                                bool anyOtherSetHasInput = widget.setInputDataList.any((s) => s != setInputData && (s.weightController.text.isNotEmpty || s.repController.text.isNotEmpty));
+                                if (!anyOtherSetHasInput) {
+                                  setInputData.isSuggestion = true;
+                                }
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                      Text(' ${currentUnit == 'kg' ? l10n.kg : l10n.lbs} ',
+                          style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                              fontSize: 14.0,
+                              fontWeight: FontWeight.bold)),
+                      Expanded(
+                        child: StylishInput(
+                          controller: setInputData.repController,
+                          hint: '',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          normalTextColor: setInputData.isSuggestion
+                              ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                              : colorScheme.onSurface,
+                          suggestionTextColor:
+                          colorScheme.onSurfaceVariant.withOpacity(0.5),
+                          fillColor: colorScheme.surfaceContainer,
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 12),
+                          textAlign: TextAlign.right,
+                          onChanged: (text) {
+                            setState(() {
+                              if (text.isNotEmpty && setInputData.isSuggestion) {
+                                setInputData.isSuggestion = false;
+                              } else if (text.isEmpty && !setInputData.isSuggestion && setInputData.weightController.text.isEmpty) {
+                                bool anyOtherSetHasInput = widget.setInputDataList.any((s) => s != setInputData && (s.weightController.text.isNotEmpty || s.repController.text.isNotEmpty));
+                                if (!anyOtherSetHasInput) {
+                                  setInputData.isSuggestion = true;
+                                }
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                      Text(' ${l10n.reps}',
+                          style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                              fontSize: 14.0,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
       ),
     );
   }
