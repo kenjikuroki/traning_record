@@ -3,7 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hive/hive.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
 import 'package:ttraining_record/settings_manager.dart';
-import '../widgets/ad_banner.dart'; // バナー広告ウィジェットをインポート
+import '../widgets/ad_banner.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -404,7 +404,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ),
-        bottomNavigationBar: const AdBanner(screenName: 'settings'), // ★ ここにバナー広告ウィジェットを配置
+        bottomNavigationBar: BottomNavigationBar(
+          items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today),
+              label: 'Calendar',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: 'Settings',
+            ),
+          ],
+          currentIndex: 2,
+          selectedItemColor: colorScheme.primary,
+          unselectedItemColor: colorScheme.onSurfaceVariant,
+          backgroundColor: colorScheme.surface,
+          onTap: (index) {
+            // アクションは未実装
+          },
+        ),
       ),
     );
   }

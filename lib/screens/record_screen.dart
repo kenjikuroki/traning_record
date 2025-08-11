@@ -1241,7 +1241,29 @@ class _RecordScreenState extends State<RecordScreen> {
             ],
           ),
         ),
-        bottomNavigationBar: const AdBanner(screenName: 'record'),
+        bottomNavigationBar: BottomNavigationBar(
+          items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today),
+              label: 'Calendar',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: 'Settings',
+            ),
+          ],
+          currentIndex: 0,
+          selectedItemColor: colorScheme.primary,
+          unselectedItemColor: colorScheme.onSurfaceVariant,
+          backgroundColor: colorScheme.surface,
+          onTap: (index) {
+            // アクションは未実装
+          },
+        ),
       ),
     );
   }

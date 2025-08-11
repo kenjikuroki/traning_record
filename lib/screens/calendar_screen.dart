@@ -4,7 +4,7 @@ import 'package:hive/hive.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
-import 'package:ttraining_record/widgets/ad_banner.dart'; // ★ AdBannerをインポート
+import 'package:ttraining_record/widgets/ad_banner.dart';
 
 import '../models/menu_data.dart';
 import '../models/record_models.dart';
@@ -261,7 +261,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
                     ],
                   ),
-                  const AdBanner(screenName: 'calendar')// ★ ここに広告を追加
+                  const AdBanner(screenName: 'calendar')
                 ],
               ),
             ),
@@ -406,6 +406,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
         ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: 'Calendar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
+        ],
+        currentIndex: 1,
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: colorScheme.onSurfaceVariant,
+        backgroundColor: colorScheme.surface,
+        onTap: (index) {
+          // アクションは未実装
+        },
       ),
     );
   }
