@@ -7,6 +7,7 @@ import 'package:ttraining_record/screens/calendar_screen.dart';
 import '../models/menu_data.dart';
 import '../models/record_models.dart';
 import '../screens/record_screen.dart';
+import 'package:ttraining_record/screens/graph_screen.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -455,8 +456,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           unselectedItemColor: colorScheme.onSurfaceVariant,
           backgroundColor: colorScheme.surface,
           onTap: (index) {
-            if (index == 0) {
-              _saveSettings(); // カレンダー画面に遷移する前に設定を保存
+            if (index == 0) { // カレンダーボタンが押された場合
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(
@@ -465,13 +465,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     lastUsedMenusBox: widget.lastUsedMenusBox,
                     settingsBox: widget.settingsBox,
                     setCountBox: widget.setCountBox,
-                    selectedDate: DateTime.now(),
+                    selectedDate: DateTime.now(), // または適切な日付を設定
                   ),
                 ),
                     (route) => false,
               );
-            } else if (index == 1) {
-              _saveSettings(); // 記録画面に遷移する前に設定を保存
+            } else if (index == 1) { // 記録ボタンが押された場合
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(
@@ -480,7 +479,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     lastUsedMenusBox: widget.lastUsedMenusBox,
                     settingsBox: widget.settingsBox,
                     setCountBox: widget.setCountBox,
-                    selectedDate: DateTime.now(),
+                    selectedDate: DateTime.now(), // または適切な日付を設定
+                  ),
+                ),
+                    (route) => false,
+              );
+            } else if (index == 2) { // グラフボタンが押された場合
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => GraphScreen(
+                    recordsBox: widget.recordsBox,
+                    lastUsedMenusBox: widget.lastUsedMenusBox,
+                    settingsBox: widget.settingsBox,
+                    setCountBox: widget.setCountBox,
                   ),
                 ),
                     (route) => false,

@@ -127,4 +127,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get secondsHint => '秒';
+
+  @override
+  String get graph => 'グラフ';
 }

@@ -39,5 +39,6 @@
   "addExercisePlaceholder": "種目を追加",
   "time": "時間",
   "minutesHint": "分",
-  "secondsHint": "秒"
+  "secondsHint": "秒",
+  "graph": "グラフ"
 }

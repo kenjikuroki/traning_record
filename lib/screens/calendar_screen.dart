@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
 import 'package:ttraining_record/widgets/ad_banner.dart';
 import 'package:ttraining_record/screens/settings_screen.dart';
+import 'package:ttraining_record/screens/graph_screen.dart';
 
 import '../models/menu_data.dart';
 import '../models/record_models.dart';
@@ -426,6 +427,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   settingsBox: widget.settingsBox,
                   setCountBox: widget.setCountBox,
                   selectedDate: _selectedDay ?? DateTime.now(),
+                ),
+              ),
+                  (route) => false,
+            );
+          } else if (index == 2) { // グラフボタンが押された場合
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => GraphScreen(
+                  recordsBox: widget.recordsBox,
+                  lastUsedMenusBox: widget.lastUsedMenusBox,
+                  settingsBox: widget.settingsBox,
+                  setCountBox: widget.setCountBox,
                 ),
               ),
                   (route) => false,

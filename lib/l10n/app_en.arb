@@ -39,5 +39,6 @@
   "addExercisePlaceholder": "Add exercise",
   "time": "Time",
   "minutesHint": "Min",
-  "secondsHint": "Sec"
+  "secondsHint": "Sec",
+  "graph": "graph"
 }

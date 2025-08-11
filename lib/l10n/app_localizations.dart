@@ -334,6 +334,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sec'**
   String get secondsHint;
+
+  /// No description provided for @graph.
+  ///
+  /// In en, this message translates to:
+  /// **'graph'**
+  String get graph;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

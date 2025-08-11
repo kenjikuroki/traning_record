@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import 'package:collection/collection.dart';
 import 'dart:math';
 import 'package:ttraining_record/l10n/app_localizations.dart';
+import 'package:ttraining_record/screens/graph_screen.dart';
 
 import '../models/menu_data.dart';
 import '../models/record_models.dart';
@@ -1001,8 +1002,7 @@ class _RecordScreenState extends State<RecordScreen> {
           unselectedItemColor: colorScheme.onSurfaceVariant,
           backgroundColor: colorScheme.surface,
           onTap: (index) {
-            if (index == 0) {
-              _saveAllSectionsData();
+            if (index == 0) { // カレンダーボタンが押された場合
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(
@@ -1011,13 +1011,25 @@ class _RecordScreenState extends State<RecordScreen> {
                     lastUsedMenusBox: widget.lastUsedMenusBox,
                     settingsBox: widget.settingsBox,
                     setCountBox: widget.setCountBox,
-                    selectedDate: widget.selectedDate,
+                    selectedDate: DateTime.now(), // または適切な日付を設定
                   ),
                 ),
                     (route) => false,
               );
-            } else if (index == 3) {
-              _saveAllSectionsData();
+            } else if (index == 2) { // グラフボタンが押された場合
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => GraphScreen(
+                    recordsBox: widget.recordsBox,
+                    lastUsedMenusBox: widget.lastUsedMenusBox,
+                    settingsBox: widget.settingsBox,
+                    setCountBox: widget.setCountBox,
+                  ),
+                ),
+                    (route) => false,
+              );
+            } else if (index == 3) { // 設定ボタンが押された場合
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(
