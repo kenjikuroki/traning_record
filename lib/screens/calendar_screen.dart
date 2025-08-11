@@ -411,39 +411,58 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-            bottomNavigationBar: BottomNavigationBar(
-    items: const <BottomNavigationBarItem>[
-    BottomNavigationBarItem(
-    icon: Icon(Icons.calendar_today),
-    label: 'Calendar',
-    ),
-    BottomNavigationBarItem(
-    icon: Icon(Icons.edit_note),
-    label: 'Record',
-    ),
-    BottomNavigationBarItem(
-    icon: Icon(Icons.bar_chart),
-    label: 'Graph',
-    ),
-    BottomNavigationBarItem(
-    icon: Icon(Icons.settings),
-    label: 'Settings',
-    ),
-    ],
-    currentIndex: 0,
-    selectedItemColor: colorScheme.primary,
-    unselectedItemColor: colorScheme.onSurfaceVariant,
-    backgroundColor: colorScheme.surface,
-    onTap: (index) {
-      if (index == 0) {
-        // 現在の画面なので何もしません。
-      } else if (index == 1) {
-        // 記録画面への遷移ロジックはまだ設定しません。
-      } else if (index == 2) {
-        // グラフ画面への遷移ロジックはまだ設定しません。
-      } else if (index == 3) {
-        // 設定画面への遷移ロジックはまだ設定しません。
-        // アクションは未実装
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: 'Calendar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.edit_note),
+            label: 'Record',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart),
+            label: 'Graph',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
+        ],
+        currentIndex: 0, // カレンダー画面なので0
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: colorScheme.onSurfaceVariant,
+        backgroundColor: colorScheme.surface,
+        onTap: (index) {
+          // 遷移処理を追加
+          if (index == 1) { // 記録画面ボタンが押された場合
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => RecordScreen(
+                  recordsBox: widget.recordsBox,
+                  lastUsedMenusBox: widget.lastUsedMenusBox,
+                  settingsBox: widget.settingsBox,
+                  setCountBox: widget.setCountBox,
+                  selectedDate: widget.selectedDate,
+                ),
+              ),
+                  (route) => false,
+            );
+          } else if (index == 3) { // 設定画面ボタンが押された場合
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => SettingsScreen(
+                  recordsBox: widget.recordsBox,
+                  lastUsedMenusBox: widget.lastUsedMenusBox,
+                  settingsBox: widget.settingsBox,
+                  setCountBox: widget.setCountBox,
+                ),
+              ),
+                  (route) => false,
+            );
       }
     },
       ),
