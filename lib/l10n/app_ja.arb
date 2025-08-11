@@ -48,5 +48,8 @@
   "favorited": "{menuName}をお気に入りに登録しました",
   "unfavorited": "{menuName}のお気に入りを解除しました",
   "dayDisplay": "日",
-  "weekDisplay": "週"
+  "weekDisplay": "週",
+  "distance": "距離",
+  "km": "km",
+  "m": "m"
 }

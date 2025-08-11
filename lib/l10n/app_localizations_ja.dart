@@ -158,4 +158,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get weekDisplay => '週';
+
+  @override
+  String get distance => '距離';
+
+  @override
+  String get km => 'km';
+
+  @override
+  String get m => 'm';
 }

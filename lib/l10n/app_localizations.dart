@@ -390,6 +390,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Week'**
   String get weekDisplay;
+
+  /// No description provided for @distance.
+  ///
+  /// In en, this message translates to:
+  /// **'distance'**
+  String get distance;
+
+  /// No description provided for @km.
+  ///
+  /// In en, this message translates to:
+  /// **'km'**
+  String get km;
+
+  /// No description provided for @m.
+  ///
+  /// In en, this message translates to:
+  /// **'m'**
+  String get m;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -356,12 +356,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       final rep = menu.reps[setIndex];
 
                                       String weightUnit;
+                                      String repUnit;
+
                                       if (part == '有酸素運動') {
-                                        weightUnit = l10n.min;
+                                        // 💡 有酸素運動の場合は、単位を「km」と「分:秒」に変更
+                                        weightUnit = 'km'; // または l10n.km
+                                        repUnit = '分:秒'; // または l10n.min_sec
                                       } else {
+                                        // 筋トレの場合は、既存の単位を使用
                                         weightUnit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
+                                        repUnit = l10n.reps;
                                       }
-                                      String repUnit = (part == '有酸素運動') ? l10n.sec : l10n.reps;
 
                                       return Text(
                                         '${setIndex + 1}${l10n.sets}：$weight $weightUnit $rep $repUnit',

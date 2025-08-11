@@ -20,19 +20,25 @@ class MenuDataAdapter extends TypeAdapter<MenuData> {
       name: fields[0] as String,
       weights: (fields[1] as List).cast<String>(),
       reps: (fields[2] as List).cast<String>(),
+      distance: fields[3] as String?,
+      duration: fields[4] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, MenuData obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
       ..write(obj.weights)
       ..writeByte(2)
-      ..write(obj.reps);
+      ..write(obj.reps)
+      ..writeByte(3)
+      ..write(obj.distance)
+      ..writeByte(4)
+      ..write(obj.duration);
   }
 
   @override

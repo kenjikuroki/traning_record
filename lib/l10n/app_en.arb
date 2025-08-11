@@ -48,5 +48,8 @@
   "favorited": "{menuName} added to favorites",
   "unfavorited": "{menuName} removed from favorites",
   "dayDisplay": "Day",
-  "weekDisplay": "Week"
+  "weekDisplay": "Week",
+  "distance": "distance",
+  "km": "km",
+  "m": "m"
 }
