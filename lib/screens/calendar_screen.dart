@@ -194,37 +194,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  void _navigateToSettings(BuildContext context) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
-          recordsBox: widget.recordsBox,
-          lastUsedMenusBox: widget.lastUsedMenusBox,
-          settingsBox: widget.settingsBox,
-          setCountBox: widget.setCountBox,
-        ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(0.0, 1.0);
-          const end = Offset.zero;
-          const curve = Curves.easeOut;
-
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-          return SlideTransition(
-            position: animation.drive(tween),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 300),
-      ),
-    ).then((_) {
-      if (mounted) {
-        _loadSettingsAndParts();
-        _loadDailyRecordForSelectedDay();
-      }
-    });
-  }
+  // 設定画面への遷移メソッドは削除します。
 
   String _getDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -258,11 +228,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     elevation: 0,
                     iconTheme: IconThemeData(color: colorScheme.onSurface),
                     actions: [
-                      IconButton(
-                        icon: Icon(Icons.settings, size: 24.0, color: colorScheme.onSurface),
-                        tooltip: l10n.settings,
-                        onPressed: () => _navigateToSettings(context),
-                      ),
+                      // ここに設定ボタンがあったが削除しました
                     ],
                   ),
                   const AdBanner(screenName: 'calendar')
@@ -463,8 +429,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
                   (route) => false,
             );
-      }
-    },
+          }
+        },
       ),
     );
   }

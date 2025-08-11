@@ -182,7 +182,6 @@ class _RecordScreenState extends State<RecordScreen> {
     }
     _sections.clear();
 
-    // 記録が全くない場合は、部位が未選択の空のセクションを1つだけ作成
     if (record == null || record.menus.isEmpty) {
       _sections.add(SectionData.createEmpty(_currentSetCount,
           shouldPopulateDefaults: false));
@@ -196,13 +195,11 @@ class _RecordScreenState extends State<RecordScreen> {
     Map<String, List<MenuData>> dataToLoad = {};
     Set<String> partsFromRecords = {};
 
-    // Step 1: 記録ボックスから確定済みのデータを読み込む
     record.menus.forEach((part, menuList) {
       dataToLoad[part] = List.from(menuList);
       partsFromRecords.add(part);
     });
 
-    // Step 2: 最後に使ったメニューから、記録ボックスにないデータを統合
     final List<String> lastUsedParts = widget.lastUsedMenusBox.keys.cast<String>().toList();
     for (var part in lastUsedParts) {
       final dynamic rawList = widget.lastUsedMenusBox.get(part);
@@ -432,135 +429,6 @@ class _RecordScreenState extends State<RecordScreen> {
     } else {
       widget.recordsBox.delete(dateKey);
     }
-  }
-
-  void _navigateToSettings(BuildContext context) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
-          recordsBox: widget.recordsBox,
-          lastUsedMenusBox: widget.lastUsedMenusBox,
-          settingsBox: widget.settingsBox,
-          setCountBox: widget.setCountBox,
-        ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(0.0, 1.0);
-          const end = Offset.zero;
-          const curve = Curves.easeOut;
-          var tween =
-          Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-          return SlideTransition(
-            position: animation.drive(tween),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 300),
-      ),
-    ).then((_) {
-      if (mounted) {
-        setState(() {
-          _currentSetCount = widget.setCountBox.get('setCount') ?? 3;
-
-          Map<String, bool>? savedBodyPartsSettings;
-          final dynamic rawSettings = widget.settingsBox.get('selectedBodyParts');
-
-          if (rawSettings != null && rawSettings is Map) {
-            savedBodyPartsSettings = {};
-            rawSettings.forEach((key, value) {
-              if (key is String && value is bool) {
-                savedBodyPartsSettings![key] = value;
-              }
-            });
-          }
-
-          if (savedBodyPartsSettings != null) {
-            _filteredBodyParts = _allBodyParts
-                .where((translatedPart) {
-              final originalPart = _getOriginalPartName(context, translatedPart);
-              return savedBodyPartsSettings![originalPart] == true;
-            })
-                .toList();
-            if (_filteredBodyParts.isEmpty) {
-              _filteredBodyParts = List.from(_allBodyParts);
-            }
-          } else {
-            _filteredBodyParts = List.from(_allBodyParts);
-          }
-
-          String dateKey = _getDateKey(widget.selectedDate);
-          DailyRecord? record = widget.recordsBox.get(dateKey);
-          Set<String> partsInRecord = {};
-          if (record != null) {
-            partsInRecord = record.menus.keys.toSet();
-          }
-
-          for (String originalPart in partsInRecord) {
-            final translatedPart = _translatePartToLocale(context, originalPart);
-            if (!_filteredBodyParts.contains(translatedPart)) {
-              _filteredBodyParts.add(translatedPart);
-            }
-          }
-
-          _filteredBodyParts.sort((a, b) {
-            int indexA = _allBodyParts.indexOf(a);
-            int indexB = _allBodyParts.indexOf(b);
-            return indexA.compareTo(indexB);
-          });
-
-          for (var section in _sections) {
-            int maxSetsForSectionDisplay = _currentSetCount;
-
-            for (int menuIndex = 0;
-            menuIndex < section.menuControllers.length;
-            menuIndex++) {
-              List<SetInputData> setInputDataRow =
-              section.setInputDataList[menuIndex];
-              int actualMaxSetsInThisMenu = 0;
-              for (int s = 0; s < setInputDataRow.length; s++) {
-                final setInputData = setInputDataRow[s];
-                if (setInputData.weightController.text.isNotEmpty ||
-                    setInputData.repController.text.isNotEmpty) {
-                  actualMaxSetsInThisMenu = s + 1;
-                }
-              }
-
-              int targetSetCountForThisMenu =
-              max(actualMaxSetsInThisMenu, _currentSetCount);
-
-              if (setInputDataRow.length > targetSetCountForThisMenu) {
-                for (int s = setInputDataRow.length - 1;
-                s >= targetSetCountForThisMenu;
-                s--) {
-                  final setInputData = setInputDataRow[s];
-                  bool isEmpty = setInputData.weightController.text.isEmpty &&
-                      setInputData.repController.text.isEmpty;
-
-                  if (isEmpty && setInputData.isSuggestion) {
-                    setInputData.dispose();
-                    setInputDataRow.removeAt(s);
-                  } else {
-                    break;
-                  }
-                }
-              } else if (setInputDataRow.length < targetSetCountForThisMenu) {
-                while (setInputDataRow.length < targetSetCountForThisMenu) {
-                  final weightCtrl = TextEditingController();
-                  final repCtrl = TextEditingController();
-                  setInputDataRow.add(SetInputData(
-                      weightController: weightCtrl,
-                      repController: repCtrl,
-                      isSuggestion: true));
-                }
-              }
-              maxSetsForSectionDisplay =
-                  max(maxSetsForSectionDisplay, setInputDataRow.length);
-            }
-            section.initialSetCount = maxSetsForSectionDisplay;
-          }
-        });
-      }
-    });
   }
 
   void _addMenuItem(int sectionIndex) {
@@ -805,14 +673,6 @@ class _RecordScreenState extends State<RecordScreen> {
           backgroundColor: colorScheme.surface,
           elevation: 0.0,
           iconTheme: IconThemeData(color: colorScheme.onSurface),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.settings,
-                  size: 24.0, color: colorScheme.onSurface),
-              tooltip: l10n.settings,
-              onPressed: () => _navigateToSettings(context),
-            ),
-          ],
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
