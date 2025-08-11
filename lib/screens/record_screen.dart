@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import 'dart:math';
 import 'package:ttraining_record/l10n/app_localizations.dart';
 import 'package:ttraining_record/screens/graph_screen.dart';
+import 'package:intl/intl.dart';
 
 import '../models/menu_data.dart';
 import '../models/record_models.dart';
@@ -40,9 +41,7 @@ class RecordScreen extends StatefulWidget {
 class _RecordScreenState extends State<RecordScreen> {
   List<String> _filteredBodyParts = [];
   List<String> _allBodyParts = [];
-
   List<SectionData> _sections = [];
-
   int _currentSetCount = 3;
 
   @override
@@ -105,20 +104,10 @@ class _RecordScreenState extends State<RecordScreen> {
 
   void _loadSettingsAndParts() {
     final l10n = AppLocalizations.of(context)!;
-
     _allBodyParts = [
-      l10n.aerobicExercise,
-      l10n.arm,
-      l10n.chest,
-      l10n.back,
-      l10n.shoulder,
-      l10n.leg,
-      l10n.fullBody,
-      l10n.other1,
-      l10n.other2,
-      l10n.other3,
+      l10n.aerobicExercise, l10n.arm, l10n.chest, l10n.back, l10n.shoulder, l10n.leg,
+      l10n.fullBody, l10n.other1, l10n.other2, l10n.other3,
     ];
-
     Map<String, bool>? savedBodyPartsSettings;
     final dynamic rawSettings = widget.settingsBox.get('selectedBodyParts');
 
@@ -130,18 +119,14 @@ class _RecordScreenState extends State<RecordScreen> {
         }
       });
     }
-
     int? savedSetCount = widget.setCountBox.get('setCount');
-
     String dateKey = _getDateKey(widget.selectedDate);
     DailyRecord? record = widget.recordsBox.get(dateKey);
     Set<String> partsInRecord = {};
     if (record != null) {
       partsInRecord = record.menus.keys.toSet();
     }
-
     _filteredBodyParts = [];
-
     if (savedBodyPartsSettings != null && savedBodyPartsSettings.isNotEmpty) {
       _filteredBodyParts = _allBodyParts
           .where((translatedPart) {
@@ -151,20 +136,17 @@ class _RecordScreenState extends State<RecordScreen> {
     } else {
       _filteredBodyParts = List.from(_allBodyParts);
     }
-
     for (String originalPart in partsInRecord) {
       final translatedPart = _translatePartToLocale(context, originalPart);
       if (!_filteredBodyParts.contains(translatedPart)) {
         _filteredBodyParts.add(translatedPart);
       }
     }
-
     _filteredBodyParts.sort((a, b) {
       int indexA = _allBodyParts.indexOf(a);
       int indexB = _allBodyParts.indexOf(b);
       return indexA.compareTo(indexB);
     });
-
     _currentSetCount = savedSetCount ?? 3;
 
     if (mounted) {
@@ -255,7 +237,6 @@ class _RecordScreenState extends State<RecordScreen> {
               }
             }
           }
-
           setInputDataRow.add(SetInputData(
               weightController: weightCtrl,
               repController: repCtrl,
@@ -279,8 +260,6 @@ class _RecordScreenState extends State<RecordScreen> {
       section.initialSetCount = max(maxSetsInThisSection, _currentSetCount);
     });
     _sections = tempSectionsMap.values.toList();
-
-
     _sections.sort((a, b) {
       if (a.selectedPart == null && b.selectedPart == null) return 0;
       if (a.selectedPart == null) return 1;
@@ -289,7 +268,6 @@ class _RecordScreenState extends State<RecordScreen> {
       int indexB = _allBodyParts.indexOf(b.selectedPart!);
       return indexA.compareTo(indexB);
     });
-
     if (mounted) {
       setState(() {});
     }
@@ -303,7 +281,6 @@ class _RecordScreenState extends State<RecordScreen> {
       SectionData section, List<MenuData> list, bool isMenuNameSuggestion) {
     _clearSectionControllersAndMaps(section);
     section.menuKeys.clear();
-
     int itemsToCreate = list.isNotEmpty ? list.length : 1;
 
     for (int i = 0; i < itemsToCreate; i++) {
@@ -315,22 +292,18 @@ class _RecordScreenState extends State<RecordScreen> {
       section.menuKeys.add(UniqueKey());
 
       final newSetInputDataRow = <SetInputData>[];
-
       if (i < list.length) {
         for (int s = 0; s < list[i].weights.length; s++) {
           final newWeightController =
           TextEditingController(text: list[i].weights[s]);
           final newRepController = TextEditingController(text: list[i].reps[s]);
-
           bool isSuggestionSet = newWeightController.text.isEmpty && newRepController.text.isEmpty;
-
           newSetInputDataRow.add(SetInputData(
               weightController: newWeightController,
               repController: newRepController,
               isSuggestion: isMenuNameSuggestion || isSuggestionSet));
         }
       }
-
       int targetSetCountForThisMenu;
       targetSetCountForThisMenu =
           max(newSetInputDataRow.length, _currentSetCount);
@@ -346,7 +319,6 @@ class _RecordScreenState extends State<RecordScreen> {
       }
       section.setInputDataList.add(newSetInputDataRow);
     }
-
     int maxSetsInLoadedMenus = 0;
     for (var menuSets in section.setInputDataList) {
       maxSetsInLoadedMenus = max(maxSetsInLoadedMenus, menuSets.length);
@@ -491,21 +463,43 @@ class _RecordScreenState extends State<RecordScreen> {
     }
   }
 
-  void _removeMenuItem(int sectionIndex, int menuIndex) {
-    if (mounted) {
-      setState(() {
-        _sections[sectionIndex].menuControllers[menuIndex].dispose();
-        for (var setInputData in _sections[sectionIndex].setInputDataList[menuIndex]) {
-          setInputData.dispose();
-        }
-        _sections[sectionIndex].menuControllers.removeAt(menuIndex);
-        _sections[sectionIndex].setInputDataList.removeAt(menuIndex);
-        _sections[sectionIndex].menuKeys.removeAt(menuIndex);
+  void _removeMenuItem(int sectionIndex, int menuIndex) async {
+    final l10n = AppLocalizations.of(context)!;
+    final bool? shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text(l10n.deleteMenuConfirmationTitle),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.delete, style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
 
-        if (_sections[sectionIndex].menuControllers.isEmpty) {
-          _removeSection(sectionIndex);
-        }
-      });
+    if (shouldDelete == true) {
+      if (mounted) {
+        setState(() {
+          _sections[sectionIndex].menuControllers[menuIndex].dispose();
+          for (var setInputData in _sections[sectionIndex].setInputDataList[menuIndex]) {
+            setInputData.dispose();
+          }
+          _sections[sectionIndex].menuControllers.removeAt(menuIndex);
+          _sections[sectionIndex].setInputDataList.removeAt(menuIndex);
+          _sections[sectionIndex].menuKeys.removeAt(menuIndex);
+
+          if (_sections[sectionIndex].menuControllers.isEmpty) {
+            _removeSection(sectionIndex);
+          }
+        });
+      }
     }
   }
 
@@ -523,124 +517,12 @@ class _RecordScreenState extends State<RecordScreen> {
     }
   }
 
-  Widget _buildSetRow(BuildContext context,
-      List<List<SetInputData>> setInputDataList, int menuIndex, int setNumber,
-      int setIndex, String? selectedPart) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final setInputData = setInputDataList[menuIndex][setIndex];
-    final l10n = AppLocalizations.of(context)!;
-
-    final String currentUnit = SettingsManager.currentUnit;
-    String weightUnitText = currentUnit == 'kg' ? l10n.kg : l10n.lbs;
-    String repUnit = l10n.reps;
-
-    if (selectedPart == l10n.aerobicExercise) {
-      weightUnitText = l10n.min;
-      repUnit = l10n.sec;
-    }
-
-    final Color textColor = setInputData.isSuggestion
-        ? colorScheme.onSurfaceVariant.withOpacity(0.5)
-        : colorScheme.onSurface;
-
-    return Row(
-      children: [
-        Text(
-          '${setNumber}${l10n.sets}：',
-          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: StylishInput(
-            key: ValueKey(
-                '${setInputData.weightController.hashCode}_weight_${menuIndex}_$setIndex'),
-            controller: setInputData.weightController,
-            hint: '',
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            normalTextColor: textColor,
-            suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-            fillColor: colorScheme.surfaceContainer,
-            contentPadding:
-            const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-            textAlign: TextAlign.right,
-            onChanged: (text) {
-              if (text.isNotEmpty && setInputData.isSuggestion) {
-                setState(() {
-                  setInputData.isSuggestion = false;
-                });
-              } else if (text.isEmpty && !setInputData.isSuggestion) {
-                bool isAnyOtherInput = false;
-                for(var s in setInputDataList[menuIndex]){
-                  if(s != setInputData && (s.weightController.text.isNotEmpty || s.repController.text.isNotEmpty)){
-                    isAnyOtherInput = true;
-                    break;
-                  }
-                }
-                if(setInputData.repController.text.isEmpty && !isAnyOtherInput){
-                  setState(() {
-                    setInputData.isSuggestion = true;
-                  });
-                }
-              }
-            },
-          ),
-        ),
-        Text(' $weightUnitText ',
-            style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontSize: 14.0,
-                fontWeight: FontWeight.bold)),
-        Expanded(
-          child: StylishInput(
-            key: ValueKey(
-                '${setInputData.repController.hashCode}_rep_${menuIndex}_$setIndex'),
-            controller: setInputData.repController,
-            hint: '',
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            normalTextColor: textColor,
-            suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-            fillColor: colorScheme.surfaceContainer,
-            contentPadding:
-            const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-            textAlign: TextAlign.right,
-            onChanged: (text) {
-              if (text.isNotEmpty && setInputData.isSuggestion) {
-                setState(() {
-                  setInputData.isSuggestion = false;
-                });
-              } else if (text.isEmpty && !setInputData.isSuggestion) {
-                bool isAnyOtherInput = false;
-                for(var s in setInputDataList[menuIndex]){
-                  if(s != setInputData && (s.weightController.text.isNotEmpty || s.repController.text.isNotEmpty)){
-                    isAnyOtherInput = true;
-                    break;
-                  }
-                }
-                if(setInputData.weightController.text.isEmpty && !isAnyOtherInput){
-                  setState(() {
-                    setInputData.isSuggestion = true;
-                  });
-                }
-              }
-            },
-          ),
-        ),
-        Text(' $repUnit',
-            style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontSize: 14.0,
-                fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isLightMode = Theme.of(context).brightness == Brightness.light;
     final l10n = AppLocalizations.of(context)!;
+    final formattedDate = DateFormat('yyyy/MM/dd').format(widget.selectedDate);
 
     final Color partNormalBgColor =
     isLightMode ? const Color(0xFF333333) : const Color(0xFF2C2F33);
@@ -665,7 +547,7 @@ class _RecordScreenState extends State<RecordScreen> {
         backgroundColor: colorScheme.background,
         appBar: AppBar(
           title: Text(
-            '${widget.selectedDate.year}/${widget.selectedDate.month}/${widget.selectedDate.day}',
+            formattedDate,
             style: TextStyle(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
@@ -679,302 +561,214 @@ class _RecordScreenState extends State<RecordScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              if (isInitialEmptyState)
-                Padding(
-                  padding: const EdgeInsets.only(top: 20.0),
-                  child: GlassCard(
-                    borderRadius: 12.0,
-                    backgroundColor: colorScheme.surfaceContainerHighest,
-                    padding: const EdgeInsets.all(20.0),
-                    child: DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        hintText: l10n.selectTrainingPart,
-                        hintStyle: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                            fontSize: 14.0),
-                        filled: true,
-                        fillColor: colorScheme.surfaceContainer,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(25.0),
-                          borderSide: BorderSide.none,
+              const AdBanner(screenName: 'record'),
+              const SizedBox(height: 16.0),
+              Expanded(
+                child: ListView.builder(
+                  primary: true,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: _sections.length + (isInitialEmptyState ? 0 : 1),
+                  itemBuilder: (context, index) {
+                    if (index == _sections.length && !isInitialEmptyState) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: CircularAddButtonWithText(
+                            label: l10n.addPart,
+                            onPressed: _addTargetSection,
+                            normalBgColorOverride: partNormalBgColor,
+                            pressedBgColorOverride: partPressedBgColor,
+                            textColorOverride: partTextColor,
+                            accentColorOverride: partAccentColor,
+                          ),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(25.0),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(25.0),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 20),
-                      ),
-                      value: _sections[0].selectedPart,
-                      items: _filteredBodyParts
-                          .map((p) => DropdownMenuItem(
-                          value: p,
-                          child: Text(p,
-                              style: TextStyle(
-                                  color: colorScheme.onSurface,
-                                  fontSize: 14.0,
-                                  fontWeight: FontWeight.bold))))
-                          .toList(),
-                      onChanged: (value) {
-                        if (mounted) {
-                          setState(() {
-                            _sections[0].selectedPart = value;
-                            if (value != null) {
-                              final String actualSelectedPart = value;
-                              _clearSectionControllersAndMaps(_sections[0]);
-                              _sections[0].menuKeys.clear();
-                              String dateKey = _getDateKey(widget.selectedDate);
-                              DailyRecord? record = widget.recordsBox.get(dateKey);
-                              List<MenuData>? listToLoad;
-                              bool isMenuNameSuggestion;
+                      );
+                    }
 
-                              final originalPartName =
-                              _getOriginalPartName(context, actualSelectedPart);
+                    final section = _sections[index];
+                    final String? actualSelectedPart = section.selectedPart;
 
-                              if (record != null &&
-                                  record.menus.containsKey(originalPartName)) {
-                                listToLoad = record.menus[originalPartName];
-                                isMenuNameSuggestion = false;
-                              } else {
-                                final dynamic rawList =
-                                widget.lastUsedMenusBox.get(originalPartName);
-                                if (rawList is List) {
-                                  listToLoad =
-                                      rawList.whereType<MenuData>().toList();
-                                } else {
-                                  listToLoad = [];
-                                }
-                                isMenuNameSuggestion = true;
-                              }
-                              _setControllersFromData(_sections[0],
-                                  listToLoad ?? [], isMenuNameSuggestion);
-                            } else {
-                              _clearSectionControllersAndMaps(_sections[0]);
-                              _sections[0].menuKeys.clear();
-                              _sections[0].initialSetCount = _currentSetCount;
-                            }
-                          });
-                        }
-                      },
-                      dropdownColor: colorScheme.surfaceContainer,
-                      style: TextStyle(
-                          color: colorScheme.onSurface,
-                          fontSize: 14.0,
-                          fontWeight: FontWeight.bold),
-                      borderRadius: BorderRadius.circular(15.0),
-                    ),
-                  ),
-                )
-              else
-                Expanded(
-                  child: ListView.builder(
-                      primary: true,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      itemCount: _sections.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == _sections.length) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: CircularAddButtonWithText(
-                                label: l10n.addPart,
-                                onPressed: _addTargetSection,
-                                normalBgColorOverride: partNormalBgColor,
-                                pressedBgColorOverride: partPressedBgColor,
-                                textColorOverride: partTextColor,
-                                accentColorOverride: partAccentColor,
-                              ),
-                            ),
-                          );
-                        }
-
-                        final section = _sections[index];
-                        final String dateKey = _getDateKey(widget.selectedDate);
-                        final DailyRecord? record = widget.recordsBox.get(dateKey);
-                        final String? actualSelectedPart = section.selectedPart;
-
-                        return AnimatedListItem(
-                          key: section.key,
-                          direction: AnimationDirection.rightToLeft,
+                    return AnimatedListItem(
+                      key: section.key,
+                      direction: AnimationDirection.rightToLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Card(
+                          color: colorScheme.surfaceContainerHighest,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                          elevation: 4,
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: GlassCard(
-                              borderRadius: 12.0,
-                              backgroundColor:
-                              section.selectedPart == l10n.aerobicExercise &&
-                                  isLightMode
-                                  ? Colors.grey[400]!
-                                  : colorScheme.surfaceContainerHighest,
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: DropdownButtonFormField<String>(
-                                          decoration: InputDecoration(
-                                            hintText: l10n.selectTrainingPart,
-                                            hintStyle: TextStyle(
-                                                color: colorScheme.onSurfaceVariant,
-                                                fontSize: 14.0),
-                                            filled: true,
-                                            fillColor: colorScheme.surfaceContainer,
-                                            border: OutlineInputBorder(
-                                              borderRadius:
-                                              BorderRadius.circular(25.0),
-                                              borderSide: BorderSide.none,
-                                            ),
-                                            enabledBorder: OutlineInputBorder(
-                                              borderRadius:
-                                              BorderRadius.circular(25.0),
-                                              borderSide: BorderSide.none,
-                                            ),
-                                            focusedBorder: OutlineInputBorder(
-                                              borderRadius:
-                                              BorderRadius.circular(25.0),
-                                              borderSide: BorderSide.none,
-                                            ),
-                                            contentPadding:
-                                            const EdgeInsets.symmetric(
-                                                vertical: 12, horizontal: 20),
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: DropdownButtonFormField<String>(
+                                        decoration: InputDecoration(
+                                          hintText: l10n.selectTrainingPart,
+                                          hintStyle: TextStyle(
+                                              color: colorScheme.onSurfaceVariant,
+                                              fontSize: 14.0),
+                                          filled: true,
+                                          fillColor: colorScheme.surfaceContainer,
+                                          border: OutlineInputBorder(
+                                            borderRadius:
+                                            BorderRadius.circular(25.0),
+                                            borderSide: BorderSide.none,
                                           ),
-                                          value: section.selectedPart,
-                                          items: _filteredBodyParts
-                                              .map((p) => DropdownMenuItem(
-                                              value: p,
-                                              child: Text(p,
-                                                  style: TextStyle(
-                                                      color: colorScheme.onSurface,
-                                                      fontSize: 14.0,
-                                                      fontWeight: FontWeight.bold))))
-                                              .toList(),
-                                          onChanged: (value) {
-                                            if (mounted) {
-                                              setState(() {
-                                                section.selectedPart = value;
-                                                if (section.selectedPart != null) {
-                                                  final String currentSelectedPart =
-                                                  section.selectedPart!;
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius:
+                                            BorderRadius.circular(25.0),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius:
+                                            BorderRadius.circular(25.0),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                          contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              vertical: 12, horizontal: 20),
+                                        ),
+                                        value: section.selectedPart,
+                                        items: _filteredBodyParts
+                                            .map((p) => DropdownMenuItem(
+                                            value: p,
+                                            child: Text(p,
+                                                style: TextStyle(
+                                                    color: colorScheme.onSurface,
+                                                    fontSize: 14.0,
+                                                    fontWeight: FontWeight.bold))))
+                                            .toList(),
+                                        onChanged: (value) {
+                                          if (mounted) {
+                                            setState(() {
+                                              section.selectedPart = value;
+                                              if (section.selectedPart != null) {
+                                                final String currentSelectedPart =
+                                                section.selectedPart!;
 
-                                                  _clearSectionControllersAndMaps(
-                                                      section);
-                                                  section.menuKeys.clear();
+                                                _clearSectionControllersAndMaps(
+                                                    section);
+                                                section.menuKeys.clear();
 
-                                                  String dateKey =
-                                                  _getDateKey(widget.selectedDate);
-                                                  DailyRecord? record =
-                                                  widget.recordsBox.get(dateKey);
-                                                  List<MenuData>? listToLoad;
+                                                String dateKey =
+                                                _getDateKey(widget.selectedDate);
+                                                DailyRecord? record =
+                                                widget.recordsBox.get(dateKey);
+                                                List<MenuData>? listToLoad;
 
-                                                  bool isMenuNameSuggestion;
-                                                  final originalPartName =
-                                                  _getOriginalPartName(
-                                                      context, currentSelectedPart);
+                                                bool isMenuNameSuggestion;
+                                                final originalPartName =
+                                                _getOriginalPartName(
+                                                    context, currentSelectedPart);
 
-                                                  if (record != null &&
-                                                      record.menus.containsKey(
-                                                          originalPartName)) {
-                                                    listToLoad =
-                                                    record.menus[originalPartName];
-                                                    isMenuNameSuggestion = false;
-                                                  } else {
-                                                    final dynamic rawList = widget
-                                                        .lastUsedMenusBox
-                                                        .get(originalPartName);
-                                                    if (rawList is List) {
-                                                      listToLoad = rawList
-                                                          .whereType<MenuData>()
-                                                          .toList();
-                                                    } else {
-                                                      listToLoad = [];
-                                                    }
-                                                    isMenuNameSuggestion = true;
-                                                  }
-                                                  _setControllersFromData(section,
-                                                      listToLoad ?? [], isMenuNameSuggestion);
+                                                if (record != null &&
+                                                    record.menus.containsKey(
+                                                        originalPartName)) {
+                                                  listToLoad =
+                                                  record.menus[originalPartName];
+                                                  isMenuNameSuggestion = false;
                                                 } else {
-                                                  _clearSectionControllersAndMaps(
-                                                      section);
-                                                  section.menuKeys.clear();
-                                                  section.initialSetCount =
-                                                      _currentSetCount;
+                                                  final dynamic rawList = widget
+                                                      .lastUsedMenusBox
+                                                      .get(originalPartName);
+                                                  if (rawList is List) {
+                                                    listToLoad = rawList
+                                                        .whereType<MenuData>()
+                                                        .toList();
+                                                  } else {
+                                                    listToLoad = [];
+                                                  }
+                                                  isMenuNameSuggestion = true;
                                                 }
-                                              });
-                                            }
-                                          },
-                                          dropdownColor: colorScheme.surfaceContainer,
-                                          style: TextStyle(
-                                              color: colorScheme.onSurface,
-                                              fontSize: 14.0,
-                                              fontWeight: FontWeight.bold),
-                                          borderRadius: BorderRadius.circular(15.0),
+                                                _setControllersFromData(section,
+                                                    listToLoad ?? [], isMenuNameSuggestion);
+                                              } else {
+                                                _clearSectionControllersAndMaps(
+                                                    section);
+                                                section.menuKeys.clear();
+                                                section.initialSetCount =
+                                                    _currentSetCount;
+                                              }
+                                            });
+                                          }
+                                        },
+                                        dropdownColor: colorScheme.surfaceContainer,
+                                        style: TextStyle(
+                                            color: colorScheme.onSurface,
+                                            fontSize: 14.0,
+                                            fontWeight: FontWeight.bold),
+                                        borderRadius: BorderRadius.circular(15.0),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16.0),
+                                if (section.selectedPart != null)
+                                  Column(
+                                    children: [
+                                      ListView.builder(
+                                        shrinkWrap: true,
+                                        physics:
+                                        const NeverScrollableScrollPhysics(),
+                                        itemCount:
+                                        section.menuControllers.length,
+                                        itemBuilder: (context, menuIndex) {
+                                          return AnimatedListItem(
+                                            key: section.menuKeys[menuIndex],
+                                            direction: AnimationDirection.rightToLeft,
+                                            child: Card(
+                                              color: colorScheme.surface,
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                                              elevation: 2,
+                                              margin: const EdgeInsets.symmetric(vertical: 8.0),
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(16.0),
+                                                child: MenuList(
+                                                  key: section.menuKeys[menuIndex],
+                                                  menuController:
+                                                  section.menuControllers[menuIndex],
+                                                  removeMenuCallback: () =>
+                                                      _removeMenuItem(
+                                                          index, menuIndex),
+                                                  setCount: section.initialSetCount ?? _currentSetCount,
+                                                  setInputDataList:
+                                                  section.setInputDataList[menuIndex],
+                                                  isAerobic: section.selectedPart ==
+                                                      l10n.aerobicExercise,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      const SizedBox(height: 16.0),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: CircularAddButtonWithText(
+                                          label: l10n.addExercise,
+                                          onPressed: () => _addMenuItem(index),
+                                          normalBgColorOverride: partNormalBgColor,
+                                          pressedBgColorOverride: partPressedBgColor,
+                                          textColorOverride: partTextColor,
+                                          accentColorOverride: partAccentColor,
                                         ),
                                       ),
-                                      if (index != 0 || !isInitialEmptyState)
-                                        IconButton(
-                                          icon: Icon(Icons.close,
-                                              color: colorScheme.onSurfaceVariant),
-                                          onPressed: () => _removeSection(index),
-                                        ),
                                     ],
                                   ),
-                                  const SizedBox(height: 16.0),
-                                  if (section.selectedPart != null)
-                                    Column(
-                                      children: [
-                                        ListView.builder(
-                                          shrinkWrap: true,
-                                          physics:
-                                          const NeverScrollableScrollPhysics(),
-                                          itemCount:
-                                          section.menuControllers.length,
-                                          itemBuilder: (context, menuIndex) {
-                                            return AnimatedListItem(
-                                              key: section.menuKeys[menuIndex],
-                                              direction: AnimationDirection.rightToLeft,
-                                              child: MenuList(
-                                                key: section.menuKeys[menuIndex],
-                                                menuController:
-                                                section.menuControllers[menuIndex],
-                                                removeMenuCallback: () =>
-                                                    _removeMenuItem(
-                                                        index, menuIndex),
-                                                setCount: section.initialSetCount ?? _currentSetCount,
-                                                setInputDataList:
-                                                section.setInputDataList[menuIndex],
-                                                isAerobic: section.selectedPart ==
-                                                    l10n.aerobicExercise,
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                        const SizedBox(height: 16.0),
-                                        Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: CircularAddButtonWithText(
-                                            label: l10n.addExercise,
-                                            onPressed: () => _addMenuItem(index),
-                                            normalBgColorOverride: partNormalBgColor,
-                                            pressedBgColorOverride: partPressedBgColor,
-                                            textColorOverride: partTextColor,
-                                            accentColorOverride: partAccentColor,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                ],
-                              ),
+                              ],
                             ),
                           ),
-                        );
-                      }),
+                        ),
+                      ),
+                    );
+                  },
                 ),
+              ),
             ],
           ),
         ),
@@ -1002,7 +796,7 @@ class _RecordScreenState extends State<RecordScreen> {
           unselectedItemColor: colorScheme.onSurfaceVariant,
           backgroundColor: colorScheme.surface,
           onTap: (index) {
-            if (index == 0) { // カレンダーボタンが押された場合
+            if (index == 0) {
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(
@@ -1011,12 +805,12 @@ class _RecordScreenState extends State<RecordScreen> {
                     lastUsedMenusBox: widget.lastUsedMenusBox,
                     settingsBox: widget.settingsBox,
                     setCountBox: widget.setCountBox,
-                    selectedDate: DateTime.now(), // または適切な日付を設定
+                    selectedDate: DateTime.now(),
                   ),
                 ),
                     (route) => false,
               );
-            } else if (index == 2) { // グラフボタンが押された場合
+            } else if (index == 2) {
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(
@@ -1029,7 +823,7 @@ class _RecordScreenState extends State<RecordScreen> {
                 ),
                     (route) => false,
               );
-            } else if (index == 3) { // 設定ボタンが押された場合
+            } else if (index == 3) {
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(
@@ -1167,9 +961,15 @@ class _MenuListState extends State<MenuList> {
                   textAlign: TextAlign.left,
                 ),
               ),
-              IconButton(
-                icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
+              TextButton(
                 onPressed: widget.removeMenuCallback,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(40, 20),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  alignment: Alignment.center,
+                ),
+                child: Icon(Icons.close, color: colorScheme.onSurfaceVariant, size: 16),
               ),
             ],
           ),
