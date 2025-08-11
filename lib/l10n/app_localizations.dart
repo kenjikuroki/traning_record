@@ -310,12 +310,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete'**
   String get delete;
-
-  /// No description provided for @graph.
-  ///
-  /// In en, this message translates to:
-  /// **'Graph'**
-  String get graph;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
