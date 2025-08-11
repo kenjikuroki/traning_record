@@ -5,13 +5,14 @@ import 'package:ttraining_record/l10n/app_localizations.dart';
 import 'package:ttraining_record/settings_manager.dart';
 import 'package:ttraining_record/screens/calendar_screen.dart';
 import '../models/menu_data.dart';
-import '../widgets/ad_banner.dart';
+import '../models/record_models.dart';
+import '../screens/record_screen.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
 class SettingsScreen extends StatefulWidget {
-  final Box<DailyRecord> recordsBox; // ここを修正
-  final Box<dynamic> lastUsedMenusBox; // 型が合うか確認
+  final Box<DailyRecord> recordsBox;
+  final Box<dynamic> lastUsedMenusBox;
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
 
@@ -118,9 +119,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     int? savedSetCount = widget.setCountBox.get('setCount');
 
-    final dynamic savedUnit = SettingsManager.currentUnit;
+    final dynamic savedUnit = widget.settingsBox.get('unit');
     if (savedUnit is String) {
       SettingsManager.setUnit(savedUnit);
+    }
+
+    final dynamic savedThemeMode = widget.settingsBox.get('themeMode');
+    if (savedThemeMode is String) {
+      ThemeMode mode;
+      switch (savedThemeMode) {
+        case 'system':
+          mode = ThemeMode.system;
+          break;
+        case 'light':
+          mode = ThemeMode.light;
+          break;
+        case 'dark':
+          mode = ThemeMode.dark;
+          break;
+        default:
+          mode = ThemeMode.system;
+      }
+      SettingsManager.setThemeMode(mode);
     }
 
     setState(() {
@@ -150,7 +170,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     widget.settingsBox.put('selectedBodyParts', settingsToSave);
     widget.setCountBox.put('setCount', _currentSetCount);
 
-    SettingsManager.setUnit(SettingsManager.currentUnit);
+    widget.settingsBox.put('unit', SettingsManager.currentUnit);
+    widget.settingsBox.put('themeMode', SettingsManager.currentThemeMode.name);
   }
 
   @override
@@ -429,16 +450,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
               label: 'Settings',
             ),
           ],
-          currentIndex: 3, // 設定画面は4番目
+          currentIndex: 3,
           selectedItemColor: colorScheme.primary,
           unselectedItemColor: colorScheme.onSurfaceVariant,
           backgroundColor: colorScheme.surface,
           onTap: (index) {
             if (index == 0) {
+              _saveSettings(); // カレンダー画面に遷移する前に設定を保存
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(
                   builder: (context) => CalendarScreen(
+                    recordsBox: widget.recordsBox,
+                    lastUsedMenusBox: widget.lastUsedMenusBox,
+                    settingsBox: widget.settingsBox,
+                    setCountBox: widget.setCountBox,
+                    selectedDate: DateTime.now(),
+                  ),
+                ),
+                    (route) => false,
+              );
+            } else if (index == 1) {
+              _saveSettings(); // 記録画面に遷移する前に設定を保存
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RecordScreen(
                     recordsBox: widget.recordsBox,
                     lastUsedMenusBox: widget.lastUsedMenusBox,
                     settingsBox: widget.settingsBox,
