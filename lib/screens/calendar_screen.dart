@@ -21,7 +21,7 @@ class CalendarScreen extends StatefulWidget {
   final Box<dynamic> lastUsedMenusBox;
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
-  final DateTime selectedDate; // この行を追加
+  final DateTime selectedDate;
 
   const CalendarScreen({
     super.key,
@@ -29,7 +29,7 @@ class CalendarScreen extends StatefulWidget {
     required this.lastUsedMenusBox,
     required this.settingsBox,
     required this.setCountBox,
-    required this.selectedDate, // この行を追加
+    required this.selectedDate,
   });
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -158,32 +158,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     if (isSameDay(_selectedDay, selectedDay)) {
       if (_selectedDay != null) {
-        Navigator.push(
+        // ここを修正
+        Navigator.pushAndRemoveUntil(
           context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => RecordScreen(
-              selectedDate: _selectedDay!,
+          MaterialPageRoute(
+            builder: (context) => RecordScreen(
               recordsBox: widget.recordsBox,
               lastUsedMenusBox: widget.lastUsedMenusBox,
               settingsBox: widget.settingsBox,
               setCountBox: widget.setCountBox,
+              selectedDate: _selectedDay!,
             ),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              const begin = Offset(0.0, 1.0);
-              const end = Offset.zero;
-              const curve = Curves.easeOut;
-              var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-              return SlideTransition(position: animation.drive(tween), child: child);
-            },
-            transitionDuration: const Duration(milliseconds: 300),
           ),
-        ).then((_) {
-          if (mounted) {
-            _loadEvents();
-            _loadDailyRecordForSelectedDay();
-            _loadSettingsAndParts();
-          }
-        });
+              (route) => false,
+        );
       }
     } else {
       setState(() {
@@ -194,7 +182,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  // 設定画面への遷移メソッドは削除します。
+  void _navigateToSettings(BuildContext context) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
+          recordsBox: widget.recordsBox,
+          lastUsedMenusBox: widget.lastUsedMenusBox,
+          settingsBox: widget.settingsBox,
+          setCountBox: widget.setCountBox,
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 1.0);
+          const end = Offset.zero;
+          const curve = Curves.easeOut;
+
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
+    ).then((_) {
+      if (mounted) {
+        _loadSettingsAndParts();
+        _loadDailyRecordForSelectedDay();
+      }
+    });
+  }
 
   String _getDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -227,9 +245,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     backgroundColor: Colors.transparent,
                     elevation: 0,
                     iconTheme: IconThemeData(color: colorScheme.onSurface),
-                    actions: [
-                      // ここに設定ボタンがあったが削除しました
-                    ],
+                    // 右上の設定ボタンの削除
+                    actions: const [],
                   ),
                   const AdBanner(screenName: 'calendar')
                 ],
@@ -337,7 +354,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       final weight = menu.weights[setIndex];
                                       final rep = menu.reps[setIndex];
 
-                                      // ★ 修正箇所ここから
                                       String weightUnit;
                                       if (part == '有酸素運動') {
                                         weightUnit = l10n.min;
@@ -345,7 +361,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                         weightUnit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
                                       }
                                       String repUnit = (part == '有酸素運動') ? l10n.sec : l10n.reps;
-                                      // ★ 修正箇所ここまで
 
                                       return Text(
                                         '${setIndex + 1}${l10n.sets}：$weight $weightUnit $rep $repUnit',
@@ -396,13 +411,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
             label: 'Settings',
           ),
         ],
-        currentIndex: 0, // カレンダー画面なので0
+        currentIndex: 0,
         selectedItemColor: colorScheme.primary,
         unselectedItemColor: colorScheme.onSurfaceVariant,
         backgroundColor: colorScheme.surface,
         onTap: (index) {
-          // 遷移処理を追加
-          if (index == 1) { // 記録画面ボタンが押された場合
+          if (index == 1) {
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(
@@ -411,12 +425,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   lastUsedMenusBox: widget.lastUsedMenusBox,
                   settingsBox: widget.settingsBox,
                   setCountBox: widget.setCountBox,
-                  selectedDate: widget.selectedDate,
+                  selectedDate: _selectedDay ?? DateTime.now(),
                 ),
               ),
                   (route) => false,
             );
-          } else if (index == 3) { // 設定画面ボタンが押された場合
+          } else if (index == 3) {
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(
