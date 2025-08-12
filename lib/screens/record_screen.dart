@@ -193,6 +193,44 @@ class _RecordScreenState extends State<RecordScreen> {
     }
   }
 
+  // 有酸素の前回値プリセット（record優先→lastUsed）、lastUsed由来なら未確定に
+  void _prefillAerobicForPart(SectionData section, String originalPart, DailyRecord? record) {
+    String? distance;
+    String? duration;
+
+    // record から
+    final recMenus = record?.menus[originalPart];
+    if (recMenus != null) {
+      for (final m in recMenus) {
+        if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
+          distance = m.distance;
+          duration = m.duration;
+          break;
+        }
+      }
+    }
+
+    bool fromLastUsed = false;
+    if (distance == null && duration == null) {
+      final raw = widget.lastUsedMenusBox.get(originalPart);
+      if (raw is List) {
+        final lu = raw.whereType<MenuData>().toList();
+        for (final m in lu) {
+          if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
+            distance = m.distance;
+            duration = m.duration;
+            fromLastUsed = true;
+            break;
+          }
+        }
+      }
+    }
+
+    _distanceController.text = distance ?? '';
+    _durationController.text = duration ?? '';
+    section.aerobicIsSuggestion = fromLastUsed;
+  }
+
   void _loadInitialSections() {
     final dateKey = _getDateKey(widget.selectedDate);
     final record = widget.recordsBox.get(dateKey);
@@ -217,34 +255,12 @@ class _RecordScreenState extends State<RecordScreen> {
       return;
     }
 
-    // 記録 + lastUsed をマージして表示
-    final Map<String, List<MenuData>> dataToLoad = {};
-    final Set<String> partsFromRecords = {};
-
-    record.menus.forEach((part, list) {
-      dataToLoad[part] = List.from(list);
-      partsFromRecords.add(part);
-    });
-
-    final List<String> lastUsedParts = widget.lastUsedMenusBox.keys.cast<String>().toList();
-    for (final part in lastUsedParts) {
-      final dynamic rawList = widget.lastUsedMenusBox.get(part);
-      if (rawList is List) {
-        final lastUsedMenus = rawList.whereType<MenuData>().toList();
-        if (partsFromRecords.contains(part)) {
-          final combined = List<MenuData>.from(dataToLoad[part] ?? []);
-          for (final m in lastUsedMenus) {
-            if (!combined.any((x) => x.name == m.name)) {
-              combined.add(m);
-            }
-          }
-          dataToLoad[part] = combined;
-        }
-      }
-    }
-
+    // 記録 + lastUsed をマージして表示（メニュー名の重複を避けつつ、recordにないメニューをlastUsedから補完）
     final Map<String, SectionData> tempSectionsMap = {};
-    dataToLoad.forEach((originalPart, menuList) {
+    final partsFromRecords = record.menus.keys.toList();
+
+    // record に出てくる部位のみ描画（従来仕様）
+    for (final originalPart in partsFromRecords) {
       final translatedPart = _translatePartToLocale(context, originalPart);
 
       final section = tempSectionsMap.putIfAbsent(
@@ -256,49 +272,78 @@ class _RecordScreenState extends State<RecordScreen> {
           setInputDataList: [],
           initialSetCount: _currentSetCount,
           menuKeys: [],
+          aerobicIsSuggestion: false,
         ),
       );
 
-      int maxSets = 0;
+      final recList = record.menus[originalPart] ?? <MenuData>[];
+      final dynamic rawLU = widget.lastUsedMenusBox.get(originalPart);
+      final luList = (rawLU is List) ? rawLU.whereType<MenuData>().toList() : <MenuData>[];
 
-      for (final menuData in menuList) {
-        final menuCtrl = TextEditingController(text: menuData.name);
-        section.menuControllers.add(menuCtrl);
+      final Map<String, MenuData> recBy = {for (final m in recList) m.name: m};
+      final Map<String, MenuData> luBy = {for (final m in luList) m.name: m};
+
+      // メニュー名の順序：recordの順 + recordに無いものはlastUsedから追加
+      final List<String> names = [
+        ...recList.map((m) => m.name),
+        ...luList.where((m) => !recBy.containsKey(m.name)).map((m) => m.name),
+      ];
+
+      for (final name in names) {
+        final rec = recBy[name];
+        final lu = luBy[name];
+
+        section.menuControllers.add(TextEditingController(text: name));
         section.menuKeys.add(UniqueKey());
-        // ★ ID 付与（新規 or 復元でも一意）
         section.menuIds.add(section.nextMenuId++);
 
+        // セット数は record / lastUsed / デフォルト の最大
+        final int recLen = rec == null ? 0 : min(rec.weights.length, rec.reps.length);
+        final int luLen = lu == null ? 0 : min(lu.weights.length, lu.reps.length);
+        final int mergedLen = max(_currentSetCount, max(recLen, luLen));
+
         final row = <SetInputData>[];
-        for (int s = 0; s < menuData.weights.length; s++) {
-          final w = TextEditingController(text: menuData.weights[s]);
-          final r = TextEditingController(text: menuData.reps[s]);
-
+        for (int i = 0; i < mergedLen; i++) {
+          String w = '';
+          String r = '';
           bool isSuggestion = true;
-          if (record != null && record.menus.containsKey(originalPart)) {
-            if (record.menus[originalPart]!.any((m) => m.name == menuData.name)) {
-              if (w.text.isNotEmpty || r.text.isNotEmpty) {
-                isSuggestion = false;
-              }
-            }
-          }
-          row.add(SetInputData(weightController: w, repController: r, isSuggestion: isSuggestion));
-        }
-        section.setInputDataList.add(row);
-        maxSets = max(maxSets, row.length);
-      }
 
-      // 足りないセットは空で埋める
-      for (final row in section.setInputDataList) {
-        while (row.length < _currentSetCount) {
+          if (i < recLen) {
+            w = rec!.weights[i];
+            r = rec.reps[i];
+            // record で中身があるものだけ確定
+            if (w.trim().isNotEmpty || r.trim().isNotEmpty) {
+              isSuggestion = false;
+            }
+          } else if (i < luLen) {
+            // recordに不足分は lastUsed から埋める（未確定）
+            w = lu!.weights[i];
+            r = lu.reps[i];
+            isSuggestion = true;
+          } else {
+            // 空（未確定）
+            w = '';
+            r = '';
+            isSuggestion = true;
+          }
+
           row.add(SetInputData(
-            weightController: TextEditingController(),
-            repController: TextEditingController(),
-            isSuggestion: true,
+            weightController: TextEditingController(text: w),
+            repController: TextEditingController(text: r),
+            isSuggestion: isSuggestion,
           ));
         }
+
+        section.setInputDataList.add(row);
+        section.initialSetCount = max(section.initialSetCount ?? 0, mergedLen);
       }
-      section.initialSetCount = max(maxSets, _currentSetCount);
-    });
+
+      // 有酸素なら距離・時間の前回値をプリセット
+      final l10n = AppLocalizations.of(context)!;
+      if (translatedPart == l10n.aerobicExercise) {
+        _prefillAerobicForPart(section, originalPart, record);
+      }
+    }
 
     _sections = tempSectionsMap.values.toList();
     _sections.sort((a, b) {
@@ -316,6 +361,7 @@ class _RecordScreenState extends State<RecordScreen> {
   String _getDateKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
+  // 既存：使わない経路もあるが残しておく（他の呼び出し互換用）
   void _setControllersFromData(SectionData section, List<MenuData> list, bool isMenuNameSuggestion) {
     _clearSectionControllersAndMaps(section);
     section.menuKeys.clear();
@@ -329,12 +375,11 @@ class _RecordScreenState extends State<RecordScreen> {
       if (i < list.length) nameCtrl.text = list[i].name;
       section.menuControllers.add(nameCtrl);
       section.menuKeys.add(UniqueKey());
-      // ★ ID 付与
       section.menuIds.add(section.nextMenuId++);
 
       final newRow = <SetInputData>[];
       if (i < list.length) {
-        for (int s = 0; s < list[i].weights.length; s++) {
+        for (int s = 0; s < min(list[i].weights.length, list[i].reps.length); s++) {
           final w = TextEditingController(text: list[i].weights[s]);
           final r = TextEditingController(text: list[i].reps[s]);
           final isSug = w.text.isEmpty && r.text.isEmpty;
@@ -396,45 +441,66 @@ class _RecordScreenState extends State<RecordScreen> {
         final name = section.menuControllers[i].text.trim();
         if (name.isEmpty) continue;
 
-        final weights = <String>[];
-        final reps = <String>[];
+        final weightsAll = <String>[]; // lastUsed用（全セット）
+        final repsAll = <String>[];
+
         String? distance;
         String? duration;
-        bool confirmed = false;
 
         if (isAerobic) {
           distance = _distanceController.text;
           duration = _durationController.text;
-          if (distance.isNotEmpty || duration.isNotEmpty) confirmed = true;
+
+          // lastUsed には常に保存
+          listForLastUsed.add(MenuData(
+            name: name,
+            weights: const <String>[],
+            reps: const <String>[],
+            distance: distance,
+            duration: duration,
+          ));
+
+          // 記録は「未確定でない & 何か入っている時」だけ
+          if (!section.aerobicIsSuggestion &&
+              ((distance?.isNotEmpty ?? false) || (duration?.isNotEmpty ?? false))) {
+            listForRecord.add(MenuData(
+              name: name,
+              weights: const <String>[],
+              reps: const <String>[],
+              distance: distance,
+              duration: duration,
+            ));
+            hasAnyRecordData = true;
+            lastModifiedPart ??= originalPart;
+          }
         } else {
+          // lastUsed には全セットを保存
+          for (int s = 0; s < section.setInputDataList[i].length; s++) {
+            final set = section.setInputDataList[i][s];
+            weightsAll.add(set.weightController.text);
+            repsAll.add(set.repController.text);
+          }
+          listForLastUsed.add(MenuData(name: name, weights: weightsAll, reps: repsAll));
+
+          // ★ Record には「確定セットだけ」を保存（未確定は落とす）
+          final weightsConfirmed = <String>[];
+          final repsConfirmed = <String>[];
           for (int s = 0; s < section.setInputDataList[i].length; s++) {
             final set = section.setInputDataList[i][s];
             final w = set.weightController.text;
             final r = set.repController.text;
-            weights.add(w);
-            reps.add(r);
-            if (!set.isSuggestion && (w.isNotEmpty || r.isNotEmpty)) {
-              confirmed = true;
+            final hasValue = w.trim().isNotEmpty || r.trim().isNotEmpty;
+            if (!set.isSuggestion && hasValue) {
+              weightsConfirmed.add(w);
+              repsConfirmed.add(r);
             }
           }
-        }
 
-        // lastUsed には常に保存
-        if (isAerobic) {
-          listForLastUsed.add(MenuData(name: name, weights: weights, reps: reps, distance: distance, duration: duration));
-        } else {
-          listForLastUsed.add(MenuData(name: name, weights: weights, reps: reps));
-        }
-
-        // 記録は入力が確定しているものだけ
-        if (confirmed) {
-          if (isAerobic) {
-            listForRecord.add(MenuData(name: name, weights: weights, reps: reps, distance: distance, duration: duration));
-          } else {
-            listForRecord.add(MenuData(name: name, weights: weights, reps: reps));
+          if (weightsConfirmed.isNotEmpty || repsConfirmed.isNotEmpty) {
+            listForRecord.add(MenuData(name: name, weights: weightsConfirmed, reps: repsConfirmed));
+            hasAnyRecordData = true;
+            lastModifiedPart ??= originalPart;
           }
-          hasAnyRecordData = true;
-          lastModifiedPart = originalPart;
         }
       }
 
@@ -764,36 +830,80 @@ class _RecordScreenState extends State<RecordScreen> {
                                         onChanged: (value) {
                                           setState(() {
                                             section.selectedPart = value;
+                                            section.menuKeys.clear();
+                                            section.menuIds.clear();
+                                            section.nextMenuId = 0;
+                                            _clearSectionControllersAndMaps(section);
+
                                             if (section.selectedPart != null) {
                                               final current = section.selectedPart!;
-                                              _clearSectionControllersAndMaps(section);
-                                              section.menuKeys.clear();
-                                              section.menuIds.clear();
-                                              section.nextMenuId = 0;
-
+                                              final originalPart = _getOriginalPartName(context, current);
                                               final dateKey = _getDateKey(widget.selectedDate);
                                               final record = widget.recordsBox.get(dateKey);
-                                              List<MenuData> listToLoad = [];
 
-                                              bool isMenuNameSuggestion;
-                                              final originalPart = _getOriginalPartName(context, current);
+                                              // record / lastUsed をメニュー単位でマージ
+                                              final recList = record?.menus[originalPart] ?? <MenuData>[];
+                                              final rawLU = widget.lastUsedMenusBox.get(originalPart);
+                                              final luList = (rawLU is List) ? rawLU.whereType<MenuData>().toList() : <MenuData>[];
 
-                                              if (record != null && record.menus.containsKey(originalPart)) {
-                                                listToLoad = record.menus[originalPart]!;
-                                                isMenuNameSuggestion = false;
-                                              } else {
-                                                final dynamic rawList = widget.lastUsedMenusBox.get(originalPart);
-                                                if (rawList is List) {
-                                                  listToLoad = rawList.whereType<MenuData>().toList();
+                                              final Map<String, MenuData> recBy = {for (final m in recList) m.name: m};
+                                              final Map<String, MenuData> luBy = {for (final m in luList) m.name: m};
+
+                                              final List<String> names = [
+                                                ...recList.map((m) => m.name),
+                                                ...luList.where((m) => !recBy.containsKey(m.name)).map((m) => m.name),
+                                              ];
+
+                                              for (final name in names) {
+                                                final rec = recBy[name];
+                                                final lu = luBy[name];
+
+                                                section.menuControllers.add(TextEditingController(text: name));
+                                                section.menuKeys.add(UniqueKey());
+                                                section.menuIds.add(section.nextMenuId++);
+
+                                                final int recLen = rec == null ? 0 : min(rec.weights.length, rec.reps.length);
+                                                final int luLen = lu == null ? 0 : min(lu.weights.length, lu.reps.length);
+                                                final int mergedLen = max(_currentSetCount, max(recLen, luLen));
+
+                                                final row = <SetInputData>[];
+                                                for (int i = 0; i < mergedLen; i++) {
+                                                  String w = '';
+                                                  String r = '';
+                                                  bool isSuggestion = true;
+
+                                                  if (i < recLen) {
+                                                    w = rec!.weights[i];
+                                                    r = rec.reps[i];
+                                                    if (w.trim().isNotEmpty || r.trim().isNotEmpty) {
+                                                      isSuggestion = false;
+                                                    }
+                                                  } else if (i < luLen) {
+                                                    w = lu!.weights[i];
+                                                    r = lu.reps[i];
+                                                    isSuggestion = true;
+                                                  } else {
+                                                    w = '';
+                                                    r = '';
+                                                    isSuggestion = true;
+                                                  }
+
+                                                  row.add(SetInputData(
+                                                    weightController: TextEditingController(text: w),
+                                                    repController: TextEditingController(text: r),
+                                                    isSuggestion: isSuggestion,
+                                                  ));
                                                 }
-                                                isMenuNameSuggestion = true;
+
+                                                section.setInputDataList.add(row);
+                                                section.initialSetCount = max(section.initialSetCount ?? 0, mergedLen);
                                               }
-                                              _setControllersFromData(section, listToLoad, isMenuNameSuggestion);
+
+                                              // 有酸素の前回値プリセット
+                                              if (current == l10n.aerobicExercise) {
+                                                _prefillAerobicForPart(section, originalPart, record);
+                                              }
                                             } else {
-                                              _clearSectionControllersAndMaps(section);
-                                              section.menuKeys.clear();
-                                              section.menuIds.clear();
-                                              section.nextMenuId = 0;
                                               section.initialSetCount = _currentSetCount;
                                             }
                                           });
@@ -844,11 +954,17 @@ class _RecordScreenState extends State<RecordScreen> {
                                                 child: MenuList(
                                                   menuController: section.menuControllers[menuIndex],
                                                   removeMenuCallback: () => _removeMenuItem(secIndex, menuIndex),
-                                                  setCount: section.setInputDataList[menuIndex].length, // ← ここに変更
+                                                  // RangeError回避：実配列長を渡す
+                                                  setCount: section.setInputDataList[menuIndex].length,
                                                   setInputDataList: section.setInputDataList[menuIndex],
                                                   isAerobic: section.selectedPart == l10n.aerobicExercise,
                                                   distanceController: _distanceController,
                                                   durationController: _durationController,
+                                                  // 有酸素の未確定フラグ＆確定コールバック
+                                                  aerobicIsSuggestion: section.aerobicIsSuggestion,
+                                                  onConfirmAerobic: () {
+                                                    setState(() => section.aerobicIsSuggestion = false);
+                                                  },
                                                 ),
                                               ),
                                             ),
@@ -955,6 +1071,9 @@ class SectionData {
   List<int> menuIds;
   int nextMenuId;
 
+  // ★ 追加：有酸素の前回値が未確定かどうか
+  bool aerobicIsSuggestion;
+
   final Set<int> recentlyAdded = <int>{};
 
   SectionData({
@@ -966,8 +1085,10 @@ class SectionData {
     this.initialSetCount,
     List<int>? menuIds,
     int? nextMenuId,
+    bool? aerobicIsSuggestion,
   })  : menuIds = menuIds ?? <int>[],
-        nextMenuId = nextMenuId ?? 0;
+        nextMenuId = nextMenuId ?? 0,
+        aerobicIsSuggestion = aerobicIsSuggestion ?? false;
 
   factory SectionData.createEmpty(int initialSetCount, {required bool shouldPopulateDefaults}) {
     return SectionData(
@@ -991,6 +1112,7 @@ class SectionData {
       // 初期1件あれば ID=0 を付与
       menuIds: shouldPopulateDefaults ? [0] : [],
       nextMenuId: shouldPopulateDefaults ? 1 : 0,
+      aerobicIsSuggestion: false,
     );
   }
 
@@ -1032,6 +1154,10 @@ class MenuList extends StatefulWidget {
   final TextEditingController distanceController;
   final TextEditingController durationController;
 
+  // ★ 追加：有酸素の未確定フラグと確定通知
+  final bool aerobicIsSuggestion;
+  final VoidCallback? onConfirmAerobic;
+
   const MenuList({
     super.key,
     required this.menuController,
@@ -1041,6 +1167,8 @@ class MenuList extends StatefulWidget {
     required this.isAerobic,
     required this.distanceController,
     required this.durationController,
+    this.aerobicIsSuggestion = false,
+    this.onConfirmAerobic,
   });
 
   @override
@@ -1154,16 +1282,25 @@ class _MenuListState extends State<MenuList> {
                     const SizedBox(width: 8),
                     Expanded(
                       flex: 2,
-                      child: StylishInput(
-                        controller: _kmController,
-                        hint: '例: 5',
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        normalTextColor: colorScheme.onSurface,
-                        suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                        fillColor: colorScheme.surfaceContainer,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                        textAlign: TextAlign.right,
+                      child: Focus(
+                        onFocusChange: (has) {
+                          if (has && widget.aerobicIsSuggestion) {
+                            widget.onConfirmAerobic?.call();
+                          }
+                        },
+                        child: StylishInput(
+                          controller: _kmController,
+                          hint: '例: 5',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          normalTextColor: widget.aerobicIsSuggestion
+                              ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                              : colorScheme.onSurface,
+                          suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                          fillColor: colorScheme.surfaceContainer,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          textAlign: TextAlign.right,
+                        ),
                       ),
                     ),
                     Text(
@@ -1172,16 +1309,25 @@ class _MenuListState extends State<MenuList> {
                     ),
                     Expanded(
                       flex: 2,
-                      child: StylishInput(
-                        controller: _mController,
-                        hint: '例: 00',
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        normalTextColor: colorScheme.onSurface,
-                        suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                        fillColor: colorScheme.surfaceContainer,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                        textAlign: TextAlign.right,
+                      child: Focus(
+                        onFocusChange: (has) {
+                          if (has && widget.aerobicIsSuggestion) {
+                            widget.onConfirmAerobic?.call();
+                          }
+                        },
+                        child: StylishInput(
+                          controller: _mController,
+                          hint: '例: 00',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          normalTextColor: widget.aerobicIsSuggestion
+                              ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                              : colorScheme.onSurface,
+                          suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                          fillColor: colorScheme.surfaceContainer,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          textAlign: TextAlign.right,
+                        ),
                       ),
                     ),
                     Text(
@@ -1200,16 +1346,25 @@ class _MenuListState extends State<MenuList> {
                     const SizedBox(width: 8),
                     Expanded(
                       flex: 2,
-                      child: StylishInput(
-                        controller: _minController,
-                        hint: '例: 30',
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        normalTextColor: colorScheme.onSurface,
-                        suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                        fillColor: colorScheme.surfaceContainer,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                        textAlign: TextAlign.right,
+                      child: Focus(
+                        onFocusChange: (has) {
+                          if (has && widget.aerobicIsSuggestion) {
+                            widget.onConfirmAerobic?.call();
+                          }
+                        },
+                        child: StylishInput(
+                          controller: _minController,
+                          hint: '例: 30',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          normalTextColor: widget.aerobicIsSuggestion
+                              ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                              : colorScheme.onSurface,
+                          suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                          fillColor: colorScheme.surfaceContainer,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          textAlign: TextAlign.right,
+                        ),
                       ),
                     ),
                     Text(
@@ -1218,16 +1373,25 @@ class _MenuListState extends State<MenuList> {
                     ),
                     Expanded(
                       flex: 2,
-                      child: StylishInput(
-                        controller: _secController,
-                        hint: '例: 00',
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        normalTextColor: colorScheme.onSurface,
-                        suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                        fillColor: colorScheme.surfaceContainer,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                        textAlign: TextAlign.right,
+                      child: Focus(
+                        onFocusChange: (has) {
+                          if (has && widget.aerobicIsSuggestion) {
+                            widget.onConfirmAerobic?.call();
+                          }
+                        },
+                        child: StylishInput(
+                          controller: _secController,
+                          hint: '例: 00',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          normalTextColor: widget.aerobicIsSuggestion
+                              ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                              : colorScheme.onSurface,
+                          suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                          fillColor: colorScheme.surfaceContainer,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          textAlign: TextAlign.right,
+                        ),
                       ),
                     ),
                     Text(
@@ -1240,89 +1404,109 @@ class _MenuListState extends State<MenuList> {
             )
                 : Column(
               children: List.generate(
-                  min(widget.setCount, widget.setInputDataList.length), (setIndex) {
-                final set = widget.setInputDataList[setIndex];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: Row(
-                    children: [
-                      Text(
-                        '${setIndex + 1}${l10n.sets}：',
-                        style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: StylishInput(
-                          controller: set.weightController,
-                          hint: '',
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          normalTextColor:
-                          set.isSuggestion ? colorScheme.onSurfaceVariant.withOpacity(0.5) : colorScheme.onSurface,
-                          suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                          fillColor: colorScheme.surfaceContainer,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                          textAlign: TextAlign.right,
-                          onChanged: (text) {
-                            setState(() {
-                              if (text.isNotEmpty && set.isSuggestion) {
-                                set.isSuggestion = false;
-                              } else if (text.isEmpty &&
-                                  !set.isSuggestion &&
-                                  set.repController.text.isEmpty) {
-                                final anyOther = widget.setInputDataList.any(
-                                      (s) => s != set && (s.weightController.text.isNotEmpty || s.repController.text.isNotEmpty),
-                                );
-                                if (!anyOther) {
-                                  set.isSuggestion = true;
-                                }
-                              }
-                            });
-                          },
+                min(widget.setCount, widget.setInputDataList.length),
+                    (setIndex) {
+                  final set = widget.setInputDataList[setIndex];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${setIndex + 1}${l10n.sets}：',
+                          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
                         ),
-                      ),
-                      Text(
-                        ' ${currentUnit == 'kg' ? l10n.kg : l10n.lbs} ',
-                        style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold),
-                      ),
-                      Expanded(
-                        child: StylishInput(
-                          controller: set.repController,
-                          hint: '',
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          normalTextColor:
-                          set.isSuggestion ? colorScheme.onSurfaceVariant.withOpacity(0.5) : colorScheme.onSurface,
-                          suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                          fillColor: colorScheme.surfaceContainer,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                          textAlign: TextAlign.right,
-                          onChanged: (text) {
-                            setState(() {
-                              if (text.isNotEmpty && set.isSuggestion) {
-                                set.isSuggestion = false;
-                              } else if (text.isEmpty &&
-                                  !set.isSuggestion &&
-                                  set.weightController.text.isEmpty) {
-                                final anyOther = widget.setInputDataList.any(
-                                      (s) => s != set && (s.weightController.text.isNotEmpty || s.repController.text.isNotEmpty),
-                                );
-                                if (!anyOther) {
-                                  set.isSuggestion = true;
-                                }
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Focus(
+                            onFocusChange: (has) {
+                              if (has && set.isSuggestion) {
+                                setState(() => set.isSuggestion = false);
                               }
-                            });
-                          },
+                            },
+                            child: StylishInput(
+                              controller: set.weightController,
+                              hint: '',
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              normalTextColor: set.isSuggestion
+                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                                  : colorScheme.onSurface,
+                              suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                              fillColor: colorScheme.surfaceContainer,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                              textAlign: TextAlign.right,
+                              onChanged: (text) {
+                                setState(() {
+                                  if (text.isNotEmpty && set.isSuggestion) {
+                                    set.isSuggestion = false;
+                                  } else if (text.isEmpty &&
+                                      !set.isSuggestion &&
+                                      set.repController.text.isEmpty) {
+                                    final anyOther = widget.setInputDataList.any(
+                                          (s) => s != set &&
+                                          (s.weightController.text.isNotEmpty || s.repController.text.isNotEmpty),
+                                    );
+                                    if (!anyOther) {
+                                      set.isSuggestion = true;
+                                    }
+                                  }
+                                });
+                              },
+                            ),
+                          ),
                         ),
-                      ),
-                      Text(
-                        ' ${l10n.reps}',
-                        style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+                        Text(
+                          ' ${currentUnit == 'kg' ? l10n.kg : l10n.lbs} ',
+                          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold),
+                        ),
+                        Expanded(
+                          child: Focus(
+                            onFocusChange: (has) {
+                              if (has && set.isSuggestion) {
+                                setState(() => set.isSuggestion = false);
+                              }
+                            },
+                            child: StylishInput(
+                              controller: set.repController,
+                              hint: '',
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              normalTextColor: set.isSuggestion
+                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                                  : colorScheme.onSurface,
+                              suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                              fillColor: colorScheme.surfaceContainer,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                              textAlign: TextAlign.right,
+                              onChanged: (text) {
+                                setState(() {
+                                  if (text.isNotEmpty && set.isSuggestion) {
+                                    set.isSuggestion = false;
+                                  } else if (text.isEmpty &&
+                                      !set.isSuggestion &&
+                                      set.weightController.text.isEmpty) {
+                                    final anyOther = widget.setInputDataList.any(
+                                          (s) => s != set &&
+                                          (s.weightController.text.isNotEmpty || s.repController.text.isNotEmpty),
+                                    );
+                                    if (!anyOther) {
+                                      set.isSuggestion = true;
+                                    }
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        Text(
+                          ' ${l10n.reps}',
+                          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ],
