@@ -1,4 +1,3 @@
-// lib/screens/calendar_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
@@ -12,6 +11,7 @@ import '../settings_manager.dart';
 import 'record_screen.dart';
 import 'graph_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/ad_square.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -47,15 +47,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   // ---------- Helpers ----------
-  String _dateKey(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  String _dateKey(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   bool _hasAnyTrainingData(DailyRecord r) {
     for (final entry in r.menus.entries) {
       for (final m in entry.value) {
-        for (var i = 0; i < m.weights.length && i < m.reps.length; i++) {
-          if (m.weights[i].toString().trim().isNotEmpty || m.reps[i].toString().trim().isNotEmpty) {
-            return true;
-          }
+        final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        for (var i = 0; i < len; i++) {
+          final w = m.weights[i].toString().trim();
+          final p = m.reps[i].toString().trim();
+          if (w.isNotEmpty || p.isNotEmpty) return true;
+        }
+        if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
+          return true;
         }
       }
     }
@@ -97,7 +102,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  // TableCalendar のイベントローダ：その日に何か（体重 or トレ）あれば 1 件返す
+  // TableCalendar：その日に何か（体重 or トレ）あれば 1 件返す → ● マーカー
   List<Object> _eventLoader(DateTime day) {
     final r = widget.recordsBox.get(_dateKey(day));
     if (_hasAnyData(r)) {
@@ -211,7 +216,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           firstDay: DateTime.utc(2015, 1, 1),
           lastDay: DateTime.utc(2100, 12, 31),
           focusedDay: _focusedDay,
-          selectedDayPredicate: (day) => _selectedDay != null &&
+          selectedDayPredicate: (day) =>
+          _selectedDay != null &&
               day.year == _selectedDay!.year &&
               day.month == _selectedDay!.month &&
               day.day == _selectedDay!.day,
@@ -242,11 +248,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
             selectedTextStyle: TextStyle(color: colorScheme.onPrimary),
             markersMaxCount: 1,
             markerDecoration: BoxDecoration(
-              color: colorScheme.primary, // ● マーカー
+              color: colorScheme.primary, // ●
               shape: BoxShape.circle,
             ),
           ),
-          eventLoader: _eventLoader, // 体重でも●が出る
+          eventLoader: _eventLoader,
           onDaySelected: (selectedDay, focusedDay) {
             // 同じ日をもう一度タップ → 記録画面へ
             if (_selectedDay != null &&
@@ -279,20 +285,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
-  Widget _buildResultsArea(BuildContext context, DailyRecord? record) {
-    final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
 
-    // 実績が無ければ何も出さない
-    if (record == null || !_hasAnyData(record)) {
-      return const SizedBox.shrink();
+  Widget _buildResultsArea(BuildContext context, DailyRecord? record) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    // 実績ゼロ日かどうか
+    final bool noData = record == null || !_hasAnyData(record);
+
+    // ① 実績ゼロ日：広告だけを表示（スクロール可能）
+    if (noData) {
+      return Expanded(
+        child: ListView(
+          padding: const EdgeInsets.only(top: 8.0),
+          children: const [
+            Center(
+              child: AdSquare(
+                adSize: AdBoxSize.largeBanner, // 320x100（小さめが良ければ banner に）
+                showPlaceholder: true,
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
+    // ② 実績あり：体重カード／部位カードを生成
     final unit = SettingsManager.currentUnit;
     final List<Widget> cards = [];
 
-    // --- 体重カード ---
-    if (record.weight != null) {
+    // 体重カード
+    if (record!.weight != null) {
       cards.add(
         Theme(
           data: Theme.of(context).copyWith(
@@ -331,16 +354,50 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
     }
 
-    // --- トレーニングカード（部位ごと） ---
-    if (record.menus.isNotEmpty && _hasAnyTrainingData(record)) {
-      record.menus.forEach((originalPart, menuList) {
-        final partTitle = _translatePartToLocale(context, originalPart);
+    // 部位カード（タイトル＝部位名）
+    String _translatePartToLocale(String part) {
+      switch (part) {
+        case '有酸素運動': return l10n.aerobicExercise;
+        case '腕': return l10n.arm;
+        case '胸': return l10n.chest;
+        case '背中': return l10n.back;
+        case '肩': return l10n.shoulder;
+        case '足': return l10n.leg;
+        case '全身': return l10n.fullBody;
+        case 'その他１': return l10n.other1;
+        case 'その他２': return l10n.other2;
+        case 'その他３': return l10n.other3;
+        default: return part;
+      }
+    }
 
-        final List<Widget> lines = [];
-        for (final m in menuList) {
-          lines.add(
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4.0),
+    record.menus.forEach((originalPart, menuList) {
+      bool partHasData = false;
+      for (final m in menuList) {
+        final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        for (int i = 0; i < len; i++) {
+          if (m.weights[i].toString().trim().isNotEmpty || m.reps[i].toString().trim().isNotEmpty) {
+            partHasData = true;
+            break;
+          }
+        }
+        if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
+          partHasData = true;
+        }
+        if (partHasData) break;
+      }
+      if (!partHasData) return;
+
+      final partTitle = _translatePartToLocale(originalPart);
+
+      final List<Widget> lines = [];
+      for (final m in menuList) {
+        // 種目名（左寄せ）
+        lines.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4.0),
+            child: Align(
+              alignment: Alignment.centerLeft,
               child: Text(
                 m.name,
                 textAlign: TextAlign.left,
@@ -351,70 +408,103 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
               ),
             ),
-          );
-          final setCount = (m.weights.length > m.reps.length) ? m.reps.length : m.weights.length;
-          for (int i = 0; i < setCount; i++) {
-            final w = (i < m.weights.length) ? m.weights[i].toString().trim() : '';
-            final r = (i < m.reps.length) ? m.reps[i].toString().trim() : '';
-            if (w.isEmpty && r.isEmpty) continue;
-            lines.add(
-              Padding(
-                padding: const EdgeInsets.only(left: 8.0, bottom: 2.0),
+          ),
+        );
+
+        // セット（左寄せ）
+        final setCount = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        for (int i = 0; i < setCount; i++) {
+          final w = m.weights[i].toString().trim();
+          final r = m.reps[i].toString().trim();
+          if (w.isEmpty && r.isEmpty) continue;
+          lines.add(
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0, bottom: 2.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
                 child: Text(
                   '${i + 1}${l10n.sets}：${w.isNotEmpty ? '$w${unit == 'kg' ? l10n.kg : l10n.lbs}' : '-'} × ${r.isNotEmpty ? r : '-'}${l10n.reps}',
                   textAlign: TextAlign.left,
                   style: TextStyle(color: colorScheme.onSurface, fontSize: 14),
                 ),
               ),
-            );
-          }
+            ),
+          );
         }
 
-        if (lines.isNotEmpty) {
-          cards.add(
-            Theme(
-              data: Theme.of(context).copyWith(
-                splashColor: Colors.transparent,
-                highlightColor: Colors.transparent,
-                hoverColor: Colors.transparent,
-                dividerColor: Colors.transparent,
-              ),
-              child: Card(
-                color: colorScheme.surfaceContainerHighest,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-                elevation: 4,
-                clipBehavior: Clip.none,
-                child: ExpansionTile(
-                  tilePadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  expandedAlignment: Alignment.centerLeft,
-                  maintainState: true,
-                  title: Text(
-                    partTitle,
-                    style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold),
-                  ),
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: lines,
-                    ),
-                  ],
+        // 有酸素の距離・時間（ある場合のみ）
+        if ((m.distance?.trim().isNotEmpty ?? false)) {
+          lines.add(
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0, bottom: 2.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${l10n.distance}: ${m.distance}',
+                  textAlign: TextAlign.left,
+                  style: TextStyle(color: colorScheme.onSurface, fontSize: 14),
                 ),
               ),
             ),
           );
         }
-      });
-    }
+        if ((m.duration?.trim().isNotEmpty ?? false)) {
+          lines.add(
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0, bottom: 2.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${l10n.time}: ${m.duration}',
+                  textAlign: TextAlign.left,
+                  style: TextStyle(color: colorScheme.onSurface, fontSize: 14),
+                ),
+              ),
+            ),
+          );
+        }
+      }
 
-    if (cards.isEmpty) {
-      return const SizedBox.shrink();
-    }
+      if (lines.isEmpty) return;
 
-    // ★ ここをスクロール可能＆高さ制約付きにする
+      cards.add(
+        Theme(
+          data: Theme.of(context).copyWith(
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+            dividerColor: Colors.transparent,
+          ),
+          child: Card(
+            color: colorScheme.surfaceContainerHighest,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+            elevation: 4,
+            clipBehavior: Clip.none,
+            child: ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              expandedAlignment: Alignment.centerLeft,
+              maintainState: true,
+              title: Text(
+                partTitle,
+                style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold),
+              ),
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: lines,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+
+    // 実績カードをスクロール（縞々対策）
     return Expanded(
       child: ListView.separated(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.only(top: 8.0),
         itemCount: cards.length,
         separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (_, i) => cards[i],
