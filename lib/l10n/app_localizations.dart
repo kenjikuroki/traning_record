@@ -412,8 +412,14 @@ abstract class AppLocalizations {
   /// No description provided for @bodyWeight.
   ///
   /// In en, this message translates to:
-  /// **'Body Weight'**
+  /// **'Body weight'**
   String get bodyWeight;
+
+  /// No description provided for @enterYourWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your weight'**
+  String get enterYourWeight;
 
   /// No description provided for @bodyWeightTracking.
   ///

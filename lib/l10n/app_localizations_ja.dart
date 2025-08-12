@@ -172,6 +172,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get bodyWeight => '体重';
 
   @override
+  String get enterYourWeight => '体重を入力';
+
+  @override
   String get bodyWeightTracking => '体重管理';
 
   @override

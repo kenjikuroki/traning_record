@@ -53,6 +53,7 @@
   "km": "km",
   "m": "m",
   "bodyWeight": "体重",
+  "enterYourWeight": "体重を入力",
   "bodyWeightTracking": "体重管理",
   "selectBodyParts": "表示する部位を選択",
   "unit": "単位",

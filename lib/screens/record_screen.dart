@@ -677,7 +677,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                   child: Align(
                                     alignment: Alignment.centerRight,
                                     child: Text(
-                                      '${l10n.bodyWeight}${Localizations.localeOf(context).languageCode == "ja" ? "：" : ":"}',
+                                      '${l10n.enterYourWeight}${Localizations.localeOf(context).languageCode == "ja" ? "：" : ":"}',
                                       style: TextStyle(
                                         color: colorScheme.onSurface,
                                         fontWeight: FontWeight.bold,

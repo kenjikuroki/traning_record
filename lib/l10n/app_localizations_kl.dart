@@ -169,7 +169,10 @@ class AppLocalizationsKl extends AppLocalizations {
   String get m => 'm';
 
   @override
-  String get bodyWeight => 'Body Weight';
+  String get bodyWeight => 'Body weight';
+
+  @override
+  String get enterYourWeight => 'Enter your weight';
 
   @override
   String get bodyWeightTracking => 'Body Weight Tracking';
