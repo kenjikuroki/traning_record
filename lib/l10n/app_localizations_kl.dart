@@ -182,4 +182,34 @@ class AppLocalizationsKl extends AppLocalizations {
 
   @override
   String get defaultSets => 'Default Sets';
+
+  @override
+  String get menuNameHint => 'Enter menu name';
+
+  @override
+  String get durationHint => 'min:sec';
+
+  @override
+  String get minutes => 'min';
+
+  @override
+  String get recordScreenTitle => 'Record';
+
+  @override
+  String get calendarScreenTitle => 'Calendar';
+
+  @override
+  String get settingsScreenTitle => 'Settings';
+
+  @override
+  String get addMenu => 'Add Menu';
+
+  @override
+  String get exercise => 'Exercise';
+
+  @override
+  String get partAlreadySelected => 'This part is already selected.';
+
+  @override
+  String get distanceHint => 'Enter distance';
 }

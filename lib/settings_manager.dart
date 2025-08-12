@@ -1,68 +1,84 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hive/hive.dart';
 
+/// アプリ内の設定をまとめて管理するシンプルなマネージャ。
+/// - Hive Box: 'app_settings'
+/// - 保存キー:
+///   - unit_of_weight: 'kg' | 'lbs'
+///   - theme_mode: ThemeMode.index
+///   - show_weight_input: bool
 class SettingsManager {
   static const String _boxName = 'app_settings';
+
   static const String _unitKey = 'unit_of_weight';
   static const String _themeModeKey = 'theme_mode';
-  // 💡 追加: 体重管理のON/OFFキー
   static const String _showWeightInputKey = 'show_weight_input';
-  // 💡 追加: 体重管理のON/OFF ValueNotifier
-  static final ValueNotifier<bool> _showWeightInputNotifier = ValueNotifier<bool>(true);
 
+  static Box<dynamic>? _box;
+
+  /// 重量単位（'kg' / 'lbs'）
   static final ValueNotifier<String> _unitNotifier = ValueNotifier<String>('kg');
-  static final ValueNotifier<ThemeMode> _themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
 
+  /// テーマモード（system / light / dark）
+  static final ValueNotifier<ThemeMode> _themeModeNotifier =
+  ValueNotifier<ThemeMode>(ThemeMode.system);
+
+  /// 体重入力カードの表示ON/OFF
+  static final ValueNotifier<bool> _showWeightInputNotifier =
+  ValueNotifier<bool>(true);
+
+  // ======= public getters =======
   static ValueNotifier<String> get unitNotifier => _unitNotifier;
   static ValueNotifier<ThemeMode> get themeModeNotifier => _themeModeNotifier;
-  // 💡 追加: 体重管理のON/OFF ValueNotifierのゲッター
-  static ValueNotifier<bool> get showWeightInputNotifier => _showWeightInputNotifier;
+  static ValueNotifier<bool> get showWeightInputNotifier =>
+      _showWeightInputNotifier;
 
   static String get currentUnit => _unitNotifier.value;
   static ThemeMode get currentThemeMode => _themeModeNotifier.value;
-  // 💡 追加: 体重管理のON/OFFのゲッター
   static bool get showWeightInput => _showWeightInputNotifier.value;
 
-  static Box<dynamic>? _settingsBox;
-
+  /// 必ず `Hive.initFlutter()` 後に呼び出すこと（main.dart で実施済み）
   static Future<void> initialize() async {
-    if (!Hive.isBoxOpen(_boxName)) {
-      _settingsBox = await Hive.openBox(_boxName);
-    } else {
-      _settingsBox = Hive.box(_boxName);
-    }
-    _loadSettings();
+    _box = Hive.isBoxOpen(_boxName)
+        ? Hive.box(_boxName)
+        : await Hive.openBox<dynamic>(_boxName);
+    _loadFromStorage();
   }
 
-  static void _loadSettings() {
-    final savedUnit = _settingsBox!.get(_unitKey, defaultValue: 'kg') as String;
-    _unitNotifier.value = savedUnit;
+  static void _loadFromStorage() {
+    // 単位
+    final savedUnit = _box!.get(_unitKey, defaultValue: 'kg') as String;
+    _unitNotifier.value = (savedUnit == 'lbs') ? 'lbs' : 'kg';
 
-    final savedThemeModeIndex = _settingsBox!.get(_themeModeKey, defaultValue: ThemeMode.system.index);
-    _themeModeNotifier.value = ThemeMode.values[savedThemeModeIndex as int];
+    // テーマ
+    final savedThemeIndex =
+    _box!.get(_themeModeKey, defaultValue: ThemeMode.system.index) as int;
+    _themeModeNotifier.value = ThemeMode.values[savedThemeIndex];
 
-    // 💡 追加: 体重管理のON/OFF状態を読み込む
-    final savedShowWeightInput = _settingsBox!.get(_showWeightInputKey, defaultValue: true) as bool;
-    _showWeightInputNotifier.value = savedShowWeightInput;
+    // 体重入力の表示/非表示
+    final savedShowWeight =
+    _box!.get(_showWeightInputKey, defaultValue: true) as bool;
+    _showWeightInputNotifier.value = savedShowWeight;
   }
 
+  /// 単位を保存して通知
   static Future<void> setUnit(String unit) async {
     if (unit != 'kg' && unit != 'lbs') {
-      throw ArgumentError('単位は "kg" または "lbs" のみ設定可能です。');
+      throw ArgumentError('unit must be "kg" or "lbs".');
     }
-    await _settingsBox?.put(_unitKey, unit);
+    await _box?.put(_unitKey, unit);
     _unitNotifier.value = unit;
   }
 
+  /// テーマモードを保存して通知
   static Future<void> setThemeMode(ThemeMode mode) async {
-    await _settingsBox?.put(_themeModeKey, mode.index);
+    await _box?.put(_themeModeKey, mode.index);
     _themeModeNotifier.value = mode;
   }
 
-  // 💡 追加: 体重管理のON/OFF状態を設定するメソッド
+  /// 体重入力の表示/非表示を保存して通知
   static Future<void> setShowWeightInput(bool value) async {
-    await _settingsBox?.put(_showWeightInputKey, value);
+    await _box?.put(_showWeightInputKey, value);
     _showWeightInputNotifier.value = value;
   }
 }

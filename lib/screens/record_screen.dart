@@ -618,57 +618,62 @@ class _RecordScreenState extends State<RecordScreen> {
           child: Column(
             children: [
               const AdBanner(screenName: 'record'),
-              // 💡 間隔を修正
-              const SizedBox(height: 8.0),
-
-              Card(
-                color: colorScheme.surfaceContainerHighest,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-                elevation: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
+              ValueListenableBuilder<bool>(
+                valueListenable: SettingsManager.showWeightInputNotifier,
+                builder: (context, show, _) {
+                  if (!show) return const SizedBox.shrink();
+                  return Column(
                     children: [
-                      Text(
-                        l10n.bodyWeight,
-                        style: TextStyle(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16.0,
+                      const SizedBox(height: 8.0),
+                      Card(
+                        color: colorScheme.surfaceContainerHighest,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                        elevation: 4,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            children: [
+                              Text(
+                                l10n.bodyWeight,
+                                style: TextStyle(
+                                  color: colorScheme.onSurface,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16.0,
+                                ),
+                              ),
+                              const SizedBox(width: 16.0),
+                              Expanded(
+                                child: StylishInput(
+                                  controller: _weightController,
+                                  hint: '',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  normalTextColor: colorScheme.onSurface,
+                                  suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                                  fillColor: colorScheme.surfaceContainer,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                  textAlign: TextAlign.right,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                ' ${SettingsManager.currentUnit}',
+                                style: TextStyle(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontSize: 14.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 16.0),
-                      Expanded(
-                        child: StylishInput(
-                          controller: _weightController,
-                          // 💡 ヒントテキストを削除
-                          hint: '',
-                          keyboardType: TextInputType.numberWithOptions(decimal: true),
-                          normalTextColor: colorScheme.onSurface,
-                          suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                          fillColor: colorScheme.surfaceContainer,
-                          contentPadding: const EdgeInsets.symmetric(
-                              vertical: 12, horizontal: 16),
-                          textAlign: TextAlign.right,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        ' ${SettingsManager.currentUnit}',
-                        style: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.bold),
-                      ),
+                      const SizedBox(height: 8.0),
                     ],
-                  ),
-                ),
+                  );
+                },
               ),
-
-              // 💡 間隔を修正
-              const SizedBox(height: 8.0),
 
               Expanded(
                 child: ListView.builder(
@@ -950,73 +955,6 @@ class _RecordScreenState extends State<RecordScreen> {
         ),
       ),
     );
-  }
-}
-
-class SectionData {
-  Key key;
-  String? selectedPart;
-  List<TextEditingController> menuControllers;
-  List<List<SetInputData>> setInputDataList;
-  List<Key> menuKeys;
-  int? initialSetCount;
-
-  SectionData({
-    required this.key,
-    this.selectedPart,
-    required this.menuControllers,
-    required this.setInputDataList,
-    required this.menuKeys,
-    this.initialSetCount,
-  });
-
-  factory SectionData.createEmpty(int initialSetCount,
-      {required bool shouldPopulateDefaults}) {
-    return SectionData(
-      key: UniqueKey(),
-      selectedPart: null,
-      menuControllers: shouldPopulateDefaults ? [TextEditingController()] : [],
-      setInputDataList: shouldPopulateDefaults
-          ? [
-        List.generate(
-            initialSetCount,
-                (_) => SetInputData(
-                weightController: TextEditingController(),
-                repController: TextEditingController(),
-                isSuggestion: true))
-      ]
-          : [],
-      menuKeys: shouldPopulateDefaults ? [UniqueKey()] : [],
-      initialSetCount: initialSetCount,
-    );
-  }
-
-  void dispose() {
-    for (var controller in menuControllers) {
-      controller.dispose();
-    }
-    for (var list in setInputDataList) {
-      for (var data in list) {
-        data.dispose();
-      }
-    }
-  }
-}
-
-class SetInputData {
-  TextEditingController weightController;
-  TextEditingController repController;
-  bool isSuggestion;
-
-  SetInputData({
-    required this.weightController,
-    required this.repController,
-    this.isSuggestion = true,
-  });
-
-  void dispose() {
-    weightController.dispose();
-    repController.dispose();
   }
 }
 

@@ -160,7 +160,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (isSameDay(_selectedDay, selectedDay)) {
       if (_selectedDay != null) {
         // ここを修正
-        Navigator.pushAndRemoveUntil(
+        Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => RecordScreen(
@@ -171,7 +171,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
               selectedDate: _selectedDay!,
             ),
           ),
-              (route) => false,
         );
       }
     } else {
@@ -423,7 +422,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         backgroundColor: colorScheme.surface,
         onTap: (index) {
           if (index == 1) {
-            Navigator.pushAndRemoveUntil(
+            Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => RecordScreen(
@@ -434,10 +433,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   selectedDate: _selectedDay ?? DateTime.now(),
                 ),
               ),
-                  (route) => false,
             );
           } else if (index == 2) { // グラフボタンが押された場合
-            Navigator.pushAndRemoveUntil(
+            Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => GraphScreen(
@@ -447,10 +445,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   setCountBox: widget.setCountBox,
                 ),
               ),
-                  (route) => false,
             );
           } else if (index == 3) {
-            Navigator.pushAndRemoveUntil(
+            Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => SettingsScreen(
@@ -460,7 +457,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   setCountBox: widget.setCountBox,
                 ),
               ),
-                  (route) => false,
             );
           }
         },

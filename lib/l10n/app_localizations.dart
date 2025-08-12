@@ -438,6 +438,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Default Sets'**
   String get defaultSets;
+
+  /// No description provided for @menuNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter menu name'**
+  String get menuNameHint;
+
+  /// No description provided for @durationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'min:sec'**
+  String get durationHint;
+
+  /// No description provided for @minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'min'**
+  String get minutes;
+
+  /// No description provided for @recordScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Record'**
+  String get recordScreenTitle;
+
+  /// No description provided for @calendarScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get calendarScreenTitle;
+
+  /// No description provided for @settingsScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsScreenTitle;
+
+  /// No description provided for @addMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Menu'**
+  String get addMenu;
+
+  /// No description provided for @exercise.
+  ///
+  /// In en, this message translates to:
+  /// **'Exercise'**
+  String get exercise;
+
+  /// No description provided for @partAlreadySelected.
+  ///
+  /// In en, this message translates to:
+  /// **'This part is already selected.'**
+  String get partAlreadySelected;
+
+  /// No description provided for @distanceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter distance'**
+  String get distanceHint;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -8,7 +8,6 @@ import 'record_screen.dart';
 import 'graph_screen.dart';
 import '../models/menu_data.dart';
 
-
 class SettingsScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
   final Box<dynamic> lastUsedMenusBox;
@@ -53,11 +52,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _loadSettings() {
     _setCount = widget.setCountBox.get('setCount', defaultValue: 3)!;
-    _showWeightInput = widget.settingsBox.get('showWeightInput', defaultValue: true) as bool;
 
-    // SettingsManagerから単位を読み込む
+    // ▼ SettingsManager を真のソースに
+    _showWeightInput = SettingsManager.showWeightInput;
     _selectedUnit = SettingsManager.currentUnit;
 
+    // 選択部位は従来どおり settingsBox から
     Map<String, bool>? savedBodyParts = widget.settingsBox.get('selectedBodyParts');
     if (savedBodyParts != null) {
       _selectedBodyParts = Map<String, bool>.from(savedBodyParts);
@@ -69,22 +69,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _saveSettings() {
-    widget.settingsBox.put('showWeightInput', _showWeightInput);
     widget.settingsBox.put('selectedBodyParts', _selectedBodyParts);
     widget.setCountBox.put('setCount', _setCount);
-
-    // SettingsManagerのsetUnitメソッドを使って単位を更新
-    SettingsManager.setUnit(_selectedUnit);
+    // 単位は SettingsManager に委譲済み
   }
 
-  void _onUnitChanged(String? newUnit) {
+  void _onUnitChanged(String? newUnit) async {
     if (newUnit != null) {
       setState(() {
         _selectedUnit = newUnit;
-
-        // SettingsManagerのsetUnitメソッドを呼び出す
-        SettingsManager.setUnit(newUnit);
       });
+      await SettingsManager.setUnit(newUnit);
     }
   }
 
@@ -164,11 +159,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         value: _showWeightInput,
-                        onChanged: (bool value) {
+                        onChanged: (bool value) async {
                           setState(() {
                             _showWeightInput = value;
-                            widget.settingsBox.put('showWeightInput', value);
                           });
+                          // ▼ ここが重要：Notifier + 永続化
+                          await SettingsManager.setShowWeightInput(value);
+                          // 互換保存（任意）
+                          await widget.settingsBox.put('showWeightInput', value);
                         },
                         activeColor: colorScheme.primary,
                       ),
@@ -329,7 +327,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           backgroundColor: colorScheme.surface,
           onTap: (index) {
             if (index == 0) {
-              Navigator.pushAndRemoveUntil(
+              Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => CalendarScreen(
@@ -340,10 +338,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     selectedDate: DateTime.now(),
                   ),
                 ),
-                    (route) => false,
               );
             } else if (index == 1) {
-              Navigator.pushAndRemoveUntil(
+              Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => RecordScreen(
@@ -354,10 +351,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     selectedDate: DateTime.now(),
                   ),
                 ),
-                    (route) => false,
               );
             } else if (index == 2) {
-              Navigator.pushAndRemoveUntil(
+              Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => GraphScreen(
@@ -367,7 +363,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     setCountBox: widget.setCountBox,
                   ),
                 ),
-                    (route) => false,
               );
             }
           },

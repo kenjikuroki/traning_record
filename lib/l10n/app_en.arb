@@ -56,5 +56,15 @@
   "bodyWeightTracking": "Body Weight Tracking",
   "selectBodyParts": "Select Body Parts",
   "unit": "unit",
-  "defaultSets": "Default Sets"
+  "defaultSets": "Default Sets",
+  "menuNameHint": "Enter menu name",
+  "durationHint": "min:sec",
+  "minutes": "min",
+  "recordScreenTitle": "Record",
+  "calendarScreenTitle": "Calendar",
+  "settingsScreenTitle": "Settings",
+  "addMenu": "Add Menu",
+  "exercise": "Exercise",
+  "partAlreadySelected": "This part is already selected.",
+  "distanceHint": "Enter distance"
 }

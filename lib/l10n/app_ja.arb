@@ -56,5 +56,15 @@
   "bodyWeightTracking": "体重管理",
   "selectBodyParts": "部位を選択",
   "unit": "単位",
-  "defaultSets": "Default Sets"
+  "defaultSets": "Default Sets",
+  "durationHint": "時間:分",
+  "minutes": "分",
+  "distanceHint": "距離を入力",
+  "recordScreenTitle": "記録",
+  "calendarScreenTitle": "カレンダー",
+  "settingsScreenTitle": "設定",
+  "addMenu": "種目を追加",
+  "exercise": "種目",
+  "partAlreadySelected": "この部位はすでに選択されています。",
+  "menuNameHint": "種目名を入力"
 }

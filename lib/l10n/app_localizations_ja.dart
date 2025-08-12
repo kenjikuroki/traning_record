@@ -182,4 +182,34 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get defaultSets => 'Default Sets';
+
+  @override
+  String get menuNameHint => '種目名を入力';
+
+  @override
+  String get durationHint => '時間:分';
+
+  @override
+  String get minutes => '分';
+
+  @override
+  String get recordScreenTitle => '記録';
+
+  @override
+  String get calendarScreenTitle => 'カレンダー';
+
+  @override
+  String get settingsScreenTitle => '設定';
+
+  @override
+  String get addMenu => '種目を追加';
+
+  @override
+  String get exercise => '種目';
+
+  @override
+  String get partAlreadySelected => 'この部位はすでに選択されています。';
+
+  @override
+  String get distanceHint => '距離を入力';
 }
