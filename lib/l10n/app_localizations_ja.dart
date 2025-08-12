@@ -175,13 +175,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get bodyWeightTracking => '体重管理';
 
   @override
-  String get selectBodyParts => '部位を選択';
+  String get selectBodyParts => '表示する部位を選択';
 
   @override
   String get unit => '単位';
 
   @override
-  String get defaultSets => 'デフォルトのセット数';
+  String get defaultSets => 'Default Sets';
 
   @override
   String get menuNameHint => '種目名を入力';

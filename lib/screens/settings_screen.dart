@@ -6,18 +6,19 @@ import '../widgets/ad_banner.dart';
 import '../settings_manager.dart';
 import 'record_screen.dart';
 import 'graph_screen.dart';
-import '../models/menu_data.dart';
+import '../models/menu_data.dart'; // 指定どおり差し替え
+import '../models/record_models.dart';
 
 class SettingsScreen extends StatefulWidget {
-  final Box<DailyRecord> recordsBox;
-  final Box<dynamic> lastUsedMenusBox; // ← これ
+  final Box<DailyRecord> recordsBox;      // 型は使わないが他画面と合わせて dynamic
+  final Box<dynamic> lastUsedMenusBox;
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
 
   const SettingsScreen({
     super.key,
     required this.recordsBox,
-    required this.lastUsedMenusBox, // ← これ
+    required this.lastUsedMenusBox,
     required this.settingsBox,
     required this.setCountBox,
   });
@@ -27,6 +28,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  // 日本語キーで保存している部位一覧
   final List<String> _bodyPartsOriginal = const [
     '有酸素運動',
     '腕',
@@ -42,9 +44,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Map<String, bool> _selectedBodyParts = {};
   int _setCount = 3;
-  late String _selectedUnit;
-  late bool _showWeightInput;
-  late ThemeMode _themeMode;
+  late String _selectedUnit;      // 'kg' | 'lbs'
+  late bool _showWeightInput;     // 体重管理 ON/OFF
+  late ThemeMode _themeMode;      // テーマ
+  bool _isBodyPartsExpanded = false; // アコーディオン開閉
 
   @override
   void initState() {
@@ -53,39 +56,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _loadSettings() {
-    _setCount = widget.setCountBox.get('setCount', defaultValue: 3)!;
-
-    // SettingsManager を信頼ソースに
+    _setCount = widget.setCountBox.get('setCount', defaultValue: 3) ?? 3;
     _showWeightInput = SettingsManager.showWeightInput;
     _selectedUnit = SettingsManager.currentUnit;
     _themeMode = SettingsManager.currentThemeMode;
 
-    // 部位表示設定は既存の settingsBox を使用
-    final Map<String, bool>? savedBodyParts = widget.settingsBox.get('selectedBodyParts');
+    final Map<String, bool>? savedBodyParts =
+    widget.settingsBox.get('selectedBodyParts')?.cast<String, bool>();
     if (savedBodyParts != null) {
       _selectedBodyParts = Map<String, bool>.from(savedBodyParts);
     } else {
-      for (var part in _bodyPartsOriginal) {
-        _selectedBodyParts[part] = true;
+      for (final p in _bodyPartsOriginal) {
+        _selectedBodyParts[p] = true;
       }
     }
   }
 
-  void _saveSettings() {
-    widget.settingsBox.put('selectedBodyParts', _selectedBodyParts);
-    widget.setCountBox.put('setCount', _setCount);
-    // 単位とテーマ、体重管理は SettingsManager で保存するためここでは保存しない
+  Future<void> _saveSettings() async {
+    await widget.settingsBox.put('selectedBodyParts', _selectedBodyParts);
+    await widget.setCountBox.put('setCount', _setCount);
+    await SettingsManager.setUnit(_selectedUnit);
+    await SettingsManager.setShowWeightInput(_showWeightInput);
+    await SettingsManager.setThemeMode(_themeMode);
   }
 
-  Future<void> _onUnitChanged(String? newUnit) async {
-    if (newUnit == null) return;
-    setState(() => _selectedUnit = newUnit);
-    await SettingsManager.setUnit(newUnit);
+  void _onUnitChanged(String? v) {
+    if (v == null) return;
+    setState(() => _selectedUnit = v);
+    SettingsManager.setUnit(v);
   }
 
-  String _translatePart(BuildContext context, String originalPart) {
+  void _onThemeChanged(ThemeMode? v) {
+    if (v == null) return;
+    setState(() => _themeMode = v);
+    SettingsManager.setThemeMode(v);
+  }
+
+  String _translatePart(BuildContext context, String original) {
     final l10n = AppLocalizations.of(context)!;
-    switch (originalPart) {
+    switch (original) {
       case '有酸素運動':
         return l10n.aerobicExercise;
       case '腕':
@@ -107,7 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case 'その他３':
         return l10n.other3;
       default:
-        return originalPart;
+        return original;
     }
   }
 
@@ -127,7 +136,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: colorScheme.background,
         appBar: AppBar(
           title: Text(
-            l10n.settings,
+            l10n.settingsScreenTitle,
             style: TextStyle(
               color: colorScheme.onSurface,
               fontWeight: FontWeight.bold,
@@ -142,11 +151,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              const AdBanner(screenName: 'settings'),
+              // バナー高さを先取りしてレイアウト揺れを抑える
+              const SizedBox(height: 2),
+              const SizedBox(height: 50, child: AdBanner(screenName: 'settings')),
               const SizedBox(height: 16.0),
+
               Expanded(
                 child: ListView(
                   children: [
+                    // テーマ
+                    Card(
+                      color: colorScheme.surfaceContainerHighest,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16.0),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.themeMode,
+                              style: TextStyle(
+                                color: colorScheme.onSurface,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16.0,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            RadioListTile<ThemeMode>(
+                              title: Text(l10n.systemDefault),
+                              value: ThemeMode.system,
+                              groupValue: _themeMode,
+                              onChanged: _onThemeChanged,
+                              activeColor: colorScheme.primary,
+                              dense: true,
+                            ),
+                            RadioListTile<ThemeMode>(
+                              title: Text(l10n.light),
+                              value: ThemeMode.light,
+                              groupValue: _themeMode,
+                              onChanged: _onThemeChanged,
+                              activeColor: colorScheme.primary,
+                              dense: true,
+                            ),
+                            RadioListTile<ThemeMode>(
+                              title: Text(l10n.dark),
+                              value: ThemeMode.dark,
+                              groupValue: _themeMode,
+                              onChanged: _onThemeChanged,
+                              activeColor: colorScheme.primary,
+                              dense: true,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16.0),
+
                     // 体重管理 ON/OFF
                     Card(
                       color: colorScheme.surfaceContainerHighest,
@@ -163,62 +225,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         value: _showWeightInput,
-                        onChanged: (bool value) async {
-                          setState(() => _showWeightInput = value);
-                          await SettingsManager.setShowWeightInput(value);
-                          // 互換のため従来ボックスにも保存（任意）
-                          await widget.settingsBox.put('showWeightInput', value);
+                        onChanged: (v) {
+                          setState(() => _showWeightInput = v);
+                          SettingsManager.setShowWeightInput(v);
+                          widget.settingsBox.put('showWeightInput', v);
                         },
                         activeColor: colorScheme.primary,
                       ),
                     ),
-
                     const SizedBox(height: 16.0),
 
-                    // 表示する部位の選択
+                    // 表示する部位を選択（アコーディオン、スプラッシュ無効）
                     Card(
                       color: colorScheme.surfaceContainerHighest,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16.0),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l10n.selectBodyParts,
-                              style: TextStyle(
-                                color: colorScheme.onSurface,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16.0,
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: Theme(
+                          data: Theme.of(context).copyWith(
+                            dividerColor: Colors.transparent,
+                            splashFactory: NoSplash.splashFactory,
+                            splashColor: Colors.transparent,
+                            highlightColor: Colors.transparent,
+                            hoverColor: Colors.transparent,
+                          ),
+                          child: ExpansionTile(
+                            initiallyExpanded: _isBodyPartsExpanded,
+                            onExpansionChanged: (v) => setState(() => _isBodyPartsExpanded = v),
+                            expandedAlignment: Alignment.centerLeft,
+                            tilePadding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                            title: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                l10n.selectBodyParts, // ← ローカライズ採用
+                                style: TextStyle(
+                                  color: colorScheme.onSurface,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16.0,
+                                ),
                               ),
                             ),
-                            ..._bodyPartsOriginal.map((part) {
-                              final translatedPart = _translatePart(context, part);
-                              return SwitchListTile(
-                                title: Text(
-                                  translatedPart,
-                                  style: TextStyle(color: colorScheme.onSurface),
-                                ),
-                                value: _selectedBodyParts[part] ?? true,
-                                onChanged: (bool value) {
-                                  setState(() {
-                                    _selectedBodyParts[part] = value;
-                                    _saveSettings();
-                                  });
-                                },
-                                activeColor: colorScheme.primary,
-                              );
-                            }).toList(),
-                          ],
+                            children: [
+                              const SizedBox(height: 8),
+                              ..._bodyPartsOriginal.map((p) {
+                                final translated = _translatePart(context, p);
+                                final current = _selectedBodyParts[p] ?? true;
+                                return SwitchListTile(
+                                  title: Text(
+                                    translated,
+                                    style: TextStyle(color: colorScheme.onSurface),
+                                  ),
+                                  value: current,
+                                  onChanged: (v) async {
+                                    setState(() => _selectedBodyParts[p] = v);
+                                    await widget.settingsBox.put('selectedBodyParts', _selectedBodyParts);
+                                  },
+                                  activeColor: colorScheme.primary,
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                );
+                              }),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 16.0),
 
-                    // デフォルトのセット数
+                    // デフォルトセット数
                     Card(
                       color: colorScheme.surfaceContainerHighest,
                       shape: RoundedRectangleBorder(
@@ -243,15 +320,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               max: 10,
                               divisions: 9,
                               label: _setCount.toString(),
-                              onChanged: (double newValue) {
-                                setState(() {
-                                  _setCount = newValue.round();
-                                  _saveSettings();
-                                });
+                              onChanged: (v) {
+                                setState(() => _setCount = v.round());
+                              },
+                              onChangeEnd: (v) {
+                                widget.setCountBox.put('setCount', v.round());
                               },
                               activeColor: colorScheme.primary,
-                              inactiveColor:
-                              colorScheme.onSurfaceVariant.withOpacity(0.3),
+                              inactiveColor: colorScheme.onSurfaceVariant.withOpacity(0.3),
                             ),
                             Center(
                               child: Text(
@@ -267,73 +343,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 16.0),
 
-                    // テーマモード（システムデフォルト/ライト/ダーク）
-                    Card(
-                      color: colorScheme.surfaceContainerHighest,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16.0),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l10n.themeMode,
-                              style: TextStyle(
-                                color: colorScheme.onSurface,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16.0,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            RadioListTile<ThemeMode>(
-                              title: Text(l10n.systemDefault),
-                              value: ThemeMode.system,
-                              groupValue: _themeMode,
-                              onChanged: (mode) async {
-                                if (mode == null) return;
-                                setState(() => _themeMode = mode);
-                                await SettingsManager.setThemeMode(mode);
-                              },
-                              activeColor: colorScheme.primary,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                            RadioListTile<ThemeMode>(
-                              title: Text(l10n.light),
-                              value: ThemeMode.light,
-                              groupValue: _themeMode,
-                              onChanged: (mode) async {
-                                if (mode == null) return;
-                                setState(() => _themeMode = mode);
-                                await SettingsManager.setThemeMode(mode);
-                              },
-                              activeColor: colorScheme.primary,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                            RadioListTile<ThemeMode>(
-                              title: Text(l10n.dark),
-                              value: ThemeMode.dark,
-                              groupValue: _themeMode,
-                              onChanged: (mode) async {
-                                if (mode == null) return;
-                                setState(() => _themeMode = mode);
-                                await SettingsManager.setThemeMode(mode);
-                              },
-                              activeColor: colorScheme.primary,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16.0),
-
-                    // 重量単位（kg / lbs）
+                    // 重量単位
                     Card(
                       color: colorScheme.surfaceContainerHighest,
                       shape: RoundedRectangleBorder(
@@ -361,6 +373,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     groupValue: _selectedUnit,
                                     onChanged: _onUnitChanged,
                                     activeColor: colorScheme.primary,
+                                    dense: true,
                                   ),
                                 ),
                                 Expanded(
@@ -370,6 +383,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     groupValue: _selectedUnit,
                                     onChanged: _onUnitChanged,
                                     activeColor: colorScheme.primary,
+                                    dense: true,
                                   ),
                                 ),
                               ],
@@ -413,7 +427,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => CalendarScreen(
-                    recordsBox: widget.recordsBox,
+                    recordsBox: widget.recordsBox, // 型整合のため dynamic → Box
                     lastUsedMenusBox: widget.lastUsedMenusBox,
                     settingsBox: widget.settingsBox,
                     setCountBox: widget.setCountBox,

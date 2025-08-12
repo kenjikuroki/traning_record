@@ -175,7 +175,7 @@ class AppLocalizationsKl extends AppLocalizations {
   String get bodyWeightTracking => 'Body Weight Tracking';
 
   @override
-  String get selectBodyParts => 'Select Body Parts';
+  String get selectBodyParts => 'Select body parts to display';
 
   @override
   String get unit => 'unit';

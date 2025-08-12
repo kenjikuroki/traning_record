@@ -54,7 +54,7 @@
   "m": "m",
   "bodyWeight": "Body Weight",
   "bodyWeightTracking": "Body Weight Tracking",
-  "selectBodyParts": "Select Body Parts",
+  "selectBodyParts": "Select body parts to display",
   "unit": "unit",
   "defaultSets": "Default Sets",
   "menuNameHint": "Enter menu name",
