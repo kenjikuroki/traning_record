@@ -108,6 +108,8 @@ class GlassCard extends StatelessWidget {
 }
 
 class StylishInput extends StatefulWidget {
+  final String? suffixText;
+  final TextStyle? suffixStyle;
   final TextEditingController controller;
   final String? hint;
   final TextInputType keyboardType;
@@ -129,11 +131,12 @@ class StylishInput extends StatefulWidget {
     required this.normalTextColor,
     required this.suggestionTextColor,
     required this.fillColor,
-    this.contentPadding =
-        const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+    this.contentPadding = const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
     required this.textAlign,
     this.onChanged,
     this.onTap,
+    this.suffixText,
+    this.suffixStyle,
   }) : super(key: key);
 
   @override
@@ -214,6 +217,8 @@ class _StylishInputState extends State<StylishInput> {
         fontWeight: FontWeight.bold,
       ),
       decoration: InputDecoration(
+        suffixText: widget.suffixText,          // 追加
+        suffixStyle: widget.suffixStyle,        // 追加
         hintText: _isSuggestionDisplay ? widget.hint : null,
         hintStyle: TextStyle(
           color: widget.suggestionTextColor,

@@ -1,4 +1,3 @@
-// lib/screens/graph_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -21,14 +20,14 @@ enum DisplayMode { day, week }
 
 class GraphScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
-  final Box<dynamic> lastUsedMenusBox; // ← これ
+  final Box<dynamic> lastUsedMenusBox;
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
 
   const GraphScreen({
     super.key,
     required this.recordsBox,
-    required this.lastUsedMenusBox, // ← これ
+    required this.lastUsedMenusBox,
     required this.settingsBox,
     required this.setCountBox,
   });
@@ -72,7 +71,7 @@ class _GraphScreenState extends State<GraphScreen> {
     if (translatedPart == l10n.other2) return 'その他２';
     if (translatedPart == l10n.other3) return 'その他３';
     if (translatedPart == l10n.favorites) return 'お気に入り';
-    if (translatedPart == l10n.bodyWeight) return '体重'; // 体重（内部ラベル）
+    if (translatedPart == l10n.bodyWeight) return '体重';
     return translatedPart;
   }
 
@@ -137,20 +136,20 @@ class _GraphScreenState extends State<GraphScreen> {
       }).toList();
     }
 
-    // 先頭に「体重」と「お気に入り」を追加
+    // 体重とお気に入りを先頭に
     _filteredBodyParts = [
       l10n.bodyWeight,
       l10n.favorites,
       ..._filteredBodyParts,
     ];
 
-    // 前回の表示モードを復元
+    // 表示モード復元
     final int? savedModeIdx = widget.settingsBox.get(_prefGraphMode) as int?;
     if (savedModeIdx != null && savedModeIdx >= 0 && savedModeIdx < DisplayMode.values.length) {
       _displayMode = DisplayMode.values[savedModeIdx];
     }
 
-    // 前回の部位を復元
+    // 前回の部位
     final String? savedPart = widget.settingsBox.get(_prefGraphPart) as String?;
     if (savedPart != null && _filteredBodyParts.contains(savedPart)) {
       _selectedPart = savedPart;
@@ -170,7 +169,6 @@ class _GraphScreenState extends State<GraphScreen> {
   void _loadMenusForPart(String translatedPart) {
     final l10n = AppLocalizations.of(context)!;
 
-    // 体重ならメニューは不要
     if (translatedPart == l10n.bodyWeight) {
       _menusForPart = [];
       _selectedMenu = null;
@@ -197,7 +195,6 @@ class _GraphScreenState extends State<GraphScreen> {
       }
     }
 
-    // 前回のメニュー復元
     final String? savedMenu = widget.settingsBox.get(_prefGraphMenu) as String?;
     if (savedMenu != null && _menusForPart.contains(savedMenu)) {
       _selectedMenu = savedMenu;
@@ -218,7 +215,7 @@ class _GraphScreenState extends State<GraphScreen> {
     }
   }
 
-  // 体重グラフ用データ作成
+  // 体重グラフ
   void _loadBodyWeightData() {
     _maxY = 0;
     _minY = double.infinity;
@@ -236,14 +233,11 @@ class _GraphScreenState extends State<GraphScreen> {
         }
       }
     } else {
-      // 週平均（週は月曜始まり）
       final Map<int, List<double>> weekly = {};
       for (final r in records) {
         if (r.weight != null) {
-          final weekStart = DateTime(r.date.year, r.date.month, r.date.day)
-              .subtract(Duration(days: r.date.weekday - 1));
-          final key = DateTime(weekStart.year, weekStart.month, weekStart.day)
-              .millisecondsSinceEpoch;
+          final weekStart = DateTime(r.date.year, r.date.month, r.date.day).subtract(Duration(days: r.date.weekday - 1));
+          final key = DateTime(weekStart.year, weekStart.month, weekStart.day).millisecondsSinceEpoch;
           weekly.putIfAbsent(key, () => []).add(r.weight!);
         }
       }
@@ -302,9 +296,7 @@ class _GraphScreenState extends State<GraphScreen> {
               }
               if (maxWeight > 0) {
                 final date = record.date;
-                final xValue = DateTime(date.year, date.month, date.day)
-                    .millisecondsSinceEpoch
-                    .toDouble();
+                final xValue = DateTime(date.year, date.month, date.day).millisecondsSinceEpoch.toDouble();
                 data[xValue] = maxWeight;
                 _maxY = max(_maxY, maxWeight);
                 _minY = min(_minY, maxWeight);
@@ -318,8 +310,7 @@ class _GraphScreenState extends State<GraphScreen> {
       for (var record in recordsMap) {
         final DateTime date = record.date;
         final weekStart = date.subtract(Duration(days: date.weekday - 1));
-        final weekStartMs = DateTime(weekStart.year, weekStart.month, weekStart.day)
-            .millisecondsSinceEpoch;
+        final weekStartMs = DateTime(weekStart.year, weekStart.month, weekStart.day).millisecondsSinceEpoch;
 
         for (var part in allBodyParts) {
           final List<MenuData>? menuList = record.menus[part];
@@ -431,11 +422,12 @@ class _GraphScreenState extends State<GraphScreen> {
     return PopScope(
       canPop: true,
       onPopInvoked: (didPop) {
-        // 何もしない
+        // no-op
       },
       child: Scaffold(
         backgroundColor: colorScheme.background,
         appBar: AppBar(
+          leading: const BackButton(), // ★ いつでも戻る表示
           title: Text(
             l10n.graphScreenTitle,
             style: TextStyle(
@@ -592,7 +584,6 @@ class _GraphScreenState extends State<GraphScreen> {
                           ),
                         ),
                       ),
-                      // 体重のときはお気に入りスターは表示しない
                       if (!isBodyWeight && _selectedMenu != null)
                         Positioned(
                           top: 8,
@@ -613,7 +604,6 @@ class _GraphScreenState extends State<GraphScreen> {
               const SizedBox(height: 16.0),
               Column(
                 children: [
-                  // 部位（体重/お気に入り/各部位）
                   DropdownButtonFormField<String>(
                     decoration: InputDecoration(
                       hintText: l10n.selectTrainingPart,
@@ -657,7 +647,6 @@ class _GraphScreenState extends State<GraphScreen> {
                     borderRadius: BorderRadius.circular(15.0),
                   ),
                   const SizedBox(height: 8.0),
-                  // 種目セレクタ（体重のときは非表示）
                   if (!isBodyWeight)
                     DropdownButtonFormField<String>(
                       decoration: InputDecoration(
@@ -730,8 +719,9 @@ class _GraphScreenState extends State<GraphScreen> {
           unselectedItemColor: colorScheme.onSurfaceVariant,
           backgroundColor: colorScheme.surface,
           onTap: (index) {
+            if (index == 2) return; // 自分
             if (index == 0) {
-              Navigator.pushAndRemoveUntil(
+              Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => CalendarScreen(
@@ -742,10 +732,9 @@ class _GraphScreenState extends State<GraphScreen> {
                     selectedDate: DateTime.now(),
                   ),
                 ),
-                    (route) => false,
               );
             } else if (index == 1) {
-              Navigator.pushAndRemoveUntil(
+              Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => RecordScreen(
@@ -756,10 +745,9 @@ class _GraphScreenState extends State<GraphScreen> {
                     setCountBox: widget.setCountBox,
                   ),
                 ),
-                    (route) => false,
               );
             } else if (index == 3) {
-              Navigator.pushAndRemoveUntil(
+              Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => SettingsScreen(
@@ -769,7 +757,6 @@ class _GraphScreenState extends State<GraphScreen> {
                     setCountBox: widget.setCountBox,
                   ),
                 ),
-                    (route) => false,
               );
             }
           },

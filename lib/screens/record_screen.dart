@@ -21,7 +21,7 @@ import 'calendar_screen.dart';
 class RecordScreen extends StatefulWidget {
   final DateTime selectedDate;
   final Box<DailyRecord> recordsBox;
-  final Box<dynamic> lastUsedMenusBox; /// ← 修正
+  final Box<dynamic> lastUsedMenusBox;
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
 
@@ -29,7 +29,7 @@ class RecordScreen extends StatefulWidget {
     super.key,
     required this.selectedDate,
     required this.recordsBox,
-  required this.lastUsedMenusBox,
+    required this.lastUsedMenusBox,
     required this.settingsBox,
     required this.setCountBox,
   });
@@ -56,7 +56,6 @@ class _RecordScreenState extends State<RecordScreen> {
 
   @override
   void dispose() {
-    _saveAllSectionsData(); // ★追加：ルート置換や破棄でも確実に保存
     for (var section in _sections) {
       section.dispose();
     }
@@ -113,16 +112,8 @@ class _RecordScreenState extends State<RecordScreen> {
   void _loadSettingsAndParts() {
     final l10n = AppLocalizations.of(context)!;
     _allBodyParts = [
-      l10n.aerobicExercise,
-      l10n.arm,
-      l10n.chest,
-      l10n.back,
-      l10n.shoulder,
-      l10n.leg,
-      l10n.fullBody,
-      l10n.other1,
-      l10n.other2,
-      l10n.other3,
+      l10n.aerobicExercise, l10n.arm, l10n.chest, l10n.back, l10n.shoulder, l10n.leg,
+      l10n.fullBody, l10n.other1, l10n.other2, l10n.other3,
     ];
     Map<String, bool>? savedBodyPartsSettings;
     final dynamic rawSettings = widget.settingsBox.get('selectedBodyParts');
@@ -144,7 +135,8 @@ class _RecordScreenState extends State<RecordScreen> {
     }
     _filteredBodyParts = [];
     if (savedBodyPartsSettings != null && savedBodyPartsSettings.isNotEmpty) {
-      _filteredBodyParts = _allBodyParts.where((translatedPart) {
+      _filteredBodyParts = _allBodyParts
+          .where((translatedPart) {
         final originalPart = _getOriginalPartName(context, translatedPart);
         return savedBodyPartsSettings![originalPart] == true;
       }).toList();
@@ -204,13 +196,11 @@ class _RecordScreenState extends State<RecordScreen> {
       partsFromRecords.add(part);
     });
 
-    final List<String> lastUsedParts =
-        widget.lastUsedMenusBox.keys.cast<String>().toList();
+    final List<String> lastUsedParts = widget.lastUsedMenusBox.keys.cast<String>().toList();
     for (var part in lastUsedParts) {
       final dynamic rawList = widget.lastUsedMenusBox.get(part);
       if (rawList is List) {
-        final List<MenuData> lastUsedMenus =
-            rawList.whereType<MenuData>().toList();
+        final List<MenuData> lastUsedMenus = rawList.whereType<MenuData>().toList();
 
         if (partsFromRecords.contains(part)) {
           List<MenuData> combinedMenus = List.from(dataToLoad[part] ?? []);
@@ -231,14 +221,14 @@ class _RecordScreenState extends State<RecordScreen> {
 
       SectionData section = tempSectionsMap.putIfAbsent(
           translatedPart,
-          () => SectionData(
-                key: UniqueKey(),
-                selectedPart: translatedPart,
-                menuControllers: [],
-                setInputDataList: [],
-                initialSetCount: _currentSetCount,
-                menuKeys: [],
-              ));
+              () => SectionData(
+            key: UniqueKey(),
+            selectedPart: translatedPart,
+            menuControllers: [],
+            setInputDataList: [],
+            initialSetCount: _currentSetCount,
+            menuKeys: [],
+          ));
 
       int maxSetsInThisSection = 0;
 
@@ -318,10 +308,9 @@ class _RecordScreenState extends State<RecordScreen> {
       if (i < list.length) {
         for (int s = 0; s < list[i].weights.length; s++) {
           final newWeightController =
-              TextEditingController(text: list[i].weights[s]);
+          TextEditingController(text: list[i].weights[s]);
           final newRepController = TextEditingController(text: list[i].reps[s]);
-          bool isSuggestionSet =
-              newWeightController.text.isEmpty && newRepController.text.isEmpty;
+          bool isSuggestionSet = newWeightController.text.isEmpty && newRepController.text.isEmpty;
           newSetInputDataRow.add(SetInputData(
               weightController: newWeightController,
               repController: newRepController,
@@ -372,8 +361,7 @@ class _RecordScreenState extends State<RecordScreen> {
 
     for (var section in _sections) {
       if (section.selectedPart == null) continue;
-      final originalPartName =
-          _getOriginalPartName(context, section.selectedPart!);
+      final originalPartName = _getOriginalPartName(context, section.selectedPart!);
 
       List<MenuData> sectionMenuListForLastUsed = [];
       List<MenuData> sectionMenuListForRecord = [];
@@ -405,7 +393,7 @@ class _RecordScreenState extends State<RecordScreen> {
             String r = setInputData.repController.text;
             weights.add(w);
             reps.add(r);
-            if (w.isNotEmpty || r.isNotEmpty) {
+            if (!setInputData.isSuggestion && (w.isNotEmpty || r.isNotEmpty)) {
               hasConfirmedSet = true;
             }
           }
@@ -420,8 +408,7 @@ class _RecordScreenState extends State<RecordScreen> {
             duration: duration,
           ));
         } else {
-          sectionMenuListForLastUsed
-              .add(MenuData(name: name, weights: weights, reps: reps));
+          sectionMenuListForLastUsed.add(MenuData(name: name, weights: weights, reps: reps));
         }
 
         if (hasConfirmedSet) {
@@ -434,8 +421,7 @@ class _RecordScreenState extends State<RecordScreen> {
               duration: duration,
             ));
           } else {
-            sectionMenuListForRecord
-                .add(MenuData(name: name, weights: weights, reps: reps));
+            sectionMenuListForRecord.add(MenuData(name: name, weights: weights, reps: reps));
           }
           hasAnyRecordData = true;
           lastModifiedPart = originalPartName;
@@ -443,8 +429,7 @@ class _RecordScreenState extends State<RecordScreen> {
       }
 
       if (sectionMenuListForLastUsed.isNotEmpty) {
-        widget.lastUsedMenusBox
-            .put(originalPartName, sectionMenuListForLastUsed);
+        widget.lastUsedMenusBox.put(originalPartName, sectionMenuListForLastUsed);
       } else {
         widget.lastUsedMenusBox.delete(originalPartName);
       }
@@ -506,7 +491,7 @@ class _RecordScreenState extends State<RecordScreen> {
               isSuggestion: true);
         });
         _sections[sectionIndex].setInputDataList[
-                _sections[sectionIndex].menuControllers.length - 1] =
+        _sections[sectionIndex].menuControllers.length - 1] =
             newSetInputDataList;
 
         _sections[sectionIndex].initialSetCount =
@@ -527,8 +512,8 @@ class _RecordScreenState extends State<RecordScreen> {
 
     if (mounted) {
       setState(() {
-        final newSection = SectionData.createEmpty(_currentSetCount,
-            shouldPopulateDefaults: true);
+        final newSection =
+        SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: true);
         _sections.add(newSection);
       });
     }
@@ -559,8 +544,7 @@ class _RecordScreenState extends State<RecordScreen> {
       if (mounted) {
         setState(() {
           _sections[sectionIndex].menuControllers[menuIndex].dispose();
-          for (var setInputData
-              in _sections[sectionIndex].setInputDataList[menuIndex]) {
+          for (var setInputData in _sections[sectionIndex].setInputDataList[menuIndex]) {
             setInputData.dispose();
           }
           _sections[sectionIndex].menuControllers.removeAt(menuIndex);
@@ -597,13 +581,13 @@ class _RecordScreenState extends State<RecordScreen> {
     final formattedDate = DateFormat('yyyy/MM/dd').format(widget.selectedDate);
 
     final Color partNormalBgColor =
-        isLightMode ? const Color(0xFF333333) : const Color(0xFF2C2F33);
+    isLightMode ? const Color(0xFF333333) : const Color(0xFF2C2F33);
     final Color partPressedBgColor =
-        isLightMode ? const Color(0xFF1A1A1A) : const Color(0xFF383C40);
+    isLightMode ? const Color(0xFF1A1A1A) : const Color(0xFF383C40);
     final Color partTextColor =
-        isLightMode ? Colors.white : const Color(0xFFCCCCCC);
+    isLightMode ? Colors.white : const Color(0xFFCCCCCC);
     final Color partAccentColor =
-        isLightMode ? const Color(0xFF60A5FA) : const Color(0xFF60A5FA);
+    isLightMode ? const Color(0xFF60A5FA) : const Color(0xFF60A5FA);
 
     bool isInitialEmptyState =
         _sections.length == 1 && _sections[0].selectedPart == null;
@@ -618,6 +602,7 @@ class _RecordScreenState extends State<RecordScreen> {
       child: Scaffold(
         backgroundColor: colorScheme.background,
         appBar: AppBar(
+          leading: const BackButton(), // ★ いつでも戻る表示
           title: Text(
             formattedDate,
             style: TextStyle(
@@ -634,69 +619,80 @@ class _RecordScreenState extends State<RecordScreen> {
           child: Column(
             children: [
               const AdBanner(screenName: 'record'),
-              ValueListenableBuilder<bool>(
-                valueListenable: SettingsManager.showWeightInputNotifier,
-                builder: (context, show, _) {
-                  if (!show) return const SizedBox.shrink();
-                  return Column(
-                    children: [
-                      const SizedBox(height: 8.0),
-                      Card(
-                        color: colorScheme.surfaceContainerHighest,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16.0)),
-                        elevation: 4,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
+              const SizedBox(height: 8.0),
+
+              // 体重入力カード（設定でONのときだけ）
+              if (SettingsManager.showWeightInput)
+                Card(
+                  color: colorScheme.surfaceContainerHighest,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                  elevation: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child:Row(
+                      children: [
+                        // 左のラベルは右寄せ（位置が毎回揃う）
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              '${l10n.bodyWeight}${Localizations.localeOf(context).languageCode == "ja" ? "：" : ":"}',
+                              style: TextStyle(
+                                color: colorScheme.onSurface,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15.0,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        // 右側の「入力欄＋単位」を固定幅の“コントロールグループ”に
+                        SizedBox(
+                          width: 160, // ← グループ全体の幅（お好みで 150〜170 で微調整OK）
                           child: Row(
                             children: [
-                              Text(
-                                l10n.bodyWeight,
-                                style: TextStyle(
-                                  color: colorScheme.onSurface,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16.0,
-                                ),
-                              ),
-                              const SizedBox(width: 16.0),
-                              Expanded(
+                              // 入力欄はコンパクト
+                              SizedBox(
+                                width: 100, // ← 入力欄の幅（90〜110 で好みに応じて）
                                 child: StylishInput(
                                   controller: _weightController,
                                   hint: '',
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                          decimal: true),
-                                  normalTextColor: colorScheme.onSurface,
-                                  suggestionTextColor: colorScheme
-                                      .onSurfaceVariant
-                                      .withOpacity(0.5),
-                                  fillColor: colorScheme.surfaceContainer,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 12, horizontal: 16),
-                                  textAlign: TextAlign.right,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                   inputFormatters: [
-                                    FilteringTextInputFormatter.allow(
-                                        RegExp(r'^\d*\.?\d*')),
+                                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                                   ],
+                                  normalTextColor: colorScheme.onSurface,
+                                  suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                                  fillColor: colorScheme.surfaceContainer,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                                  textAlign: TextAlign.right,
                                 ),
                               ),
+
+                              const SizedBox(width: 8),
+
+                              // 単位は外に出す（小さめの文字）
                               Text(
-                                ' ${SettingsManager.currentUnit}',
+                                SettingsManager.currentUnit, // "kg" / "lbs"
                                 style: TextStyle(
                                   color: colorScheme.onSurfaceVariant,
-                                  fontSize: 14.0,
+                                  fontSize: 13.0,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 8.0),
-                    ],
-                  );
-                },
-              ),
+                      ],
+                    )
+
+                  ),
+                ),
+
+              const SizedBox(height: 8.0),
+
               Expanded(
                 child: ListView.builder(
                   primary: true,
@@ -721,7 +717,6 @@ class _RecordScreenState extends State<RecordScreen> {
                     }
 
                     final section = _sections[index];
-                    final String? actualSelectedPart = section.selectedPart;
 
                     return AnimatedListItem(
                       key: section.key,
@@ -730,8 +725,7 @@ class _RecordScreenState extends State<RecordScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 8.0),
                         child: Card(
                           color: colorScheme.surfaceContainerHighest,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16.0)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
                           elevation: 4,
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
@@ -745,111 +739,84 @@ class _RecordScreenState extends State<RecordScreen> {
                                         decoration: InputDecoration(
                                           hintText: l10n.selectTrainingPart,
                                           hintStyle: TextStyle(
-                                              color:
-                                                  colorScheme.onSurfaceVariant,
+                                              color: colorScheme.onSurfaceVariant,
                                               fontSize: 14.0),
                                           filled: true,
-                                          fillColor:
-                                              colorScheme.surfaceContainer,
+                                          fillColor: colorScheme.surfaceContainer,
                                           border: OutlineInputBorder(
                                             borderRadius:
-                                                BorderRadius.circular(25.0),
+                                            BorderRadius.circular(25.0),
                                             borderSide: BorderSide.none,
                                           ),
                                           enabledBorder: OutlineInputBorder(
                                             borderRadius:
-                                                BorderRadius.circular(25.0),
+                                            BorderRadius.circular(25.0),
                                             borderSide: BorderSide.none,
                                           ),
                                           focusedBorder: OutlineInputBorder(
                                             borderRadius:
-                                                BorderRadius.circular(25.0),
+                                            BorderRadius.circular(25.0),
                                             borderSide: BorderSide.none,
                                           ),
                                           contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                  vertical: 12, horizontal: 20),
+                                          const EdgeInsets.symmetric(
+                                              vertical: 12, horizontal: 20),
                                         ),
                                         value: section.selectedPart,
                                         items: _filteredBodyParts
                                             .map((p) => DropdownMenuItem(
-                                                value: p,
-                                                child: Text(p,
-                                                    style: TextStyle(
-                                                        color: colorScheme
-                                                            .onSurface,
-                                                        fontSize: 14.0,
-                                                        fontWeight:
-                                                            FontWeight.bold))))
+                                            value: p,
+                                            child: Text(p,
+                                                style: TextStyle(
+                                                    color: colorScheme.onSurface,
+                                                    fontSize: 14.0,
+                                                    fontWeight: FontWeight.bold))))
                                             .toList(),
                                         onChanged: (value) {
                                           if (mounted) {
                                             setState(() {
                                               section.selectedPart = value;
-                                              if (section.selectedPart !=
-                                                  null) {
-                                                final String
-                                                    currentSelectedPart =
-                                                    section.selectedPart!;
+                                              if (section.selectedPart != null) {
+                                                final String currentSelectedPart =
+                                                section.selectedPart!;
 
-                                                _clearSectionControllersAndMaps(
-                                                    section);
+                                                _clearSectionControllersAndMaps(section);
                                                 section.menuKeys.clear();
 
-                                                String dateKey = _getDateKey(
-                                                    widget.selectedDate);
-                                                DailyRecord? record = widget
-                                                    .recordsBox
-                                                    .get(dateKey);
+                                                String dateKey = _getDateKey(widget.selectedDate);
+                                                DailyRecord? record = widget.recordsBox.get(dateKey);
                                                 List<MenuData>? listToLoad;
 
                                                 bool isMenuNameSuggestion;
-                                                final originalPartName =
-                                                    _getOriginalPartName(
-                                                        context,
-                                                        currentSelectedPart);
+                                                final originalPartName = _getOriginalPartName(context, currentSelectedPart);
 
-                                                if (record != null &&
-                                                    record.menus.containsKey(
-                                                        originalPartName)) {
-                                                  listToLoad = record
-                                                      .menus[originalPartName];
+                                                if (record != null && record.menus.containsKey(originalPartName)) {
+                                                  listToLoad = record.menus[originalPartName];
                                                   isMenuNameSuggestion = false;
                                                 } else {
-                                                  final dynamic rawList = widget
-                                                      .lastUsedMenusBox
-                                                      .get(originalPartName);
+                                                  final dynamic rawList = widget.lastUsedMenusBox.get(originalPartName);
                                                   if (rawList is List) {
-                                                    listToLoad = rawList
-                                                        .whereType<MenuData>()
-                                                        .toList();
+                                                    listToLoad = rawList.whereType<MenuData>().toList();
                                                   } else {
                                                     listToLoad = [];
                                                   }
                                                   isMenuNameSuggestion = true;
                                                 }
-                                                _setControllersFromData(
-                                                    section,
-                                                    listToLoad ?? [],
-                                                    isMenuNameSuggestion);
+                                                _setControllersFromData(section, listToLoad ?? [], isMenuNameSuggestion);
                                               } else {
-                                                _clearSectionControllersAndMaps(
-                                                    section);
+                                                _clearSectionControllersAndMaps(section);
                                                 section.menuKeys.clear();
-                                                section.initialSetCount =
-                                                    _currentSetCount;
+                                                section.initialSetCount = _currentSetCount;
                                               }
                                             });
                                           }
                                         },
-                                        dropdownColor:
-                                            colorScheme.surfaceContainer,
+                                        dropdownColor: colorScheme.surfaceContainer,
                                         style: TextStyle(
                                             color: colorScheme.onSurface,
                                             fontSize: 14.0,
                                             fontWeight: FontWeight.bold),
-                                        borderRadius:
-                                            BorderRadius.circular(15.0),
+                                        borderRadius: BorderRadius.circular(15.0),
                                       ),
                                     ),
                                   ],
@@ -860,50 +827,28 @@ class _RecordScreenState extends State<RecordScreen> {
                                     children: [
                                       ListView.builder(
                                         shrinkWrap: true,
-                                        physics:
-                                            const NeverScrollableScrollPhysics(),
-                                        itemCount:
-                                            section.menuControllers.length,
+                                        physics: const NeverScrollableScrollPhysics(),
+                                        itemCount: section.menuControllers.length,
                                         itemBuilder: (context, menuIndex) {
                                           return AnimatedListItem(
                                             key: section.menuKeys[menuIndex],
-                                            direction:
-                                                AnimationDirection.rightToLeft,
+                                            direction: AnimationDirection.rightToLeft,
                                             child: Card(
                                               color: colorScheme.surface,
-                                              shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          12.0)),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                                               elevation: 2,
-                                              margin:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 8.0),
+                                              margin: const EdgeInsets.symmetric(vertical: 8.0),
                                               child: Padding(
-                                                padding:
-                                                    const EdgeInsets.all(16.0),
+                                                padding: const EdgeInsets.all(16.0),
                                                 child: MenuList(
-                                                  key: section
-                                                      .menuKeys[menuIndex],
-                                                  menuController:
-                                                      section.menuControllers[
-                                                          menuIndex],
-                                                  removeMenuCallback: () =>
-                                                      _removeMenuItem(
-                                                          index, menuIndex),
-                                                  setCount:
-                                                      section.initialSetCount ??
-                                                          _currentSetCount,
-                                                  setInputDataList:
-                                                      section.setInputDataList[
-                                                          menuIndex],
-                                                  isAerobic:
-                                                      section.selectedPart ==
-                                                          l10n.aerobicExercise,
-                                                  distanceController:
-                                                      _distanceController,
-                                                  durationController:
-                                                      _durationController,
+                                                  key: section.menuKeys[menuIndex],
+                                                  menuController: section.menuControllers[menuIndex],
+                                                  removeMenuCallback: () => _removeMenuItem(index, menuIndex),
+                                                  setCount: section.initialSetCount ?? _currentSetCount,
+                                                  setInputDataList: section.setInputDataList[menuIndex],
+                                                  isAerobic: section.selectedPart == l10n.aerobicExercise,
+                                                  distanceController: _distanceController,
+                                                  durationController: _durationController,
                                                 ),
                                               ),
                                             ),
@@ -916,10 +861,8 @@ class _RecordScreenState extends State<RecordScreen> {
                                         child: CircularAddButtonWithText(
                                           label: l10n.addExercise,
                                           onPressed: () => _addMenuItem(index),
-                                          normalBgColorOverride:
-                                              partNormalBgColor,
-                                          pressedBgColorOverride:
-                                              partPressedBgColor,
+                                          normalBgColorOverride: partNormalBgColor,
+                                          pressedBgColorOverride: partPressedBgColor,
                                           textColorOverride: partTextColor,
                                           accentColorOverride: partAccentColor,
                                         ),
@@ -962,9 +905,12 @@ class _RecordScreenState extends State<RecordScreen> {
           unselectedItemColor: colorScheme.onSurfaceVariant,
           backgroundColor: colorScheme.surface,
           onTap: (index) {
+            if (index == 1) return; // 自分
+            // ★ どこへ行くにも保存してから遷移
+            _saveAllSectionsData();
+
             if (index == 0) {
-              _saveAllSectionsData();
-              Navigator.pushAndRemoveUntil(
+              Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => CalendarScreen(
@@ -975,11 +921,9 @@ class _RecordScreenState extends State<RecordScreen> {
                     selectedDate: DateTime.now(),
                   ),
                 ),
-                (route) => false,
               );
             } else if (index == 2) {
-              _saveAllSectionsData();
-              Navigator.pushAndRemoveUntil(
+              Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => GraphScreen(
@@ -989,11 +933,9 @@ class _RecordScreenState extends State<RecordScreen> {
                     setCountBox: widget.setCountBox,
                   ),
                 ),
-                (route) => false,
               );
             } else if (index == 3) {
-              _saveAllSectionsData();
-              Navigator.pushAndRemoveUntil(
+              Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => SettingsScreen(
@@ -1003,13 +945,79 @@ class _RecordScreenState extends State<RecordScreen> {
                     setCountBox: widget.setCountBox,
                   ),
                 ),
-                (route) => false,
               );
             }
           },
         ),
       ),
     );
+  }
+}
+
+class SectionData {
+  Key key;
+  String? selectedPart;
+  List<TextEditingController> menuControllers;
+  List<List<SetInputData>> setInputDataList;
+  List<Key> menuKeys;
+  int? initialSetCount;
+
+  SectionData({
+    required this.key,
+    this.selectedPart,
+    required this.menuControllers,
+    required this.setInputDataList,
+    required this.menuKeys,
+    this.initialSetCount,
+  });
+
+  factory SectionData.createEmpty(int initialSetCount,
+      {required bool shouldPopulateDefaults}) {
+    return SectionData(
+      key: UniqueKey(),
+      selectedPart: null,
+      menuControllers: shouldPopulateDefaults ? [TextEditingController()] : [],
+      setInputDataList: shouldPopulateDefaults
+          ? [
+        List.generate(
+            initialSetCount,
+                (_) => SetInputData(
+                weightController: TextEditingController(),
+                repController: TextEditingController(),
+                isSuggestion: true))
+      ]
+          : [],
+      menuKeys: shouldPopulateDefaults ? [UniqueKey()] : [],
+      initialSetCount: initialSetCount,
+    );
+  }
+
+  void dispose() {
+    for (var controller in menuControllers) {
+      controller.dispose();
+    }
+    for (var list in setInputDataList) {
+      for (var data in list) {
+        data.dispose();
+      }
+    }
+  }
+}
+
+class SetInputData {
+  TextEditingController weightController;
+  TextEditingController repController;
+  bool isSuggestion;
+
+  SetInputData({
+    required this.weightController,
+    required this.repController,
+    this.isSuggestion = true,
+  });
+
+  void dispose() {
+    weightController.dispose();
+    repController.dispose();
   }
 }
 
@@ -1110,13 +1118,14 @@ class _MenuListState extends State<MenuList> {
                   controller: widget.menuController,
                   hint: l10n.addExercisePlaceholder,
                   keyboardType: TextInputType.text,
-                  inputFormatters: [LengthLimitingTextInputFormatter(25)],
+                  inputFormatters: [
+                    LengthLimitingTextInputFormatter(25)
+                  ],
                   normalTextColor: colorScheme.onSurface,
-                  suggestionTextColor:
-                      colorScheme.onSurfaceVariant.withOpacity(0.5),
+                  suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
                   fillColor: colorScheme.surfaceContainer,
                   contentPadding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   textAlign: TextAlign.left,
                 ),
               ),
@@ -1128,8 +1137,7 @@ class _MenuListState extends State<MenuList> {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   alignment: Alignment.center,
                 ),
-                child: Icon(Icons.close,
-                    color: colorScheme.onSurfaceVariant, size: 16),
+                child: Icon(Icons.close, color: colorScheme.onSurfaceVariant, size: 16),
               ),
             ],
           ),
@@ -1138,232 +1146,209 @@ class _MenuListState extends State<MenuList> {
             padding: const EdgeInsets.only(left: 12.0),
             child: widget.isAerobic
                 ? Column(
-                    children: [
-                      Row(
-                        children: [
-                          Text(l10n.distance,
-                              style: TextStyle(
-                                  color: colorScheme.onSurface,
-                                  fontSize: 14.0,
-                                  fontWeight: FontWeight.bold)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            flex: 2,
-                            child: StylishInput(
-                              controller: _kmController,
-                              hint: '例: 5',
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly
-                              ],
-                              normalTextColor: colorScheme.onSurface,
-                              suggestionTextColor:
-                                  colorScheme.onSurfaceVariant.withOpacity(0.5),
-                              fillColor: colorScheme.surfaceContainer,
-                              contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 10, horizontal: 12),
-                              textAlign: TextAlign.right,
-                            ),
-                          ),
-                          Text(' ${l10n.km} ',
-                              style: TextStyle(
-                                  color: colorScheme.onSurfaceVariant,
-                                  fontSize: 14.0,
-                                  fontWeight: FontWeight.bold)),
-                          Expanded(
-                            flex: 2,
-                            child: StylishInput(
-                              controller: _mController,
-                              hint: '例: 00',
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly
-                              ],
-                              normalTextColor: colorScheme.onSurface,
-                              suggestionTextColor:
-                                  colorScheme.onSurfaceVariant.withOpacity(0.5),
-                              fillColor: colorScheme.surfaceContainer,
-                              contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 10, horizontal: 12),
-                              textAlign: TextAlign.right,
-                            ),
-                          ),
-                          Text(' ${l10n.m}',
-                              style: TextStyle(
-                                  color: colorScheme.onSurfaceVariant,
-                                  fontSize: 14.0,
-                                  fontWeight: FontWeight.bold)),
+              children: [
+                Row(
+                  children: [
+                    Text(l10n.distance,
+                        style: TextStyle(
+                            color: colorScheme.onSurface,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: StylishInput(
+                        controller: _kmController,
+                        hint: '例: 5',
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
                         ],
+                        normalTextColor: colorScheme.onSurface,
+                        suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                        fillColor: colorScheme.surfaceContainer,
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 12),
+                        textAlign: TextAlign.right,
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Text(l10n.time,
-                              style: TextStyle(
-                                  color: colorScheme.onSurface,
-                                  fontSize: 14.0,
-                                  fontWeight: FontWeight.bold)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            flex: 2,
-                            child: StylishInput(
-                              controller: _minController,
-                              hint: '例: 30',
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly
-                              ],
-                              normalTextColor: colorScheme.onSurface,
-                              suggestionTextColor:
-                                  colorScheme.onSurfaceVariant.withOpacity(0.5),
-                              fillColor: colorScheme.surfaceContainer,
-                              contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 10, horizontal: 12),
-                              textAlign: TextAlign.right,
-                            ),
-                          ),
-                          Text(' ${l10n.min} ',
-                              style: TextStyle(
-                                  color: colorScheme.onSurfaceVariant,
-                                  fontSize: 14.0,
-                                  fontWeight: FontWeight.bold)),
-                          Expanded(
-                            flex: 2,
-                            child: StylishInput(
-                              controller: _secController,
-                              hint: '例: 00',
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly
-                              ],
-                              normalTextColor: colorScheme.onSurface,
-                              suggestionTextColor:
-                                  colorScheme.onSurfaceVariant.withOpacity(0.5),
-                              fillColor: colorScheme.surfaceContainer,
-                              contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 10, horizontal: 12),
-                              textAlign: TextAlign.right,
-                            ),
-                          ),
-                          Text(' ${l10n.sec}',
-                              style: TextStyle(
-                                  color: colorScheme.onSurfaceVariant,
-                                  fontSize: 14.0,
-                                  fontWeight: FontWeight.bold)),
+                    ),
+                    Text(' ${l10n.km} ',
+                        style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold)),
+                    Expanded(
+                      flex: 2,
+                      child: StylishInput(
+                        controller: _mController,
+                        hint: '例: 00',
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
                         ],
+                        normalTextColor: colorScheme.onSurface,
+                        suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                        fillColor: colorScheme.surfaceContainer,
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 12),
+                        textAlign: TextAlign.right,
                       ),
-                    ],
-                  )
+                    ),
+                    Text(' ${l10n.m}',
+                        style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(l10n.time,
+                        style: TextStyle(
+                            color: colorScheme.onSurface,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: StylishInput(
+                        controller: _minController,
+                        hint: '例: 30',
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
+                        normalTextColor: colorScheme.onSurface,
+                        suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                        fillColor: colorScheme.surfaceContainer,
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 12),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                    Text(' ${l10n.min} ',
+                        style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold)),
+                    Expanded(
+                      flex: 2,
+                      child: StylishInput(
+                        controller: _secController,
+                        hint: '例: 00',
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
+                        normalTextColor: colorScheme.onSurface,
+                        suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                        fillColor: colorScheme.surfaceContainer,
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 12),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                    Text(' ${l10n.sec}',
+                        style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ],
+            )
                 : Column(
-                    children: List.generate(widget.setCount, (setIndex) {
-                      final setInputData = widget.setInputDataList[setIndex];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4.0),
-                        child: Row(
-                          children: [
-                            Text('${setIndex + 1}${l10n.sets}：',
-                                style: TextStyle(
-                                    color: colorScheme.onSurfaceVariant,
-                                    fontSize: 14.0)),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: StylishInput(
-                                controller: setInputData.weightController,
-                                hint: '',
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true), // ★小数許可
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')), // ★小数点入力可
-                                ],
-                                normalTextColor: setInputData.isSuggestion
-                                    ? colorScheme.onSurfaceVariant.withOpacity(0.5)
-                                    : colorScheme.onSurface,
-                                suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                                fillColor: colorScheme.surfaceContainer,
-                                contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                                textAlign: TextAlign.right,
-                                onChanged: (text) {
-                                  setState(() {
-                                    if (text.isNotEmpty && setInputData.isSuggestion) {
-                                      setInputData.isSuggestion = false;
-                                    } else if (text.isEmpty &&
-                                        !setInputData.isSuggestion &&
-                                        setInputData.repController.text.isEmpty) {
-                                      bool anyOtherSetHasInput = widget.setInputDataList.any(
-                                            (s) =>
-                                        s != setInputData &&
-                                            (s.weightController.text.isNotEmpty ||
-                                                s.repController.text.isNotEmpty),
-                                      );
-                                      if (!anyOtherSetHasInput) {
-                                        setInputData.isSuggestion = true;
-                                      }
-                                    }
-                                  });
-                                },
-                              ),
-                            ),
-                            Text(
-                                ' ${currentUnit == 'kg' ? l10n.kg : l10n.lbs} ',
-                                style: TextStyle(
-                                    color: colorScheme.onSurfaceVariant,
-                                    fontSize: 14.0,
-                                    fontWeight: FontWeight.bold)),
-                            Expanded(
-                              child: StylishInput(
-                                controller: setInputData.repController,
-                                hint: '',
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly
-                                ],
-                                normalTextColor: setInputData.isSuggestion
-                                    ? colorScheme.onSurfaceVariant
-                                        .withOpacity(0.5)
-                                    : colorScheme.onSurface,
-                                suggestionTextColor: colorScheme
-                                    .onSurfaceVariant
-                                    .withOpacity(0.5),
-                                fillColor: colorScheme.surfaceContainer,
-                                contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 10, horizontal: 12),
-                                textAlign: TextAlign.right,
-                                onChanged: (text) {
-                                  setState(() {
-                                    if (text.isNotEmpty &&
-                                        setInputData.isSuggestion) {
-                                      setInputData.isSuggestion = false;
-                                    } else if (text.isEmpty &&
-                                        !setInputData.isSuggestion &&
-                                        setInputData
-                                            .weightController.text.isEmpty) {
-                                      bool anyOtherSetHasInput =
-                                          widget.setInputDataList.any((s) =>
-                                              s != setInputData &&
-                                              (s.weightController.text
-                                                      .isNotEmpty ||
-                                                  s.repController.text
-                                                      .isNotEmpty));
-                                      if (!anyOtherSetHasInput) {
-                                        setInputData.isSuggestion = true;
-                                      }
-                                    }
-                                  });
-                                },
-                              ),
-                            ),
-                            Text(' ${l10n.reps}',
-                                style: TextStyle(
-                                    color: colorScheme.onSurfaceVariant,
-                                    fontSize: 14.0,
-                                    fontWeight: FontWeight.bold)),
+              children: List.generate(widget.setCount, (setIndex) {
+                final setInputData = widget.setInputDataList[setIndex];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Row(
+                    children: [
+                      Text('${setIndex + 1}${l10n.sets}：',
+                          style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                              fontSize: 14.0)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: StylishInput(
+                          controller: setInputData.weightController,
+                          hint: '',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
                           ],
+                          normalTextColor: setInputData.isSuggestion
+                              ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                              : colorScheme.onSurface,
+                          suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                          fillColor: colorScheme.surfaceContainer,
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 12),
+                          textAlign: TextAlign.right,
+                          onChanged: (text) {
+                            setState(() {
+                              if (text.isNotEmpty && setInputData.isSuggestion) {
+                                setInputData.isSuggestion = false;
+                              } else if (text.isEmpty && !setInputData.isSuggestion && setInputData.repController.text.isEmpty) {
+                                bool anyOtherSetHasInput = widget.setInputDataList.any((s) => s != setInputData && (s.weightController.text.isNotEmpty || s.repController.text.isNotEmpty));
+                                if (!anyOtherSetHasInput) {
+                                  setInputData.isSuggestion = true;
+                                }
+                              }
+                            });
+                          },
                         ),
-                      );
-                    }),
+                      ),
+                      Text(' ${currentUnit == 'kg' ? l10n.kg : l10n.lbs} ',
+                          style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                              fontSize: 14.0,
+                              fontWeight: FontWeight.bold)),
+                      Expanded(
+                        child: StylishInput(
+                          controller: setInputData.repController,
+                          hint: '',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          normalTextColor: setInputData.isSuggestion
+                              ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                              : colorScheme.onSurface,
+                          suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                          fillColor: colorScheme.surfaceContainer,
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 12),
+                          textAlign: TextAlign.right,
+                          onChanged: (text) {
+                            setState(() {
+                              if (text.isNotEmpty && setInputData.isSuggestion) {
+                                setInputData.isSuggestion = false;
+                              } else if (text.isEmpty && !setInputData.isSuggestion && setInputData.weightController.text.isEmpty) {
+                                bool anyOtherSetHasInput = widget.setInputDataList.any((s) => s != setInputData && (s.weightController.text.isNotEmpty || s.repController.text.isNotEmpty));
+                                if (!anyOtherSetHasInput) {
+                                  setInputData.isSuggestion = true;
+                                }
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                      Text(' ${l10n.reps}',
+                          style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                              fontSize: 14.0,
+                              fontWeight: FontWeight.bold)),
+                    ],
                   ),
+                );
+              }),
+            ),
           ),
         ],
       ),
     );
+
   }
 }
