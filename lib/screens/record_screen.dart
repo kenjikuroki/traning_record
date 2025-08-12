@@ -844,7 +844,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                                 child: MenuList(
                                                   menuController: section.menuControllers[menuIndex],
                                                   removeMenuCallback: () => _removeMenuItem(secIndex, menuIndex),
-                                                  setCount: section.initialSetCount ?? _currentSetCount,
+                                                  setCount: section.setInputDataList[menuIndex].length, // ← ここに変更
                                                   setInputDataList: section.setInputDataList[menuIndex],
                                                   isAerobic: section.selectedPart == l10n.aerobicExercise,
                                                   distanceController: _distanceController,
@@ -1239,7 +1239,8 @@ class _MenuListState extends State<MenuList> {
               ],
             )
                 : Column(
-              children: List.generate(widget.setCount, (setIndex) {
+              children: List.generate(
+                  min(widget.setCount, widget.setInputDataList.length), (setIndex) {
                 final set = widget.setInputDataList[setIndex];
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4.0),
