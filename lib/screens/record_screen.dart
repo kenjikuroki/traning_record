@@ -704,7 +704,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                           suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
                                           fillColor: colorScheme.surfaceContainer,
                                           contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                                          textAlign: TextAlign.right,
+                                          textAlign: TextAlign.center,
                                         ),
                                       ),
                                       const SizedBox(width: 8),
