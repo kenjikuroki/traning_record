@@ -1,19 +1,17 @@
+// lib/screens/calendar_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive/hive.dart';
-import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
-import 'package:ttraining_record/l10n/app_localizations.dart';
-import 'package:ttraining_record/widgets/ad_banner.dart';
-import 'package:ttraining_record/screens/settings_screen.dart';
-import 'package:ttraining_record/screens/graph_screen.dart';
+import 'package:table_calendar/table_calendar.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../models/record_models.dart';
+import '../widgets/ad_banner.dart';
 import '../settings_manager.dart';
 import 'record_screen.dart';
+import 'graph_screen.dart';
 import 'settings_screen.dart';
-import '../widgets/custom_widgets.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -32,463 +30,43 @@ class CalendarScreen extends StatefulWidget {
     required this.setCountBox,
     required this.selectedDate,
   });
+
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  DateTime _focusedDay = DateTime.now();
+  late DateTime _focusedDay;
   DateTime? _selectedDay;
-  Map<DateTime, List<String>> _events = {};
-  DailyRecord? _currentDayRecord;
-
-  List<String> _filteredBodyParts = [];
-  List<String> _allBodyParts = [];
 
   @override
   void initState() {
     super.initState();
-    _selectedDay = _focusedDay;
-    _loadEvents();
-    _loadDailyRecordForSelectedDay();
+    _focusedDay = DateTime(widget.selectedDate.year, widget.selectedDate.month, 1);
+    _selectedDay = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _loadSettingsAndParts();
-  }
+  // ---------- Helpers ----------
+  String _dateKey(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
-  String _getOriginalPartName(BuildContext context, String translatedPart) {
-    final l10n = AppLocalizations.of(context)!;
-    if (translatedPart == l10n.aerobicExercise) return '有酸素運動';
-    if (translatedPart == l10n.arm) return '腕';
-    if (translatedPart == l10n.chest) return '胸';
-    if (translatedPart == l10n.back) return '背中';
-    if (translatedPart == l10n.shoulder) return '肩';
-    if (translatedPart == l10n.leg) return '足';
-    if (translatedPart == l10n.fullBody) return '全身';
-    if (translatedPart == l10n.other1) return 'その他１';
-    if (translatedPart == l10n.other2) return 'その他２';
-    if (translatedPart == l10n.other3) return 'その他３';
-    return translatedPart;
-  }
-
-  void _loadEvents() {
-    _events.clear();
-    for (int i = 0; i < widget.recordsBox.length; i++) {
-      final key = widget.recordsBox.keyAt(i);
-      final record = widget.recordsBox.getAt(i);
-
-      if (key is String && record != null) {
-        try {
-          DateTime date = DateTime.parse(key);
-          final partNames = record.menus.keys.toList();
-
-          // ●マーカーのルール: トレーニング実績 or 体重があれば表示
-          final hasTraining = partNames.isNotEmpty;
-          final hasWeight = record.weight != null;
-          if (hasTraining || hasWeight) {
-            _events[DateTime(date.year, date.month, date.day)] = partNames;
+  bool _hasAnyTrainingData(DailyRecord r) {
+    for (final entry in r.menus.entries) {
+      for (final m in entry.value) {
+        for (var i = 0; i < m.weights.length && i < m.reps.length; i++) {
+          if (m.weights[i].toString().trim().isNotEmpty || m.reps[i].toString().trim().isNotEmpty) {
+            return true;
           }
-        } catch (e) {
-          // ignore
         }
       }
     }
-    if (mounted) {
-      setState(() {});
-    }
+    return false;
   }
 
-  void _loadDailyRecordForSelectedDay() {
-    if (_selectedDay != null) {
-      String dateKey = _getDateKey(_selectedDay!);
-      setState(() {
-        _currentDayRecord = widget.recordsBox.get(dateKey);
-      });
-    } else {
-      setState(() {
-        _currentDayRecord = null;
-      });
-    }
-  }
-
-  List<String> _getEventsForDay(DateTime day) {
-    final normalizedDay = DateTime(day.year, day.month, day.day);
-    return _events[normalizedDay] ?? [];
-  }
-
-  void _loadSettingsAndParts() {
-    final l10n = AppLocalizations.of(context)!;
-    _allBodyParts = [
-      l10n.aerobicExercise, l10n.arm, l10n.chest, l10n.back, l10n.shoulder, l10n.leg,
-      l10n.fullBody, l10n.other1, l10n.other2, l10n.other3,
-    ];
-
-    Map<String, bool>? savedBodyPartsSettings;
-    final dynamic rawSettings = widget.settingsBox.get('selectedBodyParts');
-
-    if (rawSettings != null && rawSettings is Map) {
-      savedBodyPartsSettings = {};
-      rawSettings.forEach((key, value) {
-        if (key is String && value is bool) {
-          savedBodyPartsSettings![key] = value;
-        }
-      });
-    }
-
-    if (savedBodyPartsSettings != null && savedBodyPartsSettings.isNotEmpty) {
-      _filteredBodyParts = _allBodyParts
-          .where((translatedPart) {
-        final originalPart = _getOriginalPartName(context, translatedPart);
-        return savedBodyPartsSettings![originalPart] == true;
-      })
-          .toList();
-      if (_filteredBodyParts.isEmpty) {
-        _filteredBodyParts = List.from(_allBodyParts);
-      }
-    } else {
-      _filteredBodyParts = List.from(_allBodyParts);
-    }
-
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
-    if (isSameDay(_selectedDay, selectedDay)) {
-      if (_selectedDay != null) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => RecordScreen(
-              recordsBox: widget.recordsBox,
-              lastUsedMenusBox: widget.lastUsedMenusBox,
-              settingsBox: widget.settingsBox,
-              setCountBox: widget.setCountBox,
-              selectedDate: _selectedDay!,
-            ),
-          ),
-        ).then((_) {
-          // 戻ってきたら即マーカー更新
-          _loadEvents();
-          _loadDailyRecordForSelectedDay();
-        });
-      }
-    } else {
-      setState(() {
-        _selectedDay = selectedDay;
-        _focusedDay = focusedDay;
-        _loadDailyRecordForSelectedDay();
-      });
-    }
-  }
-
-  void _navigateToSettings(BuildContext context) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => SettingsScreen(
-          recordsBox: widget.recordsBox,
-          lastUsedMenusBox: widget.lastUsedMenusBox,
-          settingsBox: widget.settingsBox,
-          setCountBox: widget.setCountBox,
-        ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(0.0, 1.0);
-          const end = Offset.zero;
-          const curve = Curves.easeOut;
-
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-          return SlideTransition(
-            position: animation.drive(tween),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 300),
-      ),
-    ).then((_) {
-      if (mounted) {
-        _loadSettingsAndParts();
-        _loadDailyRecordForSelectedDay();
-        _loadEvents(); // 設定変更後のマーカー反映
-      }
-    });
-  }
-
-  String _getDateKey(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final l10n = AppLocalizations.of(context)!;
-
-    return Scaffold(
-      backgroundColor: colorScheme.background,
-      body: Column(
-        children: [
-          Container(
-            color: colorScheme.surface,
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  AppBar(
-                    leading: const BackButton(), // ★ いつでも戻る表示
-                    title: Text(
-                      'TrainingRecord',
-                      style: TextStyle(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20.0,
-                      ),
-                    ),
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    iconTheme: IconThemeData(color: colorScheme.onSurface),
-                    actions: const [],
-                  ),
-                  const AdBanner(screenName: 'calendar')
-                ],
-              ),
-            ),
-          ),
-          TableCalendar(
-            locale: Localizations.localeOf(context).toString(),
-            firstDay: DateTime.utc(2020, 1, 1),
-            lastDay: DateTime.utc(2030, 12, 31),
-            focusedDay: _focusedDay,
-            selectedDayPredicate: (day) {
-              return isSameDay(_selectedDay, day);
-            },
-            onDaySelected: _onDaySelected,
-            onPageChanged: (focusedDay) {
-              _focusedDay = focusedDay;
-            },
-            eventLoader: _getEventsForDay,
-            calendarFormat: CalendarFormat.month,
-            headerStyle: HeaderStyle(
-              formatButtonVisible: false,
-              titleCentered: true,
-              titleTextStyle: TextStyle(color: colorScheme.onSurface, fontSize: 18.0, fontWeight: FontWeight.bold),
-              leftChevronIcon: Icon(Icons.chevron_left, color: colorScheme.onSurface),
-              rightChevronIcon: Icon(Icons.chevron_right, color: colorScheme.onSurface),
-            ),
-            calendarStyle: CalendarStyle(
-              outsideDaysVisible: false,
-              weekendTextStyle: TextStyle(color: colorScheme.error),
-              todayDecoration: BoxDecoration(
-                color: colorScheme.primary.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              selectedDecoration: BoxDecoration(
-                color: colorScheme.primary,
-                shape: BoxShape.circle,
-              ),
-              markerDecoration: BoxDecoration(
-                color: colorScheme.secondary,
-                shape: BoxShape.circle,
-              ),
-              defaultTextStyle: TextStyle(color: colorScheme.onSurface),
-              rowDecoration: BoxDecoration(color: colorScheme.surface),
-            ),
-            daysOfWeekStyle: DaysOfWeekStyle(
-              weekdayStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-              weekendStyle: TextStyle(color: colorScheme.error),
-            ),
-          ),
-          const SizedBox(height: 8.0),
-          Expanded(
-            child: _currentDayRecord != null && (_currentDayRecord!.menus.isNotEmpty || _currentDayRecord!.weight != null)
-                ? ListView.builder(
-              itemCount: _currentDayRecord!.menus.length + (_currentDayRecord!.weight != null ? 1 : 0),
-              itemBuilder: (context, index) {
-                // 先に体重カードを出す
-                if (_currentDayRecord!.weight != null && index == 0) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-                    child: Card(
-                      color: colorScheme.surfaceContainer,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-                      elevation: 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          '${l10n.bodyWeight}: ${_currentDayRecord!.weight!.toStringAsFixed(1)} ${SettingsManager.currentUnit}',
-                          style: TextStyle(
-                            color: colorScheme.onSurface,
-                            fontSize: 16.0,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                final menuIndexBase = _currentDayRecord!.weight != null ? index - 1 : index;
-                final part = _currentDayRecord!.menus.keys.elementAt(menuIndexBase);
-                final menuList = _currentDayRecord!.menus[part]!;
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-                  child: Card(
-                    color: colorScheme.surfaceContainer,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _translatePartToLocale(context, part),
-                            style: TextStyle(
-                              color: colorScheme.onSurface,
-                              fontSize: 18.0,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: menuList.length,
-                            itemBuilder: (context, menuIndex) {
-                              final menu = menuList[menuIndex];
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    menu.name,
-                                    style: TextStyle(
-                                      color: colorScheme.onSurfaceVariant,
-                                      fontSize: 16.0,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  ListView.builder(
-                                    shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    itemCount: menu.weights.length,
-                                    itemBuilder: (context, setIndex) {
-                                      if (setIndex >= menu.weights.length || setIndex >= menu.reps.length) {
-                                        return const SizedBox.shrink();
-                                      }
-                                      final weight = menu.weights[setIndex];
-                                      final rep = menu.reps[setIndex];
-
-                                      String weightUnit;
-                                      String repUnit;
-
-                                      if (part == '有酸素運動') {
-                                        weightUnit = 'km';
-                                        repUnit = '分:秒';
-                                      } else {
-                                        weightUnit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
-                                        repUnit = l10n.reps;
-                                      }
-
-                                      return Text(
-                                        '${setIndex + 1}${l10n.sets}：$weight $weightUnit $rep $repUnit',
-                                        style: TextStyle(
-                                          color: colorScheme.onSurfaceVariant,
-                                          fontSize: 14.0,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  if (menuIndex < menuList.length - 1) const SizedBox(height: 12),
-                                ],
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            )
-                : Center(
-              child: Text(
-                l10n.noRecordMessage,
-                style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
-              ),
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Calendar',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.edit_note),
-            label: 'Record',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: 'Graph',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-        currentIndex: 0,
-        selectedItemColor: colorScheme.primary,
-        unselectedItemColor: colorScheme.onSurfaceVariant,
-        backgroundColor: colorScheme.surface,
-        onTap: (index) {
-          if (index == 0) return;
-          if (index == 1) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => RecordScreen(
-                  recordsBox: widget.recordsBox,
-                  lastUsedMenusBox: widget.lastUsedMenusBox,
-                  settingsBox: widget.settingsBox,
-                  setCountBox: widget.setCountBox,
-                  selectedDate: _selectedDay ?? DateTime.now(),
-                ),
-              ),
-            ).then((_) {
-              _loadEvents();
-              _loadDailyRecordForSelectedDay();
-            });
-          } else if (index == 2) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => GraphScreen(
-                  recordsBox: widget.recordsBox,
-                  lastUsedMenusBox: widget.lastUsedMenusBox,
-                  settingsBox: widget.settingsBox,
-                  setCountBox: widget.setCountBox,
-                ),
-              ),
-            );
-          } else if (index == 3) {
-            _navigateToSettings(context);
-          }
-        },
-      ),
-    );
+  bool _hasAnyData(DailyRecord? r) {
+    if (r == null) return false;
+    if (r.weight != null) return true;
+    if (r.menus.isEmpty) return false;
+    return _hasAnyTrainingData(r);
   }
 
   String _translatePartToLocale(BuildContext context, String part) {
@@ -518,4 +96,330 @@ class _CalendarScreenState extends State<CalendarScreen> {
         return part;
     }
   }
+
+  // TableCalendar のイベントローダ：その日に何か（体重 or トレ）あれば 1 件返す
+  List<Object> _eventLoader(DateTime day) {
+    final r = widget.recordsBox.get(_dateKey(day));
+    if (_hasAnyData(r)) {
+      return const [1]; // ダミー
+    }
+    return const [];
+  }
+
+  // ---------- UI ----------
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final selectedRecord = widget.recordsBox.get(_dateKey(_selectedDay ?? DateTime.now()));
+
+    return Scaffold(
+      backgroundColor: colorScheme.background,
+      appBar: AppBar(
+        leading: const BackButton(),
+        title: Text(
+          DateFormat('yyyy/MM').format(_focusedDay),
+          style: TextStyle(
+            color: colorScheme.onSurface,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        backgroundColor: colorScheme.surface,
+        elevation: 0,
+        iconTheme: IconThemeData(color: colorScheme.onSurface),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            const AdBanner(screenName: 'calendar'),
+            const SizedBox(height: 12),
+            _buildCalendar(context),
+            const SizedBox(height: 12),
+            _buildResultsArea(context, selectedRecord),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
+          BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+        ],
+        currentIndex: 0,
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: colorScheme.onSurfaceVariant,
+        backgroundColor: colorScheme.surface,
+        onTap: (index) {
+          if (index == 0) return;
+          if (index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => RecordScreen(
+                  selectedDate: _selectedDay ?? DateTime.now(),
+                  recordsBox: widget.recordsBox,
+                  lastUsedMenusBox: widget.lastUsedMenusBox,
+                  settingsBox: widget.settingsBox,
+                  setCountBox: widget.setCountBox,
+                ),
+              ),
+            );
+          } else if (index == 2) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => GraphScreen(
+                  recordsBox: widget.recordsBox,
+                  lastUsedMenusBox: widget.lastUsedMenusBox,
+                  settingsBox: widget.settingsBox,
+                  setCountBox: widget.setCountBox,
+                ),
+              ),
+            );
+          } else if (index == 3) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SettingsScreen(
+                  recordsBox: widget.recordsBox,
+                  lastUsedMenusBox: widget.lastUsedMenusBox,
+                  settingsBox: widget.settingsBox,
+                  setCountBox: widget.setCountBox,
+                ),
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildCalendar(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      color: colorScheme.surfaceContainerHighest,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: TableCalendar<Object>(
+          firstDay: DateTime.utc(2015, 1, 1),
+          lastDay: DateTime.utc(2100, 12, 31),
+          focusedDay: _focusedDay,
+          selectedDayPredicate: (day) => _selectedDay != null &&
+              day.year == _selectedDay!.year &&
+              day.month == _selectedDay!.month &&
+              day.day == _selectedDay!.day,
+          startingDayOfWeek: StartingDayOfWeek.monday,
+          headerStyle: HeaderStyle(
+            titleCentered: true,
+            formatButtonVisible: false,
+            titleTextStyle: TextStyle(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+            leftChevronIcon: Icon(Icons.chevron_left, color: colorScheme.onSurface),
+            rightChevronIcon: Icon(Icons.chevron_right, color: colorScheme.onSurface),
+          ),
+          calendarStyle: CalendarStyle(
+            defaultTextStyle: TextStyle(color: colorScheme.onSurface),
+            weekendTextStyle: TextStyle(color: colorScheme.onSurface),
+            outsideTextStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+            todayDecoration: BoxDecoration(
+              color: colorScheme.primary.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            selectedDecoration: BoxDecoration(
+              color: colorScheme.primary,
+              shape: BoxShape.circle,
+            ),
+            selectedTextStyle: TextStyle(color: colorScheme.onPrimary),
+            markersMaxCount: 1,
+            markerDecoration: BoxDecoration(
+              color: colorScheme.primary, // ● マーカー
+              shape: BoxShape.circle,
+            ),
+          ),
+          eventLoader: _eventLoader, // 体重でも●が出る
+          onDaySelected: (selectedDay, focusedDay) {
+            // 同じ日をもう一度タップ → 記録画面へ
+            if (_selectedDay != null &&
+                selectedDay.year == _selectedDay!.year &&
+                selectedDay.month == _selectedDay!.month &&
+                selectedDay.day == _selectedDay!.day) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RecordScreen(
+                    selectedDate: selectedDay,
+                    recordsBox: widget.recordsBox,
+                    lastUsedMenusBox: widget.lastUsedMenusBox,
+                    settingsBox: widget.settingsBox,
+                    setCountBox: widget.setCountBox,
+                  ),
+                ),
+              );
+              return;
+            }
+            setState(() {
+              _selectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+              _focusedDay = focusedDay;
+            });
+          },
+          onPageChanged: (focusedDay) {
+            setState(() => _focusedDay = focusedDay);
+          },
+        ),
+      ),
+    );
+  }
+  Widget _buildResultsArea(BuildContext context, DailyRecord? record) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // 実績が無ければ何も出さない
+    if (record == null || !_hasAnyData(record)) {
+      return const SizedBox.shrink();
+    }
+
+    final unit = SettingsManager.currentUnit;
+    final List<Widget> cards = [];
+
+    // --- 体重カード ---
+    if (record.weight != null) {
+      cards.add(
+        Theme(
+          data: Theme.of(context).copyWith(
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+            dividerColor: Colors.transparent,
+          ),
+          child: Card(
+            color: colorScheme.surfaceContainerHighest,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+            elevation: 4,
+            clipBehavior: Clip.none,
+            child: ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              expandedAlignment: Alignment.centerLeft,
+              maintainState: true,
+              title: Text(
+                l10n.bodyWeight,
+                style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold),
+              ),
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '${record.weight?.toStringAsFixed(1) ?? '-'} $unit',
+                    textAlign: TextAlign.left,
+                    style: TextStyle(color: colorScheme.onSurface, fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // --- トレーニングカード（部位ごと） ---
+    if (record.menus.isNotEmpty && _hasAnyTrainingData(record)) {
+      record.menus.forEach((originalPart, menuList) {
+        final partTitle = _translatePartToLocale(context, originalPart);
+
+        final List<Widget> lines = [];
+        for (final m in menuList) {
+          lines.add(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: Text(
+                m.name,
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          );
+          final setCount = (m.weights.length > m.reps.length) ? m.reps.length : m.weights.length;
+          for (int i = 0; i < setCount; i++) {
+            final w = (i < m.weights.length) ? m.weights[i].toString().trim() : '';
+            final r = (i < m.reps.length) ? m.reps[i].toString().trim() : '';
+            if (w.isEmpty && r.isEmpty) continue;
+            lines.add(
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0, bottom: 2.0),
+                child: Text(
+                  '${i + 1}${l10n.sets}：${w.isNotEmpty ? '$w${unit == 'kg' ? l10n.kg : l10n.lbs}' : '-'} × ${r.isNotEmpty ? r : '-'}${l10n.reps}',
+                  textAlign: TextAlign.left,
+                  style: TextStyle(color: colorScheme.onSurface, fontSize: 14),
+                ),
+              ),
+            );
+          }
+        }
+
+        if (lines.isNotEmpty) {
+          cards.add(
+            Theme(
+              data: Theme.of(context).copyWith(
+                splashColor: Colors.transparent,
+                highlightColor: Colors.transparent,
+                hoverColor: Colors.transparent,
+                dividerColor: Colors.transparent,
+              ),
+              child: Card(
+                color: colorScheme.surfaceContainerHighest,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                elevation: 4,
+                clipBehavior: Clip.none,
+                child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  expandedAlignment: Alignment.centerLeft,
+                  maintainState: true,
+                  title: Text(
+                    partTitle,
+                    style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold),
+                  ),
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: lines,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+      });
+    }
+
+    if (cards.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // ★ ここをスクロール可能＆高さ制約付きにする
+    return Expanded(
+      child: ListView.separated(
+        padding: EdgeInsets.zero,
+        itemCount: cards.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        itemBuilder: (_, i) => cards[i],
+      ),
+    );
+  }
+
 }
