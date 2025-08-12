@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-
+import 'package:hive_flutter/hive_flutter.dart'; // ★ 追加
 import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../models/record_models.dart';
@@ -103,7 +103,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  // ●「5.3」→「5km3m」
+  // 「5.3」→「5km3m」
   String _formatDistance(String? raw, AppLocalizations l10n) {
     if (raw == null || raw.trim().isEmpty) return '-';
     final parts = raw.split('.');
@@ -112,7 +112,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return '$km${l10n.km}$m${l10n.m}';
   }
 
-  // ●「30:45」→「30分45秒」
+  // 「30:45」→「30分45秒」
   String _formatDuration(String? raw, AppLocalizations l10n) {
     if (raw == null || raw.trim().isEmpty) return '-';
     final parts = raw.split(':');
@@ -136,8 +136,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
 
-    final selectedRecord = widget.recordsBox.get(_dateKey(_selectedDay ?? DateTime.now()));
-
     return Scaffold(
       backgroundColor: colorScheme.background,
       appBar: AppBar(
@@ -156,14 +154,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            const AdBanner(screenName: 'calendar'),
-            const SizedBox(height: 12),
-            _buildCalendar(context),
-            const SizedBox(height: 12),
-            _buildResultsArea(context, selectedRecord),
-          ],
+        // ★ recordsBox の変更を監視して即時再描画
+        child: ValueListenableBuilder<Box<DailyRecord>>(
+          valueListenable: widget.recordsBox.listenable(),
+          builder: (context, box, _) {
+            final selectedRecord = box.get(_dateKey(_selectedDay ?? DateTime.now()));
+            return Column(
+              children: [
+                const AdBanner(screenName: 'calendar'),
+                const SizedBox(height: 12),
+                _buildCalendar(context),
+                const SizedBox(height: 12),
+                _buildResultsArea(context, selectedRecord),
+              ],
+            );
+          },
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -177,10 +182,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
         selectedItemColor: colorScheme.primary,
         unselectedItemColor: colorScheme.onSurfaceVariant,
         backgroundColor: colorScheme.surface,
-        onTap: (index) {
+        onTap: (index) async {
           if (index == 0) return;
           if (index == 1) {
-            Navigator.push(
+            // ★ 記録画面から戻ったら即 setState で再描画
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => RecordScreen(
@@ -192,8 +198,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
               ),
             );
+            setState(() {});
           } else if (index == 2) {
-            Navigator.push(
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => GraphScreen(
@@ -204,8 +211,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
               ),
             );
+            setState(() {});
           } else if (index == 3) {
-            Navigator.push(
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => SettingsScreen(
@@ -216,6 +224,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
               ),
             );
+            setState(() {});
           }
         },
       ),
@@ -272,13 +281,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
           eventLoader: _eventLoader,
-          onDaySelected: (selectedDay, focusedDay) {
+          onDaySelected: (selectedDay, focusedDay) async {
             // 同じ日をもう一度タップ → 記録画面へ
             if (_selectedDay != null &&
                 selectedDay.year == _selectedDay!.year &&
                 selectedDay.month == _selectedDay!.month &&
                 selectedDay.day == _selectedDay!.day) {
-              Navigator.push(
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => RecordScreen(
@@ -290,6 +299,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                 ),
               );
+              // ★ 戻り直後に再描画（●と実績を即反映）
+              setState(() {});
               return;
             }
             setState(() {
