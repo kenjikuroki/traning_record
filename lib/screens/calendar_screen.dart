@@ -87,19 +87,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       if (key is String && record != null) {
         try {
-          DateTime date = DateTime.parse(key);
-          final partNames = record.menus.keys.toList();
-          // ここは「イベントマーカー」のためのデータ（体重のみの日はマーカーなし）。表示自体は下部リストで行う
-          _events[DateTime(date.year, date.month, date.day)] = partNames;
+          final date = DateTime.parse(key);
+          final dayKey = DateTime(date.year, date.month, date.day);
+
+          // ← ここを変更：部位（種目）がなくても体重があればマーカー対象にする
+          final markers = <String>[];
+          if (record.menus.isNotEmpty) {
+            markers.addAll(record.menus.keys);
+          }
+          if (record.weight != null) {
+            markers.add('_weight'); // 中身は何でもOK。非空ならマーカーが付く
+          }
+
+          if (markers.isNotEmpty) {
+            _events[dayKey] = markers;
+          }
         } catch (e) {
           // ignore: avoid_print
           print('Error parsing date key from Hive: $key, Error: $e');
         }
       }
     }
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
   void _loadDailyRecordForSelectedDay() {
@@ -158,10 +167,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
+  void _onDaySelected(DateTime selectedDay, DateTime focusedDay) async {
     if (isSameDay(_selectedDay, selectedDay)) {
       if (_selectedDay != null) {
-        Navigator.push(
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => RecordScreen(
@@ -173,6 +182,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
         );
+        // ★ 戻ってきたら即再読込
+        _loadEvents();
+        _loadDailyRecordForSelectedDay();
       }
     } else {
       setState(() {
