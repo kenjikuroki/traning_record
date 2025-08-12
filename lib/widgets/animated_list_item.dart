@@ -1,34 +1,42 @@
 import 'package:flutter/material.dart';
 
-// Enum to define animation direction
+/// アニメーション方向
 enum AnimationDirection {
+  /// アニメーションなし（そのまま描画）
+  none,
+
+  /// 上 → 下（上から出てくる）
   topToBottom,
+
+  /// 下 → 上（下から出てくる）
   bottomToTop,
-  rightToLeft, // この行を追加
+
+  /// 右 → 左（右から出てくる）
+  rightToLeft,
 }
 
-// Animated list item widget
+/// 子ウィジェットをスライド＋フェードで表示する簡易アニメーションラッパー
 class AnimatedListItem extends StatefulWidget {
   final Widget child;
   final Duration duration;
   final Curve curve;
-  final AnimationDirection direction; // Animation direction
+  final AnimationDirection direction;
 
   const AnimatedListItem({
     Key? key,
     required this.child,
     this.duration = const Duration(milliseconds: 300),
     this.curve = Curves.easeOut,
-    this.direction = AnimationDirection.bottomToTop, // Default is bottom to top
+    this.direction = AnimationDirection.bottomToTop,
   }) : super(key: key);
 
   @override
-  _AnimatedListItemState createState() => _AnimatedListItemState();
+  State<AnimatedListItem> createState() => _AnimatedListItemState();
 }
 
 class _AnimatedListItemState extends State<AnimatedListItem>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+  late final AnimationController _controller;
   late Animation<Offset> _offsetAnimation;
   late Animation<double> _fadeAnimation;
 
@@ -36,25 +44,50 @@ class _AnimatedListItemState extends State<AnimatedListItem>
   void initState() {
     super.initState();
     _controller = AnimationController(vsync: this, duration: widget.duration);
+    _configureAnimations();
 
-    Offset beginOffset;
-    if (widget.direction == AnimationDirection.topToBottom) {
-      beginOffset = const Offset(0.0, -0.5); // Slide from top to bottom
-    } else if (widget.direction == AnimationDirection.rightToLeft) {
-      beginOffset = const Offset(1.0, 0.0); // Slide from right to left
-    } else {
-      beginOffset = const Offset(0.0, 0.5); // Slide from bottom to top
+    if (widget.direction != AnimationDirection.none) {
+      _controller.forward();
     }
+  }
+
+  @override
+  void didUpdateWidget(covariant AnimatedListItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // duration 変更に追随
+    if (oldWidget.duration != widget.duration) {
+      _controller.duration = widget.duration;
+    }
+
+    // 方向 or カーブが変わったら再設定
+    if (oldWidget.direction != widget.direction || oldWidget.curve != widget.curve) {
+      _configureAnimations();
+      if (widget.direction != AnimationDirection.none) {
+        _controller
+          ..reset()
+          ..forward();
+      }
+    }
+  }
+
+  void _configureAnimations() {
+    final beginOffset = switch (widget.direction) {
+      AnimationDirection.topToBottom => const Offset(0.0, -0.5),
+      AnimationDirection.bottomToTop => const Offset(0.0, 0.5),
+      AnimationDirection.rightToLeft => const Offset(1.0, 0.0),
+      AnimationDirection.none => Offset.zero,
+    };
 
     _offsetAnimation = Tween<Offset>(
       begin: beginOffset,
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: widget.curve));
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: widget.curve),
-    );
 
-    _controller.forward();
+    _fadeAnimation = Tween<double>(
+      begin: widget.direction == AnimationDirection.none ? 1.0 : 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: widget.curve));
   }
 
   @override
@@ -65,6 +98,10 @@ class _AnimatedListItemState extends State<AnimatedListItem>
 
   @override
   Widget build(BuildContext context) {
+    if (widget.direction == AnimationDirection.none) {
+      // アニメーション不要の場合はそのまま返す
+      return widget.child;
+    }
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SlideTransition(
