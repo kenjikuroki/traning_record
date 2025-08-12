@@ -21,7 +21,7 @@ import 'calendar_screen.dart';
 class RecordScreen extends StatefulWidget {
   final DateTime selectedDate;
   final Box<DailyRecord> recordsBox;
-  final Box<List> lastUsedMenusBox; // ← 修正
+  final Box<dynamic> lastUsedMenusBox; /// ← 修正
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
 
@@ -29,7 +29,7 @@ class RecordScreen extends StatefulWidget {
     super.key,
     required this.selectedDate,
     required this.recordsBox,
-    required this.lastUsedMenusBox,
+  required this.lastUsedMenusBox,
     required this.settingsBox,
     required this.setCountBox,
   });

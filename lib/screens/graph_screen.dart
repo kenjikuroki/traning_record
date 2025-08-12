@@ -1,3 +1,4 @@
+// lib/screens/graph_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -20,14 +21,14 @@ enum DisplayMode { day, week }
 
 class GraphScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
-  final Box<List> lastUsedMenusBox;
+  final Box<dynamic> lastUsedMenusBox; // ← これ
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
 
   const GraphScreen({
     super.key,
     required this.recordsBox,
-    required this.lastUsedMenusBox,
+    required this.lastUsedMenusBox, // ← これ
     required this.settingsBox,
     required this.setCountBox,
   });
@@ -37,7 +38,7 @@ class GraphScreen extends StatefulWidget {
 }
 
 class _GraphScreenState extends State<GraphScreen> {
-  // ---- 追加：選択状態の保存キー ----
+  // 選択状態の保存キー
   static const String _prefGraphPart = 'graph_selected_part';
   static const String _prefGraphMenu = 'graph_selected_menu';
   static const String _prefGraphMode = 'graph_display_mode'; // 0:day, 1:week
@@ -71,6 +72,7 @@ class _GraphScreenState extends State<GraphScreen> {
     if (translatedPart == l10n.other2) return 'その他２';
     if (translatedPart == l10n.other3) return 'その他３';
     if (translatedPart == l10n.favorites) return 'お気に入り';
+    if (translatedPart == l10n.bodyWeight) return '体重'; // 体重（内部ラベル）
     return translatedPart;
   }
 
@@ -135,15 +137,20 @@ class _GraphScreenState extends State<GraphScreen> {
       }).toList();
     }
 
-    // 「お気に入り」を先頭に
-    _filteredBodyParts.insert(0, l10n.favorites);
+    // 先頭に「体重」と「お気に入り」を追加
+    _filteredBodyParts = [
+      l10n.bodyWeight,
+      l10n.favorites,
+      ..._filteredBodyParts,
+    ];
 
-    // ---- 追加：前回の表示モード/部位の復元 ----
+    // 前回の表示モードを復元
     final int? savedModeIdx = widget.settingsBox.get(_prefGraphMode) as int?;
     if (savedModeIdx != null && savedModeIdx >= 0 && savedModeIdx < DisplayMode.values.length) {
       _displayMode = DisplayMode.values[savedModeIdx];
     }
 
+    // 前回の部位を復元
     final String? savedPart = widget.settingsBox.get(_prefGraphPart) as String?;
     if (savedPart != null && _filteredBodyParts.contains(savedPart)) {
       _selectedPart = savedPart;
@@ -161,9 +168,22 @@ class _GraphScreenState extends State<GraphScreen> {
   }
 
   void _loadMenusForPart(String translatedPart) {
+    final l10n = AppLocalizations.of(context)!;
+
+    // 体重ならメニューは不要
+    if (translatedPart == l10n.bodyWeight) {
+      _menusForPart = [];
+      _selectedMenu = null;
+      _isFavorite = false;
+      _loadBodyWeightData();
+      _saveGraphPrefs();
+      setState(() {});
+      return;
+    }
+
     _menusForPart.clear();
 
-    if (translatedPart == AppLocalizations.of(context)!.favorites) {
+    if (translatedPart == l10n.favorites) {
       final dynamic rawFavorites = widget.settingsBox.get('favorites');
       if (rawFavorites is List) {
         _menusForPart = rawFavorites.whereType<String>().toList();
@@ -177,7 +197,7 @@ class _GraphScreenState extends State<GraphScreen> {
       }
     }
 
-    // ---- 追加：前回のメニュー復元 ----
+    // 前回のメニュー復元
     final String? savedMenu = widget.settingsBox.get(_prefGraphMenu) as String?;
     if (savedMenu != null && _menusForPart.contains(savedMenu)) {
       _selectedMenu = savedMenu;
@@ -196,6 +216,55 @@ class _GraphScreenState extends State<GraphScreen> {
         }
       });
     }
+  }
+
+  // 体重グラフ用データ作成
+  void _loadBodyWeightData() {
+    _maxY = 0;
+    _minY = double.infinity;
+    final records = widget.recordsBox.toMap().values.whereType<DailyRecord>();
+
+    final Map<double, double> data = {};
+
+    if (_displayMode == DisplayMode.day) {
+      for (final r in records) {
+        if (r.weight != null) {
+          final x = DateTime(r.date.year, r.date.month, r.date.day).millisecondsSinceEpoch.toDouble();
+          data[x] = r.weight!;
+          _maxY = max(_maxY, r.weight!);
+          _minY = min(_minY, r.weight!);
+        }
+      }
+    } else {
+      // 週平均（週は月曜始まり）
+      final Map<int, List<double>> weekly = {};
+      for (final r in records) {
+        if (r.weight != null) {
+          final weekStart = DateTime(r.date.year, r.date.month, r.date.day)
+              .subtract(Duration(days: r.date.weekday - 1));
+          final key = DateTime(weekStart.year, weekStart.month, weekStart.day)
+              .millisecondsSinceEpoch;
+          weekly.putIfAbsent(key, () => []).add(r.weight!);
+        }
+      }
+      weekly.forEach((k, list) {
+        if (list.isNotEmpty) {
+          final avg = list.reduce((a, b) => a + b) / list.length;
+          data[k.toDouble()] = avg;
+          _maxY = max(_maxY, avg);
+          _minY = min(_minY, avg);
+        }
+      });
+    }
+
+    if (data.isNotEmpty) {
+      final sortedKeys = data.keys.toList()..sort();
+      _spots = sortedKeys.map((k) => FlSpot(k, data[k]!)).toList();
+    } else {
+      _spots = [];
+    }
+
+    setState(() {});
   }
 
   void _loadGraphData(String menuName) {
@@ -227,15 +296,15 @@ class _GraphScreenState extends State<GraphScreen> {
                   final weight = double.tryParse(weightStr);
                   final reps = int.tryParse(repStr);
                   if (weight != null && reps != null && reps >= 1) {
-                    if (weight > maxWeight) {
-                      maxWeight = weight;
-                    }
+                    if (weight > maxWeight) maxWeight = weight;
                   }
                 }
               }
               if (maxWeight > 0) {
                 final date = record.date;
-                final xValue = date.millisecondsSinceEpoch.toDouble();
+                final xValue = DateTime(date.year, date.month, date.day)
+                    .millisecondsSinceEpoch
+                    .toDouble();
                 data[xValue] = maxWeight;
                 _maxY = max(_maxY, maxWeight);
                 _minY = min(_minY, maxWeight);
@@ -244,14 +313,13 @@ class _GraphScreenState extends State<GraphScreen> {
           }
         }
       }
-    } else if (_displayMode == DisplayMode.week) {
+    } else {
       final Map<int, double> weeklyData = {};
-
       for (var record in recordsMap) {
         final DateTime date = record.date;
-        // 月曜始まり
         final weekStart = date.subtract(Duration(days: date.weekday - 1));
-        final weekStartMs = weekStart.millisecondsSinceEpoch;
+        final weekStartMs = DateTime(weekStart.year, weekStart.month, weekStart.day)
+            .millisecondsSinceEpoch;
 
         for (var part in allBodyParts) {
           final List<MenuData>? menuList = record.menus[part];
@@ -266,9 +334,7 @@ class _GraphScreenState extends State<GraphScreen> {
                   final weight = double.tryParse(weightStr);
                   final reps = int.tryParse(repStr);
                   if (weight != null && reps != null && reps >= 1) {
-                    if (weight > maxWeight) {
-                      maxWeight = weight;
-                    }
+                    if (weight > maxWeight) maxWeight = weight;
                   }
                 }
               }
@@ -285,7 +351,6 @@ class _GraphScreenState extends State<GraphScreen> {
           }
         }
       }
-
       weeklyData.forEach((key, value) {
         data[key.toDouble()] = value;
       });
@@ -301,7 +366,7 @@ class _GraphScreenState extends State<GraphScreen> {
     if (mounted) {
       setState(() {
         _checkIfFavorite();
-        _saveGraphPrefs(); // ← 追加：描画データ確定時にも保存
+        _saveGraphPrefs();
       });
     }
   }
@@ -318,6 +383,8 @@ class _GraphScreenState extends State<GraphScreen> {
           _isFavorite = false;
         });
       }
+    } else {
+      _isFavorite = false;
     }
   }
 
@@ -345,12 +412,9 @@ class _GraphScreenState extends State<GraphScreen> {
       _loadMenusForPart(_selectedPart!);
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  // ---- 追加：選択状態の保存 ----
   void _saveGraphPrefs() {
     widget.settingsBox.put(_prefGraphPart, _selectedPart);
     widget.settingsBox.put(_prefGraphMenu, _selectedMenu);
@@ -361,6 +425,8 @@ class _GraphScreenState extends State<GraphScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
+
+    final isBodyWeight = _selectedPart == l10n.bodyWeight;
 
     return PopScope(
       canPop: true,
@@ -393,8 +459,10 @@ class _GraphScreenState extends State<GraphScreen> {
                 onPressed: (index) {
                   setState(() {
                     _displayMode = index == 0 ? DisplayMode.day : DisplayMode.week;
-                    _saveGraphPrefs(); // ← 保存
-                    if (_selectedMenu != null) {
+                    _saveGraphPrefs();
+                    if (isBodyWeight) {
+                      _loadBodyWeightData();
+                    } else if (_selectedMenu != null) {
                       _loadGraphData(_selectedMenu!);
                     }
                   });
@@ -524,7 +592,8 @@ class _GraphScreenState extends State<GraphScreen> {
                           ),
                         ),
                       ),
-                      if (_selectedMenu != null)
+                      // 体重のときはお気に入りスターは表示しない
+                      if (!isBodyWeight && _selectedMenu != null)
                         Positioned(
                           top: 8,
                           right: 8,
@@ -544,6 +613,7 @@ class _GraphScreenState extends State<GraphScreen> {
               const SizedBox(height: 16.0),
               Column(
                 children: [
+                  // 部位（体重/お気に入り/各部位）
                   DropdownButtonFormField<String>(
                     decoration: InputDecoration(
                       hintText: l10n.selectTrainingPart,
@@ -573,7 +643,7 @@ class _GraphScreenState extends State<GraphScreen> {
                       if (value != null) {
                         setState(() {
                           _selectedPart = value;
-                          _saveGraphPrefs(); // ← 保存
+                          _saveGraphPrefs();
                           _loadMenusForPart(value);
                         });
                       }
@@ -587,48 +657,50 @@ class _GraphScreenState extends State<GraphScreen> {
                     borderRadius: BorderRadius.circular(15.0),
                   ),
                   const SizedBox(height: 8.0),
-                  DropdownButtonFormField<String>(
-                    decoration: InputDecoration(
-                      hintText: l10n.selectExercise,
-                      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
-                      filled: true,
-                      fillColor: colorScheme.surfaceContainer,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25.0),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    value: _selectedMenu,
-                    items: _menusForPart
-                        .map((menu) => DropdownMenuItem(
-                      value: menu,
-                      child: Text(
-                        menu,
-                        style: TextStyle(
-                          color: colorScheme.onSurface,
-                          fontSize: 14.0,
-                          fontWeight: FontWeight.bold,
+                  // 種目セレクタ（体重のときは非表示）
+                  if (!isBodyWeight)
+                    DropdownButtonFormField<String>(
+                      decoration: InputDecoration(
+                        hintText: l10n.selectExercise,
+                        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
+                        filled: true,
+                        fillColor: colorScheme.surfaceContainer,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25.0),
+                          borderSide: BorderSide.none,
                         ),
                       ),
-                    ))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          _selectedMenu = value;
-                          _saveGraphPrefs(); // ← 保存
-                          _loadGraphData(value);
-                        });
-                      }
-                    },
-                    dropdownColor: colorScheme.surfaceContainer,
-                    style: TextStyle(
-                      color: colorScheme.onSurface,
-                      fontSize: 14.0,
-                      fontWeight: FontWeight.bold,
+                      value: _selectedMenu,
+                      items: _menusForPart
+                          .map((menu) => DropdownMenuItem(
+                        value: menu,
+                        child: Text(
+                          menu,
+                          style: TextStyle(
+                            color: colorScheme.onSurface,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _selectedMenu = value;
+                            _saveGraphPrefs();
+                            _loadGraphData(value);
+                          });
+                        }
+                      },
+                      dropdownColor: colorScheme.surfaceContainer,
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      borderRadius: BorderRadius.circular(15.0),
                     ),
-                    borderRadius: BorderRadius.circular(15.0),
-                  ),
                 ],
               ),
             ],

@@ -10,14 +10,14 @@ import '../models/menu_data.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
-  final Box<List> lastUsedMenusBox; // 型を統一
+  final Box<dynamic> lastUsedMenusBox; // ← これ
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
 
   const SettingsScreen({
     super.key,
     required this.recordsBox,
-    required this.lastUsedMenusBox,
+    required this.lastUsedMenusBox, // ← これ
     required this.settingsBox,
     required this.setCountBox,
   });

@@ -19,7 +19,7 @@ import '../widgets/custom_widgets.dart';
 
 class CalendarScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
-  final Box<List> lastUsedMenusBox; // ← ここを修正
+  final Box<dynamic> lastUsedMenusBox;
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
   final DateTime selectedDate;
@@ -27,12 +27,11 @@ class CalendarScreen extends StatefulWidget {
   const CalendarScreen({
     super.key,
     required this.recordsBox,
-    required this.lastUsedMenusBox, // ← ここも
+    required this.lastUsedMenusBox,
     required this.settingsBox,
     required this.setCountBox,
     required this.selectedDate,
   });
-
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
 }
@@ -90,8 +89,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
         try {
           DateTime date = DateTime.parse(key);
           final partNames = record.menus.keys.toList();
+          // ここは「イベントマーカー」のためのデータ（体重のみの日はマーカーなし）。表示自体は下部リストで行う
           _events[DateTime(date.year, date.month, date.day)] = partNames;
         } catch (e) {
+          // ignore: avoid_print
           print('Error parsing date key from Hive: $key, Error: $e');
         }
       }
@@ -122,16 +123,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _loadSettingsAndParts() {
     final l10n = AppLocalizations.of(context)!;
     _allBodyParts = [
-      l10n.aerobicExercise,
-      l10n.arm,
-      l10n.chest,
-      l10n.back,
-      l10n.shoulder,
-      l10n.leg,
-      l10n.fullBody,
-      l10n.other1,
-      l10n.other2,
-      l10n.other3,
+      l10n.aerobicExercise, l10n.arm, l10n.chest, l10n.back, l10n.shoulder, l10n.leg,
+      l10n.fullBody, l10n.other1, l10n.other2, l10n.other3,
     ];
 
     Map<String, bool>? savedBodyPartsSettings;
@@ -147,10 +140,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     if (savedBodyPartsSettings != null && savedBodyPartsSettings.isNotEmpty) {
-      _filteredBodyParts = _allBodyParts.where((translatedPart) {
+      _filteredBodyParts = _allBodyParts
+          .where((translatedPart) {
         final originalPart = _getOriginalPartName(context, translatedPart);
         return savedBodyPartsSettings![originalPart] == true;
-      }).toList();
+      })
+          .toList();
       if (_filteredBodyParts.isEmpty) {
         _filteredBodyParts = List.from(_allBodyParts);
       }
@@ -166,7 +161,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     if (isSameDay(_selectedDay, selectedDay)) {
       if (_selectedDay != null) {
-        // ここを修正
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -204,8 +198,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           const end = Offset.zero;
           const curve = Curves.easeOut;
 
-          var tween =
-              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
 
           return SlideTransition(
             position: animation.drive(tween),
@@ -253,7 +246,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     backgroundColor: Colors.transparent,
                     elevation: 0,
                     iconTheme: IconThemeData(color: colorScheme.onSurface),
-                    // 右上の設定ボタンの削除
                     actions: const [],
                   ),
                   const AdBanner(screenName: 'calendar')
@@ -278,14 +270,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             headerStyle: HeaderStyle(
               formatButtonVisible: false,
               titleCentered: true,
-              titleTextStyle: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontSize: 18.0,
-                  fontWeight: FontWeight.bold),
-              leftChevronIcon:
-                  Icon(Icons.chevron_left, color: colorScheme.onSurface),
-              rightChevronIcon:
-                  Icon(Icons.chevron_right, color: colorScheme.onSurface),
+              titleTextStyle: TextStyle(color: colorScheme.onSurface, fontSize: 18.0, fontWeight: FontWeight.bold),
+              leftChevronIcon: Icon(Icons.chevron_left, color: colorScheme.onSurface),
+              rightChevronIcon: Icon(Icons.chevron_right, color: colorScheme.onSurface),
             ),
             calendarStyle: CalendarStyle(
               outsideDaysVisible: false,
@@ -311,119 +298,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
           const SizedBox(height: 8.0),
+
+          // 実績（体重＋トレーニング）をアコーディオン表示
           Expanded(
-            child: _currentDayRecord != null &&
-                    _currentDayRecord!.menus.isNotEmpty
-                ? ListView.builder(
-                    itemCount: _currentDayRecord!.menus.length,
-                    itemBuilder: (context, index) {
-                      final part =
-                          _currentDayRecord!.menus.keys.elementAt(index);
-                      final menuList = _currentDayRecord!.menus[part]!;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12.0, vertical: 4.0),
-                        child: Card(
-                          color: colorScheme.surfaceContainer,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.0)),
-                          elevation: 2,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _translatePartToLocale(context, part),
-                                  style: TextStyle(
-                                    color: colorScheme.onSurface,
-                                    fontSize: 18.0,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                ListView.builder(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: menuList.length,
-                                  itemBuilder: (context, menuIndex) {
-                                    final menu = menuList[menuIndex];
-                                    return Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          menu.name,
-                                          style: TextStyle(
-                                            color: colorScheme.onSurfaceVariant,
-                                            fontSize: 16.0,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        ListView.builder(
-                                          shrinkWrap: true,
-                                          physics:
-                                              const NeverScrollableScrollPhysics(),
-                                          itemCount: menu.weights.length,
-                                          itemBuilder: (context, setIndex) {
-                                            if (setIndex >=
-                                                    menu.weights.length ||
-                                                setIndex >= menu.reps.length) {
-                                              return const SizedBox.shrink();
-                                            }
-                                            final weight =
-                                                menu.weights[setIndex];
-                                            final rep = menu.reps[setIndex];
-
-                                            String weightUnit;
-                                            String repUnit;
-
-                                            if (part == '有酸素運動') {
-                                              // 💡 有酸素運動の場合は、単位を「km」と「分:秒」に変更
-                                              weightUnit = 'km'; // または l10n.km
-                                              repUnit =
-                                                  '分:秒'; // または l10n.min_sec
-                                            } else {
-                                              // 筋トレの場合は、既存の単位を使用
-                                              weightUnit =
-                                                  SettingsManager.currentUnit ==
-                                                          'kg'
-                                                      ? l10n.kg
-                                                      : l10n.lbs;
-                                              repUnit = l10n.reps;
-                                            }
-
-                                            return Text(
-                                              '${setIndex + 1}${l10n.sets}：$weight $weightUnit $rep $repUnit',
-                                              style: TextStyle(
-                                                color: colorScheme
-                                                    .onSurfaceVariant,
-                                                fontSize: 14.0,
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                        if (menuIndex < menuList.length - 1)
-                                          const SizedBox(height: 12),
-                                      ],
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  )
-                : Center(
-                    child: Text(
-                      l10n.noRecordMessage,
-                      style: TextStyle(
-                          color: colorScheme.onSurfaceVariant, fontSize: 16.0),
-                    ),
-                  ),
+            child: _buildDailyResultList(context, colorScheme, l10n),
           ),
         ],
       ),
@@ -465,7 +343,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
             );
           } else if (index == 2) {
-            // グラフボタンが押された場合
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -495,31 +372,187 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  /// 下部の実績リスト（体重＋トレーニング）をアコーディオンで構築
+  Widget _buildDailyResultList(BuildContext context, ColorScheme colorScheme, AppLocalizations l10n) {
+    if (_currentDayRecord == null || (_currentDayRecord!.menus.isEmpty && _currentDayRecord!.weight == null)) {
+      return Center(
+        child: Text(
+          l10n.noRecordMessage,
+          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16.0),
+        ),
+      );
+    }
+
+    final List<Widget> items = [];
+
+    // 1) 体重カード（存在すれば表示）— デフォルトは折りたたみ
+    if (_currentDayRecord!.weight != null) {
+      final unit = SettingsManager.currentUnit;
+      final weightStr = _currentDayRecord!.weight!.toStringAsFixed(1);
+
+      items.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+          child: Card(
+            color: colorScheme.surfaceContainer,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            elevation: 2,
+            child: Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                initiallyExpanded: false,
+                expandedAlignment: Alignment.centerLeft,
+                title: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    l10n.bodyWeight,
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
+                      fontSize: 18.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        '$weightStr $unit',
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 16.0,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // 2) トレーニング部位ごとのカード（アコーディオン）
+    if (_currentDayRecord!.menus.isNotEmpty) {
+      _currentDayRecord!.menus.forEach((part, menuList) {
+        items.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+            child: Card(
+              color: colorScheme.surfaceContainer,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+              elevation: 2,
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  dividerColor: Colors.transparent,
+                  splashFactory: NoSplash.splashFactory,     // ← スプラッシュ生成を無効化
+                  splashColor: Colors.transparent,           // ← 念のため
+                  highlightColor: Colors.transparent,        // ← タップ時のハイライトも無効化
+                  hoverColor: Colors.transparent,
+                ),
+                child: ExpansionTile(
+                  initiallyExpanded: false,
+                  expandedAlignment: Alignment.centerLeft,
+                  title: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      _translatePartToLocale(context, part),
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  children: [
+                    // 中身（従来の表示ロジックを流用）
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ...List.generate(menuList.length, (menuIndex) {
+                          final menu = menuList[menuIndex];
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: menuIndex < menuList.length - 1 ? 12.0 : 0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  menu.name,
+                                  style: TextStyle(
+                                    color: colorScheme.onSurfaceVariant,
+                                    fontSize: 16.0,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                // セット表示
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: List.generate(menu.weights.length, (setIndex) {
+                                    if (setIndex >= menu.weights.length || setIndex >= menu.reps.length) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    final weight = menu.weights[setIndex];
+                                    final rep = menu.reps[setIndex];
+
+                                    String weightUnit;
+                                    String repUnit;
+
+                                    if (part == '有酸素運動') {
+                                      weightUnit = 'km';
+                                      repUnit = '分:秒';
+                                    } else {
+                                      weightUnit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
+                                      repUnit = l10n.reps;
+                                    }
+
+                                    return Text(
+                                      '${setIndex + 1}${l10n.sets}：$weight $weightUnit $rep $repUnit',
+                                      style: TextStyle(
+                                        color: colorScheme.onSurfaceVariant,
+                                        fontSize: 14.0,
+                                      ),
+                                    );
+                                  }),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      });
+    }
+
+    return ListView(
+      children: items,
+    );
+  }
+
   String _translatePartToLocale(BuildContext context, String part) {
     final l10n = AppLocalizations.of(context)!;
     switch (part) {
-      case '有酸素運動':
-        return l10n.aerobicExercise;
-      case '腕':
-        return l10n.arm;
-      case '胸':
-        return l10n.chest;
-      case '背中':
-        return l10n.back;
-      case '肩':
-        return l10n.shoulder;
-      case '足':
-        return l10n.leg;
-      case '全身':
-        return l10n.fullBody;
-      case 'その他１':
-        return l10n.other1;
-      case 'その他２':
-        return l10n.other2;
-      case 'その他３':
-        return l10n.other3;
-      default:
-        return part;
+      case '有酸素運動': return l10n.aerobicExercise;
+      case '腕': return l10n.arm;
+      case '胸': return l10n.chest;
+      case '背中': return l10n.back;
+      case '肩': return l10n.shoulder;
+      case '足': return l10n.leg;
+      case '全身': return l10n.fullBody;
+      case 'その他１': return l10n.other1;
+      case 'その他２': return l10n.other2;
+      case 'その他３': return l10n.other3;
+      default: return part;
     }
   }
 }
