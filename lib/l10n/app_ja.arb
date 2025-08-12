@@ -56,7 +56,7 @@
   "bodyWeightTracking": "体重管理",
   "selectBodyParts": "部位を選択",
   "unit": "単位",
-  "defaultSets": "Default Sets",
+  "defaultSets": "デフォルトのセット数",
   "durationHint": "時間:分",
   "minutes": "分",
   "distanceHint": "距離を入力",

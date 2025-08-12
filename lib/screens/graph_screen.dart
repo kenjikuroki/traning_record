@@ -20,7 +20,7 @@ enum DisplayMode { day, week }
 
 class GraphScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
-  final Box<dynamic> lastUsedMenusBox;
+  final Box<List> lastUsedMenusBox;
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
 
@@ -37,6 +37,11 @@ class GraphScreen extends StatefulWidget {
 }
 
 class _GraphScreenState extends State<GraphScreen> {
+  // ---- 追加：選択状態の保存キー ----
+  static const String _prefGraphPart = 'graph_selected_part';
+  static const String _prefGraphMenu = 'graph_selected_menu';
+  static const String _prefGraphMode = 'graph_display_mode'; // 0:day, 1:week
+
   List<String> _filteredBodyParts = [];
   String? _selectedPart;
   List<String> _menusForPart = [];
@@ -130,14 +135,20 @@ class _GraphScreenState extends State<GraphScreen> {
       }).toList();
     }
 
+    // 「お気に入り」を先頭に
     _filteredBodyParts.insert(0, l10n.favorites);
 
-    if (_selectedPart == null || !_filteredBodyParts.contains(_selectedPart)) {
-      if (_filteredBodyParts.isNotEmpty) {
-        _selectedPart = _filteredBodyParts.first;
-      } else {
-        _selectedPart = null;
-      }
+    // ---- 追加：前回の表示モード/部位の復元 ----
+    final int? savedModeIdx = widget.settingsBox.get(_prefGraphMode) as int?;
+    if (savedModeIdx != null && savedModeIdx >= 0 && savedModeIdx < DisplayMode.values.length) {
+      _displayMode = DisplayMode.values[savedModeIdx];
+    }
+
+    final String? savedPart = widget.settingsBox.get(_prefGraphPart) as String?;
+    if (savedPart != null && _filteredBodyParts.contains(savedPart)) {
+      _selectedPart = savedPart;
+    } else {
+      _selectedPart = _filteredBodyParts.isNotEmpty ? _filteredBodyParts.first : null;
     }
 
     if (mounted) {
@@ -166,12 +177,12 @@ class _GraphScreenState extends State<GraphScreen> {
       }
     }
 
-    if (_selectedMenu == null || !_menusForPart.contains(_selectedMenu)) {
-      if (_menusForPart.isNotEmpty) {
-        _selectedMenu = _menusForPart.first;
-      } else {
-        _selectedMenu = null;
-      }
+    // ---- 追加：前回のメニュー復元 ----
+    final String? savedMenu = widget.settingsBox.get(_prefGraphMenu) as String?;
+    if (savedMenu != null && _menusForPart.contains(savedMenu)) {
+      _selectedMenu = savedMenu;
+    } else {
+      _selectedMenu = _menusForPart.isNotEmpty ? _menusForPart.first : null;
     }
 
     if (mounted) {
@@ -238,7 +249,7 @@ class _GraphScreenState extends State<GraphScreen> {
 
       for (var record in recordsMap) {
         final DateTime date = record.date;
-        // 月曜日を週の始まりとする
+        // 月曜始まり
         final weekStart = date.subtract(Duration(days: date.weekday - 1));
         final weekStartMs = weekStart.millisecondsSinceEpoch;
 
@@ -290,6 +301,7 @@ class _GraphScreenState extends State<GraphScreen> {
     if (mounted) {
       setState(() {
         _checkIfFavorite();
+        _saveGraphPrefs(); // ← 追加：描画データ確定時にも保存
       });
     }
   }
@@ -338,6 +350,13 @@ class _GraphScreenState extends State<GraphScreen> {
     );
   }
 
+  // ---- 追加：選択状態の保存 ----
+  void _saveGraphPrefs() {
+    widget.settingsBox.put(_prefGraphPart, _selectedPart);
+    widget.settingsBox.put(_prefGraphMenu, _selectedMenu);
+    widget.settingsBox.put(_prefGraphMode, _displayMode.index);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -373,11 +392,8 @@ class _GraphScreenState extends State<GraphScreen> {
                 isSelected: [_displayMode == DisplayMode.day, _displayMode == DisplayMode.week],
                 onPressed: (index) {
                   setState(() {
-                    if (index == 0) {
-                      _displayMode = DisplayMode.day;
-                    } else {
-                      _displayMode = DisplayMode.week;
-                    }
+                    _displayMode = index == 0 ? DisplayMode.day : DisplayMode.week;
+                    _saveGraphPrefs(); // ← 保存
                     if (_selectedMenu != null) {
                       _loadGraphData(_selectedMenu!);
                     }
@@ -436,8 +452,9 @@ class _GraphScreenState extends State<GraphScreen> {
                                     return Text(
                                       value.toInt().toString(),
                                       style: TextStyle(
-                                          color: colorScheme.onSurfaceVariant,
-                                          fontSize: 10),
+                                        color: colorScheme.onSurfaceVariant,
+                                        fontSize: 10,
+                                      ),
                                     );
                                   },
                                 ),
@@ -451,30 +468,17 @@ class _GraphScreenState extends State<GraphScreen> {
                                       : 1,
                                   getTitlesWidget: (value, meta) {
                                     final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
-                                    if (_displayMode == DisplayMode.day) {
-                                      if (_spots.map((spot) => spot.x).contains(value)) {
-                                        return SideTitleWidget(
-                                          axisSide: meta.axisSide,
-                                          child: Text(
-                                            DateFormat('MM/dd').format(date),
-                                            style: TextStyle(
-                                                color: colorScheme.onSurfaceVariant,
-                                                fontSize: 10),
+                                    if (_spots.map((spot) => spot.x).contains(value)) {
+                                      return SideTitleWidget(
+                                        axisSide: meta.axisSide,
+                                        child: Text(
+                                          DateFormat('MM/dd').format(date),
+                                          style: TextStyle(
+                                            color: colorScheme.onSurfaceVariant,
+                                            fontSize: 10,
                                           ),
-                                        );
-                                      }
-                                    } else { // 週表示の場合
-                                      if (_spots.map((spot) => spot.x).contains(value)) {
-                                        return SideTitleWidget(
-                                          axisSide: meta.axisSide,
-                                          child: Text(
-                                            DateFormat('MM/dd').format(date),
-                                            style: TextStyle(
-                                                color: colorScheme.onSurfaceVariant,
-                                                fontSize: 10),
-                                          ),
-                                        );
-                                      }
+                                        ),
+                                      );
                                     }
                                     return const SizedBox();
                                   },
@@ -490,7 +494,7 @@ class _GraphScreenState extends State<GraphScreen> {
                             lineBarsData: [
                               LineChartBarData(
                                 spots: _spots,
-                                isCurved: false, // 週表示の場合は折れ線グラフが自然
+                                isCurved: false,
                                 color: colorScheme.primary,
                                 barWidth: 3,
                                 dotData: const FlDotData(show: true),
@@ -543,9 +547,7 @@ class _GraphScreenState extends State<GraphScreen> {
                   DropdownButtonFormField<String>(
                     decoration: InputDecoration(
                       hintText: l10n.selectTrainingPart,
-                      hintStyle: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: 14.0),
+                      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
                       filled: true,
                       fillColor: colorScheme.surfaceContainer,
                       border: OutlineInputBorder(
@@ -557,35 +559,38 @@ class _GraphScreenState extends State<GraphScreen> {
                     items: _filteredBodyParts
                         .map((p) => DropdownMenuItem(
                       value: p,
-                      child: Text(p,
-                          style: TextStyle(
-                              color: colorScheme.onSurface,
-                              fontSize: 14.0,
-                              fontWeight: FontWeight.bold)),
+                      child: Text(
+                        p,
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ))
                         .toList(),
                     onChanged: (value) {
                       if (value != null) {
                         setState(() {
                           _selectedPart = value;
+                          _saveGraphPrefs(); // ← 保存
                           _loadMenusForPart(value);
                         });
                       }
                     },
                     dropdownColor: colorScheme.surfaceContainer,
                     style: TextStyle(
-                        color: colorScheme.onSurface,
-                        fontSize: 14.0,
-                        fontWeight: FontWeight.bold),
+                      color: colorScheme.onSurface,
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.bold,
+                    ),
                     borderRadius: BorderRadius.circular(15.0),
                   ),
                   const SizedBox(height: 8.0),
                   DropdownButtonFormField<String>(
                     decoration: InputDecoration(
                       hintText: l10n.selectExercise,
-                      hintStyle: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: 14.0),
+                      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
                       filled: true,
                       fillColor: colorScheme.surfaceContainer,
                       border: OutlineInputBorder(
@@ -597,26 +602,31 @@ class _GraphScreenState extends State<GraphScreen> {
                     items: _menusForPart
                         .map((menu) => DropdownMenuItem(
                       value: menu,
-                      child: Text(menu,
-                          style: TextStyle(
-                              color: colorScheme.onSurface,
-                              fontSize: 14.0,
-                              fontWeight: FontWeight.bold)),
+                      child: Text(
+                        menu,
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ))
                         .toList(),
                     onChanged: (value) {
                       if (value != null) {
                         setState(() {
                           _selectedMenu = value;
+                          _saveGraphPrefs(); // ← 保存
                           _loadGraphData(value);
                         });
                       }
                     },
                     dropdownColor: colorScheme.surfaceContainer,
                     style: TextStyle(
-                        color: colorScheme.onSurface,
-                        fontSize: 14.0,
-                        fontWeight: FontWeight.bold),
+                      color: colorScheme.onSurface,
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.bold,
+                    ),
                     borderRadius: BorderRadius.circular(15.0),
                   ),
                 ],

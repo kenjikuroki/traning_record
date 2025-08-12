@@ -23,9 +23,11 @@ class SetInputData {
 class SectionData {
   final Key key; // Section key
   String? selectedPart; // Selected training part for this section
-  List<TextEditingController> menuControllers; // Controllers for exercise names in this section
+  List<TextEditingController>
+      menuControllers; // Controllers for exercise names in this section
   List<List<SetInputData>> setInputDataList; // List of SetInputData
-  int? initialSetCount; // Number of sets to display for this section (max(actual sets, default sets))
+  int?
+      initialSetCount; // Number of sets to display for this section (max(actual sets, default sets))
   List<Key> menuKeys; // Keys for each menu item
 
   SectionData({
@@ -38,12 +40,25 @@ class SectionData {
   }) : this.key = key ?? UniqueKey();
 
   // Factory constructor to create a new empty section data with default controllers
-  static SectionData createEmpty(int setCount, {bool shouldPopulateDefaults = true}) {
+  static SectionData createEmpty(int setCount,
+      {bool shouldPopulateDefaults = true}) {
     return SectionData(
-      menuControllers: shouldPopulateDefaults ? List.generate(1, (_) => TextEditingController()) : [],
-      setInputDataList: shouldPopulateDefaults ? List.generate(1, (_) => List.generate(setCount, (_) => SetInputData(weightController: TextEditingController(), repController: TextEditingController(), isSuggestion: true))) : [], // New sections start as suggestions
+      menuControllers: shouldPopulateDefaults
+          ? List.generate(1, (_) => TextEditingController())
+          : [],
+      setInputDataList: shouldPopulateDefaults
+          ? List.generate(
+              1,
+              (_) => List.generate(
+                  setCount,
+                  (_) => SetInputData(
+                      weightController: TextEditingController(),
+                      repController: TextEditingController(),
+                      isSuggestion: true)))
+          : [], // New sections start as suggestions
       initialSetCount: setCount,
-      menuKeys: shouldPopulateDefaults ? List.generate(1, (_) => UniqueKey()) : [],
+      menuKeys:
+          shouldPopulateDefaults ? List.generate(1, (_) => UniqueKey()) : [],
     );
   }
 

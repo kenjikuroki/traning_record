@@ -26,7 +26,8 @@ class AnimatedListItem extends StatefulWidget {
   _AnimatedListItemState createState() => _AnimatedListItemState();
 }
 
-class _AnimatedListItemState extends State<AnimatedListItem> with SingleTickerProviderStateMixin {
+class _AnimatedListItemState extends State<AnimatedListItem>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Offset> _offsetAnimation;
   late Animation<double> _fadeAnimation;

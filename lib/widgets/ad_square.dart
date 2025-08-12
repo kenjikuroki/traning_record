@@ -12,41 +12,51 @@ class AdSquare extends StatefulWidget {
 class _AdSquareState extends State<AdSquare> {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
+  bool _loading = false;
 
   final String adUnitId = Platform.isAndroid
-      ? 'ca-app-pub-3940256099942544/2177585250' // Androidテスト用レクタングル広告ID
-      : 'ca-app-pub-3940256099942544/3001886131'; // iOSテスト用レクタングル広告ID
+      ? 'ca-app-pub-3940256099942544/2177585250'
+      : 'ca-app-pub-3940256099942544/3001886131';
 
   @override
-  void initState() {
-    super.initState();
-    _loadAd();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isAdLoaded && !_loading) _loadAd();
+  }
+
+  void _loadAd() {
+    _loading = true;
+    final ad = BannerAd(
+      adUnitId: adUnitId,
+      request: const AdRequest(),
+      size: AdSize.mediumRectangle,
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          if (!mounted) {
+            ad.dispose();
+            return;
+          }
+          setState(() {
+            _isAdLoaded = true;
+            _bannerAd = ad as BannerAd;
+            _loading = false;
+          });
+        },
+        onAdFailedToLoad: (ad, err) {
+          _isAdLoaded = false;
+          _loading = false;
+          ad.dispose();
+          debugPrint('BannerAd failed to load: $err');
+        },
+      ),
+    );
+    ad.load();
   }
 
   @override
   void dispose() {
     _bannerAd?.dispose();
     super.dispose();
-  }
-
-  void _loadAd() {
-    _bannerAd = BannerAd(
-      adUnitId: adUnitId,
-      request: const AdRequest(),
-      size: AdSize.mediumRectangle, // AdSize.mediumRectangleは300x250のスクエア型広告です
-      listener: BannerAdListener(
-        onAdLoaded: (ad) {
-          setState(() {
-            _isAdLoaded = true;
-          });
-        },
-        onAdFailedToLoad: (ad, err) {
-          _isAdLoaded = false;
-          ad.dispose();
-          debugPrint('BannerAd failed to load: $err'); // ★ 追加したログ
-        },
-      ),
-    )..load();
   }
 
   @override

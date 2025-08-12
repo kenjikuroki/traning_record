@@ -3,25 +3,20 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hive/hive.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'l10n/app_localizations.dart';
 import 'models/menu_data.dart';
 import 'models/record_models.dart';
 import 'screens/calendar_screen.dart';
 import 'settings_manager.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Hiveの初期化
   await Hive.initFlutter();
-
-  // Mobile Ads SDKを初期化
   await MobileAds.instance.initialize();
 
-  // Hiveアダプターの登録
   if (!Hive.isAdapterRegistered(0)) {
     Hive.registerAdapter(MenuDataAdapter());
   }
@@ -29,16 +24,13 @@ Future<void> main() async {
     Hive.registerAdapter(DailyRecordAdapter());
   }
 
-  // 設定マネージャーの初期化
   await SettingsManager.initialize();
 
-  // アプリの向きを縦向きに固定
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   final recordsBox = await Hive.openBox<DailyRecord>('dailyRecords');
-  final lastUsedMenusBox = await Hive.openBox<dynamic>('lastUsedMenus');
+  // 型安全化：List<MenuData> 保持用
+  final lastUsedMenusBox = await Hive.openBox<List>('lastUsedMenus');
   final settingsBox = await Hive.openBox<dynamic>('settings');
   final setCountBox = await Hive.openBox<int>('setCount');
 
@@ -52,7 +44,7 @@ Future<void> main() async {
 
 class MyApp extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
-  final Box<dynamic> lastUsedMenusBox;
+  final Box<List> lastUsedMenusBox;
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
 
@@ -79,17 +71,13 @@ class _MyAppState extends State<MyApp> {
           themeMode: themeMode,
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
-              seedColor: Colors.blue,
-              brightness: Brightness.light,
-            ),
+                seedColor: Colors.blue, brightness: Brightness.light),
             useMaterial3: true,
             fontFamily: 'Inter',
           ),
           darkTheme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
-              seedColor: Colors.blue,
-              brightness: Brightness.dark,
-            ),
+                seedColor: Colors.blue, brightness: Brightness.dark),
             useMaterial3: true,
             fontFamily: 'Inter',
           ),
@@ -99,10 +87,7 @@ class _MyAppState extends State<MyApp> {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: const [
-            Locale('en', ''),
-            Locale('ja', ''),
-          ],
+          supportedLocales: const [Locale('en', ''), Locale('ja', '')],
           home: CalendarScreen(
             recordsBox: widget.recordsBox,
             lastUsedMenusBox: widget.lastUsedMenusBox,

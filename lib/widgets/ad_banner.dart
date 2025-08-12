@@ -15,22 +15,23 @@ class AdBanner extends StatefulWidget {
 class _AdBannerState extends State<AdBanner> {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
+  bool _loading = false;
 
   @override
-  void initState() {
-    super.initState();
-    _loadAd();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isAdLoaded && !_loading) _loadAd();
   }
 
   void _loadAd() {
+    _loading = true;
+
     String adUnitId;
     if (kDebugMode) {
-      // デバッグモードではテストIDを使用
       adUnitId = Platform.isAndroid
-          ? 'ca-app-pub-3940256099942544/6300978111' // Androidテスト用
-          : 'ca-app-pub-3940256099942544/2934735716'; // iOSテスト用
+          ? 'ca-app-pub-3940256099942544/6300978111'
+          : 'ca-app-pub-3940256099942544/2934735716';
     } else {
-      // リリースモードでは本番IDを使用
       if (Platform.isAndroid) {
         if (widget.screenName == 'calendar') {
           adUnitId = 'ca-app-pub-3331079517737737/2576446816';
@@ -39,7 +40,6 @@ class _AdBannerState extends State<AdBanner> {
         } else if (widget.screenName == 'settings') {
           adUnitId = 'ca-app-pub-3331079517737737/3704893323';
         } else {
-          // デフォルトとして Android のテストIDを使用
           adUnitId = 'ca-app-pub-3940256099942544/6300978111';
         }
       } else if (Platform.isIOS) {
@@ -50,16 +50,14 @@ class _AdBannerState extends State<AdBanner> {
         } else if (widget.screenName == 'settings') {
           adUnitId = 'ca-app-pub-3331079517737737/8271626623';
         } else {
-          // デフォルトとして iOS のテストIDを使用
           adUnitId = 'ca-app-pub-3940256099942544/2934735716';
         }
       } else {
-        // サポートされていないプラットフォームの場合、AndroidのテストIDを使用
         adUnitId = 'ca-app-pub-3940256099942544/6300978111';
       }
     }
 
-    _bannerAd = BannerAd(
+    final ad = BannerAd(
       adUnitId: adUnitId,
       request: const AdRequest(),
       size: AdSize.banner,
@@ -72,15 +70,17 @@ class _AdBannerState extends State<AdBanner> {
           setState(() {
             _isAdLoaded = true;
             _bannerAd = ad as BannerAd;
+            _loading = false;
           });
         },
         onAdFailedToLoad: (ad, error) {
           ad.dispose();
-          debugPrint('広告の読み込みに失敗しました: $error');
+          debugPrint('広告の読み込みに失敗: $error');
+          if (mounted) setState(() => _loading = false);
         },
       ),
     );
-    _bannerAd!.load();
+    ad.load();
   }
 
   @override

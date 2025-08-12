@@ -17,15 +17,16 @@ class SettingsManager {
   static Box<dynamic>? _box;
 
   /// 重量単位（'kg' / 'lbs'）
-  static final ValueNotifier<String> _unitNotifier = ValueNotifier<String>('kg');
+  static final ValueNotifier<String> _unitNotifier =
+      ValueNotifier<String>('kg');
 
   /// テーマモード（system / light / dark）
   static final ValueNotifier<ThemeMode> _themeModeNotifier =
-  ValueNotifier<ThemeMode>(ThemeMode.system);
+      ValueNotifier<ThemeMode>(ThemeMode.system);
 
   /// 体重入力カードの表示ON/OFF
   static final ValueNotifier<bool> _showWeightInputNotifier =
-  ValueNotifier<bool>(true);
+      ValueNotifier<bool>(true);
 
   // ======= public getters =======
   static ValueNotifier<String> get unitNotifier => _unitNotifier;
@@ -52,12 +53,12 @@ class SettingsManager {
 
     // テーマ
     final savedThemeIndex =
-    _box!.get(_themeModeKey, defaultValue: ThemeMode.system.index) as int;
+        _box!.get(_themeModeKey, defaultValue: ThemeMode.system.index) as int;
     _themeModeNotifier.value = ThemeMode.values[savedThemeIndex];
 
     // 体重入力の表示/非表示
     final savedShowWeight =
-    _box!.get(_showWeightInputKey, defaultValue: true) as bool;
+        _box!.get(_showWeightInputKey, defaultValue: true) as bool;
     _showWeightInputNotifier.value = savedShowWeight;
   }
 

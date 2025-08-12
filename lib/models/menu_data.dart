@@ -11,25 +11,29 @@ class MenuData extends HiveObject {
   @HiveField(2)
   final List<String> reps;
 
-  // 💡 有酸素運動用のフィールドを追加
   @HiveField(3)
-  final String? distance; // 距離 (km)
+  final String? distance; // km
   @HiveField(4)
-  final String? duration; // 時間 (分:秒)
+  final String? duration; // mm:ss
 
   MenuData({
     required this.name,
     required this.weights,
     required this.reps,
-    this.distance, // 💡 コンストラクタに追加
-    this.duration, // 💡 コンストラクタに追加
+    this.distance,
+    this.duration,
   });
 
   factory MenuData.fromJson(Map<String, dynamic> json) {
     return MenuData(
       name: json['name'] as String,
-      weights: (json['weights'] as List).map((e) => e == null || e == 0 ? '' : e.toString()).toList(),
-      reps: (json['reps'] as List).map((e) => e == null || e == 0 ? '' : e.toString()).toList(),
+      // ← 0 は正しい入力として保持（null のみ空文字に）
+      weights: (json['weights'] as List)
+          .map((e) => e == null ? '' : e.toString())
+          .toList(),
+      reps: (json['reps'] as List)
+          .map((e) => e == null ? '' : e.toString())
+          .toList(),
       distance: json['distance'] as String?,
       duration: json['duration'] as String?,
     );
@@ -59,7 +63,6 @@ class DailyRecord extends HiveObject {
 
   @HiveField(3)
   final double? weight;
-
 
   DailyRecord({
     required this.date,
