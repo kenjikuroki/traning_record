@@ -1,13 +1,14 @@
+// lib/screens/settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
 import 'package:ttraining_record/screens/calendar_screen.dart';
 import '../widgets/ad_banner.dart';
+import '../widgets/ad_square.dart';
 import '../settings_manager.dart';
 import 'record_screen.dart';
 import 'graph_screen.dart';
 import '../models/menu_data.dart';
-import '../models/record_models.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
@@ -126,6 +127,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
 
+    // カード間の余白（外側）
+    const double gap = 8.0;
+    // カード内の標準パディング（内側）
+    const EdgeInsets cardPad = EdgeInsets.all(12.0);
+
     return PopScope(
       canPop: true,
       onPopInvoked: (didPop) {
@@ -136,13 +142,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Scaffold(
         backgroundColor: colorScheme.background,
         appBar: AppBar(
-          leading: const BackButton(), // ★ いつでも戻る表示
+          leading: const BackButton(),
           title: Text(
             l10n.settingsScreenTitle,
             style: TextStyle(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.bold,
-                fontSize: 20.0),
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.bold,
+              fontSize: 20.0,
+            ),
           ),
           backgroundColor: colorScheme.surface,
           elevation: 0.0,
@@ -154,16 +161,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               const SizedBox(height: 2),
               const SizedBox(height: 50, child: AdBanner(screenName: 'settings')),
-              const SizedBox(height: 16.0),
+              const SizedBox(height: 12.0),
               Expanded(
                 child: ListView(
                   children: [
                     // テーマ
                     Card(
                       color: colorScheme.surfaceContainerHighest,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16.0),
+                      ),
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: cardPad,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -172,45 +181,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: TextStyle(
                                 color: colorScheme.onSurface,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16.0,
+                                fontSize: 15.0,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 4),
                             RadioListTile<ThemeMode>(
+                              dense: true,
+                              visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+                              contentPadding: EdgeInsets.zero,
                               title: Text(l10n.systemDefault),
                               value: ThemeMode.system,
                               groupValue: _themeMode,
                               onChanged: _onThemeChanged,
                               activeColor: colorScheme.primary,
-                              dense: true,
                             ),
                             RadioListTile<ThemeMode>(
+                              dense: true,
+                              visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+                              contentPadding: EdgeInsets.zero,
                               title: Text(l10n.light),
                               value: ThemeMode.light,
                               groupValue: _themeMode,
                               onChanged: _onThemeChanged,
                               activeColor: colorScheme.primary,
-                              dense: true,
                             ),
                             RadioListTile<ThemeMode>(
+                              dense: true,
+                              visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+                              contentPadding: EdgeInsets.zero,
                               title: Text(l10n.dark),
                               value: ThemeMode.dark,
                               groupValue: _themeMode,
                               onChanged: _onThemeChanged,
                               activeColor: colorScheme.primary,
-                              dense: true,
                             ),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16.0),
 
-                    // 体重管理
+                    // ★ カード間の余白（テーマ ↔ 体重管理 を狭める）
+                    const SizedBox(height: gap),
+
+                    // 体重管理（“太め”に）
                     Card(
                       color: colorScheme.surfaceContainerHighest,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16.0),
+                      ),
                       child: SwitchListTile(
+                        // 太めにするために上下パディングを増やす
+                        contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                        // dense は使わない（薄くならないように）
                         title: Text(
                           l10n.bodyWeightTracking,
                           style: TextStyle(
@@ -228,7 +251,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         activeColor: colorScheme.primary,
                       ),
                     ),
-                    const SizedBox(height: 16.0),
+
+                    const SizedBox(height: gap),
 
                     // 表示する部位を選択（アコーディオン、光らない）
                     Card(
@@ -237,7 +261,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         borderRadius: BorderRadius.circular(16.0),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        padding: const EdgeInsets.symmetric(vertical: 2.0),
                         child: Theme(
                           data: Theme.of(context).copyWith(
                             dividerColor: Colors.transparent,
@@ -248,36 +272,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           child: ExpansionTile(
                             initiallyExpanded: _isBodyPartsExpanded,
-                            onExpansionChanged: (v) => setState(() => _isBodyPartsExpanded = v),
+                            onExpansionChanged: (v) =>
+                                setState(() => _isBodyPartsExpanded = v),
                             expandedAlignment: Alignment.centerLeft,
-                            tilePadding: const EdgeInsets.symmetric(horizontal: 16.0),
-                            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                            tilePadding:
+                            const EdgeInsets.symmetric(horizontal: 12.0),
+                            childrenPadding:
+                            const EdgeInsets.fromLTRB(12, 0, 12, 10),
                             title: Align(
                               alignment: Alignment.centerLeft,
                               child: Text(
-                                l10n.selectBodyParts, // ja: 表示する部位を選択 / en: Select body parts to display
+                                l10n.selectBodyParts,
                                 style: TextStyle(
                                   color: colorScheme.onSurface,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16.0,
+                                  fontSize: 15.0,
                                 ),
                               ),
                             ),
                             children: [
-                              const SizedBox(height: 8),
                               ..._bodyPartsOriginal.map((p) {
                                 final translated = _translatePart(context, p);
                                 final current = _selectedBodyParts[p] ?? true;
                                 return SwitchListTile(
-                                  title: Text(translated, style: TextStyle(color: colorScheme.onSurface)),
+                                  dense: true,
+                                  visualDensity: const VisualDensity(
+                                      horizontal: -2, vertical: -3),
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(
+                                    translated,
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                      fontSize: 14.0,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
                                   value: current,
                                   onChanged: (bool value) async {
-                                    setState(() => _selectedBodyParts[p] = value);
-                                    await widget.settingsBox.put('selectedBodyParts', _selectedBodyParts);
+                                    setState(
+                                            () => _selectedBodyParts[p] = value);
+                                    await widget.settingsBox.put(
+                                        'selectedBodyParts',
+                                        _selectedBodyParts);
                                   },
                                   activeColor: colorScheme.primary,
-                                  dense: true,
-                                  contentPadding: EdgeInsets.zero,
                                 );
                               }),
                             ],
@@ -285,14 +323,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16.0),
+
+                    // ★ Large Banner 広告（320x100）— 選択部位 ↔ デフォルトセット の間
+                    const SizedBox(height: gap),
+                    Center(
+                      child: AdSquare(
+                        adSize: AdBoxSize.largeBanner, // 320x100
+                        showPlaceholder: true,
+                      ),
+                    ),
+                    const SizedBox(height: gap),
 
                     // デフォルトセット数
                     Card(
                       color: colorScheme.surfaceContainerHighest,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16.0)),
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: cardPad,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -301,30 +349,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: TextStyle(
                                 color: colorScheme.onSurface,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16.0,
+                                fontSize: 15.0,
                               ),
                             ),
-                            Slider(
-                              value: _setCount.toDouble(),
-                              min: 1,
-                              max: 10,
-                              divisions: 9,
-                              label: _setCount.toString(),
-                              onChanged: (double newValue) {
-                                setState(() => _setCount = newValue.round());
-                              },
-                              onChangeEnd: (v) {
-                                widget.setCountBox.put('setCount', v.round());
-                              },
-                              activeColor: colorScheme.primary,
-                              inactiveColor: colorScheme.onSurfaceVariant.withOpacity(0.3),
+                            SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                trackHeight: 3,
+                                thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 8),
+                              ),
+                              child: Slider(
+                                value: _setCount.toDouble(),
+                                min: 1,
+                                max: 10,
+                                divisions: 9,
+                                label: _setCount.toString(),
+                                onChanged: (double newValue) {
+                                  setState(
+                                          () => _setCount = newValue.round());
+                                },
+                                onChangeEnd: (v) {
+                                  widget.setCountBox
+                                      .put('setCount', v.round());
+                                },
+                                activeColor: colorScheme.primary,
+                                inactiveColor: colorScheme.onSurfaceVariant
+                                    .withOpacity(0.3),
+                              ),
                             ),
-                            Center(
+                            Align(
+                              alignment: Alignment.centerRight,
                               child: Text(
                                 '${_setCount}${l10n.sets}',
                                 style: TextStyle(
                                   color: colorScheme.onSurface,
-                                  fontSize: 16.0,
+                                  fontSize: 14.0,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -333,14 +392,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16.0),
+
+                    const SizedBox(height: gap),
 
                     // 重量単位
                     Card(
                       color: colorScheme.surfaceContainerHighest,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16.0)),
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: cardPad,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -349,29 +410,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: TextStyle(
                                 color: colorScheme.onSurface,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16.0,
+                                fontSize: 15.0,
                               ),
                             ),
                             Row(
                               children: [
                                 Expanded(
                                   child: RadioListTile<String>(
-                                    title: Text(l10n.kg),
+                                    dense: true,
+                                    visualDensity: const VisualDensity(
+                                        horizontal: -2, vertical: -2),
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(
+                                      l10n.kg,
+                                      style: TextStyle(
+                                        color: colorScheme.onSurface,
+                                        fontSize: 14.0,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                     value: 'kg',
                                     groupValue: _selectedUnit,
                                     onChanged: _onUnitChanged,
                                     activeColor: colorScheme.primary,
-                                    dense: true,
                                   ),
                                 ),
                                 Expanded(
                                   child: RadioListTile<String>(
-                                    title: Text(l10n.lbs),
+                                    dense: true,
+                                    visualDensity: const VisualDensity(
+                                        horizontal: -2, vertical: -2),
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(
+                                      l10n.lbs,
+                                      style: TextStyle(
+                                        color: colorScheme.onSurface,
+                                        fontSize: 14.0,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                     value: 'lbs',
                                     groupValue: _selectedUnit,
                                     onChanged: _onUnitChanged,
                                     activeColor: colorScheme.primary,
-                                    dense: true,
                                   ),
                                 ),
                               ],
