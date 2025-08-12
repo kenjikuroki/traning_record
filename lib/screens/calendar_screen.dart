@@ -1,3 +1,4 @@
+// lib/screens/calendar_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
@@ -100,6 +101,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
       default:
         return part;
     }
+  }
+
+  // ●「5.3」→「5km3m」
+  String _formatDistance(String? raw, AppLocalizations l10n) {
+    if (raw == null || raw.trim().isEmpty) return '-';
+    final parts = raw.split('.');
+    final km = (parts.isNotEmpty && parts[0].isNotEmpty) ? parts[0] : '0';
+    final m = (parts.length > 1 && parts[1].isNotEmpty) ? parts[1] : '0';
+    return '$km${l10n.km}$m${l10n.m}';
+  }
+
+  // ●「30:45」→「30分45秒」
+  String _formatDuration(String? raw, AppLocalizations l10n) {
+    if (raw == null || raw.trim().isEmpty) return '-';
+    final parts = raw.split(':');
+    final min = (parts.isNotEmpty && parts[0].isNotEmpty) ? parts[0] : '0';
+    final sec = (parts.length > 1 && parts[1].isNotEmpty) ? parts[1] : '0';
+    return '$min${l10n.min}$sec${l10n.sec}';
   }
 
   // TableCalendar：その日に何か（体重 or トレ）あれば 1 件返す → ● マーカー
@@ -290,10 +309,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
 
-    // 実績ゼロ日かどうか
+    // 実績ゼロ日：広告のみ（スクロール可能）
     final bool noData = record == null || !_hasAnyData(record);
-
-    // ① 実績ゼロ日：広告だけを表示（スクロール可能）
     if (noData) {
       return Expanded(
         child: ListView(
@@ -301,7 +318,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           children: const [
             Center(
               child: AdSquare(
-                adSize: AdBoxSize.largeBanner, // 320x100（小さめが良ければ banner に）
+                adSize: AdBoxSize.largeBanner, // 320x100
                 showPlaceholder: true,
               ),
             ),
@@ -310,11 +327,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
     }
 
-    // ② 実績あり：体重カード／部位カードを生成
+    // 実績あり：体重カード／部位カード
     final unit = SettingsManager.currentUnit;
     final List<Widget> cards = [];
 
-    // 体重カード
+    // 体重カード（体重実績がある場合のみ表示）
     if (record!.weight != null) {
       cards.add(
         Theme(
@@ -354,23 +371,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
     }
 
-    // 部位カード（タイトル＝部位名）
-    String _translatePartToLocale(String part) {
-      switch (part) {
-        case '有酸素運動': return l10n.aerobicExercise;
-        case '腕': return l10n.arm;
-        case '胸': return l10n.chest;
-        case '背中': return l10n.back;
-        case '肩': return l10n.shoulder;
-        case '足': return l10n.leg;
-        case '全身': return l10n.fullBody;
-        case 'その他１': return l10n.other1;
-        case 'その他２': return l10n.other2;
-        case 'その他３': return l10n.other3;
-        default: return part;
-      }
-    }
-
+    // 部位カード（タイトル＝部位名）。トレ実績がある部位だけ表示
     record.menus.forEach((originalPart, menuList) {
       bool partHasData = false;
       for (final m in menuList) {
@@ -388,7 +389,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
       if (!partHasData) return;
 
-      final partTitle = _translatePartToLocale(originalPart);
+      final partTitle = _translatePartToLocale(context, originalPart);
 
       final List<Widget> lines = [];
       for (final m in menuList) {
@@ -432,7 +433,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           );
         }
 
-        // 有酸素の距離・時間（ある場合のみ）
+        // 有酸素の距離・時間（ある場合のみ、km/m・分/秒で表示）
         if ((m.distance?.trim().isNotEmpty ?? false)) {
           lines.add(
             Padding(
@@ -440,7 +441,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '${l10n.distance}: ${m.distance}',
+                  '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
                   textAlign: TextAlign.left,
                   style: TextStyle(color: colorScheme.onSurface, fontSize: 14),
                 ),
@@ -455,7 +456,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '${l10n.time}: ${m.duration}',
+                  '${l10n.time}: ${_formatDuration(m.duration, l10n)}',
                   textAlign: TextAlign.left,
                   style: TextStyle(color: colorScheme.onSurface, fontSize: 14),
                 ),
@@ -511,5 +512,4 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
-
 }

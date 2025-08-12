@@ -40,7 +40,6 @@ class RecordScreen extends StatefulWidget {
 }
 
 class _RecordScreenState extends State<RecordScreen> {
-  // 入場時はアニメ無しにするためのフラグ
   bool _firstBuildDone = false;
 
   List<String> _filteredBodyParts = [];
@@ -49,14 +48,10 @@ class _RecordScreenState extends State<RecordScreen> {
   int _currentSetCount = 3;
 
   final TextEditingController _weightController = TextEditingController();
-  // 有酸素（距離・時間）は簡易対応（1セクション想定）
-  final TextEditingController _distanceController = TextEditingController();
-  final TextEditingController _durationController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    // 初回フレーム終了後に true にして入場時アニメを抑制
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _firstBuildDone = true);
     });
@@ -75,8 +70,6 @@ class _RecordScreenState extends State<RecordScreen> {
     }
     _sections.clear();
     _weightController.dispose();
-    _distanceController.dispose();
-    _durationController.dispose();
     super.dispose();
   }
 
@@ -169,7 +162,6 @@ class _RecordScreenState extends State<RecordScreen> {
       _filteredBodyParts = List.from(_allBodyParts);
     }
 
-    // 記録にある部位は必ず候補に含める
     for (final originalPart in partsInRecord) {
       final translated = _translatePartToLocale(context, originalPart);
       if (!_filteredBodyParts.contains(translated)) {
@@ -177,7 +169,6 @@ class _RecordScreenState extends State<RecordScreen> {
       }
     }
 
-    // 本来の順に並べる
     _filteredBodyParts.sort((a, b) {
       final ia = _allBodyParts.indexOf(a);
       final ib = _allBodyParts.indexOf(b);
@@ -193,44 +184,6 @@ class _RecordScreenState extends State<RecordScreen> {
     }
   }
 
-  // 有酸素の前回値プリセット（record優先→lastUsed）、lastUsed由来なら未確定に
-  void _prefillAerobicForPart(SectionData section, String originalPart, DailyRecord? record) {
-    String? distance;
-    String? duration;
-
-    // record から
-    final recMenus = record?.menus[originalPart];
-    if (recMenus != null) {
-      for (final m in recMenus) {
-        if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
-          distance = m.distance;
-          duration = m.duration;
-          break;
-        }
-      }
-    }
-
-    bool fromLastUsed = false;
-    if (distance == null && duration == null) {
-      final raw = widget.lastUsedMenusBox.get(originalPart);
-      if (raw is List) {
-        final lu = raw.whereType<MenuData>().toList();
-        for (final m in lu) {
-          if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
-            distance = m.distance;
-            duration = m.duration;
-            fromLastUsed = true;
-            break;
-          }
-        }
-      }
-    }
-
-    _distanceController.text = distance ?? '';
-    _durationController.text = duration ?? '';
-    section.aerobicIsSuggestion = fromLastUsed;
-  }
-
   void _loadInitialSections() {
     final dateKey = _getDateKey(widget.selectedDate);
     final record = widget.recordsBox.get(dateKey);
@@ -240,7 +193,6 @@ class _RecordScreenState extends State<RecordScreen> {
     }
     _sections.clear();
 
-    // 体重の復元
     if (record?.weight != null) {
       _weightController.text = record!.weight.toString();
     } else {
@@ -248,20 +200,19 @@ class _RecordScreenState extends State<RecordScreen> {
     }
 
     if (record == null || record.menus.isEmpty) {
-      // 空のセクション1つ（ドロップダウンのみ）
       _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
       _sections[0].initialSetCount = _currentSetCount;
       setState(() {});
       return;
     }
 
-    // 記録 + lastUsed をマージして表示（メニュー名の重複を避けつつ、recordにないメニューをlastUsedから補完）
     final Map<String, SectionData> tempSectionsMap = {};
     final partsFromRecords = record.menus.keys.toList();
 
-    // record に出てくる部位のみ描画（従来仕様）
     for (final originalPart in partsFromRecords) {
       final translatedPart = _translatePartToLocale(context, originalPart);
+      final l10n = AppLocalizations.of(context)!;
+      final isAerobic = translatedPart == l10n.aerobicExercise;
 
       final section = tempSectionsMap.putIfAbsent(
         translatedPart,
@@ -272,7 +223,10 @@ class _RecordScreenState extends State<RecordScreen> {
           setInputDataList: [],
           initialSetCount: _currentSetCount,
           menuKeys: [],
-          aerobicIsSuggestion: false,
+          // 有酸素用 per menu
+          aerobicDistanceCtrls: [],
+          aerobicDurationCtrls: [],
+          aerobicSuggestFlags: [],
         ),
       );
 
@@ -283,11 +237,15 @@ class _RecordScreenState extends State<RecordScreen> {
       final Map<String, MenuData> recBy = {for (final m in recList) m.name: m};
       final Map<String, MenuData> luBy = {for (final m in luList) m.name: m};
 
-      // メニュー名の順序：recordの順 + recordに無いものはlastUsedから追加
       final List<String> names = [
         ...recList.map((m) => m.name),
         ...luList.where((m) => !recBy.containsKey(m.name)).map((m) => m.name),
       ];
+
+      // 少なくとも1行は作る
+      if (names.isEmpty) {
+        names.add('');
+      }
 
       for (final name in names) {
         final rec = recBy[name];
@@ -297,51 +255,54 @@ class _RecordScreenState extends State<RecordScreen> {
         section.menuKeys.add(UniqueKey());
         section.menuIds.add(section.nextMenuId++);
 
-        // セット数は record / lastUsed / デフォルト の最大
-        final int recLen = rec == null ? 0 : min(rec.weights.length, rec.reps.length);
-        final int luLen = lu == null ? 0 : min(lu.weights.length, lu.reps.length);
-        final int mergedLen = max(_currentSetCount, max(recLen, luLen));
+        if (isAerobic) {
+          // 有酸素：距離・時間はメニューごとにコントローラ（record優先→lastUsed、lastUsedは未確定）
+          final String dist = (rec?.distance?.trim().isNotEmpty ?? false)
+              ? rec!.distance!.trim()
+              : (lu?.distance?.trim() ?? '');
+          final String dura = (rec?.duration?.trim().isNotEmpty ?? false)
+              ? rec!.duration!.trim()
+              : (lu?.duration?.trim() ?? '');
 
-        final row = <SetInputData>[];
-        for (int i = 0; i < mergedLen; i++) {
-          String w = '';
-          String r = '';
-          bool isSuggestion = true;
+          final bool isSug = !(rec?.distance?.trim().isNotEmpty == true ||
+              rec?.duration?.trim().isNotEmpty == true);
 
-          if (i < recLen) {
-            w = rec!.weights[i];
-            r = rec.reps[i];
-            // record で中身があるものだけ確定
-            if (w.trim().isNotEmpty || r.trim().isNotEmpty) {
-              isSuggestion = false;
+          section.aerobicDistanceCtrls.add(TextEditingController(text: dist));
+          section.aerobicDurationCtrls.add(TextEditingController(text: dura));
+          section.aerobicSuggestFlags.add(isSug);
+          // 筋トレ用の配列は空1件（未使用だが整合のため）
+          section.setInputDataList.add(<SetInputData>[]);
+        } else {
+          final int recLen = rec == null ? 0 : min(rec.weights.length, rec.reps.length);
+          final int luLen = lu == null ? 0 : min(lu.weights.length, lu.reps.length);
+          final int mergedLen = max(_currentSetCount, max(recLen, luLen));
+
+          final row = <SetInputData>[];
+          for (int i = 0; i < mergedLen; i++) {
+            String w = '';
+            String r = '';
+            bool isSuggestion = true;
+
+            if (i < recLen) {
+              w = rec!.weights[i];
+              r = rec.reps[i];
+              if (w.trim().isNotEmpty || r.trim().isNotEmpty) {
+                isSuggestion = false;
+              }
+            } else if (i < luLen) {
+              w = lu!.weights[i];
+              r = lu.reps[i];
+              isSuggestion = true;
             }
-          } else if (i < luLen) {
-            // recordに不足分は lastUsed から埋める（未確定）
-            w = lu!.weights[i];
-            r = lu.reps[i];
-            isSuggestion = true;
-          } else {
-            // 空（未確定）
-            w = '';
-            r = '';
-            isSuggestion = true;
+            row.add(SetInputData(
+              weightController: TextEditingController(text: w),
+              repController: TextEditingController(text: r),
+              isSuggestion: isSuggestion,
+            ));
           }
-
-          row.add(SetInputData(
-            weightController: TextEditingController(text: w),
-            repController: TextEditingController(text: r),
-            isSuggestion: isSuggestion,
-          ));
+          section.setInputDataList.add(row);
+          section.initialSetCount = max(section.initialSetCount ?? 0, mergedLen);
         }
-
-        section.setInputDataList.add(row);
-        section.initialSetCount = max(section.initialSetCount ?? 0, mergedLen);
-      }
-
-      // 有酸素なら距離・時間の前回値をプリセット
-      final l10n = AppLocalizations.of(context)!;
-      if (translatedPart == l10n.aerobicExercise) {
-        _prefillAerobicForPart(section, originalPart, record);
       }
     }
 
@@ -361,12 +322,15 @@ class _RecordScreenState extends State<RecordScreen> {
   String _getDateKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-  // 既存：使わない経路もあるが残しておく（他の呼び出し互換用）
   void _setControllersFromData(SectionData section, List<MenuData> list, bool isMenuNameSuggestion) {
+    // 非有酸素の互換用（ドロップダウン変更時などに使用）
     _clearSectionControllersAndMaps(section);
     section.menuKeys.clear();
     section.menuIds.clear();
     section.nextMenuId = 0;
+    section.aerobicDistanceCtrls.clear();
+    section.aerobicDurationCtrls.clear();
+    section.aerobicSuggestFlags.clear();
 
     final itemsToCreate = list.isNotEmpty ? list.length : 1;
 
@@ -418,8 +382,17 @@ class _RecordScreenState extends State<RecordScreen> {
         d.dispose();
       }
     }
+    for (var c in section.aerobicDistanceCtrls) {
+      c.dispose();
+    }
+    for (var c in section.aerobicDurationCtrls) {
+      c.dispose();
+    }
     section.menuControllers.clear();
     section.setInputDataList.clear();
+    section.aerobicDistanceCtrls.clear();
+    section.aerobicDurationCtrls.clear();
+    section.aerobicSuggestFlags.clear();
   }
 
   void _saveAllSectionsData() {
@@ -432,24 +405,22 @@ class _RecordScreenState extends State<RecordScreen> {
     for (final section in _sections) {
       if (section.selectedPart == null) continue;
       final originalPart = _getOriginalPartName(context, section.selectedPart!);
+      final isAerobic = section.selectedPart == l10n.aerobicExercise;
 
       final listForLastUsed = <MenuData>[];
       final listForRecord = <MenuData>[];
-      final isAerobic = section.selectedPart == l10n.aerobicExercise;
 
       for (int i = 0; i < section.menuControllers.length; i++) {
         final name = section.menuControllers[i].text.trim();
-        if (name.isEmpty) continue;
-
-        final weightsAll = <String>[]; // lastUsed用（全セット）
-        final repsAll = <String>[];
-
-        String? distance;
-        String? duration;
+        if (name.isEmpty) {
+          // ★ 種目名が空なら何も保存しない（距離/時間が入っていても無視）
+          continue;
+        }
 
         if (isAerobic) {
-          distance = _distanceController.text;
-          duration = _durationController.text;
+          final distance = i < section.aerobicDistanceCtrls.length ? section.aerobicDistanceCtrls[i].text : '';
+          final duration = i < section.aerobicDurationCtrls.length ? section.aerobicDurationCtrls[i].text : '';
+          final isSug = i < section.aerobicSuggestFlags.length ? section.aerobicSuggestFlags[i] : true;
 
           // lastUsed には常に保存
           listForLastUsed.add(MenuData(
@@ -460,9 +431,8 @@ class _RecordScreenState extends State<RecordScreen> {
             duration: duration,
           ));
 
-          // 記録は「未確定でない & 何か入っている時」だけ
-          if (!section.aerobicIsSuggestion &&
-              ((distance?.isNotEmpty ?? false) || (duration?.isNotEmpty ?? false))) {
+          // Record は未確定を除外
+          if (!isSug && ((distance.trim().isNotEmpty) || (duration.trim().isNotEmpty))) {
             listForRecord.add(MenuData(
               name: name,
               weights: const <String>[],
@@ -474,7 +444,8 @@ class _RecordScreenState extends State<RecordScreen> {
             lastModifiedPart ??= originalPart;
           }
         } else {
-          // lastUsed には全セットを保存
+          final weightsAll = <String>[];
+          final repsAll = <String>[];
           for (int s = 0; s < section.setInputDataList[i].length; s++) {
             final set = section.setInputDataList[i][s];
             weightsAll.add(set.weightController.text);
@@ -482,7 +453,6 @@ class _RecordScreenState extends State<RecordScreen> {
           }
           listForLastUsed.add(MenuData(name: name, weights: weightsAll, reps: repsAll));
 
-          // ★ Record には「確定セットだけ」を保存（未確定は落とす）
           final weightsConfirmed = <String>[];
           final repsConfirmed = <String>[];
           for (int s = 0; s < section.setInputDataList[i].length; s++) {
@@ -495,7 +465,6 @@ class _RecordScreenState extends State<RecordScreen> {
               repsConfirmed.add(r);
             }
           }
-
           if (weightsConfirmed.isNotEmpty || repsConfirmed.isNotEmpty) {
             listForRecord.add(MenuData(name: name, weights: weightsConfirmed, reps: repsConfirmed));
             hasAnyRecordData = true;
@@ -509,7 +478,6 @@ class _RecordScreenState extends State<RecordScreen> {
       } else {
         widget.lastUsedMenusBox.delete(originalPart);
       }
-
       if (listForRecord.isNotEmpty) {
         allMenusForRecord[originalPart] = listForRecord;
       }
@@ -534,11 +502,9 @@ class _RecordScreenState extends State<RecordScreen> {
     }
   }
 
-  // ＋種目
   void _addMenuItem(int sectionIndex) {
     final l10n = AppLocalizations.of(context)!;
     final section = _sections[sectionIndex];
-
     if (section.selectedPart == null) return;
 
     if (section.menuControllers.length >= 15) {
@@ -549,35 +515,37 @@ class _RecordScreenState extends State<RecordScreen> {
     setState(() {
       final nameCtrl = TextEditingController();
       section.menuControllers.add(nameCtrl);
-
-      // 一意IDを採番
       final newId = section.nextMenuId++;
       section.menuIds.add(newId);
-
       section.recentlyAdded.add(newId);
 
-      // セット行追加
-      final sets = _currentSetCount;
-      final row = List<SetInputData>.generate(
-        sets,
-            (_) => SetInputData(
-          weightController: TextEditingController(),
-          repController: TextEditingController(),
-          isSuggestion: true,
-        ),
-      );
-
-      while (section.setInputDataList.length < section.menuControllers.length) {
+      final isAerobic = section.selectedPart == l10n.aerobicExercise;
+      if (isAerobic) {
+        // ★ 種目が空の新規行 → 距離・時間も空（未確定）
+        section.aerobicDistanceCtrls.add(TextEditingController());
+        section.aerobicDurationCtrls.add(TextEditingController());
+        section.aerobicSuggestFlags.add(true);
         section.setInputDataList.add(<SetInputData>[]);
+      } else {
+        final sets = _currentSetCount;
+        final row = List<SetInputData>.generate(
+          sets,
+              (_) => SetInputData(
+            weightController: TextEditingController(),
+            repController: TextEditingController(),
+            isSuggestion: true,
+          ),
+        );
+        while (section.setInputDataList.length < section.menuControllers.length) {
+          section.setInputDataList.add(<SetInputData>[]);
+        }
+        final idx = section.menuControllers.length - 1;
+        section.setInputDataList[idx] = row;
+        section.initialSetCount = max(section.initialSetCount ?? 0, sets);
       }
-      final idx = section.menuControllers.length - 1;
-      section.setInputDataList[idx] = row;
-
-      section.initialSetCount = max(section.initialSetCount ?? 0, sets);
     });
   }
 
-  // ＋部位
   void _addTargetSection() {
     final l10n = AppLocalizations.of(context)!;
 
@@ -613,13 +581,25 @@ class _RecordScreenState extends State<RecordScreen> {
         }
         _sections[sectionIndex].menuControllers.removeAt(menuIndex);
         _sections[sectionIndex].setInputDataList.removeAt(menuIndex);
-        // ★ ID も同期して削除
+
+        // 有酸素の per menu も同期削除
+        if (_sections[sectionIndex].aerobicDistanceCtrls.length > menuIndex) {
+          _sections[sectionIndex].aerobicDistanceCtrls[menuIndex].dispose();
+          _sections[sectionIndex].aerobicDistanceCtrls.removeAt(menuIndex);
+        }
+        if (_sections[sectionIndex].aerobicDurationCtrls.length > menuIndex) {
+          _sections[sectionIndex].aerobicDurationCtrls[menuIndex].dispose();
+          _sections[sectionIndex].aerobicDurationCtrls.removeAt(menuIndex);
+        }
+        if (_sections[sectionIndex].aerobicSuggestFlags.length > menuIndex) {
+          _sections[sectionIndex].aerobicSuggestFlags.removeAt(menuIndex);
+        }
+
         if (_sections[sectionIndex].menuIds.length > menuIndex) {
           _sections[sectionIndex].menuIds.removeAt(menuIndex);
         }
       });
 
-      // セクション内が空ならセクションも削除
       if (_sections[sectionIndex].menuControllers.isEmpty) {
         _removeSection(sectionIndex);
       }
@@ -650,7 +630,6 @@ class _RecordScreenState extends State<RecordScreen> {
 
     final bool isInitialEmptyState = _sections.length == 1 && _sections[0].selectedPart == null;
 
-    // 体重カードをヘッダーとしてリストに含める
     final bool showWeight = SettingsManager.showWeightInput;
     final int headerCount = showWeight ? 1 : 0;
 
@@ -677,15 +656,12 @@ class _RecordScreenState extends State<RecordScreen> {
             children: [
               const AdBanner(screenName: 'record'),
               const SizedBox(height: 8.0),
-
-              // ↓↓↓ ここからスクロール領域（体重カードはヘッダーとしてリスト内に入れる）
               Expanded(
                 child: ListView.builder(
                   primary: true,
                   physics: const AlwaysScrollableScrollPhysics(),
                   itemCount: headerCount + _sections.length + (isInitialEmptyState ? 0 : 1),
                   itemBuilder: (context, index) {
-                    // 0: 体重カード（ON時）
                     if (showWeight && index == 0) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8.0),
@@ -750,10 +726,8 @@ class _RecordScreenState extends State<RecordScreen> {
                       );
                     }
 
-                    // 以降はセクション & 「＋部位」
                     final secIndex = index - headerCount;
 
-                    // 末尾に「＋部位」ボタン
                     if (!isInitialEmptyState && secIndex == _sections.length) {
                       return Padding(
                         padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
@@ -773,7 +747,6 @@ class _RecordScreenState extends State<RecordScreen> {
 
                     final section = _sections[secIndex];
 
-                    // セクションカード：入場時はアニメ無し、＋部位で増えた分だけ下→上
                     return AnimatedListItem(
                       key: section.key,
                       direction: _firstBuildDone ? AnimationDirection.bottomToTop : AnimationDirection.none,
@@ -841,7 +814,6 @@ class _RecordScreenState extends State<RecordScreen> {
                                               final dateKey = _getDateKey(widget.selectedDate);
                                               final record = widget.recordsBox.get(dateKey);
 
-                                              // record / lastUsed をメニュー単位でマージ
                                               final recList = record?.menus[originalPart] ?? <MenuData>[];
                                               final rawLU = widget.lastUsedMenusBox.get(originalPart);
                                               final luList = (rawLU is List) ? rawLU.whereType<MenuData>().toList() : <MenuData>[];
@@ -853,6 +825,9 @@ class _RecordScreenState extends State<RecordScreen> {
                                                 ...recList.map((m) => m.name),
                                                 ...luList.where((m) => !recBy.containsKey(m.name)).map((m) => m.name),
                                               ];
+                                              if (names.isEmpty) names.add('');
+
+                                              final isAerobic = current == l10n.aerobicExercise;
 
                                               for (final name in names) {
                                                 final rec = recBy[name];
@@ -862,46 +837,51 @@ class _RecordScreenState extends State<RecordScreen> {
                                                 section.menuKeys.add(UniqueKey());
                                                 section.menuIds.add(section.nextMenuId++);
 
-                                                final int recLen = rec == null ? 0 : min(rec.weights.length, rec.reps.length);
-                                                final int luLen = lu == null ? 0 : min(lu.weights.length, lu.reps.length);
-                                                final int mergedLen = max(_currentSetCount, max(recLen, luLen));
+                                                if (isAerobic) {
+                                                  final String dist = (rec?.distance?.trim().isNotEmpty ?? false)
+                                                      ? rec!.distance!.trim()
+                                                      : (lu?.distance?.trim() ?? '');
+                                                  final String dura = (rec?.duration?.trim().isNotEmpty ?? false)
+                                                      ? rec!.duration!.trim()
+                                                      : (lu?.duration?.trim() ?? '');
+                                                  final bool isSug = !(rec?.distance?.trim().isNotEmpty == true ||
+                                                      rec?.duration?.trim().isNotEmpty == true);
 
-                                                final row = <SetInputData>[];
-                                                for (int i = 0; i < mergedLen; i++) {
-                                                  String w = '';
-                                                  String r = '';
-                                                  bool isSuggestion = true;
+                                                  section.aerobicDistanceCtrls.add(TextEditingController(text: dist));
+                                                  section.aerobicDurationCtrls.add(TextEditingController(text: dura));
+                                                  section.aerobicSuggestFlags.add(isSug);
+                                                  section.setInputDataList.add(<SetInputData>[]);
+                                                } else {
+                                                  final int recLen = rec == null ? 0 : min(rec.weights.length, rec.reps.length);
+                                                  final int luLen = lu == null ? 0 : min(lu.weights.length, lu.reps.length);
+                                                  final int mergedLen = max(_currentSetCount, max(recLen, luLen));
 
-                                                  if (i < recLen) {
-                                                    w = rec!.weights[i];
-                                                    r = rec.reps[i];
-                                                    if (w.trim().isNotEmpty || r.trim().isNotEmpty) {
-                                                      isSuggestion = false;
+                                                  final row = <SetInputData>[];
+                                                  for (int i = 0; i < mergedLen; i++) {
+                                                    String w = '';
+                                                    String r = '';
+                                                    bool isSuggestion = true;
+
+                                                    if (i < recLen) {
+                                                      w = rec!.weights[i];
+                                                      r = rec.reps[i];
+                                                      if (w.trim().isNotEmpty || r.trim().isNotEmpty) {
+                                                        isSuggestion = false;
+                                                      }
+                                                    } else if (i < luLen) {
+                                                      w = lu!.weights[i];
+                                                      r = lu.reps[i];
+                                                      isSuggestion = true;
                                                     }
-                                                  } else if (i < luLen) {
-                                                    w = lu!.weights[i];
-                                                    r = lu.reps[i];
-                                                    isSuggestion = true;
-                                                  } else {
-                                                    w = '';
-                                                    r = '';
-                                                    isSuggestion = true;
+                                                    row.add(SetInputData(
+                                                      weightController: TextEditingController(text: w),
+                                                      repController: TextEditingController(text: r),
+                                                      isSuggestion: isSuggestion,
+                                                    ));
                                                   }
-
-                                                  row.add(SetInputData(
-                                                    weightController: TextEditingController(text: w),
-                                                    repController: TextEditingController(text: r),
-                                                    isSuggestion: isSuggestion,
-                                                  ));
+                                                  section.setInputDataList.add(row);
+                                                  section.initialSetCount = max(section.initialSetCount ?? 0, mergedLen);
                                                 }
-
-                                                section.setInputDataList.add(row);
-                                                section.initialSetCount = max(section.initialSetCount ?? 0, mergedLen);
-                                              }
-
-                                              // 有酸素の前回値プリセット
-                                              if (current == l10n.aerobicExercise) {
-                                                _prefillAerobicForPart(section, originalPart, record);
                                               }
                                             } else {
                                               section.initialSetCount = _currentSetCount;
@@ -925,7 +905,6 @@ class _RecordScreenState extends State<RecordScreen> {
                                 if (section.selectedPart != null)
                                   Column(
                                     children: [
-                                      // 種目カード一覧（＋種目で増えたものは AnimatedSwitcher で上→下入場）
                                       ListView.builder(
                                         shrinkWrap: true,
                                         physics: const NeverScrollableScrollPhysics(),
@@ -936,7 +915,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                             switchInCurve: Curves.easeOut,
                                             switchOutCurve: Curves.easeIn,
                                             transitionBuilder: (child, animation) {
-                                              if (!_firstBuildDone) return child; // 入場時はアニメ無し
+                                              if (!_firstBuildDone) return child;
                                               final offset = Tween<Offset>(begin: const Offset(0, -0.12), end: Offset.zero).animate(animation);
                                               return FadeTransition(
                                                 opacity: animation,
@@ -954,16 +933,25 @@ class _RecordScreenState extends State<RecordScreen> {
                                                 child: MenuList(
                                                   menuController: section.menuControllers[menuIndex],
                                                   removeMenuCallback: () => _removeMenuItem(secIndex, menuIndex),
-                                                  // RangeError回避：実配列長を渡す
                                                   setCount: section.setInputDataList[menuIndex].length,
                                                   setInputDataList: section.setInputDataList[menuIndex],
                                                   isAerobic: section.selectedPart == l10n.aerobicExercise,
-                                                  distanceController: _distanceController,
-                                                  durationController: _durationController,
-                                                  // 有酸素の未確定フラグ＆確定コールバック
-                                                  aerobicIsSuggestion: section.aerobicIsSuggestion,
+                                                  // 有酸素は per menu のコントローラを渡す
+                                                  distanceController: (menuIndex < section.aerobicDistanceCtrls.length)
+                                                      ? section.aerobicDistanceCtrls[menuIndex]
+                                                      : TextEditingController(),
+                                                  durationController: (menuIndex < section.aerobicDurationCtrls.length)
+                                                      ? section.aerobicDurationCtrls[menuIndex]
+                                                      : TextEditingController(),
+                                                  aerobicIsSuggestion: (menuIndex < section.aerobicSuggestFlags.length)
+                                                      ? section.aerobicSuggestFlags[menuIndex]
+                                                      : true,
                                                   onConfirmAerobic: () {
-                                                    setState(() => section.aerobicIsSuggestion = false);
+                                                    setState(() {
+                                                      if (menuIndex < section.aerobicSuggestFlags.length) {
+                                                        section.aerobicSuggestFlags[menuIndex] = false;
+                                                      }
+                                                    });
                                                   },
                                                 ),
                                               ),
@@ -1009,8 +997,8 @@ class _RecordScreenState extends State<RecordScreen> {
           unselectedItemColor: colorScheme.onSurfaceVariant,
           backgroundColor: colorScheme.surface,
           onTap: (index) {
-            if (index == 1) return; // 自分
-            _saveAllSectionsData(); // どこへ行くにも保存
+            if (index == 1) return;
+            _saveAllSectionsData();
 
             if (index == 0) {
               Navigator.push(
@@ -1067,12 +1055,13 @@ class SectionData {
   List<Key> menuKeys;
   int? initialSetCount;
 
-  // ★ 追加：各メニューの一意ID（アニメ・キー安定化に使用）
   List<int> menuIds;
   int nextMenuId;
 
-  // ★ 追加：有酸素の前回値が未確定かどうか
-  bool aerobicIsSuggestion;
+  // ★ 有酸素はメニューごとにコントローラ
+  List<TextEditingController> aerobicDistanceCtrls;
+  List<TextEditingController> aerobicDurationCtrls;
+  List<bool> aerobicSuggestFlags;
 
   final Set<int> recentlyAdded = <int>{};
 
@@ -1085,10 +1074,14 @@ class SectionData {
     this.initialSetCount,
     List<int>? menuIds,
     int? nextMenuId,
-    bool? aerobicIsSuggestion,
+    List<TextEditingController>? aerobicDistanceCtrls,
+    List<TextEditingController>? aerobicDurationCtrls,
+    List<bool>? aerobicSuggestFlags,
   })  : menuIds = menuIds ?? <int>[],
         nextMenuId = nextMenuId ?? 0,
-        aerobicIsSuggestion = aerobicIsSuggestion ?? false;
+        aerobicDistanceCtrls = aerobicDistanceCtrls ?? <TextEditingController>[],
+        aerobicDurationCtrls = aerobicDurationCtrls ?? <TextEditingController>[],
+        aerobicSuggestFlags = aerobicSuggestFlags ?? <bool>[];
 
   factory SectionData.createEmpty(int initialSetCount, {required bool shouldPopulateDefaults}) {
     return SectionData(
@@ -1109,10 +1102,11 @@ class SectionData {
           : [],
       menuKeys: shouldPopulateDefaults ? [UniqueKey()] : [],
       initialSetCount: initialSetCount,
-      // 初期1件あれば ID=0 を付与
       menuIds: shouldPopulateDefaults ? [0] : [],
       nextMenuId: shouldPopulateDefaults ? 1 : 0,
-      aerobicIsSuggestion: false,
+      aerobicDistanceCtrls: [],
+      aerobicDurationCtrls: [],
+      aerobicSuggestFlags: [],
     );
   }
 
@@ -1124,6 +1118,12 @@ class SectionData {
       for (var d in row) {
         d.dispose();
       }
+    }
+    for (var c in aerobicDistanceCtrls) {
+      c.dispose();
+    }
+    for (var c in aerobicDurationCtrls) {
+      c.dispose();
     }
   }
 }
@@ -1153,8 +1153,6 @@ class MenuList extends StatefulWidget {
   final bool isAerobic;
   final TextEditingController distanceController;
   final TextEditingController durationController;
-
-  // ★ 追加：有酸素の未確定フラグと確定通知
   final bool aerobicIsSuggestion;
   final VoidCallback? onConfirmAerobic;
 
@@ -1207,6 +1205,7 @@ class _MenuListState extends State<MenuList> {
       _secController.text = t[1];
     } else {
       _minController.text = widget.durationController.text;
+      _secController.text = '';
     }
 
     final d = widget.distanceController.text.split('.');
@@ -1215,6 +1214,7 @@ class _MenuListState extends State<MenuList> {
       _mController.text = d[1];
     } else {
       _kmController.text = widget.distanceController.text;
+      _mController.text = '';
     }
   }
 
@@ -1290,7 +1290,7 @@ class _MenuListState extends State<MenuList> {
                         },
                         child: StylishInput(
                           controller: _kmController,
-                          hint: '例: 5',
+                          hint: '', // ★ ヒント削除
                           keyboardType: TextInputType.number,
                           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                           normalTextColor: widget.aerobicIsSuggestion
@@ -1317,7 +1317,7 @@ class _MenuListState extends State<MenuList> {
                         },
                         child: StylishInput(
                           controller: _mController,
-                          hint: '例: 00',
+                          hint: '', // ★ ヒント削除
                           keyboardType: TextInputType.number,
                           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                           normalTextColor: widget.aerobicIsSuggestion
@@ -1354,7 +1354,7 @@ class _MenuListState extends State<MenuList> {
                         },
                         child: StylishInput(
                           controller: _minController,
-                          hint: '例: 30',
+                          hint: '', // ★ ヒント削除
                           keyboardType: TextInputType.number,
                           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                           normalTextColor: widget.aerobicIsSuggestion
@@ -1381,7 +1381,7 @@ class _MenuListState extends State<MenuList> {
                         },
                         child: StylishInput(
                           controller: _secController,
-                          hint: '例: 00',
+                          hint: '', // ★ ヒント削除
                           keyboardType: TextInputType.number,
                           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                           normalTextColor: widget.aerobicIsSuggestion
