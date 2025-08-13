@@ -73,6 +73,16 @@ class _RecordScreenState extends State<RecordScreen> {
     super.dispose();
   }
 
+  // ★ 共通：遷移前にキーボードを完全に閉じる
+  Future<void> _closeKeyboard() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    try {
+      await SystemChannels.textInput.invokeMethod('TextInput.hide');
+    } catch (_) {}
+    // 一瞬だけ待ってレイアウトの跳ね返りを回避（1フレーム相当）
+    await Future<void>.delayed(const Duration(milliseconds: 16));
+  }
+
   String _getOriginalPartName(BuildContext context, String translatedPart) {
     final l10n = AppLocalizations.of(context)!;
     if (translatedPart == l10n.aerobicExercise) return '有酸素運動';
@@ -256,7 +266,7 @@ class _RecordScreenState extends State<RecordScreen> {
         section.menuIds.add(section.nextMenuId++);
 
         if (isAerobic) {
-          // 有酸素：距離・時間はメニューごとにコントローラ（record優先→lastUsed、lastUsedは未確定）
+          // 有酸素：距離・時間
           final String dist = (rec?.distance?.trim().isNotEmpty ?? false)
               ? rec!.distance!.trim()
               : (lu?.distance?.trim() ?? '');
@@ -634,14 +644,25 @@ class _RecordScreenState extends State<RecordScreen> {
     final int headerCount = showWeight ? 1 : 0;
 
     return PopScope(
-      canPop: true,
-      onPopInvoked: (didPop) {
-        if (didPop) _saveAllSectionsData();
+      // ★ 物理/ジェスチャーバックもここで一旦捕まえて、先にキーボードを閉じる
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        await _closeKeyboard();
+        _saveAllSectionsData();
+        if (mounted) Navigator.of(context).pop();
       },
       child: Scaffold(
         backgroundColor: colorScheme.background,
         appBar: AppBar(
-          leading: const BackButton(),
+          // ★ AppBarの戻るもフックして、先にキーボードを閉じる
+          leading: BackButton(
+            onPressed: () async {
+              await _closeKeyboard();
+              _saveAllSectionsData();
+              if (mounted) Navigator.of(context).pop();
+            },
+          ),
           title: Text(
             formattedDate,
             style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0),
@@ -672,18 +693,14 @@ class _RecordScreenState extends State<RecordScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
                             child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center, // カード内を中央寄せ
                               children: [
-                                Expanded(
-                                  child: Align(
-                                    alignment: Alignment.centerRight,
-                                    child: Text(
-                                      '${l10n.enterYourWeight}${Localizations.localeOf(context).languageCode == "ja" ? "：" : ":"}',
-                                      style: TextStyle(
-                                        color: colorScheme.onSurface,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15.0,
-                                      ),
-                                    ),
+                                Text(
+                                  '${l10n.enterYourWeight}${Localizations.localeOf(context).languageCode == "ja" ? "：" : ":"}',
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15.0,
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -691,8 +708,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                   width: 160,
                                   child: Row(
                                     children: [
-                                      SizedBox(
-                                        width: 100,
+                                      Expanded(
                                         child: StylishInput(
                                           controller: _weightController,
                                           hint: '',
@@ -704,7 +720,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                           suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
                                           fillColor: colorScheme.surfaceContainer,
                                           contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                                          textAlign: TextAlign.center,
+                                          textAlign: TextAlign.right, // 入力値は右寄せ
                                         ),
                                       ),
                                       const SizedBox(width: 8),
@@ -827,6 +843,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                               ];
                                               if (names.isEmpty) names.add('');
 
+                                              final l10n = AppLocalizations.of(context)!;
                                               final isAerobic = current == l10n.aerobicExercise;
 
                                               for (final name in names) {
@@ -996,11 +1013,14 @@ class _RecordScreenState extends State<RecordScreen> {
           selectedItemColor: colorScheme.primary,
           unselectedItemColor: colorScheme.onSurfaceVariant,
           backgroundColor: colorScheme.surface,
-          onTap: (index) {
+          onTap: (index) async {
             if (index == 1) return;
+            // ★ 遷移前に必ずキーボードを閉じる
+            await _closeKeyboard();
             _saveAllSectionsData();
 
             if (index == 0) {
+              if (!mounted) return;
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -1014,6 +1034,7 @@ class _RecordScreenState extends State<RecordScreen> {
                 ),
               );
             } else if (index == 2) {
+              if (!mounted) return;
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -1026,6 +1047,7 @@ class _RecordScreenState extends State<RecordScreen> {
                 ),
               );
             } else if (index == 3) {
+              if (!mounted) return;
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -1290,7 +1312,7 @@ class _MenuListState extends State<MenuList> {
                         },
                         child: StylishInput(
                           controller: _kmController,
-                          hint: '', // ★ ヒント削除
+                          hint: '',
                           keyboardType: TextInputType.number,
                           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                           normalTextColor: widget.aerobicIsSuggestion
@@ -1317,7 +1339,7 @@ class _MenuListState extends State<MenuList> {
                         },
                         child: StylishInput(
                           controller: _mController,
-                          hint: '', // ★ ヒント削除
+                          hint: '',
                           keyboardType: TextInputType.number,
                           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                           normalTextColor: widget.aerobicIsSuggestion
@@ -1354,7 +1376,7 @@ class _MenuListState extends State<MenuList> {
                         },
                         child: StylishInput(
                           controller: _minController,
-                          hint: '', // ★ ヒント削除
+                          hint: '',
                           keyboardType: TextInputType.number,
                           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                           normalTextColor: widget.aerobicIsSuggestion
@@ -1381,7 +1403,7 @@ class _MenuListState extends State<MenuList> {
                         },
                         child: StylishInput(
                           controller: _secController,
-                          hint: '', // ★ ヒント削除
+                          hint: '',
                           keyboardType: TextInputType.number,
                           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                           normalTextColor: widget.aerobicIsSuggestion
@@ -1426,8 +1448,10 @@ class _MenuListState extends State<MenuList> {
                             child: StylishInput(
                               controller: set.weightController,
                               hint: '',
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                              ],
                               normalTextColor: set.isSuggestion
                                   ? colorScheme.onSurfaceVariant.withOpacity(0.5)
                                   : colorScheme.onSurface,

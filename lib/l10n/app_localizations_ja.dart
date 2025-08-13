@@ -215,4 +215,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get distanceHint => '距離を入力';
+
+  @override
+  String get pace => 'ペース';
 }

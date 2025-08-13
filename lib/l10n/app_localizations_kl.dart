@@ -215,4 +215,7 @@ class AppLocalizationsKl extends AppLocalizations {
 
   @override
   String get distanceHint => 'Enter distance';
+
+  @override
+  String get pace => 'Pace';
 }

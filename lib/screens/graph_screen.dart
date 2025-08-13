@@ -1,24 +1,26 @@
 // lib/screens/graph_screen.dart
+import 'dart:math';
+import 'dart:ui' as ui;
+
+import 'package:collection/collection.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import 'package:collection/collection.dart';
-import 'dart:math';
 import 'package:ttraining_record/l10n/app_localizations.dart';
 
 import '../models/menu_data.dart';
 import '../models/record_models.dart';
+import '../settings_manager.dart';
+import 'calendar_screen.dart';
 import 'record_screen.dart';
 import 'settings_screen.dart';
-import '../settings_manager.dart';
 import '../widgets/ad_banner.dart';
-import 'calendar_screen.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
 enum DisplayMode { day, week }
-enum AeroMetric { distance, time, pace }
+enum AerobicMetric { distance, time, pace }
 
 class GraphScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
@@ -39,43 +41,32 @@ class GraphScreen extends StatefulWidget {
 }
 
 class _GraphScreenState extends State<GraphScreen> {
-  // 保存キー
   static const String _prefGraphPart = 'graph_selected_part';
   static const String _prefGraphMenu = 'graph_selected_menu';
   static const String _prefGraphMode = 'graph_display_mode';
   static const String _prefAeroMetric = 'graph_aero_metric';
 
-  // 選択状態
   List<String> _filteredBodyParts = [];
   String? _selectedPart;
   List<String> _menusForPart = [];
   String? _selectedMenu;
+  DisplayMode _displayMode = DisplayMode.day;
+  AerobicMetric _aeroMetric = AerobicMetric.distance;
   bool _isFavorite = false;
 
-  DisplayMode _displayMode = DisplayMode.day;
-  AeroMetric _aeroMetric = AeroMetric.distance;
-
-  // 体重/筋トレ 軸・点
-  List<DateTime> _lineAxisDates = [];
+  // series
   List<FlSpot> _spots = [];
-  double _lineAxisMinY = 0;
-  double _lineAxisMaxY = 1;
-  double _lineYInterval = 1;
+  List<DateTime> _xDates = [];
+  double _minY = 0;
+  double _maxY = 0;
 
-  // 有酸素 軸・点
-  List<DateTime> _aeroAxisDates = [];
-  List<FlSpot> _aeroSpots = [];
-  double _aeroAxisMinY = 0;
-  double _aeroAxisMaxY = 1;
-  double _aeroYInterval = 1;
+  /// データのレンジ丸めに使う刻み
+  double _yTickStep = 5;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _loadSettingsAndParts();
-  }
+  /// 目盛りラベル＆横線を出す間隔（＝「数字が出る場所」）
+  double _yLabelStep = 5;
 
-  // ----- 名前変換 -----
+  // ====== part name mapping ======
   String _getOriginalPartName(BuildContext context, String translatedPart) {
     final l10n = AppLocalizations.of(context)!;
     if (translatedPart == l10n.aerobicExercise) return '有酸素運動';
@@ -96,455 +87,549 @@ class _GraphScreenState extends State<GraphScreen> {
   String _translatePartToLocale(BuildContext context, String part) {
     final l10n = AppLocalizations.of(context)!;
     switch (part) {
-      case '有酸素運動': return l10n.aerobicExercise;
-      case '腕': return l10n.arm;
-      case '胸': return l10n.chest;
-      case '背中': return l10n.back;
-      case '肩': return l10n.shoulder;
-      case '足': return l10n.leg;
-      case '全身': return l10n.fullBody;
-      case 'その他１': return l10n.other1;
-      case 'その他２': return l10n.other2;
-      case 'その他３': return l10n.other3;
-      case 'お気に入り': return l10n.favorites;
-      default: return part;
+      case '有酸素運動':
+        return l10n.aerobicExercise;
+      case '腕':
+        return l10n.arm;
+      case '胸':
+        return l10n.chest;
+      case '背中':
+        return l10n.back;
+      case '肩':
+        return l10n.shoulder;
+      case '足':
+        return l10n.leg;
+      case '全身':
+        return l10n.fullBody;
+      case 'その他１':
+        return l10n.other1;
+      case 'その他２':
+        return l10n.other2;
+      case 'その他３':
+        return l10n.other3;
+      case 'お気に入り':
+        return l10n.favorites;
+      default:
+        return part;
     }
   }
 
-  bool _isAerobicSelectedNow() {
-    final l10n = AppLocalizations.of(context)!;
-    if (_selectedPart == l10n.aerobicExercise) return true;
-    if (_selectedPart == l10n.favorites && _selectedMenu != null) {
-      return _menuExistsInAerobic(_selectedMenu!);
-    }
-    return false;
+  // ====== lifecycle ======
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadSettingsAndParts();
   }
 
-  // ----- 初期ロード -----
   void _loadSettingsAndParts() {
     final l10n = AppLocalizations.of(context)!;
-    final allBodyParts = ['有酸素運動','腕','胸','背中','肩','足','全身','その他１','その他２','その他３'];
 
+    final int? savedModeIdx = widget.settingsBox.get(_prefGraphMode) as int?;
+    if (savedModeIdx != null &&
+        savedModeIdx >= 0 &&
+        savedModeIdx < DisplayMode.values.length) {
+      _displayMode = DisplayMode.values[savedModeIdx];
+    }
+
+    final int? savedAeroIdx = widget.settingsBox.get(_prefAeroMetric) as int?;
+    if (savedAeroIdx != null &&
+        savedAeroIdx >= 0 &&
+        savedAeroIdx < AerobicMetric.values.length) {
+      _aeroMetric = AerobicMetric.values[savedAeroIdx];
+    }
+
+    final allBodyParts = [
+      '有酸素運動',
+      '腕',
+      '胸',
+      '背中',
+      '肩',
+      '足',
+      '全身',
+      'その他１',
+      'その他２',
+      'その他３',
+    ];
     Map<String, bool>? savedBodyPartsSettings;
     final dynamic rawSettings = widget.settingsBox.get('selectedBodyParts');
     if (rawSettings != null && rawSettings is Map) {
       savedBodyPartsSettings = {};
-      rawSettings.forEach((k, v) {
-        if (k is String && v is bool) savedBodyPartsSettings![k] = v;
+      rawSettings.forEach((key, value) {
+        if (key is String && value is bool) {
+          savedBodyPartsSettings![key] = value;
+        }
       });
     }
 
-    _filteredBodyParts = (savedBodyPartsSettings == null || savedBodyPartsSettings.isEmpty)
-        ? allBodyParts
-        : allBodyParts.where((p) => savedBodyPartsSettings![p] == true).toList();
-    _filteredBodyParts = _filteredBodyParts.map((p) => _translatePartToLocale(context, p)).toList();
+    _filteredBodyParts =
+    (savedBodyPartsSettings == null || savedBodyPartsSettings.isEmpty)
+        ? allBodyParts.map((p) => _translatePartToLocale(context, p)).toList()
+        : allBodyParts
+        .where((p) => savedBodyPartsSettings![p] == true)
+        .map((p) => _translatePartToLocale(context, p))
+        .toList();
+
     _filteredBodyParts = [l10n.bodyWeight, l10n.favorites, ..._filteredBodyParts];
 
-    final int? savedModeIdx = widget.settingsBox.get(_prefGraphMode) as int?;
-    if (savedModeIdx != null && savedModeIdx >= 0 && savedModeIdx < DisplayMode.values.length) {
-      _displayMode = DisplayMode.values[savedModeIdx];
-    }
-    final int? savedAeroIdx = widget.settingsBox.get(_prefAeroMetric) as int?;
-    if (savedAeroIdx != null && savedAeroIdx >= 0 && savedAeroIdx < AeroMetric.values.length) {
-      _aeroMetric = AeroMetric.values[savedAeroIdx];
-    }
-
     final String? savedPart = widget.settingsBox.get(_prefGraphPart) as String?;
-    _selectedPart = (savedPart != null && _filteredBodyParts.contains(savedPart))
-        ? savedPart
-        : (_filteredBodyParts.isNotEmpty ? _filteredBodyParts.first : null);
+    if (savedPart != null && _filteredBodyParts.contains(savedPart)) {
+      _selectedPart = savedPart;
+    } else {
+      _selectedPart =
+      _filteredBodyParts.isNotEmpty ? _filteredBodyParts.first : null;
+    }
 
-    if (mounted && _selectedPart != null) {
-      _loadMenusForPart(_selectedPart!);
-      setState(() {});
+    if (mounted) {
+      setState(() {
+        if (_selectedPart != null) {
+          _loadMenusForPart(_selectedPart!);
+        }
+      });
     }
   }
 
+  // ====== load menus ======
   void _loadMenusForPart(String translatedPart) {
     final l10n = AppLocalizations.of(context)!;
-    _menusForPart.clear();
 
     if (translatedPart == l10n.bodyWeight) {
+      _menusForPart = [];
       _selectedMenu = null;
       _isFavorite = false;
       _loadBodyWeightData();
       _saveGraphPrefs();
+      setState(() {});
       return;
     }
 
+    _menusForPart.clear();
+
     if (translatedPart == l10n.favorites) {
       final dynamic rawFavorites = widget.settingsBox.get('favorites');
-      if (rawFavorites is List) _menusForPart = rawFavorites.whereType<String>().toList();
+      if (rawFavorites is List) {
+        _menusForPart = rawFavorites.whereType<String>().toList();
+      }
     } else {
       final originalPartName = _getOriginalPartName(context, translatedPart);
       final dynamic rawList = widget.lastUsedMenusBox.get(originalPartName);
       if (rawList is List) {
-        final List<MenuData> lastUsedMenus = rawList.whereType<MenuData>().toList();
+        final List<MenuData> lastUsedMenus =
+        rawList.whereType<MenuData>().toList();
         _menusForPart = lastUsedMenus.map((m) => m.name).toList();
       }
     }
 
     final String? savedMenu = widget.settingsBox.get(_prefGraphMenu) as String?;
-    _selectedMenu = (savedMenu != null && _menusForPart.contains(savedMenu))
-        ? savedMenu
-        : (_menusForPart.isNotEmpty ? _menusForPart.first : null);
+    if (savedMenu != null && _menusForPart.contains(savedMenu)) {
+      _selectedMenu = savedMenu;
+    } else {
+      _selectedMenu = _menusForPart.isNotEmpty ? _menusForPart.first : null;
+    }
 
     if (mounted) {
-      if (_isAerobicSelectedNow()) {
-        _loadAerobicData(_selectedMenu);
-      } else if (_selectedPart == l10n.favorites && _selectedMenu != null) {
-        if (_menuExistsInAerobic(_selectedMenu!)) {
-          _loadAerobicData(_selectedMenu);
+      setState(() {
+        if (_selectedMenu == null) {
+          // 実績なし：即クリア
+          _spots = [];
+          _xDates = [];
+          _minY = 0;
+          _maxY = 0;
         } else {
-          _loadGraphData(_selectedMenu!);
+          _refreshDataForSelection();
         }
-      } else if (_selectedMenu != null) {
-        _loadGraphData(_selectedMenu!);
-      } else {
-        _spots = [];
-        _lineAxisDates = [];
+      });
+    }
+  }
+
+  // ====== choose loader ======
+  void _refreshDataForSelection() {
+    final l10n = AppLocalizations.of(context)!;
+    final isBody = _selectedPart == l10n.bodyWeight;
+    final isAero = _isAerobicContext();
+
+    if (isBody) {
+      _loadBodyWeightData();
+    } else if (isAero) {
+      if (_selectedMenu != null) _loadAerobicData(_selectedMenu!);
+    } else {
+      if (_selectedMenu != null) _loadStrengthData(_selectedMenu!);
+    }
+    _checkIfFavorite();
+    _saveGraphPrefs();
+  }
+
+  bool _menuIsAerobic(String? menuName) {
+    if (menuName == null) return false;
+    final raw = widget.lastUsedMenusBox.get('有酸素運動');
+    if (raw is List) {
+      for (final e in raw) {
+        if (e is MenuData && e.name == menuName) return true;
       }
-      _checkIfFavorite();
-      setState(() {});
     }
-  }
-
-  // ----- 表示/整形 -----
-  String _formatAxisDate(DateTime dt) {
-    final locale = Localizations.localeOf(context).toString();
-    if (_displayMode == DisplayMode.week) {
-      final core = DateFormat('M/d', locale).format(dt);
-      return Localizations.localeOf(context).languageCode == 'ja' ? '$core週' : 'wk of $core';
+    for (final r in widget.recordsBox.values.whereType<DailyRecord>()) {
+      final list = r.menus['有酸素運動'];
+      if (list != null && list.any((m) => m.name == menuName)) return true;
     }
-    return DateFormat('M/d', locale).format(dt);
+    return false;
   }
 
-  double _niceStep(double range) {
-    if (range <= 0 || !range.isFinite) return 1;
-    final raw = range / 5.0;
-    final exp = pow(10, (log(raw) / ln10).floor()).toDouble();
-    final f = raw / exp;
-    double nf;
-    if (f <= 1) nf = 1;
-    else if (f <= 2) nf = 2;
-    else if (f <= 2.5) nf = 2.5;
-    else if (f <= 5) nf = 5;
-    else nf = 10;
-    return nf * exp;
+  bool _isAerobicContext() {
+    final l10n = AppLocalizations.of(context)!;
+    return _selectedPart == l10n.aerobicExercise ||
+        (_selectedPart == l10n.favorites && _menuIsAerobic(_selectedMenu));
   }
 
-  String _formatYAxis(double minY, double maxY, double v) {
-    final range = (maxY - minY).abs();
-    if (range >= 10) return v.toStringAsFixed(0);
-    if (range >= 1) return v.toStringAsFixed(1);
-    return v.toStringAsFixed(2);
+  // ====== parse helpers ======
+  double? _parseDistanceKm(String? raw) {
+    if (raw == null) return null;
+    final s = raw.trim();
+    if (s.isEmpty) return null;
+    final parts = s.split('.');
+    final km = int.tryParse(parts[0]) ?? 0;
+    final m = (parts.length > 1) ? int.tryParse(parts[1]) ?? 0 : 0;
+    return km + m / 1000.0;
   }
 
-  // ----- 体重 -----
+  double? _parseDurationMin(String? raw) {
+    if (raw == null) return null;
+    final s = raw.trim();
+    if (s.isEmpty) return null;
+    final parts = s.split(':');
+    if (parts.length < 2) return double.tryParse(s);
+    final mm = int.tryParse(parts[0]) ?? 0;
+    final ss = int.tryParse(parts[1]) ?? 0;
+    return mm + ss / 60.0;
+  }
+
+  String _formatMinToMMSS(double minutes) {
+    final totalSec = (minutes * 60).round();
+    final m = totalSec ~/ 60;
+    final s = totalSec % 60;
+    return '${m.toString()}:${s.toString().padLeft(2, '0')}';
+  }
+
+  // ====== body weight ======
   void _loadBodyWeightData() {
-    _spots = [];
-    _lineAxisDates = [];
+    final records = widget.recordsBox.toMap().values.whereType<DailyRecord>();
 
-    final Map<int, double> map = {}; // dayMs -> value
-    for (final r in widget.recordsBox.toMap().values.whereType<DailyRecord>()) {
-      if (r.weight == null) continue;
-      if (_displayMode == DisplayMode.day) {
-        final k = _dayKey(r.date);
-        map[k] = r.weight!;
-      } else {
-        final k = _weekKey(r.date);
-        map[k] = (map[k] ?? 0) + r.weight!; // 一旦合計
+    final Map<DateTime, double> map = {};
+    if (_displayMode == DisplayMode.day) {
+      for (final r in records) {
+        if (r.weight != null) {
+          final d = DateTime(r.date.year, r.date.month, r.date.day);
+          map[d] = r.weight!;
+        }
       }
-    }
-    if (_displayMode == DisplayMode.week) {
-      // 週は平均
-      final counts = <int, int>{};
-      for (final r in widget.recordsBox.toMap().values.whereType<DailyRecord>()) {
-        if (r.weight == null) continue;
-        final k = _weekKey(r.date);
-        counts[k] = (counts[k] ?? 0) + 1;
+    } else {
+      final Map<DateTime, List<double>> weekly = {};
+      for (final r in records) {
+        if (r.weight != null) {
+          final day = DateTime(r.date.year, r.date.month, r.date.day);
+          final weekStart = day.subtract(Duration(days: day.weekday - 1));
+          final key = DateTime(weekStart.year, weekStart.month, weekStart.day);
+          weekly.putIfAbsent(key, () => []).add(r.weight!);
+        }
       }
-      map.updateAll((k, v) => v / (counts[k] ?? 1));
+      weekly.forEach((k, list) {
+        if (list.isNotEmpty) {
+          map[k] = list.reduce((a, b) => a + b) / list.length;
+        }
+      });
     }
 
-    _lineAxisDates = _buildContinuousAxis(map.keys, weekly: _displayMode == DisplayMode.week);
+    // データ丸めは 0.5kg / 1lbs、ラベル＆横線は見やすさ優先で 5 間隔
+    _yTickStep = (SettingsManager.currentUnit == 'kg') ? 0.5 : 1.0;
+    _yLabelStep = 5.0;
 
-    for (int i = 0; i < _lineAxisDates.length; i++) {
-      final ms = _displayMode == DisplayMode.day ? _dayKey(_lineAxisDates[i]) : _weekKey(_lineAxisDates[i]);
-      final val = map[ms];
-      if (val != null) _spots.add(FlSpot(i.toDouble(), val));
-    }
-
-    _recalcLineAxis();
+    _buildSeriesFromMap(map, tickStep: _yTickStep);
     setState(() {});
   }
 
-  // ----- 筋トレ -----
-  void _loadGraphData(String menuName) {
-    _spots = [];
-    _lineAxisDates = [];
+  // ====== strength ======
+  void _loadStrengthData(String menuName) {
+    final List<String> allPartsOriginal = [
+      '有酸素運動',
+      '腕',
+      '胸',
+      '背中',
+      '肩',
+      '足',
+      '全身',
+      'その他１',
+      'その他２',
+      'その他３',
+    ];
 
-    final allBodyParts = ['有酸素運動','腕','胸','背中','肩','足','全身','その他１','その他２','その他３'];
-    final Map<int, double> map = {}; // dayMs or weekMs -> best
+    final Iterable<DailyRecord> records =
+    widget.recordsBox.toMap().values.whereType<DailyRecord>();
 
-    for (final r in widget.recordsBox.toMap().values.whereType<DailyRecord>()) {
-      double? bestForThisDay;
-      for (final part in allBodyParts) {
-        final list = r.menus[part];
-        if (list == null) continue;
-        final md = list.firstWhereOrNull((m) => m.name == menuName);
-        if (md == null) continue;
-        for (int i = 0; i < md.weights.length; i++) {
-          final w = double.tryParse(md.weights[i]);
-          final reps = int.tryParse(md.reps[i]);
-          if (w != null && reps != null && reps >= 1) {
-            bestForThisDay = (bestForThisDay == null) ? w : max(bestForThisDay!, w);
+    final Map<DateTime, double> map = {};
+
+    if (_displayMode == DisplayMode.day) {
+      for (final r in records) {
+        double maxW = 0;
+        for (final part in allPartsOriginal) {
+          final list = r.menus[part];
+          if (list == null) continue;
+          final m = list.firstWhereOrNull((x) => x.name == menuName);
+          if (m == null) continue;
+          for (int i = 0; i < min(m.weights.length, m.reps.length); i++) {
+            final w = double.tryParse(m.weights[i]) ?? 0;
+            final reps = int.tryParse(m.reps[i]) ?? 0;
+            if (reps >= 1) maxW = max(maxW, w);
           }
         }
-      }
-      if (bestForThisDay != null) {
-        if (_displayMode == DisplayMode.day) {
-          final k = _dayKey(r.date);
-          map[k] = max(map[k] ?? 0, bestForThisDay!);
-        } else {
-          final k = _weekKey(r.date);
-          map[k] = max(map[k] ?? 0, bestForThisDay!);
+        if (maxW > 0) {
+          final d = DateTime(r.date.year, r.date.month, r.date.day);
+          map[d] = maxW;
         }
       }
+    } else {
+      final Map<DateTime, double> weeklyMax = {};
+      for (final r in records) {
+        double maxW = 0;
+        for (final part in allPartsOriginal) {
+          final list = r.menus[part];
+          if (list == null) continue;
+          final m = list.firstWhereOrNull((x) => x.name == menuName);
+          if (m == null) continue;
+          for (int i = 0; i < min(m.weights.length, m.reps.length); i++) {
+            final w = double.tryParse(m.weights[i]) ?? 0;
+            final reps = int.tryParse(m.reps[i]) ?? 0;
+            if (reps >= 1) maxW = max(maxW, w);
+          }
+        }
+        if (maxW > 0) {
+          final day = DateTime(r.date.year, r.date.month, r.date.day);
+          final weekStart = day.subtract(Duration(days: day.weekday - 1));
+          final key = DateTime(weekStart.year, weekStart.month, weekStart.day);
+          weeklyMax.update(key, (old) => max(old, maxW), ifAbsent: () => maxW);
+        }
+      }
+      map.addAll(weeklyMax);
     }
 
-    _lineAxisDates = _buildContinuousAxis(map.keys, weekly: _displayMode == DisplayMode.week);
+    _yTickStep = 5.0;
+    _yLabelStep = 5.0;
 
-    for (int i = 0; i < _lineAxisDates.length; i++) {
-      final ms = _displayMode == DisplayMode.day ? _dayKey(_lineAxisDates[i]) : _weekKey(_lineAxisDates[i]);
-      final val = map[ms];
-      if (val != null) _spots.add(FlSpot(i.toDouble(), val));
-    }
-
-    _recalcLineAxis();
-    _checkIfFavorite();
-    _saveGraphPrefs();
+    _buildSeriesFromMap(map, tickStep: _yTickStep);
     setState(() {});
   }
 
-  // ----- 有酸素 -----
-  double _parseDistanceKm(String? raw) {
-    if (raw == null || raw.trim().isEmpty) return 0;
-    final parts = raw.split('.');
-    final km = int.tryParse(parts[0]) ?? 0;
-    final m = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
-    return km + (m / 1000.0);
-  }
+  // ====== aerobic ======
+  void _loadAerobicData(String menuName) {
+    final Iterable<DailyRecord> records =
+    widget.recordsBox.toMap().values.whereType<DailyRecord>();
 
-  int _parseDurationSec(String? raw) {
-    if (raw == null || raw.trim().isEmpty) return 0;
-    final parts = raw.split(':');
-    if (parts.length == 1) return (int.tryParse(parts[0]) ?? 0) * 60;
-    final min = int.tryParse(parts[0]) ?? 0;
-    final sec = int.tryParse(parts[1]) ?? 0;
-    return min * 60 + sec;
-  }
+    final Map<DateTime, double> map = {};
 
-  void _loadAerobicData(String? menuName) {
-    _aeroSpots = [];
-    _aeroAxisDates = [];
-
-    final Map<int, double> dayDist = {};     // dayMs -> km
-    final Map<int, double> dayTimeMin = {};  // dayMs -> min
-
-    for (final r in widget.recordsBox.toMap().values.whereType<DailyRecord>()) {
-      final dayMs = _dayKey(r.date);
-      final list = r.menus['有酸素運動'];
-      if (list == null) continue;
-
-      double sumKm = 0;
-      int sumSec = 0;
-
-      for (final m in list) {
-        if (menuName != null && m.name != menuName) continue;
-        sumKm += _parseDistanceKm(m.distance);
-        sumSec += _parseDurationSec(m.duration);
-      }
-
-      if (sumKm > 0) dayDist[dayMs] = (dayDist[dayMs] ?? 0) + sumKm;
-      if (sumSec > 0) dayTimeMin[dayMs] = (dayTimeMin[dayMs] ?? 0) + (sumSec / 60.0);
-    }
-
-    Map<int, double> series;
     if (_displayMode == DisplayMode.day) {
-      series = switch (_aeroMetric) {
-        AeroMetric.distance => dayDist,
-        AeroMetric.time => dayTimeMin,
-        AeroMetric.pace => _calcPaceKmPerMin(dayDist, dayTimeMin),
-      };
+      for (final r in records) {
+        final list = r.menus['有酸素運動'];
+        if (list == null) continue;
+        final m = list.firstWhereOrNull((x) => x.name == menuName);
+        if (m == null) continue;
+
+        final km = _parseDistanceKm(m.distance) ?? 0;
+        final min = _parseDurationMin(m.duration) ?? 0;
+
+        double? value;
+        switch (_aeroMetric) {
+          case AerobicMetric.distance:
+            value = km > 0 ? km : null;
+            break;
+          case AerobicMetric.time:
+            value = min > 0 ? min : null;
+            break;
+          case AerobicMetric.pace:
+            if (km > 0 && min > 0) value = min / km;
+            break;
+        }
+        if (value != null) {
+          final d = DateTime(r.date.year, r.date.month, r.date.day);
+          map[d] = value;
+        }
+      }
     } else {
-      series = _aggWeek(
-        series: switch (_aeroMetric) {
-          AeroMetric.distance => dayDist,
-          AeroMetric.time => dayTimeMin,
-          AeroMetric.pace => _calcPaceKmPerMin(dayDist, dayTimeMin),
-        },
-        isPace: _aeroMetric == AeroMetric.pace,
-        dayDist: dayDist,
-        dayTimeMin: dayTimeMin,
-      );
+      final Map<DateTime, List<double>> weeklyList = {};
+      for (final r in records) {
+        final list = r.menus['有酸素運動'];
+        if (list == null) continue;
+        final m = list.firstWhereOrNull((x) => x.name == menuName);
+        if (m == null) continue;
+
+        final km = _parseDistanceKm(m.distance) ?? 0;
+        final min = _parseDurationMin(m.duration) ?? 0;
+
+        final day = DateTime(r.date.year, r.date.month, r.date.day);
+        final weekStart = day.subtract(Duration(days: day.weekday - 1));
+        final key = DateTime(weekStart.year, weekStart.month, weekStart.day);
+
+        switch (_aeroMetric) {
+          case AerobicMetric.distance:
+            weeklyList.putIfAbsent(key, () => []).add(km);
+            break;
+          case AerobicMetric.time:
+            weeklyList.putIfAbsent(key, () => []).add(min);
+            break;
+          case AerobicMetric.pace:
+            if (km > 0 && min > 0) {
+              weeklyList.putIfAbsent(key, () => []).add(min / km);
+            }
+            break;
+        }
+      }
+
+      weeklyList.forEach((k, list) {
+        if (list.isEmpty) return;
+        double value;
+        switch (_aeroMetric) {
+          case AerobicMetric.distance:
+          case AerobicMetric.time:
+            value = list.reduce((a, b) => a + b);
+            break;
+          case AerobicMetric.pace:
+            value = list.reduce(min);
+            break;
+        }
+        map[k] = value;
+      });
     }
 
-    _aeroAxisDates = _buildContinuousAxis(series.keys, weekly: _displayMode == DisplayMode.week);
-
-    for (int i = 0; i < _aeroAxisDates.length; i++) {
-      final ms = _displayMode == DisplayMode.day ? _dayKey(_aeroAxisDates[i]) : _weekKey(_aeroAxisDates[i]);
-      final val = series[ms];
-      if (val != null) _aeroSpots.add(FlSpot(i.toDouble(), val));
+    switch (_aeroMetric) {
+      case AerobicMetric.distance:
+        _yTickStep = 1.0;
+        _yLabelStep = 1.0;
+        break;
+      case AerobicMetric.time:
+        _yTickStep = 10.0;
+        _yLabelStep = 10.0;
+        break;
+      case AerobicMetric.pace:
+        _yTickStep = 0.5;
+        _yLabelStep = 0.5;
+        break;
     }
 
-    _recalcAeroAxis();
-    _saveGraphPrefs();
-    _checkIfFavorite();
+    _buildSeriesFromMap(map, tickStep: _yTickStep);
     setState(() {});
   }
 
-  Map<int, double> _calcPaceKmPerMin(Map<int, double> distKm, Map<int, double> timeMin) {
-    final Map<int, double> out = {};
-    final keys = {...distKm.keys, ...timeMin.keys}.toList()..sort();
-    for (final k in keys) {
-      final d = distKm[k] ?? 0;
-      final t = timeMin[k] ?? 0;
-      if (d > 0 && t > 0) out[k] = d / t; // km/分
-    }
-    return out;
-  }
+  // ====== build series & axis ======
+  void _buildSeriesFromMap(Map<DateTime, double> map, {required double tickStep}) {
+    _spots = [];
+    _xDates = [];
+    _minY = 0;
+    _maxY = 0;
 
-  Map<int, double> _aggWeek({
-    required Map<int, double> series,
-    required bool isPace,
-    Map<int, double>? dayDist,
-    Map<int, double>? dayTimeMin,
-  }) {
-    if (!isPace) {
-      final Map<int, double> wk = {};
-      series.forEach((dayMs, v) {
-        final ws = _weekKey(DateTime.fromMillisecondsSinceEpoch(dayMs));
-        wk[ws] = (wk[ws] ?? 0) + v;
-      });
-      return wk;
+    if (map.isEmpty) return;
+
+    final sortedDates = map.keys.toList()..sort();
+
+    // full x (day/weekly)
+    final List<DateTime> full = [];
+    DateTime cursor = sortedDates.first;
+    final DateTime last = sortedDates.last;
+
+    if (_displayMode == DisplayMode.day) {
+      while (!cursor.isAfter(last)) {
+        full.add(cursor);
+        cursor = cursor.add(const Duration(days: 1));
+      }
     } else {
-      final Map<int, double> wkD = {};
-      final Map<int, double> wkT = {};
-      (dayDist ?? {}).forEach((dayMs, v) {
-        final ws = _weekKey(DateTime.fromMillisecondsSinceEpoch(dayMs));
-        wkD[ws] = (wkD[ws] ?? 0) + v;
-      });
-      (dayTimeMin ?? {}).forEach((dayMs, v) {
-        final ws = _weekKey(DateTime.fromMillisecondsSinceEpoch(dayMs));
-        wkT[ws] = (wkT[ws] ?? 0) + v;
-      });
-      final Map<int, double> wk = {};
-      for (final k in {...wkD.keys, ...wkT.keys}) {
-        final d = wkD[k] ?? 0;
-        final t = wkT[k] ?? 0;
-        if (d > 0 && t > 0) wk[k] = d / t; // km/分
+      while (!cursor.isAfter(last)) {
+        final wkStart = cursor.subtract(Duration(days: cursor.weekday - 1));
+        if (full.isEmpty || full.last != wkStart) full.add(wkStart);
+        cursor = cursor.add(const Duration(days: 7));
       }
-      return wk;
     }
+
+    _xDates = full;
+    final indexByDate = <DateTime, int>{};
+    for (int i = 0; i < full.length; i++) {
+      indexByDate[full[i]] = i;
+    }
+
+    for (final d in sortedDates) {
+      final idx = indexByDate[
+      _displayMode == DisplayMode.day ? d : d.subtract(Duration(days: d.weekday - 1))]!;
+      final y = map[d]!;
+      _spots.add(FlSpot(idx.toDouble(), y));
+      _minY = (_spots.length == 1) ? y : min(_minY, y);
+      _maxY = (_spots.length == 1) ? y : max(_maxY, y);
+    }
+
+    double floorTo(double v, double step) => (v / step).floorToDouble() * step;
+    double ceilTo(double v, double step) => (v / step).ceilToDouble() * step;
+
+    final l10n = AppLocalizations.of(context)!;
+    final isBody = _selectedPart == l10n.bodyWeight;
+
+    double minNice = floorTo(_minY, tickStep) - tickStep;
+    double maxNice = ceilTo(_maxY, tickStep) + tickStep;
+
+    // 体重はさらに上下 1 ステップずつ余白追加（“びょーん”緩和）
+    if (isBody) {
+      minNice -= tickStep;
+      maxNice += tickStep;
+    }
+
+    if ((maxNice - minNice).abs() < 1e-6) {
+      minNice -= tickStep;
+      maxNice += tickStep;
+    }
+
+    if (SettingsManager.currentUnit == 'kg' &&
+        (isBody || !_isAerobicContext())) {
+      minNice = max(0.0, minNice);
+    }
+
+    _minY = minNice;
+    _maxY = maxNice;
   }
 
-  // ----- 連続X軸（欠測日も含む） -----
-  List<DateTime> _buildContinuousAxis(Iterable<int> keys, {required bool weekly}) {
-    final sorted = keys.toList()..sort();
-    if (sorted.isEmpty) return [];
-    DateTime start = DateTime.fromMillisecondsSinceEpoch(sorted.first);
-    DateTime end = DateTime.fromMillisecondsSinceEpoch(sorted.last);
-
-    if (weekly) {
-      start = _weekStart(start);
-      end = _weekStart(end);
-      final List<DateTime> out = [];
-      var cur = start;
-      while (!cur.isAfter(end)) {
-        out.add(cur);
-        cur = cur.add(const Duration(days: 7));
-      }
-      return out;
-    } else {
-      final List<DateTime> out = [];
-      var cur = DateTime(start.year, start.month, start.day);
-      final last = DateTime(end.year, end.month, end.day);
-      while (!cur.isAfter(last)) {
-        out.add(cur);
-        cur = cur.add(const Duration(days: 1));
-      }
-      return out;
-    }
+  // ====== tick helpers ======
+  bool _isLabelTick(double v) {
+    final ratio = v / _yLabelStep;
+    return (ratio - ratio.round()).abs() < 1e-6;
   }
 
-  // ----- 軸計算 -----
-  void _recalcLineAxis() {
-    if (_spots.isEmpty) {
-      _lineAxisMinY = 0;
-      _lineAxisMaxY = 1;
-      _lineYInterval = 1;
-      return;
-    }
-    final minY = _spots.map((e) => e.y).reduce(min);
-    final maxY = _spots.map((e) => e.y).reduce(max);
-    final step = _niceStep((maxY - minY).abs().clamp(0.0001, double.infinity));
-    _lineYInterval = step;
-    _lineAxisMinY = (minY / step).floor() * step;
-    _lineAxisMaxY = (maxY / step).ceil() * step;
-    if (_lineAxisMaxY <= _lineAxisMinY) _lineAxisMaxY = _lineAxisMinY + step;
-  }
-
-  void _recalcAeroAxis() {
-    if (_aeroSpots.isEmpty) {
-      _aeroAxisMinY = 0;
-      _aeroAxisMaxY = 1;
-      _aeroYInterval = 1;
-      return;
-    }
-    final minY = _aeroSpots.map((e) => e.y).reduce(min);
-    final maxY = _aeroSpots.map((e) => e.y).reduce(max);
-    final step = _niceStep((maxY - minY).abs().clamp(0.0001, double.infinity));
-    _aeroYInterval = step;
-    _aeroAxisMinY = (minY / step).floor() * step;
-    _aeroAxisMaxY = (maxY / step).ceil() * step;
-    if (_aeroAxisMaxY <= _aeroAxisMinY) _aeroAxisMaxY = _aeroAxisMinY + step;
-  }
-
-  // ----- お気に入り -----
+  // ====== favorites ======
   void _checkIfFavorite() {
     if (_selectedMenu == null) {
       _isFavorite = false;
       return;
     }
     final dynamic rawFavorites = widget.settingsBox.get('favorites');
-    _isFavorite = rawFavorites is List && rawFavorites.contains(_selectedMenu);
+    _isFavorite = (rawFavorites is List) && rawFavorites.contains(_selectedMenu);
   }
 
   void _toggleFavorite() {
     if (_selectedMenu == null) return;
     final dynamic rawFavorites = widget.settingsBox.get('favorites');
-    List<String> favorites = rawFavorites is List ? rawFavorites.whereType<String>().toList() : [];
+    final List<String> favorites =
+    rawFavorites is List ? rawFavorites.whereType<String>().toList() : [];
 
     final l10n = AppLocalizations.of(context)!;
-    String message;
+    final willAdd = !favorites.contains(_selectedMenu);
 
-    if (favorites.contains(_selectedMenu!)) {
-      favorites.remove(_selectedMenu!);
-      message = l10n.unfavorited(_selectedMenu!); // 多言語対応
-    } else {
+    if (willAdd) {
       favorites.add(_selectedMenu!);
-      message = l10n.favorited(_selectedMenu!);   // 多言語対応
+    } else {
+      favorites.remove(_selectedMenu!);
     }
-
     widget.settingsBox.put('favorites', favorites);
 
     setState(() {
-      _isFavorite = favorites.contains(_selectedMenu);
-      _loadMenusForPart(_selectedPart!);
+      _isFavorite = willAdd;
+      if (_selectedPart == l10n.favorites) {
+        _loadMenusForPart(_selectedPart!);
+      }
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    final msg =
+    willAdd ? l10n.favorited(_selectedMenu!) : l10n.unfavorited(_selectedMenu!);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   void _saveGraphPrefs() {
@@ -554,43 +639,110 @@ class _GraphScreenState extends State<GraphScreen> {
     widget.settingsBox.put(_prefAeroMetric, _aeroMetric.index);
   }
 
-  bool _menuExistsInAerobic(String name) {
-    for (final r in widget.recordsBox.toMap().values.whereType<DailyRecord>()) {
-      final list = r.menus['有酸素運動'];
-      if (list != null && list.any((m) => m.name == name)) return true;
+  // ====== labels ======
+  String _weekSuffix() {
+    final lang = Localizations.localeOf(context).languageCode;
+    return (lang == 'ja') ? '週' : 'wk';
+  }
+
+  String _formatDayLabel(DateTime d) {
+    final locale = Localizations.localeOf(context).toString();
+    return DateFormat('M/d', locale).format(d);
+  }
+
+  String _formatWeekLabel(DateTime d) {
+    final locale = Localizations.localeOf(context).toString();
+    return '${DateFormat('M/d', locale).format(d)}${_weekSuffix()}';
+  }
+
+  // X axis: すべての目盛りにラベル／縦線は整数インデックスのみ
+  Widget _bottomTitle(double value, TitleMeta meta) {
+    if (_xDates.isEmpty) return const SizedBox.shrink();
+    if ((value - value.round()).abs() > 1e-6) return const SizedBox.shrink();
+    final idx = value.round();
+    if (idx < 0 || idx >= _xDates.length) return const SizedBox.shrink();
+
+    final text = (_displayMode == DisplayMode.day)
+        ? _formatDayLabel(_xDates[idx])
+        : _formatWeekLabel(_xDates[idx]);
+
+    return SideTitleWidget(
+      axisSide: meta.axisSide,
+      space: 6,
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: 10,
+        ),
+      ),
+    );
+  }
+
+  // Y axis: 上下端は非表示（ダブり防止）、ラベルは _yLabelStep 間隔
+  Widget _leftTitle(double value, TitleMeta meta) {
+    if (!_isLabelTick(value)) return const SizedBox.shrink();
+
+    const eps = 0.01;
+    final isMin = (value - _minY).abs() <= eps;
+    final isMax = (value - _maxY).abs() <= eps;
+    if (isMin || isMax) return const SizedBox.shrink();
+
+    final isInteger = (_yLabelStep % 1 == 0);
+    final label = isInteger ? value.round().toString() : value.toStringAsFixed(1);
+
+    return SideTitleWidget(
+      axisSide: meta.axisSide,
+      space: 0,
+      child: Text(
+        label,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: 10,
+        ),
+      ),
+    );
+  }
+
+  // unit overlay text
+  String _unitOverlayText(AppLocalizations l10n) {
+    if (_isAerobicContext()) {
+      switch (_aeroMetric) {
+        case AerobicMetric.distance:
+          return l10n.km;
+        case AerobicMetric.time:
+          return l10n.min;
+        case AerobicMetric.pace:
+          return '${l10n.min}/${l10n.km}';
+      }
     }
-    return false;
+    return SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
   }
 
-  // Utils（日付キー）
-  int _dayKey(DateTime d) => DateTime(d.year, d.month, d.day).millisecondsSinceEpoch;
-  DateTime _weekStart(DateTime d) => DateTime(d.year, d.month, d.day).subtract(Duration(days: d.weekday - 1));
-  int _weekKey(DateTime d) {
-    final ws = _weekStart(d);
-    return DateTime(ws.year, ws.month, ws.day).millisecondsSinceEpoch;
+  // tooltip value
+  String _formatTooltipValue(double y, AppLocalizations l10n) {
+    if (_isAerobicContext()) {
+      switch (_aeroMetric) {
+        case AerobicMetric.distance:
+          return '${y.toStringAsFixed(2)} ${l10n.km}';
+        case AerobicMetric.time:
+          return '${_formatMinToMMSS(y)} ${l10n.min}';
+        case AerobicMetric.pace:
+          return '${_formatMinToMMSS(y)} ${l10n.min}/${l10n.km}';
+      }
+    }
+    final u = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
+    return '${y.toStringAsFixed(1)} $u';
   }
 
-  // ===== UI =====
+  // ====== UI ======
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
+    final isAerobic = _isAerobicContext();
 
-    final isBodyWeight = _selectedPart == l10n.bodyWeight;
-    final isAerobic = _isAerobicSelectedNow();
-
-    final String yUnitForLine = isBodyWeight
-        ? SettingsManager.currentUnit
-        : (SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs);
-
-    final String yUnitForAero = () {
-      final ja = Localizations.localeOf(context).languageCode == 'ja';
-      switch (_aeroMetric) {
-        case AeroMetric.distance: return ja ? 'km' : 'km';
-        case AeroMetric.time:     return ja ? '分' : 'min';
-        case AeroMetric.pace:     return ja ? 'km/分' : 'km/min';
-      }
-    }();
+    final unitText = _unitOverlayText(l10n);
 
     return PopScope(
       canPop: true,
@@ -601,7 +753,11 @@ class _GraphScreenState extends State<GraphScreen> {
           leading: const BackButton(),
           title: Text(
             l10n.graphScreenTitle,
-            style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0),
+            style: TextStyle(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.bold,
+              fontSize: 20.0,
+            ),
           ),
           backgroundColor: colorScheme.surface,
           elevation: 0.0,
@@ -613,23 +769,19 @@ class _GraphScreenState extends State<GraphScreen> {
             children: [
               const AdBanner(screenName: 'graph'),
               const SizedBox(height: 16.0),
-
-              // 上段：日/週トグル + 右端：お気に入り
               Row(
                 children: [
                   ToggleButtons(
-                    isSelected: [_displayMode == DisplayMode.day, _displayMode == DisplayMode.week],
+                    isSelected: [
+                      _displayMode == DisplayMode.day,
+                      _displayMode == DisplayMode.week
+                    ],
                     onPressed: (index) {
                       setState(() {
-                        _displayMode = index == 0 ? DisplayMode.day : DisplayMode.week;
+                        _displayMode =
+                        index == 0 ? DisplayMode.day : DisplayMode.week;
                         _saveGraphPrefs();
-                        if (isBodyWeight) {
-                          _loadBodyWeightData();
-                        } else if (isAerobic) {
-                          _loadAerobicData(_selectedMenu);
-                        } else if (_selectedMenu != null) {
-                          _loadGraphData(_selectedMenu!);
-                        }
+                        _refreshDataForSelection();
                       });
                     },
                     borderRadius: BorderRadius.circular(20.0),
@@ -640,120 +792,353 @@ class _GraphScreenState extends State<GraphScreen> {
                     selectedBorderColor: colorScheme.primary,
                     splashColor: colorScheme.primary.withOpacity(0.2),
                     children: <Widget>[
-                      Padding(padding: const EdgeInsets.symmetric(horizontal: 16.0), child: Text(l10n.dayDisplay)),
-                      Padding(padding: const EdgeInsets.symmetric(horizontal: 16.0), child: Text(l10n.weekDisplay)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Text(l10n.dayDisplay),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Text(l10n.weekDisplay),
+                      ),
                     ],
                   ),
                   const Spacer(),
-                  if (!isBodyWeight && _selectedMenu != null)
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorScheme.primary.withOpacity(0.15),
-                        foregroundColor: colorScheme.onSurface,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        shape: const StadiumBorder(),
-                        elevation: 0,
-                      ),
-                      onPressed: _toggleFavorite,
-                      child: Row(
-                        children: [
-                          Text(AppLocalizations.of(context)!.favorites,
-                              style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold)),
-                          const SizedBox(width: 4),
-                          Text(_isFavorite ? '★' : '☆',
-                              style: TextStyle(
-                                color: _isFavorite ? Colors.indigo : colorScheme.onSurface,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                              )),
-                        ],
-                      ),
-                    ),
+                  FavoritePillButton(
+                    isFavorite: _isFavorite,
+                    label: l10n.favorites,
+                    onTap: _toggleFavorite,
+                  ),
                 ],
               ),
-
+              if (isAerobic) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ToggleButtons(
+                    isSelected: [
+                      _aeroMetric == AerobicMetric.distance,
+                      _aeroMetric == AerobicMetric.time,
+                      _aeroMetric == AerobicMetric.pace,
+                    ],
+                    onPressed: (i) {
+                      setState(() {
+                        _aeroMetric = AerobicMetric.values[i];
+                        _saveGraphPrefs();
+                        if (_selectedMenu != null) {
+                          _loadAerobicData(_selectedMenu!);
+                        }
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(18),
+                    selectedColor: colorScheme.onPrimary,
+                    fillColor: colorScheme.primary,
+                    color: colorScheme.onSurface,
+                    borderColor: colorScheme.outlineVariant,
+                    selectedBorderColor: colorScheme.primary,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(l10n.distance),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(l10n.time),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(l10n.pace),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 12.0),
-
-              if (isAerobic) _buildAeroMetricToggle(colorScheme),
-              if (isAerobic) const SizedBox(height: 8.0),
-
-              // グラフ（左Y軸固定 + 横スクロール）
               Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final axisCount = (isAerobic ? _aeroAxisDates.length : _lineAxisDates.length);
-                    // ★ X軸の間隔を広めに：Day=96px/日、Week=120px/週
-                    final perTickWidth = _displayMode == DisplayMode.week ? 120.0 : 96.0;
-                    final chartWidth = max(constraints.maxWidth, perTickWidth * max(1, axisCount));
+                child: Card(
+                  color: colorScheme.surfaceContainerHighest,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
+                  elevation: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final totalW = constraints.maxWidth;
+                        final totalH = constraints.maxHeight;
 
-                    final Widget chart = Padding(
-                      padding: const EdgeInsets.fromLTRB(0, 16, 16, 16),
-                      child: (isAerobic ? _buildAeroLine(colorScheme) : _buildLineChart(colorScheme, isBodyWeight)),
-                    );
+                        const yAxisPanelW = 34.0;
+                        final plotAvailW = max(60.0, totalW - yAxisPanelW - 4);
+                        const stride = 70.0;
+                        final points = max(1, _xDates.length);
+                        final chartW = max(plotAvailW, points * stride);
 
-                    return Stack(
-                      children: [
-                        Row(
-                          children: [
-                            const SizedBox(width: 56), // 固定Y軸スペース
-                            Expanded(
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                physics: const BouncingScrollPhysics(),
-                                child: SizedBox(width: chartWidth, child: chart),
-                              ),
+                        final unitOverlay = Positioned(
+                          left: 2,
+                          top: 6,
+                          child: Text(
+                            unitText,
+                            style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ],
-                        ),
-                        // 固定Y軸（単位ラベルは数値より少し上に）
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            ignoring: true,
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: SizedBox(
-                                width: 56,
-                                child: _FixedYAxis(
-                                  minY: isAerobic ? _aeroAxisMinY : _lineAxisMinY,
-                                  maxY: isAerobic ? _aeroAxisMaxY : _lineAxisMaxY,
-                                  interval: isAerobic ? _aeroYInterval : _lineYInterval,
-                                  formatter: (v) => _formatYAxis(
-                                    isAerobic ? _aeroAxisMinY : _lineAxisMinY,
-                                    isAerobic ? _aeroAxisMaxY : _lineAxisMaxY,
-                                    v,
+                          ),
+                        );
+
+                        // Left Y axis (fixed)
+                        final yAxisChart = SizedBox(
+                          width: yAxisPanelW,
+                          height: totalH,
+                          child: _xDates.isEmpty
+                              ? const SizedBox.shrink()
+                              : LineChart(
+                            LineChartData(
+                              minX: 0,
+                              maxX: 1,
+                              minY: _minY,
+                              maxY: _maxY,
+                              lineBarsData: const [],
+                              titlesData: FlTitlesData(
+                                leftTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    reservedSize: 32,
+                                    interval: _yLabelStep,
+                                    getTitlesWidget: _leftTitle,
                                   ),
-                                  unitLabel: isAerobic ? yUnitForAero : yUnitForLine,
-                                  colorScheme: colorScheme,
+                                ),
+                                bottomTitles: const AxisTitles(
+                                  sideTitles:
+                                  SideTitles(showTitles: false),
+                                ),
+                                topTitles: const AxisTitles(
+                                  sideTitles:
+                                  SideTitles(showTitles: false),
+                                ),
+                                rightTitles: const AxisTitles(
+                                  sideTitles:
+                                  SideTitles(showTitles: false),
+                                ),
+                              ),
+                              gridData: FlGridData(
+                                show: true,
+                                horizontalInterval: _yLabelStep,
+                                checkToShowHorizontalLine: (v) =>
+                                    _isLabelTick(v),
+                                drawVerticalLine: false,
+                                getDrawingHorizontalLine: (v) => FlLine(
+                                  color: colorScheme.outlineVariant,
+                                  strokeWidth: 0.5,
+                                ),
+                              ),
+                              borderData: FlBorderData(
+                                show: true,
+                                border: Border(
+                                  left: BorderSide(
+                                      color:
+                                      colorScheme.outlineVariant),
+                                  bottom: BorderSide(
+                                      color:
+                                      colorScheme.outlineVariant),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    );
-                  },
+                        );
+
+                        // Right (scrollable plot)
+                        final scrollChart = Expanded(
+                          child: _xDates.isEmpty
+                              ? Center(
+                            child: Text(
+                              AppLocalizations.of(context)!.noGraphData,
+                              style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                                fontSize: 16,
+                              ),
+                            ),
+                          )
+                              : SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            child: SizedBox(
+                              width: chartW,
+                              height: totalH,
+                              child: LineChart(
+                                LineChartData(
+                                  minX: 0,
+                                  maxX: (_xDates.length - 1).toDouble(),
+                                  minY: _minY,
+                                  maxY: _maxY,
+                                  lineBarsData: [
+                                    LineChartBarData(
+                                      spots: _spots,
+                                      isCurved: false,
+                                      color: colorScheme.primary,
+                                      barWidth: 3,
+                                      dotData:
+                                      const FlDotData(show: true),
+                                      belowBarData:
+                                      BarAreaData(show: false),
+                                    ),
+                                  ],
+                                  titlesData: FlTitlesData(
+                                    leftTitles: const AxisTitles(
+                                      sideTitles: SideTitles(
+                                          showTitles: false),
+                                    ),
+                                    bottomTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        interval: 1, // すべてのメモリ
+                                        reservedSize: 22,
+                                        getTitlesWidget: _bottomTitle,
+                                      ),
+                                    ),
+                                    topTitles: const AxisTitles(
+                                      sideTitles: SideTitles(
+                                          showTitles: false),
+                                    ),
+                                    rightTitles: const AxisTitles(
+                                      sideTitles: SideTitles(
+                                          showTitles: false),
+                                    ),
+                                  ),
+                                  gridData: FlGridData(
+                                    show: true,
+                                    horizontalInterval: _yLabelStep,
+                                    checkToShowHorizontalLine: (v) =>
+                                        _isLabelTick(v),
+                                    drawVerticalLine: true,
+                                    verticalInterval: 1, // すべてのメモリ
+                                    checkToShowVerticalLine: (v) =>
+                                    (v - v.round()).abs() < 1e-6,
+                                    getDrawingHorizontalLine: (v) =>
+                                        FlLine(
+                                          color:
+                                          colorScheme.outlineVariant,
+                                          strokeWidth: 0.5,
+                                        ),
+                                    getDrawingVerticalLine: (v) => FlLine(
+                                      color:
+                                      colorScheme.outlineVariant,
+                                      strokeWidth: 0.5,
+                                    ),
+                                  ),
+                                  borderData: FlBorderData(
+                                    show: true,
+                                    border: Border(
+                                      bottom: BorderSide(
+                                          color: colorScheme
+                                              .outlineVariant),
+                                      right: BorderSide(
+                                          color: colorScheme
+                                              .outlineVariant),
+                                    ),
+                                  ),
+                                  lineTouchData: LineTouchData(
+                                    touchTooltipData:
+                                    LineTouchTooltipData(
+                                      getTooltipItems: (items) {
+                                        final loc =
+                                        Localizations.localeOf(
+                                            context)
+                                            .toString();
+                                        return items.map((s) {
+                                          final i = s.x.toInt();
+                                          final d = (i >= 0 &&
+                                              i < _xDates.length)
+                                              ? _xDates[i]
+                                              : null;
+                                          final dateStr =
+                                          (_displayMode ==
+                                              DisplayMode.day)
+                                              ? (d != null
+                                              ? DateFormat(
+                                              'M/d',
+                                              loc)
+                                              .format(d)
+                                              : '')
+                                              : (d != null
+                                              ? _formatWeekLabel(
+                                              d)
+                                              : '');
+                                          final valStr =
+                                          _formatTooltipValue(
+                                              s.y, l10n);
+                                          return LineTooltipItem(
+                                            '$dateStr\n$valStr',
+                                            TextStyle(
+                                              color: colorScheme
+                                                  .onPrimaryContainer,
+                                              fontWeight:
+                                              FontWeight.w600,
+                                            ),
+                                          );
+                                        }).toList();
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+
+                        return Stack(
+                          children: [
+                            SizedBox(
+                              width: totalW,
+                              height: totalH,
+                              child: Row(
+                                crossAxisAlignment:
+                                CrossAxisAlignment.stretch,
+                                children: [
+                                  yAxisChart,
+                                  const SizedBox(width: 2),
+                                  scrollChart,
+                                ],
+                              ),
+                            ),
+                            unitOverlay,
+                          ],
+                        );
+                      },
+                    ),
+                  ),
                 ),
               ),
-
               const SizedBox(height: 12.0),
-
-              // セレクタ
               Column(
                 children: [
                   DropdownButtonFormField<String>(
                     decoration: InputDecoration(
                       hintText: l10n.selectTrainingPart,
-                      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
+                      hintStyle: TextStyle(
+                          color: colorScheme.onSurfaceVariant, fontSize: 14.0),
                       filled: true,
                       fillColor: colorScheme.surfaceContainer,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(25.0), borderSide: BorderSide.none),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(25.0),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                     value: _selectedPart,
                     items: _filteredBodyParts
-                        .map((p) => DropdownMenuItem(
-                      value: p,
-                      child: Text(p, style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold)),
-                    ))
+                        .map(
+                          (p) => DropdownMenuItem(
+                        value: p,
+                        child: Text(
+                          p,
+                          style: TextStyle(
+                            color: colorScheme.onSurface,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    )
                         .toList(),
                     onChanged: (value) {
                       if (value != null) {
@@ -765,7 +1150,11 @@ class _GraphScreenState extends State<GraphScreen> {
                       }
                     },
                     dropdownColor: colorScheme.surfaceContainer,
-                    style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.bold,
+                    ),
                     borderRadius: BorderRadius.circular(15.0),
                   ),
                   const SizedBox(height: 8.0),
@@ -773,31 +1162,53 @@ class _GraphScreenState extends State<GraphScreen> {
                     DropdownButtonFormField<String>(
                       decoration: InputDecoration(
                         hintText: l10n.selectExercise,
-                        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
+                        hintStyle: TextStyle(
+                            color: colorScheme.onSurfaceVariant, fontSize: 14.0),
                         filled: true,
                         fillColor: colorScheme.surfaceContainer,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(25.0), borderSide: BorderSide.none),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25.0),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                       value: _selectedMenu,
                       items: _menusForPart
-                          .map((menu) => DropdownMenuItem(
-                        value: menu,
-                        child: Text(menu, style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold)),
-                      ))
+                          .map(
+                            (menu) => DropdownMenuItem(
+                          value: menu,
+                          child: Text(
+                            menu,
+                            style: TextStyle(
+                              color: colorScheme.onSurface,
+                              fontSize: 14.0,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      )
                           .toList(),
                       onChanged: (value) {
-                        setState(() {
-                          _selectedMenu = value;
-                          _saveGraphPrefs();
-                          if (_isAerobicSelectedNow()) {
-                            _loadAerobicData(_selectedMenu);
-                          } else if (_selectedMenu != null) {
-                            _loadGraphData(_selectedMenu!);
-                          }
-                        });
+                        if (value != null) {
+                          setState(() {
+                            _selectedMenu = value;
+                            _saveGraphPrefs();
+                            _refreshDataForSelection();
+                          });
+                        } else {
+                          setState(() {
+                            _spots = [];
+                            _xDates = [];
+                            _minY = 0;
+                            _maxY = 0;
+                          });
+                        }
                       },
                       dropdownColor: colorScheme.surfaceContainer,
-                      style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold,
+                      ),
                       borderRadius: BorderRadius.circular(15.0),
                     ),
                 ],
@@ -807,10 +1218,22 @@ class _GraphScreenState extends State<GraphScreen> {
         ),
         bottomNavigationBar: BottomNavigationBar(
           items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
-            BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'),
-            BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
-            BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today),
+              label: 'Calendar',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.edit_note),
+              label: 'Record',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.bar_chart),
+              label: 'Graph',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: 'Settings',
+            ),
           ],
           currentIndex: 2,
           selectedItemColor: colorScheme.primary,
@@ -819,296 +1242,87 @@ class _GraphScreenState extends State<GraphScreen> {
           onTap: (index) {
             if (index == 2) return;
             if (index == 0) {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => CalendarScreen(
-                recordsBox: widget.recordsBox,
-                lastUsedMenusBox: widget.lastUsedMenusBox,
-                settingsBox: widget.settingsBox,
-                setCountBox: widget.setCountBox,
-                selectedDate: DateTime.now(),
-              )));
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CalendarScreen(
+                    recordsBox: widget.recordsBox,
+                    lastUsedMenusBox: widget.lastUsedMenusBox,
+                    settingsBox: widget.settingsBox,
+                    setCountBox: widget.setCountBox,
+                    selectedDate: DateTime.now(),
+                  ),
+                ),
+              );
             } else if (index == 1) {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => RecordScreen(
-                selectedDate: DateTime.now(),
-                recordsBox: widget.recordsBox,
-                lastUsedMenusBox: widget.lastUsedMenusBox,
-                settingsBox: widget.settingsBox,
-                setCountBox: widget.setCountBox,
-              )));
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RecordScreen(
+                    selectedDate: DateTime.now(),
+                    recordsBox: widget.recordsBox,
+                    lastUsedMenusBox: widget.lastUsedMenusBox,
+                    settingsBox: widget.settingsBox,
+                    setCountBox: widget.setCountBox,
+                  ),
+                ),
+              );
             } else if (index == 3) {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => SettingsScreen(
-                recordsBox: widget.recordsBox,
-                lastUsedMenusBox: widget.lastUsedMenusBox,
-                settingsBox: widget.settingsBox,
-                setCountBox: widget.setCountBox,
-              )));
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SettingsScreen(
+                    recordsBox: widget.recordsBox,
+                    lastUsedMenusBox: widget.lastUsedMenusBox,
+                    settingsBox: widget.settingsBox,
+                    setCountBox: widget.setCountBox,
+                  ),
+                ),
+              );
             }
           },
         ),
       ),
     );
   }
-
-  // 有酸素メトリクス切替
-  Widget _buildAeroMetricToggle(ColorScheme colorScheme) {
-    final ja = Localizations.localeOf(context).languageCode == 'ja';
-    final labels = ja ? ['距離', '時間', 'ペース'] : ['Distance', 'Time', 'Pace'];
-    return ToggleButtons(
-      isSelected: [
-        _aeroMetric == AeroMetric.distance,
-        _aeroMetric == AeroMetric.time,
-        _aeroMetric == AeroMetric.pace,
-      ],
-      onPressed: (i) {
-        setState(() {
-          _aeroMetric = AeroMetric.values[i];
-          _saveGraphPrefs();
-          _loadAerobicData(_selectedMenu);
-        });
-      },
-      borderRadius: BorderRadius.circular(20.0),
-      selectedColor: colorScheme.onPrimary,
-      fillColor: colorScheme.primary,
-      color: colorScheme.onSurface,
-      borderColor: colorScheme.outlineVariant,
-      selectedBorderColor: colorScheme.primary,
-      splashColor: colorScheme.primary.withOpacity(0.2),
-      children: labels.map((t) => Padding(padding: const EdgeInsets.symmetric(horizontal: 16.0), child: Text(t))).toList(),
-    );
-  }
-
-  // 体重/筋トレ 折れ線（X軸は毎日/毎週すべて表示）
-  Widget _buildLineChart(ColorScheme colorScheme, bool isBodyWeight) {
-    final l10n = AppLocalizations.of(context)!;
-    final unit = isBodyWeight
-        ? SettingsManager.currentUnit
-        : (SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs);
-
-    final nAxis = _lineAxisDates.length;
-
-    return LineChart(
-      LineChartData(
-        minX: -0.5,
-        maxX: max(0, nAxis - 1).toDouble() + 0.5,
-        minY: _lineAxisMinY,
-        maxY: _lineAxisMaxY,
-        titlesData: FlTitlesData(
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 28,
-              getTitlesWidget: (value, meta) {
-                final i = value.round();
-                if (i < 0 || i >= _lineAxisDates.length) return const SizedBox();
-                // ★ すべての軸に日付を表示
-                return SideTitleWidget(
-                  axisSide: meta.axisSide,
-                  child: Text(
-                    _formatAxisDate(_lineAxisDates[i]),
-                    style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 10),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        lineBarsData: [
-          LineChartBarData(
-            spots: _spots,
-            isCurved: false,
-            color: colorScheme.primary,
-            barWidth: 3,
-            dotData: const FlDotData(show: true),
-            belowBarData: BarAreaData(show: false),
-          ),
-        ],
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: true,
-          // ★ すべての目盛で縦グリッド
-          getDrawingVerticalLine: (value) => FlLine(color: Colors.grey.withOpacity(0.35), strokeWidth: 0.5),
-          getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.withOpacity(0.5), strokeWidth: 0.5),
-        ),
-        borderData: FlBorderData(show: true, border: Border.all(color: colorScheme.outlineVariant, width: 1)),
-        lineTouchData: LineTouchData(
-          enabled: true,
-          touchTooltipData: LineTouchTooltipData(
-            getTooltipItems: (items) => items.map((s) {
-              final i = s.x.round().clamp(0, _lineAxisDates.length - 1);
-              final dt = _lineAxisDates[i];
-              final valueText = '${s.y.toStringAsFixed(1)} $unit';
-              return LineTooltipItem(
-                '${_formatAxisDate(dt)}\n$valueText',
-                TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold),
-              );
-            }).toList(),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 有酸素 折れ線（X軸は毎日/毎週すべて表示）
-  Widget _buildAeroLine(ColorScheme colorScheme) {
-    final ja = Localizations.localeOf(context).languageCode == 'ja';
-    final unit = switch (_aeroMetric) {
-      AeroMetric.distance => (ja ? 'km' : 'km'),
-      AeroMetric.time => (ja ? '分' : 'min'),
-      AeroMetric.pace => (ja ? 'km/分' : 'km/min'),
-    };
-
-    final nAxis = _aeroAxisDates.length;
-
-    return LineChart(
-      LineChartData(
-        minX: -0.5,
-        maxX: max(0, nAxis - 1).toDouble() + 0.5,
-        minY: _aeroAxisMinY,
-        maxY: _aeroAxisMaxY,
-        titlesData: FlTitlesData(
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 28,
-              getTitlesWidget: (value, meta) {
-                final i = value.round();
-                if (i < 0 || i >= _aeroAxisDates.length) return const SizedBox();
-                // ★ すべての軸に表示
-                return SideTitleWidget(
-                  axisSide: meta.axisSide,
-                  child: Text(
-                    _formatAxisDate(_aeroAxisDates[i]),
-                    style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 10),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        lineBarsData: [
-          LineChartBarData(
-            spots: _aeroSpots,
-            isCurved: false,
-            color: colorScheme.primary,
-            barWidth: 3,
-            dotData: const FlDotData(show: true),
-            belowBarData: BarAreaData(show: false),
-          ),
-        ],
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: true,
-          getDrawingVerticalLine: (value) => FlLine(color: Colors.grey.withOpacity(0.35), strokeWidth: 0.5),
-          getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.withOpacity(0.5), strokeWidth: 0.5),
-        ),
-        borderData: FlBorderData(show: true, border: Border.all(color: colorScheme.outlineVariant, width: 1)),
-        lineTouchData: LineTouchData(
-          enabled: true,
-          touchTooltipData: LineTouchTooltipData(
-            getTooltipItems: (items) => items.map((s) {
-              final i = s.x.round().clamp(0, _aeroAxisDates.length - 1);
-              final dt = _aeroAxisDates[i];
-              final valueText = '${s.y.toStringAsFixed(2)} $unit';
-              return LineTooltipItem(
-                '${_formatAxisDate(dt)}\n$valueText',
-                TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold),
-              );
-            }).toList(),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
-// 固定Y軸（単位ラベルは数値より少し上に）
-class _FixedYAxis extends StatelessWidget {
-  final double minY;
-  final double maxY;
-  final double interval;
-  final String Function(double) formatter;
-  final String unitLabel;
-  final ColorScheme colorScheme;
+class FavoritePillButton extends StatelessWidget {
+  final bool isFavorite;
+  final String label;
+  final VoidCallback onTap;
 
-  const _FixedYAxis({
-    required this.minY,
-    required this.maxY,
-    required this.interval,
-    required this.formatter,
-    required this.unitLabel,
-    required this.colorScheme,
+  const FavoritePillButton({
+    super.key,
+    required this.isFavorite,
+    required this.label,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final ticks = <double>[];
-    if (interval > 0 && maxY > minY) {
-      double v = (minY / interval).ceil() * interval;
-      while (v <= maxY + 1e-9) {
-        ticks.add(double.parse(v.toStringAsFixed(6)));
-        v += interval;
-      }
-    } else {
-      ticks.addAll([minY, maxY]);
-    }
+    final cs = Theme.of(context).colorScheme;
+    final text = isFavorite ? '$label★' : '$label✩';
 
-    // 単位ラベル分のヘッダー高さを少し大きめに
-    const headerH = 24.0;
-
-    return LayoutBuilder(
-      builder: (ctx, cons) {
-        final usableH = max(0.0, cons.maxHeight - headerH);
-        return Stack(
-          children: [
-            // 単位ラベル（上部・数値より少し高め）
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 2.0),
-                  child: Text(
-                    unitLabel,
-                    style: TextStyle(
-                      color: colorScheme.onSurface,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
+    return Material(
+      color: cs.surfaceContainerHighest,
+      shape: const StadiumBorder(),
+      elevation: 2,
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isFavorite ? cs.primary : cs.onSurface,
             ),
-            // 右境界線（単位ラベル分下げる）
-            Positioned(
-              top: headerH,
-              bottom: 0,
-              right: 0,
-              child: Container(width: 1, color: colorScheme.outlineVariant),
-            ),
-            // 目盛ラベル
-            ...ticks.map((t) {
-              final frac = (t - minY) / (maxY - minY == 0 ? 1 : (maxY - minY));
-              final top = (usableH) - frac * (usableH) + headerH - 8; // -8は視覚補正
-              return Positioned(
-                left: 4,
-                top: top.clamp(headerH, cons.maxHeight - 16),
-                child: Text(
-                  formatter(t),
-                  style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 10),
-                ),
-              );
-            }),
-          ],
-        );
-      },
+          ),
+        ),
+      ),
     );
   }
 }

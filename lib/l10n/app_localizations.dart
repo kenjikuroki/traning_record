@@ -504,6 +504,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter distance'**
   String get distanceHint;
+
+  /// No description provided for @pace.
+  ///
+  /// In en, this message translates to:
+  /// **'Pace'**
+  String get pace;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

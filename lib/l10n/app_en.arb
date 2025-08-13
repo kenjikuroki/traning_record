@@ -67,5 +67,6 @@
   "addMenu": "Add Menu",
   "exercise": "Exercise",
   "partAlreadySelected": "This part is already selected.",
-  "distanceHint": "Enter distance"
+  "distanceHint": "Enter distance",
+  "pace": "Pace"
 }
