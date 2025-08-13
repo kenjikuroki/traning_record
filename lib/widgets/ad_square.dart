@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 /// 利用可能なバナーサイズ
@@ -16,10 +17,14 @@ class AdSquare extends StatefulWidget {
   /// 読み込み中や失敗時にダミー枠を表示するか
   final bool showPlaceholder;
 
+  /// 呼び出し元画面名（広告ID判定に使用）
+  final String screenName;
+
   const AdSquare({
     super.key,
     this.adSize = AdBoxSize.mediumRectangle,
     this.showPlaceholder = true,
+    required this.screenName,
   });
 
   @override
@@ -42,28 +47,42 @@ class _AdSquareState extends State<AdSquare> {
     }
   }
 
-  // テスト用 AdUnitId：MRは専用、他のバナーは共通のテストIDを使用
-  String get _testUnitId {
-    if (widget.adSize == AdBoxSize.mediumRectangle) {
-      return Platform.isAndroid
-          ? 'ca-app-pub-3940256099942544/2177585250'
-          : 'ca-app-pub-3940256099942544/3001886131';
-    } else {
-      return Platform.isAndroid
-          ? 'ca-app-pub-3940256099942544/6300978111'
-          : 'ca-app-pub-3940256099942544/2934735716';
+  /// 本番/テストの広告ユニットIDを返す
+  String _resolveAdUnitId() {
+    // デバッグ時はGoogle公式のテストID
+    if (kDebugMode) {
+      if (widget.adSize == AdBoxSize.mediumRectangle) {
+        return Platform.isAndroid
+            ? 'ca-app-pub-3940256099942544/2177585250'
+            : 'ca-app-pub-3940256099942544/3001886131';
+      } else {
+        return Platform.isAndroid
+            ? 'ca-app-pub-3940256099942544/6300978111'
+            : 'ca-app-pub-3940256099942544/2934735716';
+      }
     }
-  }
 
-  // プレースホルダーの期待サイズ
-  Size get _expectedSize {
-    switch (widget.adSize) {
-      case AdBoxSize.banner:
-        return const Size(320, 50);
-      case AdBoxSize.largeBanner:
-        return const Size(320, 100);
-      case AdBoxSize.mediumRectangle:
-        return const Size(300, 250);
+    // 本番用ID
+    if (Platform.isAndroid) {
+      switch (widget.screenName) {
+        case 'calendar':
+          return 'ca-app-pub-3331079517737737/2576446816'; // Android カレンダー画面スクエア広告
+        case 'settings':
+          return 'ca-app-pub-3331079517737737/3704893323'; // Android 設定画面スクエア広告
+        default:
+          return 'ca-app-pub-3940256099942544/2177585250'; // テストID
+      }
+    } else if (Platform.isIOS) {
+      switch (widget.screenName) {
+        case 'calendar':
+          return '（iOS版のカレンダー広告IDをここに）';
+        case 'settings':
+          return '（iOS版の設定広告IDをここに）';
+        default:
+          return 'ca-app-pub-3940256099942544/3001886131';
+      }
+    } else {
+      return 'ca-app-pub-3940256099942544/2177585250';
     }
   }
 
@@ -84,7 +103,7 @@ class _AdSquareState extends State<AdSquare> {
     _isAdLoaded = false;
 
     _bannerAd = BannerAd(
-      adUnitId: _testUnitId, // 本番では本番IDに切替
+      adUnitId: _resolveAdUnitId(),
       request: const AdRequest(),
       size: _adSize,
       listener: BannerAdListener(
@@ -156,5 +175,16 @@ class _AdSquareState extends State<AdSquare> {
     }
 
     return const SizedBox.shrink();
+  }
+
+  Size get _expectedSize {
+    switch (widget.adSize) {
+      case AdBoxSize.banner:
+        return const Size(320, 50);
+      case AdBoxSize.largeBanner:
+        return const Size(320, 100);
+      case AdBoxSize.mediumRectangle:
+        return const Size(300, 250);
+    }
   }
 }

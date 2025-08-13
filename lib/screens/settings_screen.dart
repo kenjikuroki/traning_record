@@ -329,7 +329,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Center(
                       child: AdSquare(
                         adSize: AdBoxSize.largeBanner, // 320x100
-                        showPlaceholder: true,
+                        showPlaceholder: false,        // ★本番広告にする
+                        screenName: 'settings',        // ★設定画面用IDを指定
                       ),
                     ),
                     const SizedBox(height: gap),

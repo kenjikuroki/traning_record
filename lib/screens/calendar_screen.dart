@@ -330,7 +330,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             Center(
               child: AdSquare(
                 adSize: AdBoxSize.largeBanner, // 320x100
-                showPlaceholder: true,
+                showPlaceholder: false, // ★本番広告にするのでfalse
+                screenName: 'calendar', // ★カレンダー画面用IDを使う
               ),
             ),
           ],

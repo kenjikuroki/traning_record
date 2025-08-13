@@ -22,7 +22,6 @@ class _AdBannerState extends State<AdBanner> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // まだ読み込んでいなければ開始
     if (!_loading && !_isAdLoaded) {
       _loadAd();
     }
@@ -31,7 +30,6 @@ class _AdBannerState extends State<AdBanner> {
   Future<void> _loadAd() async {
     _loading = true;
 
-    // 1) まずアンカード・アダプティブのサイズを取得（失敗時は通常バナーにフォールバック）
     AnchoredAdaptiveBannerAdSize? size;
     try {
       final width = MediaQuery.of(context).size.width.truncate();
@@ -48,14 +46,12 @@ class _AdBannerState extends State<AdBanner> {
       _anchoredSize = size;
     });
 
-    // 2) 広告ユニットID
     final String adUnitId = _resolveAdUnitId();
 
-    // 3) バナー作成してロード
     final ad = BannerAd(
       adUnitId: adUnitId,
       request: const AdRequest(),
-      size: _anchoredSize ?? AdSize.banner, // フォールバックあり
+      size: _anchoredSize ?? AdSize.banner,
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           if (!mounted) {
@@ -88,8 +84,8 @@ class _AdBannerState extends State<AdBanner> {
   String _resolveAdUnitId() {
     if (kDebugMode) {
       return Platform.isAndroid
-          ? 'ca-app-pub-3940256099942544/6300978111'
-          : 'ca-app-pub-3940256099942544/2934735716';
+          ? 'ca-app-pub-3940256099942544/6300978111' // Google公式テストID
+          : 'ca-app-pub-3940256099942544/2934735716'; // Google公式テストID
     }
 
     if (Platform.isAndroid) {
@@ -101,8 +97,7 @@ class _AdBannerState extends State<AdBanner> {
         case 'settings':
           return 'ca-app-pub-3331079517737737/3704893323';
         case 'graph':
-        // 必要なら本番IDに差し替え
-          return 'ca-app-pub-3940256099942544/6300978111';
+          return 'ca-app-pub-3331079517737737/2942847126'; // ← Graph用Android本番ID
         default:
           return 'ca-app-pub-3940256099942544/6300978111';
       }
@@ -115,13 +110,11 @@ class _AdBannerState extends State<AdBanner> {
         case 'settings':
           return 'ca-app-pub-3331079517737737/8271626623';
         case 'graph':
-        // 必要なら本番IDに差し替え
-          return 'ca-app-pub-3940256099942544/2934735716';
+          return 'ca-app-pub-3331079517737737/5566778899'; // ← Graph用iOS本番ID
         default:
           return 'ca-app-pub-3940256099942544/2934735716';
       }
     } else {
-      // 未対応プラットフォームはテストID
       return 'ca-app-pub-3940256099942544/6300978111';
     }
   }
@@ -134,16 +127,15 @@ class _AdBannerState extends State<AdBanner> {
 
   @override
   Widget build(BuildContext context) {
-    // ★ ポイント：広告がまだでも「高さを先に確保」しておく
     final double reservedHeight =
     (_anchoredSize?.height ?? AdSize.banner.height).toDouble();
 
     return SizedBox(
       width: double.infinity,
-      height: reservedHeight, // ここで確保 → レイアウトが押し下げられない
+      height: reservedHeight,
       child: _isAdLoaded && _bannerAd != null
           ? AdWidget(ad: _bannerAd!)
-          : const SizedBox.expand(), // プレースホルダー（空）
+          : const SizedBox.expand(),
     );
   }
 }
