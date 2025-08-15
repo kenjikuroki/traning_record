@@ -103,12 +103,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  // 「5.3」→「5km3m」
+  // 「5.3」→「5km300m」
   String _formatDistance(String? raw, AppLocalizations l10n) {
     if (raw == null || raw.trim().isEmpty) return '-';
-    final parts = raw.split('.');
-    final km = (parts.isNotEmpty && parts[0].isNotEmpty) ? parts[0] : '0';
-    final m = (parts.length > 1 && parts[1].isNotEmpty) ? parts[1] : '0';
+    final value = double.tryParse(raw);
+    if (value == null) return '-';
+    final km = value.floor();
+    final m = ((value - km) * 1000).round();
     return '$km${l10n.km}$m${l10n.m}';
   }
 
