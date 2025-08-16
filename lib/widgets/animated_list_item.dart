@@ -23,12 +23,12 @@ class AnimatedListItem extends StatefulWidget {
   final AnimationDirection direction;
 
   const AnimatedListItem({
-    Key? key,
+    super.key,
     required this.child,
     this.duration = const Duration(milliseconds: 300),
     this.curve = Curves.easeOut,
     this.direction = AnimationDirection.bottomToTop,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimatedListItem> createState() => _AnimatedListItemState();
@@ -61,7 +61,8 @@ class _AnimatedListItemState extends State<AnimatedListItem>
     }
 
     // 方向 or カーブが変わったら再設定
-    if (oldWidget.direction != widget.direction || oldWidget.curve != widget.curve) {
+    if (oldWidget.direction != widget.direction ||
+        oldWidget.curve != widget.curve) {
       _configureAnimations();
       if (widget.direction != AnimationDirection.none) {
         _controller

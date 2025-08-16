@@ -128,7 +128,7 @@ class _AdBannerState extends State<AdBanner> {
   @override
   Widget build(BuildContext context) {
     final double reservedHeight =
-    (_anchoredSize?.height ?? AdSize.banner.height).toDouble();
+        (_anchoredSize?.height ?? AdSize.banner.height).toDouble();
 
     return SizedBox(
       width: double.infinity,

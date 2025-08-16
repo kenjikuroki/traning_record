@@ -4,11 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'dart:math';
 import 'package:intl/intl.dart';
-import 'package:collection/collection.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
 
 import '../models/menu_data.dart';
-import '../models/record_models.dart';
 import '../widgets/animated_list_item.dart';
 import '../widgets/custom_widgets.dart';
 import '../settings_manager.dart';
@@ -210,7 +208,8 @@ class _RecordScreenState extends State<RecordScreen> {
     }
 
     if (record == null || record.menus.isEmpty) {
-      _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
+      _sections.add(SectionData.createEmpty(_currentSetCount,
+          shouldPopulateDefaults: false));
       _sections[0].initialSetCount = _currentSetCount;
       setState(() {});
       return;
@@ -226,7 +225,7 @@ class _RecordScreenState extends State<RecordScreen> {
 
       final section = tempSectionsMap.putIfAbsent(
         translatedPart,
-            () => SectionData(
+        () => SectionData(
           key: UniqueKey(),
           selectedPart: translatedPart,
           menuControllers: [],
@@ -242,7 +241,8 @@ class _RecordScreenState extends State<RecordScreen> {
 
       final recList = record.menus[originalPart] ?? <MenuData>[];
       final dynamic rawLU = widget.lastUsedMenusBox.get(originalPart);
-      final luList = (rawLU is List) ? rawLU.whereType<MenuData>().toList() : <MenuData>[];
+      final luList =
+          (rawLU is List) ? rawLU.whereType<MenuData>().toList() : <MenuData>[];
 
       final Map<String, MenuData> recBy = {for (final m in recList) m.name: m};
       final Map<String, MenuData> luBy = {for (final m in luList) m.name: m};
@@ -283,8 +283,10 @@ class _RecordScreenState extends State<RecordScreen> {
           // 筋トレ用の配列は空1件（未使用だが整合のため）
           section.setInputDataList.add(<SetInputData>[]);
         } else {
-          final int recLen = rec == null ? 0 : min(rec.weights.length, rec.reps.length);
-          final int luLen = lu == null ? 0 : min(lu.weights.length, lu.reps.length);
+          final int recLen =
+              rec == null ? 0 : min(rec.weights.length, rec.reps.length);
+          final int luLen =
+              lu == null ? 0 : min(lu.weights.length, lu.reps.length);
           final int mergedLen = max(_currentSetCount, max(recLen, luLen));
 
           final row = <SetInputData>[];
@@ -311,7 +313,8 @@ class _RecordScreenState extends State<RecordScreen> {
             ));
           }
           section.setInputDataList.add(row);
-          section.initialSetCount = max(section.initialSetCount ?? 0, mergedLen);
+          section.initialSetCount =
+              max(section.initialSetCount ?? 0, mergedLen);
         }
       }
     }
@@ -331,57 +334,6 @@ class _RecordScreenState extends State<RecordScreen> {
 
   String _getDateKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-
-  void _setControllersFromData(SectionData section, List<MenuData> list, bool isMenuNameSuggestion) {
-    // 非有酸素の互換用（ドロップダウン変更時などに使用）
-    _clearSectionControllersAndMaps(section);
-    section.menuKeys.clear();
-    section.menuIds.clear();
-    section.nextMenuId = 0;
-    section.aerobicDistanceCtrls.clear();
-    section.aerobicDurationCtrls.clear();
-    section.aerobicSuggestFlags.clear();
-
-    final itemsToCreate = list.isNotEmpty ? list.length : 1;
-
-    for (int i = 0; i < itemsToCreate; i++) {
-      final nameCtrl = TextEditingController();
-      if (i < list.length) nameCtrl.text = list[i].name;
-      section.menuControllers.add(nameCtrl);
-      section.menuKeys.add(UniqueKey());
-      section.menuIds.add(section.nextMenuId++);
-
-      final newRow = <SetInputData>[];
-      if (i < list.length) {
-        for (int s = 0; s < min(list[i].weights.length, list[i].reps.length); s++) {
-          final w = TextEditingController(text: list[i].weights[s]);
-          final r = TextEditingController(text: list[i].reps[s]);
-          final isSug = w.text.isEmpty && r.text.isEmpty;
-          newRow.add(SetInputData(
-            weightController: w,
-            repController: r,
-            isSuggestion: isMenuNameSuggestion || isSug,
-          ));
-        }
-      }
-
-      final targetSets = max(newRow.length, _currentSetCount);
-      while (newRow.length < targetSets) {
-        newRow.add(SetInputData(
-          weightController: TextEditingController(),
-          repController: TextEditingController(),
-          isSuggestion: true,
-        ));
-      }
-      section.setInputDataList.add(newRow);
-    }
-
-    int maxSetsInLoadedMenus = 0;
-    for (final row in section.setInputDataList) {
-      maxSetsInLoadedMenus = max(maxSetsInLoadedMenus, row.length);
-    }
-    section.initialSetCount = max(maxSetsInLoadedMenus, _currentSetCount);
-  }
 
   void _clearSectionControllersAndMaps(SectionData section) {
     for (var c in section.menuControllers) {
@@ -428,9 +380,15 @@ class _RecordScreenState extends State<RecordScreen> {
         }
 
         if (isAerobic) {
-          final distance = i < section.aerobicDistanceCtrls.length ? section.aerobicDistanceCtrls[i].text : '';
-          final duration = i < section.aerobicDurationCtrls.length ? section.aerobicDurationCtrls[i].text : '';
-          final isSug = i < section.aerobicSuggestFlags.length ? section.aerobicSuggestFlags[i] : true;
+          final distance = i < section.aerobicDistanceCtrls.length
+              ? section.aerobicDistanceCtrls[i].text
+              : '';
+          final duration = i < section.aerobicDurationCtrls.length
+              ? section.aerobicDurationCtrls[i].text
+              : '';
+          final isSug = i < section.aerobicSuggestFlags.length
+              ? section.aerobicSuggestFlags[i]
+              : true;
 
           // lastUsed には常に保存
           listForLastUsed.add(MenuData(
@@ -442,7 +400,8 @@ class _RecordScreenState extends State<RecordScreen> {
           ));
 
           // Record は未確定を除外
-          if (!isSug && ((distance.trim().isNotEmpty) || (duration.trim().isNotEmpty))) {
+          if (!isSug &&
+              ((distance.trim().isNotEmpty) || (duration.trim().isNotEmpty))) {
             listForRecord.add(MenuData(
               name: name,
               weights: const <String>[],
@@ -461,7 +420,8 @@ class _RecordScreenState extends State<RecordScreen> {
             weightsAll.add(set.weightController.text);
             repsAll.add(set.repController.text);
           }
-          listForLastUsed.add(MenuData(name: name, weights: weightsAll, reps: repsAll));
+          listForLastUsed
+              .add(MenuData(name: name, weights: weightsAll, reps: repsAll));
 
           final weightsConfirmed = <String>[];
           final repsConfirmed = <String>[];
@@ -476,7 +436,8 @@ class _RecordScreenState extends State<RecordScreen> {
             }
           }
           if (weightsConfirmed.isNotEmpty || repsConfirmed.isNotEmpty) {
-            listForRecord.add(MenuData(name: name, weights: weightsConfirmed, reps: repsConfirmed));
+            listForRecord.add(MenuData(
+                name: name, weights: weightsConfirmed, reps: repsConfirmed));
             hasAnyRecordData = true;
             lastModifiedPart ??= originalPart;
           }
@@ -518,7 +479,8 @@ class _RecordScreenState extends State<RecordScreen> {
     if (section.selectedPart == null) return;
 
     if (section.menuControllers.length >= 15) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.exerciseLimitReached)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.exerciseLimitReached)));
       return;
     }
 
@@ -540,13 +502,14 @@ class _RecordScreenState extends State<RecordScreen> {
         final sets = _currentSetCount;
         final row = List<SetInputData>.generate(
           sets,
-              (_) => SetInputData(
+          (_) => SetInputData(
             weightController: TextEditingController(),
             repController: TextEditingController(),
             isSuggestion: true,
           ),
         );
-        while (section.setInputDataList.length < section.menuControllers.length) {
+        while (
+            section.setInputDataList.length < section.menuControllers.length) {
           section.setInputDataList.add(<SetInputData>[]);
         }
         final idx = section.menuControllers.length - 1;
@@ -560,12 +523,14 @@ class _RecordScreenState extends State<RecordScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     if (_sections.length >= 10) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.partLimitReached)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.partLimitReached)));
       return;
     }
 
     setState(() {
-      final newSection = SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: true);
+      final newSection = SectionData.createEmpty(_currentSetCount,
+          shouldPopulateDefaults: true);
       _sections.add(newSection);
     });
   }
@@ -577,8 +542,13 @@ class _RecordScreenState extends State<RecordScreen> {
       builder: (ctx) => AlertDialog(
         title: Text(l10n.deleteMenuConfirmationTitle),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel)),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.delete, style: const TextStyle(color: Colors.red))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.cancel)),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child:
+                  Text(l10n.delete, style: const TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -621,7 +591,8 @@ class _RecordScreenState extends State<RecordScreen> {
       _sections[sectionIndex].dispose();
       _sections.removeAt(sectionIndex);
       if (_sections.isEmpty) {
-        _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
+        _sections.add(SectionData.createEmpty(_currentSetCount,
+            shouldPopulateDefaults: false));
       }
     });
   }
@@ -633,12 +604,16 @@ class _RecordScreenState extends State<RecordScreen> {
     final l10n = AppLocalizations.of(context)!;
     final formattedDate = DateFormat('yyyy/MM/dd').format(widget.selectedDate);
 
-    final Color partNormalBgColor = isLight ? const Color(0xFF333333) : const Color(0xFF2C2F33);
-    final Color partPressedBgColor = isLight ? const Color(0xFF1A1A1A) : const Color(0xFF383C40);
-    final Color partTextColor = isLight ? Colors.white : const Color(0xFFCCCCCC);
+    final Color partNormalBgColor =
+        isLight ? const Color(0xFF333333) : const Color(0xFF2C2F33);
+    final Color partPressedBgColor =
+        isLight ? const Color(0xFF1A1A1A) : const Color(0xFF383C40);
+    final Color partTextColor =
+        isLight ? Colors.white : const Color(0xFFCCCCCC);
     final Color partAccentColor = const Color(0xFF60A5FA);
 
-    final bool isInitialEmptyState = _sections.length == 1 && _sections[0].selectedPart == null;
+    final bool isInitialEmptyState =
+        _sections.length == 1 && _sections[0].selectedPart == null;
 
     final bool showWeight = SettingsManager.showWeightInput;
     final int headerCount = showWeight ? 1 : 0;
@@ -646,26 +621,31 @@ class _RecordScreenState extends State<RecordScreen> {
     return PopScope(
       // ★ 物理/ジェスチャーバックもここで一旦捕まえて、先にキーボードを閉じる
       canPop: false,
-      onPopInvoked: (didPop) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         await _closeKeyboard();
+        if (!context.mounted) return;
         _saveAllSectionsData();
-        if (mounted) Navigator.of(context).pop();
+        Navigator.of(context).pop();
       },
       child: Scaffold(
-        backgroundColor: colorScheme.background,
+        backgroundColor: colorScheme.surface,
         appBar: AppBar(
           // ★ AppBarの戻るもフックして、先にキーボードを閉じる
           leading: BackButton(
             onPressed: () async {
               await _closeKeyboard();
+              if (!context.mounted) return;
               _saveAllSectionsData();
-              if (mounted) Navigator.of(context).pop();
+              Navigator.of(context).pop();
             },
           ),
           title: Text(
             formattedDate,
-            style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 20.0),
+            style: TextStyle(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+                fontSize: 20.0),
           ),
           backgroundColor: colorScheme.surface,
           elevation: 0.0,
@@ -681,19 +661,23 @@ class _RecordScreenState extends State<RecordScreen> {
                 child: ListView.builder(
                   primary: true,
                   physics: const AlwaysScrollableScrollPhysics(),
-                  itemCount: headerCount + _sections.length + (isInitialEmptyState ? 0 : 1),
+                  itemCount: headerCount +
+                      _sections.length +
+                      (isInitialEmptyState ? 0 : 1),
                   itemBuilder: (context, index) {
                     if (showWeight && index == 0) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8.0),
                         child: Card(
                           color: colorScheme.surfaceContainerHighest,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16.0)),
                           elevation: 4,
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
                             child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center, // カード内を中央寄せ
+                              mainAxisAlignment:
+                                  MainAxisAlignment.center, // カード内を中央寄せ
                               children: [
                                 Text(
                                   '${l10n.enterYourWeight}${Localizations.localeOf(context).languageCode == "ja" ? "：" : ":"}',
@@ -712,14 +696,22 @@ class _RecordScreenState extends State<RecordScreen> {
                                         child: StylishInput(
                                           controller: _weightController,
                                           hint: '',
-                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          keyboardType: const TextInputType
+                                              .numberWithOptions(decimal: true),
                                           inputFormatters: [
-                                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                            FilteringTextInputFormatter.allow(
+                                                RegExp(r'^\d*\.?\d*')),
                                           ],
-                                          normalTextColor: colorScheme.onSurface,
-                                          suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                                          fillColor: colorScheme.surfaceContainer,
-                                          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                                          normalTextColor:
+                                              colorScheme.onSurface,
+                                          suggestionTextColor: colorScheme
+                                              .onSurfaceVariant
+                                              .withValues(alpha: 0.5),
+                                          fillColor:
+                                              colorScheme.surfaceContainer,
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                  vertical: 8, horizontal: 10),
                                           textAlign: TextAlign.right, // 入力値は右寄せ
                                         ),
                                       ),
@@ -765,12 +757,15 @@ class _RecordScreenState extends State<RecordScreen> {
 
                     return AnimatedListItem(
                       key: section.key,
-                      direction: _firstBuildDone ? AnimationDirection.bottomToTop : AnimationDirection.none,
+                      direction: _firstBuildDone
+                          ? AnimationDirection.bottomToTop
+                          : AnimationDirection.none,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8.0),
                         child: Card(
                           color: colorScheme.surfaceContainerHighest,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16.0)),
                           elevation: 4,
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
@@ -783,38 +778,48 @@ class _RecordScreenState extends State<RecordScreen> {
                                       child: DropdownButtonFormField<String>(
                                         decoration: InputDecoration(
                                           hintText: l10n.selectTrainingPart,
-                                          hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
+                                          hintStyle: TextStyle(
+                                              color:
+                                                  colorScheme.onSurfaceVariant,
+                                              fontSize: 14.0),
                                           filled: true,
-                                          fillColor: colorScheme.surfaceContainer,
+                                          fillColor:
+                                              colorScheme.surfaceContainer,
                                           border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(25.0),
+                                            borderRadius:
+                                                BorderRadius.circular(25.0),
                                             borderSide: BorderSide.none,
                                           ),
                                           enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(25.0),
+                                            borderRadius:
+                                                BorderRadius.circular(25.0),
                                             borderSide: BorderSide.none,
                                           ),
                                           focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(25.0),
+                                            borderRadius:
+                                                BorderRadius.circular(25.0),
                                             borderSide: BorderSide.none,
                                           ),
-                                          contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                  vertical: 12, horizontal: 20),
                                         ),
                                         value: section.selectedPart,
                                         items: _filteredBodyParts
                                             .map(
                                               (p) => DropdownMenuItem(
-                                            value: p,
-                                            child: Text(
-                                              p,
-                                              style: TextStyle(
-                                                color: colorScheme.onSurface,
-                                                fontSize: 14.0,
-                                                fontWeight: FontWeight.bold,
+                                                value: p,
+                                                child: Text(
+                                                  p,
+                                                  style: TextStyle(
+                                                    color:
+                                                        colorScheme.onSurface,
+                                                    fontSize: 14.0,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                          ),
-                                        )
+                                            )
                                             .toList(),
                                         onChanged: (value) {
                                           setState(() {
@@ -822,59 +827,125 @@ class _RecordScreenState extends State<RecordScreen> {
                                             section.menuKeys.clear();
                                             section.menuIds.clear();
                                             section.nextMenuId = 0;
-                                            _clearSectionControllersAndMaps(section);
+                                            _clearSectionControllersAndMaps(
+                                                section);
 
                                             if (section.selectedPart != null) {
-                                              final current = section.selectedPart!;
-                                              final originalPart = _getOriginalPartName(context, current);
-                                              final dateKey = _getDateKey(widget.selectedDate);
-                                              final record = widget.recordsBox.get(dateKey);
+                                              final current =
+                                                  section.selectedPart!;
+                                              final originalPart =
+                                                  _getOriginalPartName(
+                                                      context, current);
+                                              final dateKey = _getDateKey(
+                                                  widget.selectedDate);
+                                              final record = widget.recordsBox
+                                                  .get(dateKey);
 
-                                              final recList = record?.menus[originalPart] ?? <MenuData>[];
-                                              final rawLU = widget.lastUsedMenusBox.get(originalPart);
-                                              final luList = (rawLU is List) ? rawLU.whereType<MenuData>().toList() : <MenuData>[];
+                                              final recList =
+                                                  record?.menus[originalPart] ??
+                                                      <MenuData>[];
+                                              final rawLU = widget
+                                                  .lastUsedMenusBox
+                                                  .get(originalPart);
+                                              final luList = (rawLU is List)
+                                                  ? rawLU
+                                                      .whereType<MenuData>()
+                                                      .toList()
+                                                  : <MenuData>[];
 
-                                              final Map<String, MenuData> recBy = {for (final m in recList) m.name: m};
-                                              final Map<String, MenuData> luBy = {for (final m in luList) m.name: m};
+                                              final Map<String, MenuData>
+                                                  recBy = {
+                                                for (final m in recList)
+                                                  m.name: m
+                                              };
+                                              final Map<String, MenuData> luBy =
+                                                  {
+                                                for (final m in luList)
+                                                  m.name: m
+                                              };
 
                                               final List<String> names = [
                                                 ...recList.map((m) => m.name),
-                                                ...luList.where((m) => !recBy.containsKey(m.name)).map((m) => m.name),
+                                                ...luList
+                                                    .where((m) => !recBy
+                                                        .containsKey(m.name))
+                                                    .map((m) => m.name),
                                               ];
                                               if (names.isEmpty) names.add('');
 
-                                              final l10n = AppLocalizations.of(context)!;
-                                              final isAerobic = current == l10n.aerobicExercise;
+                                              final l10n =
+                                                  AppLocalizations.of(context)!;
+                                              final isAerobic = current ==
+                                                  l10n.aerobicExercise;
 
                                               for (final name in names) {
                                                 final rec = recBy[name];
                                                 final lu = luBy[name];
 
-                                                section.menuControllers.add(TextEditingController(text: name));
-                                                section.menuKeys.add(UniqueKey());
-                                                section.menuIds.add(section.nextMenuId++);
+                                                section.menuControllers.add(
+                                                    TextEditingController(
+                                                        text: name));
+                                                section.menuKeys
+                                                    .add(UniqueKey());
+                                                section.menuIds
+                                                    .add(section.nextMenuId++);
 
                                                 if (isAerobic) {
-                                                  final String dist = (rec?.distance?.trim().isNotEmpty ?? false)
+                                                  final String dist = (rec
+                                                              ?.distance
+                                                              ?.trim()
+                                                              .isNotEmpty ??
+                                                          false)
                                                       ? rec!.distance!.trim()
-                                                      : (lu?.distance?.trim() ?? '');
-                                                  final String dura = (rec?.duration?.trim().isNotEmpty ?? false)
+                                                      : (lu?.distance?.trim() ??
+                                                          '');
+                                                  final String dura = (rec
+                                                              ?.duration
+                                                              ?.trim()
+                                                              .isNotEmpty ??
+                                                          false)
                                                       ? rec!.duration!.trim()
-                                                      : (lu?.duration?.trim() ?? '');
-                                                  final bool isSug = !(rec?.distance?.trim().isNotEmpty == true ||
-                                                      rec?.duration?.trim().isNotEmpty == true);
+                                                      : (lu?.duration?.trim() ??
+                                                          '');
+                                                  final bool isSug = !(rec
+                                                              ?.distance
+                                                              ?.trim()
+                                                              .isNotEmpty ==
+                                                          true ||
+                                                      rec?.duration
+                                                              ?.trim()
+                                                              .isNotEmpty ==
+                                                          true);
 
-                                                  section.aerobicDistanceCtrls.add(TextEditingController(text: dist));
-                                                  section.aerobicDurationCtrls.add(TextEditingController(text: dura));
-                                                  section.aerobicSuggestFlags.add(isSug);
-                                                  section.setInputDataList.add(<SetInputData>[]);
+                                                  section.aerobicDistanceCtrls
+                                                      .add(
+                                                          TextEditingController(
+                                                              text: dist));
+                                                  section.aerobicDurationCtrls
+                                                      .add(
+                                                          TextEditingController(
+                                                              text: dura));
+                                                  section.aerobicSuggestFlags
+                                                      .add(isSug);
+                                                  section.setInputDataList
+                                                      .add(<SetInputData>[]);
                                                 } else {
-                                                  final int recLen = rec == null ? 0 : min(rec.weights.length, rec.reps.length);
-                                                  final int luLen = lu == null ? 0 : min(lu.weights.length, lu.reps.length);
-                                                  final int mergedLen = max(_currentSetCount, max(recLen, luLen));
+                                                  final int recLen = rec == null
+                                                      ? 0
+                                                      : min(rec.weights.length,
+                                                          rec.reps.length);
+                                                  final int luLen = lu == null
+                                                      ? 0
+                                                      : min(lu.weights.length,
+                                                          lu.reps.length);
+                                                  final int mergedLen = max(
+                                                      _currentSetCount,
+                                                      max(recLen, luLen));
 
                                                   final row = <SetInputData>[];
-                                                  for (int i = 0; i < mergedLen; i++) {
+                                                  for (int i = 0;
+                                                      i < mergedLen;
+                                                      i++) {
                                                     String w = '';
                                                     String r = '';
                                                     bool isSuggestion = true;
@@ -882,7 +953,8 @@ class _RecordScreenState extends State<RecordScreen> {
                                                     if (i < recLen) {
                                                       w = rec!.weights[i];
                                                       r = rec.reps[i];
-                                                      if (w.trim().isNotEmpty || r.trim().isNotEmpty) {
+                                                      if (w.trim().isNotEmpty ||
+                                                          r.trim().isNotEmpty) {
                                                         isSuggestion = false;
                                                       }
                                                     } else if (i < luLen) {
@@ -891,82 +963,141 @@ class _RecordScreenState extends State<RecordScreen> {
                                                       isSuggestion = true;
                                                     }
                                                     row.add(SetInputData(
-                                                      weightController: TextEditingController(text: w),
-                                                      repController: TextEditingController(text: r),
-                                                      isSuggestion: isSuggestion,
+                                                      weightController:
+                                                          TextEditingController(
+                                                              text: w),
+                                                      repController:
+                                                          TextEditingController(
+                                                              text: r),
+                                                      isSuggestion:
+                                                          isSuggestion,
                                                     ));
                                                   }
-                                                  section.setInputDataList.add(row);
-                                                  section.initialSetCount = max(section.initialSetCount ?? 0, mergedLen);
+                                                  section.setInputDataList
+                                                      .add(row);
+                                                  section.initialSetCount = max(
+                                                      section.initialSetCount ??
+                                                          0,
+                                                      mergedLen);
                                                 }
                                               }
                                             } else {
-                                              section.initialSetCount = _currentSetCount;
+                                              section.initialSetCount =
+                                                  _currentSetCount;
                                             }
                                           });
                                         },
-                                        dropdownColor: colorScheme.surfaceContainer,
+                                        dropdownColor:
+                                            colorScheme.surfaceContainer,
                                         style: TextStyle(
                                           color: colorScheme.onSurface,
                                           fontSize: 14.0,
                                           fontWeight: FontWeight.bold,
                                         ),
-                                        borderRadius: BorderRadius.circular(15.0),
+                                        borderRadius:
+                                            BorderRadius.circular(15.0),
                                       ),
                                     ),
                                   ],
                                 ),
-
                                 const SizedBox(height: 16.0),
-
                                 if (section.selectedPart != null)
                                   Column(
                                     children: [
                                       ListView.builder(
                                         shrinkWrap: true,
-                                        physics: const NeverScrollableScrollPhysics(),
-                                        itemCount: section.menuControllers.length,
+                                        physics:
+                                            const NeverScrollableScrollPhysics(),
+                                        itemCount:
+                                            section.menuControllers.length,
                                         itemBuilder: (context, menuIndex) {
                                           return AnimatedSwitcher(
-                                            duration: const Duration(milliseconds: 250),
+                                            duration: const Duration(
+                                                milliseconds: 250),
                                             switchInCurve: Curves.easeOut,
                                             switchOutCurve: Curves.easeIn,
-                                            transitionBuilder: (child, animation) {
-                                              if (!_firstBuildDone) return child;
-                                              final offset = Tween<Offset>(begin: const Offset(0, -0.12), end: Offset.zero).animate(animation);
+                                            transitionBuilder:
+                                                (child, animation) {
+                                              if (!_firstBuildDone) {
+                                                return child;
+                                              }
+                                              final offset = Tween<Offset>(
+                                                      begin: const Offset(
+                                                          0, -0.12),
+                                                      end: Offset.zero)
+                                                  .animate(animation);
                                               return FadeTransition(
                                                 opacity: animation,
-                                                child: SlideTransition(position: offset, child: child),
+                                                child: SlideTransition(
+                                                    position: offset,
+                                                    child: child),
                                               );
                                             },
                                             child: Card(
-                                              key: ValueKey('menu_${section.menuIds[menuIndex]}'),
+                                              key: ValueKey(
+                                                  'menu_${section.menuIds[menuIndex]}'),
                                               color: colorScheme.surface,
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          12.0)),
                                               elevation: 2,
-                                              margin: const EdgeInsets.symmetric(vertical: 8.0),
+                                              margin:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 8.0),
                                               child: Padding(
-                                                padding: const EdgeInsets.all(16.0),
+                                                padding:
+                                                    const EdgeInsets.all(16.0),
                                                 child: MenuList(
-                                                  menuController: section.menuControllers[menuIndex],
-                                                  removeMenuCallback: () => _removeMenuItem(secIndex, menuIndex),
-                                                  setCount: section.setInputDataList[menuIndex].length,
-                                                  setInputDataList: section.setInputDataList[menuIndex],
-                                                  isAerobic: section.selectedPart == l10n.aerobicExercise,
+                                                  menuController:
+                                                      section.menuControllers[
+                                                          menuIndex],
+                                                  removeMenuCallback: () =>
+                                                      _removeMenuItem(
+                                                          secIndex, menuIndex),
+                                                  setCount: section
+                                                      .setInputDataList[
+                                                          menuIndex]
+                                                      .length,
+                                                  setInputDataList:
+                                                      section.setInputDataList[
+                                                          menuIndex],
+                                                  isAerobic:
+                                                      section.selectedPart ==
+                                                          l10n.aerobicExercise,
                                                   // 有酸素は per menu のコントローラを渡す
-                                                  distanceController: (menuIndex < section.aerobicDistanceCtrls.length)
-                                                      ? section.aerobicDistanceCtrls[menuIndex]
+                                                  distanceController: (menuIndex <
+                                                          section
+                                                              .aerobicDistanceCtrls
+                                                              .length)
+                                                      ? section
+                                                              .aerobicDistanceCtrls[
+                                                          menuIndex]
                                                       : TextEditingController(),
-                                                  durationController: (menuIndex < section.aerobicDurationCtrls.length)
-                                                      ? section.aerobicDurationCtrls[menuIndex]
+                                                  durationController: (menuIndex <
+                                                          section
+                                                              .aerobicDurationCtrls
+                                                              .length)
+                                                      ? section
+                                                              .aerobicDurationCtrls[
+                                                          menuIndex]
                                                       : TextEditingController(),
-                                                  aerobicIsSuggestion: (menuIndex < section.aerobicSuggestFlags.length)
-                                                      ? section.aerobicSuggestFlags[menuIndex]
+                                                  aerobicIsSuggestion: (menuIndex <
+                                                          section
+                                                              .aerobicSuggestFlags
+                                                              .length)
+                                                      ? section
+                                                              .aerobicSuggestFlags[
+                                                          menuIndex]
                                                       : true,
                                                   onConfirmAerobic: () {
                                                     setState(() {
-                                                      if (menuIndex < section.aerobicSuggestFlags.length) {
-                                                        section.aerobicSuggestFlags[menuIndex] = false;
+                                                      if (menuIndex <
+                                                          section
+                                                              .aerobicSuggestFlags
+                                                              .length) {
+                                                        section.aerobicSuggestFlags[
+                                                            menuIndex] = false;
                                                       }
                                                     });
                                                   },
@@ -981,9 +1112,12 @@ class _RecordScreenState extends State<RecordScreen> {
                                         alignment: Alignment.centerLeft,
                                         child: CircularAddButtonWithText(
                                           label: l10n.addExercise,
-                                          onPressed: () => _addMenuItem(secIndex),
-                                          normalBgColorOverride: partNormalBgColor,
-                                          pressedBgColorOverride: partPressedBgColor,
+                                          onPressed: () =>
+                                              _addMenuItem(secIndex),
+                                          normalBgColorOverride:
+                                              partNormalBgColor,
+                                          pressedBgColorOverride:
+                                              partPressedBgColor,
                                           textColorOverride: partTextColor,
                                           accentColorOverride: partAccentColor,
                                         ),
@@ -1003,65 +1137,74 @@ class _RecordScreenState extends State<RecordScreen> {
           ),
         ),
         bottomNavigationBar: BottomNavigationBar(
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
-            BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'),
-            BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
-            BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
-          ],
-          currentIndex: 1,
-          selectedItemColor: colorScheme.primary,
-          unselectedItemColor: colorScheme.onSurfaceVariant,
-          backgroundColor: colorScheme.surface,
-          onTap: (index) async {
-            if (index == 1) return;
-            // ★ 遷移前に必ずキーボードを閉じる
-            await _closeKeyboard();
-            _saveAllSectionsData();
+            items: const <BottomNavigationBarItem>[
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.calendar_today), label: 'Calendar'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.edit_note), label: 'Record'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.bar_chart), label: 'Graph'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.settings), label: 'Settings'),
+            ],
+            currentIndex: 1,
+            selectedItemColor: colorScheme.primary,
+            unselectedItemColor: colorScheme.onSurfaceVariant,
+            backgroundColor: colorScheme.surface,
+            onTap: (index) async {
+              if (index == 1) return;
+              // ★ 遷移前に必ずキーボードを閉じる
 
-            if (index == 0) {
-              if (!mounted) return;
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => CalendarScreen(
-                    recordsBox: widget.recordsBox,
-                    lastUsedMenusBox: widget.lastUsedMenusBox,
-                    settingsBox: widget.settingsBox,
-                    setCountBox: widget.setCountBox,
-                    selectedDate: DateTime.now(),
-                  ),
-                ),
-              );
-            } else if (index == 2) {
-              if (!mounted) return;
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => GraphScreen(
-                    recordsBox: widget.recordsBox,
-                    lastUsedMenusBox: widget.lastUsedMenusBox,
-                    settingsBox: widget.settingsBox,
-                    setCountBox: widget.setCountBox,
-                  ),
-                ),
-              );
-            } else if (index == 3) {
-              if (!mounted) return;
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => SettingsScreen(
-                    recordsBox: widget.recordsBox,
-                    lastUsedMenusBox: widget.lastUsedMenusBox,
-                    settingsBox: widget.settingsBox,
-                    setCountBox: widget.setCountBox,
-                  ),
-                ),
-              );
-            }
-          },
-        ),
+              final nav = Navigator.of(context);
+
+              await _closeKeyboard();
+              _saveAllSectionsData();
+
+              // ★ await 後に context を使う前にチェック（lint対策）
+              if (!context.mounted) return;
+
+              switch (index) {
+                case 0: // Calendar
+                  nav.push(
+                    MaterialPageRoute(
+                      builder: (context) => CalendarScreen(
+                        recordsBox: widget.recordsBox,
+                        lastUsedMenusBox: widget.lastUsedMenusBox,
+                        settingsBox: widget.settingsBox,
+                        setCountBox: widget.setCountBox,
+                        selectedDate: DateTime.now(),
+                      ),
+                    ),
+                  );
+                  break;
+
+                case 2: // Graph
+                  nav.push(
+                    MaterialPageRoute(
+                      builder: (context) => GraphScreen(
+                        recordsBox: widget.recordsBox,
+                        lastUsedMenusBox: widget.lastUsedMenusBox,
+                        settingsBox: widget.settingsBox,
+                        setCountBox: widget.setCountBox,
+                      ),
+                    ),
+                  );
+                  break;
+
+                case 3: // Settings
+                  nav.push(
+                    MaterialPageRoute(
+                      builder: (context) => SettingsScreen(
+                        recordsBox: widget.recordsBox,
+                        lastUsedMenusBox: widget.lastUsedMenusBox,
+                        settingsBox: widget.settingsBox,
+                        setCountBox: widget.setCountBox,
+                      ),
+                    ),
+                  );
+                  break;
+              }
+            }),
       ),
     );
   }
@@ -1101,26 +1244,29 @@ class SectionData {
     List<bool>? aerobicSuggestFlags,
   })  : menuIds = menuIds ?? <int>[],
         nextMenuId = nextMenuId ?? 0,
-        aerobicDistanceCtrls = aerobicDistanceCtrls ?? <TextEditingController>[],
-        aerobicDurationCtrls = aerobicDurationCtrls ?? <TextEditingController>[],
+        aerobicDistanceCtrls =
+            aerobicDistanceCtrls ?? <TextEditingController>[],
+        aerobicDurationCtrls =
+            aerobicDurationCtrls ?? <TextEditingController>[],
         aerobicSuggestFlags = aerobicSuggestFlags ?? <bool>[];
 
-  factory SectionData.createEmpty(int initialSetCount, {required bool shouldPopulateDefaults}) {
+  factory SectionData.createEmpty(int initialSetCount,
+      {required bool shouldPopulateDefaults}) {
     return SectionData(
       key: UniqueKey(),
       selectedPart: null,
       menuControllers: shouldPopulateDefaults ? [TextEditingController()] : [],
       setInputDataList: shouldPopulateDefaults
           ? [
-        List.generate(
-          initialSetCount,
-              (_) => SetInputData(
-            weightController: TextEditingController(),
-            repController: TextEditingController(),
-            isSuggestion: true,
-          ),
-        )
-      ]
+              List.generate(
+                initialSetCount,
+                (_) => SetInputData(
+                  weightController: TextEditingController(),
+                  repController: TextEditingController(),
+                  isSuggestion: true,
+                ),
+              )
+            ]
           : [],
       menuKeys: shouldPopulateDefaults ? [UniqueKey()] : [],
       initialSetCount: initialSetCount,
@@ -1241,11 +1387,13 @@ class _MenuListState extends State<MenuList> {
   }
 
   void _updateDurationController() {
-    widget.durationController.text = '${_minController.text}:${_secController.text}';
+    widget.durationController.text =
+        '${_minController.text}:${_secController.text}';
   }
 
   void _updateDistanceController() {
-    widget.distanceController.text = '${_kmController.text}.${_mController.text}';
+    widget.distanceController.text =
+        '${_kmController.text}.${_mController.text}';
   }
 
   @override
@@ -1269,9 +1417,11 @@ class _MenuListState extends State<MenuList> {
                   keyboardType: TextInputType.text,
                   inputFormatters: [LengthLimitingTextInputFormatter(25)],
                   normalTextColor: colorScheme.onSurface,
-                  suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                  suggestionTextColor:
+                      colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                   fillColor: colorScheme.surfaceContainer,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   textAlign: TextAlign.left,
                 ),
               ),
@@ -1283,7 +1433,8 @@ class _MenuListState extends State<MenuList> {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   alignment: Alignment.center,
                 ),
-                child: Icon(Icons.close, color: colorScheme.onSurfaceVariant, size: 16),
+                child: Icon(Icons.close,
+                    color: colorScheme.onSurfaceVariant, size: 16),
               ),
             ],
           ),
@@ -1294,244 +1445,319 @@ class _MenuListState extends State<MenuList> {
             padding: const EdgeInsets.only(left: 12.0),
             child: widget.isAerobic
                 ? Column(
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      l10n.distance,
-                      style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: Focus(
-                        onFocusChange: (has) {
-                          if (has && widget.aerobicIsSuggestion) {
-                            widget.onConfirmAerobic?.call();
-                          }
-                        },
-                        child: StylishInput(
-                          controller: _kmController,
-                          hint: '',
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          normalTextColor: widget.aerobicIsSuggestion
-                              ? colorScheme.onSurfaceVariant.withOpacity(0.5)
-                              : colorScheme.onSurface,
-                          suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                          fillColor: colorScheme.surfaceContainer,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                          textAlign: TextAlign.right,
-                        ),
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            l10n.distance,
+                            style: TextStyle(
+                                color: colorScheme.onSurface,
+                                fontSize: 14.0,
+                                fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 2,
+                            child: Focus(
+                              onFocusChange: (has) {
+                                if (has && widget.aerobicIsSuggestion) {
+                                  widget.onConfirmAerobic?.call();
+                                }
+                              },
+                              child: StylishInput(
+                                controller: _kmController,
+                                hint: '',
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly
+                                ],
+                                normalTextColor: widget.aerobicIsSuggestion
+                                    ? colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.5)
+                                    : colorScheme.onSurface,
+                                suggestionTextColor: colorScheme
+                                    .onSurfaceVariant
+                                    .withValues(alpha: 0.5),
+                                fillColor: colorScheme.surfaceContainer,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 10, horizontal: 12),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            ' ${l10n.km} ',
+                            style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                                fontSize: 14.0,
+                                fontWeight: FontWeight.bold),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Focus(
+                              onFocusChange: (has) {
+                                if (has && widget.aerobicIsSuggestion) {
+                                  widget.onConfirmAerobic?.call();
+                                }
+                              },
+                              child: StylishInput(
+                                controller: _mController,
+                                hint: '',
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly
+                                ],
+                                normalTextColor: widget.aerobicIsSuggestion
+                                    ? colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.5)
+                                    : colorScheme.onSurface,
+                                suggestionTextColor: colorScheme
+                                    .onSurfaceVariant
+                                    .withValues(alpha: 0.5),
+                                fillColor: colorScheme.surfaceContainer,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 10, horizontal: 12),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            ' ${l10n.m}',
+                            style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                                fontSize: 14.0,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
-                    ),
-                    Text(
-                      ' ${l10n.km} ',
-                      style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Focus(
-                        onFocusChange: (has) {
-                          if (has && widget.aerobicIsSuggestion) {
-                            widget.onConfirmAerobic?.call();
-                          }
-                        },
-                        child: StylishInput(
-                          controller: _mController,
-                          hint: '',
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          normalTextColor: widget.aerobicIsSuggestion
-                              ? colorScheme.onSurfaceVariant.withOpacity(0.5)
-                              : colorScheme.onSurface,
-                          suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                          fillColor: colorScheme.surfaceContainer,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                          textAlign: TextAlign.right,
-                        ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text(
+                            l10n.time,
+                            style: TextStyle(
+                                color: colorScheme.onSurface,
+                                fontSize: 14.0,
+                                fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 2,
+                            child: Focus(
+                              onFocusChange: (has) {
+                                if (has && widget.aerobicIsSuggestion) {
+                                  widget.onConfirmAerobic?.call();
+                                }
+                              },
+                              child: StylishInput(
+                                controller: _minController,
+                                hint: '',
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly
+                                ],
+                                normalTextColor: widget.aerobicIsSuggestion
+                                    ? colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.5)
+                                    : colorScheme.onSurface,
+                                suggestionTextColor: colorScheme
+                                    .onSurfaceVariant
+                                    .withValues(alpha: 0.5),
+                                fillColor: colorScheme.surfaceContainer,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 10, horizontal: 12),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            ' ${l10n.min} ',
+                            style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                                fontSize: 14.0,
+                                fontWeight: FontWeight.bold),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Focus(
+                              onFocusChange: (has) {
+                                if (has && widget.aerobicIsSuggestion) {
+                                  widget.onConfirmAerobic?.call();
+                                }
+                              },
+                              child: StylishInput(
+                                controller: _secController,
+                                hint: '',
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly
+                                ],
+                                normalTextColor: widget.aerobicIsSuggestion
+                                    ? colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.5)
+                                    : colorScheme.onSurface,
+                                suggestionTextColor: colorScheme
+                                    .onSurfaceVariant
+                                    .withValues(alpha: 0.5),
+                                fillColor: colorScheme.surfaceContainer,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 10, horizontal: 12),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            ' ${l10n.sec}',
+                            style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                                fontSize: 14.0,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
-                    ),
-                    Text(
-                      ' ${l10n.m}',
-                      style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Text(
-                      l10n.time,
-                      style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: Focus(
-                        onFocusChange: (has) {
-                          if (has && widget.aerobicIsSuggestion) {
-                            widget.onConfirmAerobic?.call();
-                          }
-                        },
-                        child: StylishInput(
-                          controller: _minController,
-                          hint: '',
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          normalTextColor: widget.aerobicIsSuggestion
-                              ? colorScheme.onSurfaceVariant.withOpacity(0.5)
-                              : colorScheme.onSurface,
-                          suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                          fillColor: colorScheme.surfaceContainer,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                          textAlign: TextAlign.right,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      ' ${l10n.min} ',
-                      style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Focus(
-                        onFocusChange: (has) {
-                          if (has && widget.aerobicIsSuggestion) {
-                            widget.onConfirmAerobic?.call();
-                          }
-                        },
-                        child: StylishInput(
-                          controller: _secController,
-                          hint: '',
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          normalTextColor: widget.aerobicIsSuggestion
-                              ? colorScheme.onSurfaceVariant.withOpacity(0.5)
-                              : colorScheme.onSurface,
-                          suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                          fillColor: colorScheme.surfaceContainer,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                          textAlign: TextAlign.right,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      ' ${l10n.sec}',
-                      style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ],
-            )
+                    ],
+                  )
                 : Column(
-              children: List.generate(
-                min(widget.setCount, widget.setInputDataList.length),
-                    (setIndex) {
-                  final set = widget.setInputDataList[setIndex];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: Row(
-                      children: [
-                        Text(
-                          '${setIndex + 1}${l10n.sets}：',
-                          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Focus(
-                            onFocusChange: (has) {
-                              if (has && set.isSuggestion) {
-                                setState(() => set.isSuggestion = false);
-                              }
-                            },
-                            child: StylishInput(
-                              controller: set.weightController,
-                              hint: '',
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                              ],
-                              normalTextColor: set.isSuggestion
-                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
-                                  : colorScheme.onSurface,
-                              suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                              fillColor: colorScheme.surfaceContainer,
-                              contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                              textAlign: TextAlign.right,
-                              onChanged: (text) {
-                                setState(() {
-                                  if (text.isNotEmpty && set.isSuggestion) {
-                                    set.isSuggestion = false;
-                                  } else if (text.isEmpty &&
-                                      !set.isSuggestion &&
-                                      set.repController.text.isEmpty) {
-                                    final anyOther = widget.setInputDataList.any(
-                                          (s) => s != set &&
-                                          (s.weightController.text.isNotEmpty || s.repController.text.isNotEmpty),
-                                    );
-                                    if (!anyOther) {
-                                      set.isSuggestion = true;
+                    children: List.generate(
+                      min(widget.setCount, widget.setInputDataList.length),
+                      (setIndex) {
+                        final set = widget.setInputDataList[setIndex];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4.0),
+                          child: Row(
+                            children: [
+                              Text(
+                                '${setIndex + 1}${l10n.sets}：',
+                                style: TextStyle(
+                                    color: colorScheme.onSurfaceVariant,
+                                    fontSize: 14.0),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Focus(
+                                  onFocusChange: (has) {
+                                    if (has && set.isSuggestion) {
+                                      setState(() => set.isSuggestion = false);
                                     }
-                                  }
-                                });
-                              },
-                            ),
-                          ),
-                        ),
-                        Text(
-                          ' ${currentUnit == 'kg' ? l10n.kg : l10n.lbs} ',
-                          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold),
-                        ),
-                        Expanded(
-                          child: Focus(
-                            onFocusChange: (has) {
-                              if (has && set.isSuggestion) {
-                                setState(() => set.isSuggestion = false);
-                              }
-                            },
-                            child: StylishInput(
-                              controller: set.repController,
-                              hint: '',
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                              normalTextColor: set.isSuggestion
-                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
-                                  : colorScheme.onSurface,
-                              suggestionTextColor: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                              fillColor: colorScheme.surfaceContainer,
-                              contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                              textAlign: TextAlign.right,
-                              onChanged: (text) {
-                                setState(() {
-                                  if (text.isNotEmpty && set.isSuggestion) {
-                                    set.isSuggestion = false;
-                                  } else if (text.isEmpty &&
-                                      !set.isSuggestion &&
-                                      set.weightController.text.isEmpty) {
-                                    final anyOther = widget.setInputDataList.any(
-                                          (s) => s != set &&
-                                          (s.weightController.text.isNotEmpty || s.repController.text.isNotEmpty),
-                                    );
-                                    if (!anyOther) {
-                                      set.isSuggestion = true;
+                                  },
+                                  child: StylishInput(
+                                    controller: set.weightController,
+                                    hint: '',
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                            decimal: true),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(
+                                          RegExp(r'^\d*\.?\d*')),
+                                    ],
+                                    normalTextColor: set.isSuggestion
+                                        ? colorScheme.onSurfaceVariant
+                                            .withValues(alpha: 0.5)
+                                        : colorScheme.onSurface,
+                                    suggestionTextColor: colorScheme
+                                        .onSurfaceVariant
+                                        .withValues(alpha: 0.5),
+                                    fillColor: colorScheme.surfaceContainer,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        vertical: 10, horizontal: 12),
+                                    textAlign: TextAlign.right,
+                                    onChanged: (text) {
+                                      setState(() {
+                                        if (text.isNotEmpty &&
+                                            set.isSuggestion) {
+                                          set.isSuggestion = false;
+                                        } else if (text.isEmpty &&
+                                            !set.isSuggestion &&
+                                            set.repController.text.isEmpty) {
+                                          final anyOther =
+                                              widget.setInputDataList.any(
+                                            (s) =>
+                                                s != set &&
+                                                (s.weightController.text
+                                                        .isNotEmpty ||
+                                                    s.repController.text
+                                                        .isNotEmpty),
+                                          );
+                                          if (!anyOther) {
+                                            set.isSuggestion = true;
+                                          }
+                                        }
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                ' ${currentUnit == 'kg' ? l10n.kg : l10n.lbs} ',
+                                style: TextStyle(
+                                    color: colorScheme.onSurfaceVariant,
+                                    fontSize: 14.0,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              Expanded(
+                                child: Focus(
+                                  onFocusChange: (has) {
+                                    if (has && set.isSuggestion) {
+                                      setState(() => set.isSuggestion = false);
                                     }
-                                  }
-                                });
-                              },
-                            ),
+                                  },
+                                  child: StylishInput(
+                                    controller: set.repController,
+                                    hint: '',
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly
+                                    ],
+                                    normalTextColor: set.isSuggestion
+                                        ? colorScheme.onSurfaceVariant
+                                            .withValues(alpha: 0.5)
+                                        : colorScheme.onSurface,
+                                    suggestionTextColor: colorScheme
+                                        .onSurfaceVariant
+                                        .withValues(alpha: 0.5),
+                                    fillColor: colorScheme.surfaceContainer,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        vertical: 10, horizontal: 12),
+                                    textAlign: TextAlign.right,
+                                    onChanged: (text) {
+                                      setState(() {
+                                        if (text.isNotEmpty &&
+                                            set.isSuggestion) {
+                                          set.isSuggestion = false;
+                                        } else if (text.isEmpty &&
+                                            !set.isSuggestion &&
+                                            set.weightController.text.isEmpty) {
+                                          final anyOther =
+                                              widget.setInputDataList.any(
+                                            (s) =>
+                                                s != set &&
+                                                (s.weightController.text
+                                                        .isNotEmpty ||
+                                                    s.repController.text
+                                                        .isNotEmpty),
+                                          );
+                                          if (!anyOther) {
+                                            set.isSuggestion = true;
+                                          }
+                                        }
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                ' ${l10n.reps}',
+                                style: TextStyle(
+                                    color: colorScheme.onSurfaceVariant,
+                                    fontSize: 14.0,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
                           ),
-                        ),
-                        Text(
-                          ' ${l10n.reps}',
-                          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
-            ),
+                  ),
           ),
         ],
       ),

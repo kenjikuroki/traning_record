@@ -62,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _themeMode = SettingsManager.currentThemeMode;
 
     final Map<String, bool>? savedBodyParts =
-    widget.settingsBox.get('selectedBodyParts')?.cast<String, bool>();
+        widget.settingsBox.get('selectedBodyParts')?.cast<String, bool>();
     if (savedBodyParts != null) {
       _selectedBodyParts = Map<String, bool>.from(savedBodyParts);
     } else {
@@ -134,13 +134,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return PopScope(
       canPop: true,
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, result) {
         if (didPop) {
           _saveSettings();
         }
       },
       child: Scaffold(
-        backgroundColor: colorScheme.background,
+        backgroundColor: colorScheme.surface,
         appBar: AppBar(
           leading: const BackButton(),
           title: Text(
@@ -160,7 +160,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             children: [
               const SizedBox(height: 2),
-              const SizedBox(height: 50, child: AdBanner(screenName: 'settings')),
+              const SizedBox(
+                  height: 50, child: AdBanner(screenName: 'settings')),
               const SizedBox(height: 12.0),
               Expanded(
                 child: ListView(
@@ -187,7 +188,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             const SizedBox(height: 4),
                             RadioListTile<ThemeMode>(
                               dense: true,
-                              visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+                              visualDensity: const VisualDensity(
+                                  horizontal: -2, vertical: -2),
                               contentPadding: EdgeInsets.zero,
                               title: Text(l10n.systemDefault),
                               value: ThemeMode.system,
@@ -197,7 +199,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             RadioListTile<ThemeMode>(
                               dense: true,
-                              visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+                              visualDensity: const VisualDensity(
+                                  horizontal: -2, vertical: -2),
                               contentPadding: EdgeInsets.zero,
                               title: Text(l10n.light),
                               value: ThemeMode.light,
@@ -207,7 +210,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             RadioListTile<ThemeMode>(
                               dense: true,
-                              visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+                              visualDensity: const VisualDensity(
+                                  horizontal: -2, vertical: -2),
                               contentPadding: EdgeInsets.zero,
                               title: Text(l10n.dark),
                               value: ThemeMode.dark,
@@ -231,8 +235,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       child: SwitchListTile(
                         // 太めにするために上下パディングを増やす
-                        contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 12.0),
                         // dense は使わない（薄くならないように）
                         title: Text(
                           l10n.bodyWeightTracking,
@@ -276,9 +280,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 setState(() => _isBodyPartsExpanded = v),
                             expandedAlignment: Alignment.centerLeft,
                             tilePadding:
-                            const EdgeInsets.symmetric(horizontal: 12.0),
+                                const EdgeInsets.symmetric(horizontal: 12.0),
                             childrenPadding:
-                            const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                                const EdgeInsets.fromLTRB(12, 0, 12, 10),
                             title: Align(
                               alignment: Alignment.centerLeft,
                               child: Text(
@@ -310,7 +314,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   value: current,
                                   onChanged: (bool value) async {
                                     setState(
-                                            () => _selectedBodyParts[p] = value);
+                                        () => _selectedBodyParts[p] = value);
                                     await widget.settingsBox.put(
                                         'selectedBodyParts',
                                         _selectedBodyParts);
@@ -329,8 +333,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Center(
                       child: AdSquare(
                         adSize: AdBoxSize.largeBanner, // 320x100
-                        showPlaceholder: false,        // ★本番広告にする
-                        screenName: 'settings',        // ★設定画面用IDを指定
+                        showPlaceholder: false, // ★本番広告にする
+                        screenName: 'settings', // ★設定画面用IDを指定
                       ),
                     ),
                     const SizedBox(height: gap),
@@ -366,22 +370,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 divisions: 9,
                                 label: _setCount.toString(),
                                 onChanged: (double newValue) {
-                                  setState(
-                                          () => _setCount = newValue.round());
+                                  setState(() => _setCount = newValue.round());
                                 },
                                 onChangeEnd: (v) {
-                                  widget.setCountBox
-                                      .put('setCount', v.round());
+                                  widget.setCountBox.put('setCount', v.round());
                                 },
                                 activeColor: colorScheme.primary,
                                 inactiveColor: colorScheme.onSurfaceVariant
-                                    .withOpacity(0.3),
+                                    .withValues(alpha: 0.3),
                               ),
                             ),
                             Align(
                               alignment: Alignment.centerRight,
                               child: Text(
-                                '${_setCount}${l10n.sets}',
+                                '$_setCount${l10n.sets}',
                                 style: TextStyle(
                                   color: colorScheme.onSurface,
                                   fontSize: 14.0,

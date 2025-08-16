@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
 
 // Defines the SetInputData class
 class SetInputData {
@@ -37,7 +36,7 @@ class SectionData {
     required this.setInputDataList,
     this.initialSetCount,
     required this.menuKeys,
-  }) : this.key = key ?? UniqueKey();
+  }) : key = key ?? UniqueKey();
 
   // Factory constructor to create a new empty section data with default controllers
   static SectionData createEmpty(int setCount,

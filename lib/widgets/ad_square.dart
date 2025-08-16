@@ -5,8 +5,8 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 /// 利用可能なバナーサイズ
 enum AdBoxSize {
-  banner,         // 320x50
-  largeBanner,    // 320x100
+  banner, // 320x50
+  largeBanner, // 320x100
   mediumRectangle // 300x250
 }
 
@@ -39,9 +39,9 @@ class _AdSquareState extends State<AdSquare> {
   AdSize get _adSize {
     switch (widget.adSize) {
       case AdBoxSize.banner:
-        return AdSize.banner;        // 320x50
+        return AdSize.banner; // 320x50
       case AdBoxSize.largeBanner:
-        return AdSize.largeBanner;   // 320x100
+        return AdSize.largeBanner; // 320x100
       case AdBoxSize.mediumRectangle:
         return AdSize.mediumRectangle; // 300x250
     }

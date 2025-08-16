@@ -1,12 +1,10 @@
 // lib/screens/calendar_screen.dart
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:hive_flutter/hive_flutter.dart'; // ★ 追加
 import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
-import '../models/record_models.dart';
 import '../widgets/ad_banner.dart';
 import '../settings_manager.dart';
 import 'record_screen.dart';
@@ -43,8 +41,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void initState() {
     super.initState();
-    _focusedDay = DateTime(widget.selectedDate.year, widget.selectedDate.month, 1);
-    _selectedDay = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
+    _focusedDay =
+        DateTime(widget.selectedDate.year, widget.selectedDate.month, 1);
+    _selectedDay = DateTime(widget.selectedDate.year, widget.selectedDate.month,
+        widget.selectedDate.day);
   }
 
   // ---------- Helpers ----------
@@ -54,13 +54,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _hasAnyTrainingData(DailyRecord r) {
     for (final entry in r.menus.entries) {
       for (final m in entry.value) {
-        final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        final len = (m.weights.length < m.reps.length)
+            ? m.weights.length
+            : m.reps.length;
         for (var i = 0; i < len; i++) {
           final w = m.weights[i].toString().trim();
           final p = m.reps[i].toString().trim();
           if (w.isNotEmpty || p.isNotEmpty) return true;
         }
-        if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
+        if ((m.distance?.trim().isNotEmpty ?? false) ||
+            (m.duration?.trim().isNotEmpty ?? false)) {
           return true;
         }
       }
@@ -134,11 +137,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    //  final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
         leading: const BackButton(),
         title: Text(
@@ -159,7 +162,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         child: ValueListenableBuilder<Box<DailyRecord>>(
           valueListenable: widget.recordsBox.listenable(),
           builder: (context, box, _) {
-            final selectedRecord = box.get(_dateKey(_selectedDay ?? DateTime.now()));
+            final selectedRecord =
+                box.get(_dateKey(_selectedDay ?? DateTime.now()));
             return Column(
               children: [
                 const AdBanner(screenName: 'calendar'),
@@ -174,10 +178,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today), label: 'Calendar'),
           BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'),
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.settings), label: 'Settings'),
         ],
         currentIndex: 0,
         selectedItemColor: colorScheme.primary,
@@ -246,7 +252,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           lastDay: DateTime.utc(2100, 12, 31),
           focusedDay: _focusedDay,
           selectedDayPredicate: (day) =>
-          _selectedDay != null &&
+              _selectedDay != null &&
               day.year == _selectedDay!.year &&
               day.month == _selectedDay!.month &&
               day.day == _selectedDay!.day,
@@ -259,15 +265,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
-            leftChevronIcon: Icon(Icons.chevron_left, color: colorScheme.onSurface),
-            rightChevronIcon: Icon(Icons.chevron_right, color: colorScheme.onSurface),
+            leftChevronIcon:
+                Icon(Icons.chevron_left, color: colorScheme.onSurface),
+            rightChevronIcon:
+                Icon(Icons.chevron_right, color: colorScheme.onSurface),
           ),
           calendarStyle: CalendarStyle(
             defaultTextStyle: TextStyle(color: colorScheme.onSurface),
             weekendTextStyle: TextStyle(color: colorScheme.onSurface),
             outsideTextStyle: TextStyle(color: colorScheme.onSurfaceVariant),
             todayDecoration: BoxDecoration(
-              color: colorScheme.primary.withOpacity(0.2),
+              color: colorScheme.primary.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             selectedDecoration: BoxDecoration(
@@ -305,7 +313,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               return;
             }
             setState(() {
-              _selectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+              _selectedDay = DateTime(
+                  selectedDay.year, selectedDay.month, selectedDay.day);
               _focusedDay = focusedDay;
             });
           },
@@ -345,7 +354,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final List<Widget> cards = [];
 
     // 体重カード（体重実績がある場合のみ表示）
-    if (record!.weight != null) {
+    if (record.weight != null) {
       cards.add(
         Theme(
           data: Theme.of(context).copyWith(
@@ -356,17 +365,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
           child: Card(
             color: colorScheme.surfaceContainerHighest,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.0)),
             elevation: 4,
             clipBehavior: Clip.none,
             child: ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              tilePadding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               expandedAlignment: Alignment.centerLeft,
               maintainState: true,
               title: Text(
                 l10n.bodyWeight,
-                style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: colorScheme.onSurface, fontWeight: FontWeight.bold),
               ),
               children: [
                 Align(
@@ -374,7 +386,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   child: Text(
                     '${record.weight?.toStringAsFixed(1) ?? '-'} $unit',
                     textAlign: TextAlign.left,
-                    style: TextStyle(color: colorScheme.onSurface, fontSize: 14),
+                    style:
+                        TextStyle(color: colorScheme.onSurface, fontSize: 14),
                   ),
                 ),
               ],
@@ -388,14 +401,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
     record.menus.forEach((originalPart, menuList) {
       bool partHasData = false;
       for (final m in menuList) {
-        final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        final len = (m.weights.length < m.reps.length)
+            ? m.weights.length
+            : m.reps.length;
         for (int i = 0; i < len; i++) {
-          if (m.weights[i].toString().trim().isNotEmpty || m.reps[i].toString().trim().isNotEmpty) {
+          if (m.weights[i].toString().trim().isNotEmpty ||
+              m.reps[i].toString().trim().isNotEmpty) {
             partHasData = true;
             break;
           }
         }
-        if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
+        if ((m.distance?.trim().isNotEmpty ?? false) ||
+            (m.duration?.trim().isNotEmpty ?? false)) {
           partHasData = true;
         }
         if (partHasData) break;
@@ -426,7 +443,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         );
 
         // セット（左寄せ）
-        final setCount = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        final setCount = (m.weights.length < m.reps.length)
+            ? m.weights.length
+            : m.reps.length;
         for (int i = 0; i < setCount; i++) {
           final w = m.weights[i].toString().trim();
           final r = m.reps[i].toString().trim();
@@ -491,17 +510,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
           child: Card(
             color: colorScheme.surfaceContainerHighest,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.0)),
             elevation: 4,
             clipBehavior: Clip.none,
             child: ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              tilePadding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               expandedAlignment: Alignment.centerLeft,
               maintainState: true,
               title: Text(
                 partTitle,
-                style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: colorScheme.onSurface, fontWeight: FontWeight.bold),
               ),
               children: [
                 Column(

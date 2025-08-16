@@ -10,17 +10,17 @@ class CircularAddButtonWithText extends StatefulWidget {
   final Color? accentColorOverride;
 
   const CircularAddButtonWithText({
-    Key? key,
+    super.key,
     required this.label,
     required this.onPressed,
     this.normalBgColorOverride,
     this.pressedBgColorOverride,
     this.textColorOverride,
     this.accentColorOverride,
-  }) : super(key: key);
+  });
 
   @override
-  _CircularAddButtonWithTextState createState() =>
+  State<CircularAddButtonWithText> createState() =>
       _CircularAddButtonWithTextState();
 }
 
@@ -78,12 +78,12 @@ class GlassCard extends StatelessWidget {
   final EdgeInsetsGeometry padding;
 
   const GlassCard({
-    Key? key,
+    super.key,
     required this.child,
     this.borderRadius = 8.0,
     required this.backgroundColor,
     this.padding = const EdgeInsets.all(16.0),
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +93,7 @@ class GlassCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -123,7 +123,7 @@ class StylishInput extends StatefulWidget {
   final VoidCallback? onTap;
 
   const StylishInput({
-    Key? key,
+    super.key,
     required this.controller,
     this.hint,
     this.keyboardType = TextInputType.text,
@@ -131,16 +131,17 @@ class StylishInput extends StatefulWidget {
     required this.normalTextColor,
     required this.suggestionTextColor,
     required this.fillColor,
-    this.contentPadding = const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+    this.contentPadding =
+        const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
     required this.textAlign,
     this.onChanged,
     this.onTap,
     this.suffixText,
     this.suffixStyle,
-  }) : super(key: key);
+  });
 
   @override
-  _StylishInputState createState() => _StylishInputState();
+  State<StylishInput> createState() => _StylishInputState();
 }
 
 class _StylishInputState extends State<StylishInput> {
@@ -217,8 +218,8 @@ class _StylishInputState extends State<StylishInput> {
         fontWeight: FontWeight.bold,
       ),
       decoration: InputDecoration(
-        suffixText: widget.suffixText,          // 追加
-        suffixStyle: widget.suffixStyle,        // 追加
+        suffixText: widget.suffixText, // 追加
+        suffixStyle: widget.suffixStyle, // 追加
         hintText: _isSuggestionDisplay ? widget.hint : null,
         hintStyle: TextStyle(
           color: widget.suggestionTextColor,
