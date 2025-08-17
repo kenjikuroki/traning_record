@@ -68,5 +68,6 @@
   "exercise": "Exercise",
   "partAlreadySelected": "This part is already selected.",
   "distanceHint": "Enter distance",
-  "pace": "Pace"
+  "pace": "Pace",
+  "selectPartPlaceholder": "Select part"
 }

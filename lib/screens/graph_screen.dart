@@ -169,8 +169,8 @@ class _GraphScreenState extends State<GraphScreen> {
             .toList();
 
     _filteredBodyParts = [
-      l10n.bodyWeight,
       l10n.favorites,
+      l10n.bodyWeight,
       ..._filteredBodyParts
     ];
 

@@ -218,4 +218,7 @@ class AppLocalizationsKl extends AppLocalizations {
 
   @override
   String get pace => 'Pace';
+
+  @override
+  String get selectPartPlaceholder => 'Select part';
 }

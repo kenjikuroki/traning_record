@@ -218,4 +218,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get pace => 'ペース';
+
+  @override
+  String get selectPartPlaceholder => '部位を選択';
 }
