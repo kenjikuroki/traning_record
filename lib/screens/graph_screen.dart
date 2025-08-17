@@ -602,43 +602,63 @@ class _GraphScreenState extends State<GraphScreen> {
 
   // ====== favorites ======
   void _checkIfFavorite() {
-    if (_selectedMenu == null) {
+    final l10n = AppLocalizations.of(context)!;
+
+    // 体重のときは体重名で判定
+    final String? key =
+    (_selectedPart == l10n.bodyWeight || _selectedMenu == l10n.bodyWeight)
+        ? l10n.bodyWeight
+        : _selectedMenu; // 通常はメニュー名
+
+    if (key == null) {
       _isFavorite = false;
       return;
     }
-    final dynamic rawFavorites = widget.settingsBox.get('favorites');
-    _isFavorite =
-        (rawFavorites is List) && rawFavorites.contains(_selectedMenu);
+    final rawFavorites = widget.settingsBox.get('favorites');
+    final favs = (rawFavorites is List)
+        ? rawFavorites.whereType<String>().toList()
+        : <String>[];
+
+    _isFavorite = favs.contains(key);
   }
 
+
   void _toggleFavorite() {
-    if (_selectedMenu == null) return;
-    final dynamic rawFavorites = widget.settingsBox.get('favorites');
-    final List<String> favorites =
-        rawFavorites is List ? rawFavorites.whereType<String>().toList() : [];
-
     final l10n = AppLocalizations.of(context)!;
-    final willAdd = !favorites.contains(_selectedMenu);
 
+    // 体重なら体重名、それ以外はメニュー名
+    final String? key =
+    (_selectedPart == l10n.bodyWeight || _selectedMenu == l10n.bodyWeight)
+        ? l10n.bodyWeight
+        : _selectedMenu;
+
+    if (key == null) return;
+
+    final rawFavorites = widget.settingsBox.get('favorites');
+    final favorites = (rawFavorites is List)
+        ? rawFavorites.whereType<String>().toList()
+        : <String>[];
+
+    final willAdd = !favorites.contains(key);
     if (willAdd) {
-      favorites.add(_selectedMenu!);
+      favorites.add(key);
     } else {
-      favorites.remove(_selectedMenu!);
+      favorites.remove(key);
     }
     widget.settingsBox.put('favorites', favorites);
 
     setState(() {
       _isFavorite = willAdd;
+      // お気に入りタブ表示中はリストを更新
       if (_selectedPart == l10n.favorites) {
         _loadMenusForPart(_selectedPart!);
       }
     });
 
-    final msg = willAdd
-        ? l10n.favorited(_selectedMenu!)
-        : l10n.unfavorited(_selectedMenu!);
+    final msg = willAdd ? l10n.favorited(key) : l10n.unfavorited(key);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
+
 
   void _saveGraphPrefs() {
     widget.settingsBox.put(_prefGraphPart, _selectedPart);
