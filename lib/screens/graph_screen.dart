@@ -161,13 +161,14 @@ class _GraphScreenState extends State<GraphScreen> {
     }
 
     _filteredBodyParts = (savedBodyPartsSettings == null ||
-            savedBodyPartsSettings.isEmpty)
+        savedBodyPartsSettings.isEmpty)
         ? allBodyParts.map((p) => _translatePartToLocale(context, p)).toList()
         : allBodyParts
-            .where((p) => savedBodyPartsSettings![p] == true)
-            .map((p) => _translatePartToLocale(context, p))
-            .toList();
+        .where((p) => savedBodyPartsSettings![p] == true)
+        .map((p) => _translatePartToLocale(context, p))
+        .toList();
 
+    // ①の並び替えは既に反映済み：お気に入り → 体重
     _filteredBodyParts = [
       l10n.favorites,
       l10n.bodyWeight,
@@ -178,8 +179,7 @@ class _GraphScreenState extends State<GraphScreen> {
     if (savedPart != null && _filteredBodyParts.contains(savedPart)) {
       _selectedPart = savedPart;
     } else {
-      _selectedPart =
-          _filteredBodyParts.isNotEmpty ? _filteredBodyParts.first : null;
+      _selectedPart = null; // ★ ここを「最初の要素」ではなく null にする（②の核心）
     }
 
     if (mounted) {
@@ -190,6 +190,7 @@ class _GraphScreenState extends State<GraphScreen> {
       });
     }
   }
+
 
   // ====== load menus ======
   void _loadMenusForPart(String translatedPart) {
@@ -815,10 +816,11 @@ class _GraphScreenState extends State<GraphScreen> {
                     ],
                   ),
                   const Spacer(),
-                  FavoritePillButton(
-                    isFavorite: _isFavorite,
-                    label: l10n.favorites,
-                    onTap: _toggleFavorite,
+                  if (_selectedPart != l10n.favorites)
+                    FavoritePillButton(
+                      isFavorite: _isFavorite,
+                      label: l10n.favorites,
+                      onTap: _toggleFavorite,
                   ),
                 ],
               ),
