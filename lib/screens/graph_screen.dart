@@ -199,12 +199,16 @@ class _GraphScreenState extends State<GraphScreen> {
     if (translatedPart == l10n.bodyWeight) {
       _menusForPart = [];
       _selectedMenu = null;
-      _isFavorite = false;
+      // _isFavorite = false; // ←削除
       _loadBodyWeightData();
+      _checkIfFavorite(); // ←追加：ここでお気に入り状態を反映
       _saveGraphPrefs();
       setState(() {});
       return;
     }
+
+    // ...（以下は既存の処理）
+
 
     _menusForPart.clear();
 
@@ -238,12 +242,15 @@ class _GraphScreenState extends State<GraphScreen> {
           _xDates = [];
           _minY = 0;
           _maxY = 0;
+          _checkIfFavorite();  // ←追加：☆/★の見た目を必ず更新
+          _saveGraphPrefs();   // ←追加：状態保存もここで
         } else {
-          _refreshDataForSelection();
+          _refreshDataForSelection(); // 中で _checkIfFavorite() 実行
         }
       });
     }
   }
+
 
   // ====== choose loader ======
   void _refreshDataForSelection() {
@@ -1176,10 +1183,12 @@ class _GraphScreenState extends State<GraphScreen> {
                         setState(() {
                           _selectedPart = value;
                           _saveGraphPrefs();
-                          _loadMenusForPart(value);
+                          _loadMenusForPart(value); // メニュー決定 → 内部で再計算される
+                          _checkIfFavorite();       // ←任意追加（より堅牢に）
                         });
                       }
                     },
+
                     dropdownColor: colorScheme.surfaceContainer,
                     style: TextStyle(
                       color: colorScheme.onSurface,
@@ -1224,7 +1233,8 @@ class _GraphScreenState extends State<GraphScreen> {
                           setState(() {
                             _selectedMenu = value;
                             _saveGraphPrefs();
-                            _refreshDataForSelection();
+                            _refreshDataForSelection(); // データ読み込み
+                            _checkIfFavorite();         // ←任意追加（より堅牢に）
                           });
                         } else {
                           setState(() {
@@ -1232,6 +1242,7 @@ class _GraphScreenState extends State<GraphScreen> {
                             _xDates = [];
                             _minY = 0;
                             _maxY = 0;
+                            _checkIfFavorite(); // ←追加：null時は必ず☆へ
                           });
                         }
                       },
