@@ -248,7 +248,8 @@ class _GraphScreenState extends State<GraphScreen> {
   // ====== choose loader ======
   void _refreshDataForSelection() {
     final l10n = AppLocalizations.of(context)!;
-    final isBody = _selectedPart == l10n.bodyWeight;
+    // ★ お気に入りタブで「体重」を選んだケースも体重扱いにする
+    final isBody = (_selectedPart == l10n.bodyWeight) || (_selectedMenu == l10n.bodyWeight);
     final isAero = _isAerobicContext();
 
     if (isBody) {
@@ -261,6 +262,7 @@ class _GraphScreenState extends State<GraphScreen> {
     _checkIfFavorite();
     _saveGraphPrefs();
   }
+
 
   bool _menuIsAerobic(String? menuName) {
     if (menuName == null) return false;
@@ -520,13 +522,11 @@ class _GraphScreenState extends State<GraphScreen> {
   }
 
   // ====== build series & axis ======
-  void _buildSeriesFromMap(Map<DateTime, double> map,
-      {required double tickStep}) {
+  void _buildSeriesFromMap(Map<DateTime, double> map, {required double tickStep}) {
     _spots = [];
     _xDates = [];
     _minY = 0;
     _maxY = 0;
-
     if (map.isEmpty) return;
 
     final sortedDates = map.keys.toList()..sort();
@@ -569,12 +569,13 @@ class _GraphScreenState extends State<GraphScreen> {
     double ceilTo(double v, double step) => (v / step).ceilToDouble() * step;
 
     final l10n = AppLocalizations.of(context)!;
-    final isBody = _selectedPart == l10n.bodyWeight;
+    // ★ メニュー=体重 も体重扱い
+    final isBody = (_selectedPart == l10n.bodyWeight) || (_selectedMenu == l10n.bodyWeight);
 
     double minNice = floorTo(_minY, tickStep) - tickStep;
     double maxNice = ceilTo(_maxY, tickStep) + tickStep;
 
-    // 体重はさらに上下 1 ステップずつ余白追加（“びょーん”緩和）
+    // 体重はさらに上下 1 ステップずつ余白追加
     if (isBody) {
       minNice -= tickStep;
       maxNice += tickStep;
@@ -585,8 +586,7 @@ class _GraphScreenState extends State<GraphScreen> {
       maxNice += tickStep;
     }
 
-    if (SettingsManager.currentUnit == 'kg' &&
-        (isBody || !_isAerobicContext())) {
+    if (SettingsManager.currentUnit == 'kg' && (isBody || !_isAerobicContext())) {
       minNice = max(0.0, minNice);
     }
 
@@ -735,7 +735,8 @@ class _GraphScreenState extends State<GraphScreen> {
 
   // unit overlay text
   String _unitOverlayText(AppLocalizations l10n) {
-    final bool isBody = _selectedPart == l10n.bodyWeight;
+    // ★ メニュー=体重 も体重扱い
+    final bool isBody = (_selectedPart == l10n.bodyWeight) || (_selectedMenu == l10n.bodyWeight);
     final bool hasMenu = _selectedMenu != null;
     if (!isBody && !hasMenu) return ''; // 種目なし → 非表示
 
@@ -751,6 +752,7 @@ class _GraphScreenState extends State<GraphScreen> {
     }
     return SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
   }
+
 
   // tooltip value
   String _formatTooltipValue(double y, AppLocalizations l10n) {
