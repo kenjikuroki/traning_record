@@ -1,16 +1,13 @@
 // android/app/build.gradle.kts
-
 import java.util.Properties
 import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// --- key.properties を読み込み（app モジュール直下に置いた前提。別場所ならパスを調整） ---
 val keystorePropertiesFile = file("key.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) {
@@ -20,25 +17,17 @@ val keystoreProperties = Properties().apply {
 
 android {
     namespace = "com.yourname.ttrainingrecord"
-    compileSdk = flutter.compileSdkVersion
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
-    }
+    compileSdk = flutter.compileSdkVersion.toInt()
 
     defaultConfig {
         applicationId = "com.yourname.ttrainingrecord"
-        minSdk = 23
-        targetSdk = flutter.targetSdkVersion
+        minSdk = flutter.minSdkVersion.toInt()
+        targetSdk = flutter.targetSdkVersion.toInt()
         versionCode = flutter.versionCode.toInt()
         versionName = flutter.versionName
+        multiDexEnabled = true
     }
 
-    // --- 署名設定（Release） ---
     signingConfigs {
         create("release") {
             if (keystorePropertiesFile.exists()) {
@@ -50,41 +39,53 @@ android {
                     ?: throw GradleException("key.properties に keyAlias がありません")
                 val keyPasswordProp = keystoreProperties.getProperty("keyPassword")
                     ?: throw GradleException("key.properties に keyPassword がありません")
-
-                // storeFile は app モジュールからの相対パスで OK（例: "my-release-key.keystore"）
                 storeFile = file(storeFilePath)
                 storePassword = storePasswordProp
                 keyAlias = keyAliasProp
                 keyPassword = keyPasswordProp
             } else {
-                println("warning: key.properties が見つかりません。Release 署名は未設定のままです。")
+                println("warning: key.properties が見つかりません。Release 署名は未設定です。")
             }
         }
     }
 
     buildTypes {
         release {
-            // 本番署名
             signingConfig = signingConfigs.getByName("release")
-
-            // ★ shrinkResources エラー対策：R8(コード圧縮)とリソース縮小を両方 ON
             isMinifyEnabled = true
             isShrinkResources = true
-
-            // R8/ProGuard 設定
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
         debug {
-            // デバッグは最適化OFFでOK
             isMinifyEnabled = false
             isShrinkResources = false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
+
+    packaging {
+        resources {
+            excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
         }
     }
 }
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation("androidx.multidex:multidex:2.0.1")
 }

@@ -1162,7 +1162,7 @@ class _GraphScreenState extends State<GraphScreen> {
                         borderSide: BorderSide.none,
                       ),
                     ),
-                    value: _selectedPart,
+                    initialValue: _selectedPart,
                     items: _filteredBodyParts
                         .map(
                           (p) => DropdownMenuItem(
@@ -1212,7 +1212,7 @@ class _GraphScreenState extends State<GraphScreen> {
                           borderSide: BorderSide.none,
                         ),
                       ),
-                      value: _selectedMenu,
+                      initialValue: _selectedMenu,
                       items: _menusForPart
                           .map(
                             (menu) => DropdownMenuItem(

@@ -804,7 +804,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                               const EdgeInsets.symmetric(
                                                   vertical: 12, horizontal: 20),
                                         ),
-                                        value: section.selectedPart,
+                                        initialValue: section.selectedPart,
                                         items: _filteredBodyParts
                                             .map(
                                               (p) => DropdownMenuItem(

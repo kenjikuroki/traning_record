@@ -75,9 +75,9 @@ class _AdSquareState extends State<AdSquare> {
     } else if (Platform.isIOS) {
       switch (widget.screenName) {
         case 'calendar':
-          return '（iOS版のカレンダー広告IDをここに）';
+          return 'ca-app-pub-3331079517737737/1430886104';
         case 'settings':
-          return '（iOS版の設定広告IDをここに）';
+          return 'ca-app-pub-3331079517737737/8271626623';
         default:
           return 'ca-app-pub-3940256099942544/3001886131';
       }

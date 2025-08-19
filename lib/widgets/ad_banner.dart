@@ -110,7 +110,7 @@ class _AdBannerState extends State<AdBanner> {
         case 'settings':
           return 'ca-app-pub-3331079517737737/8271626623';
         case 'graph':
-          return 'ca-app-pub-3331079517737737/5566778899'; // ← Graph用iOS本番ID
+          return 'ca-app-pub-3331079517737737/8642020070'; // ← Graph用iOS本番ID
         default:
           return 'ca-app-pub-3940256099942544/2934735716';
       }

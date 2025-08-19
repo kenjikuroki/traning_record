@@ -9,6 +9,8 @@ import '../settings_manager.dart';
 import 'record_screen.dart';
 import 'graph_screen.dart';
 import '../models/menu_data.dart';
+import 'package:flutter/widgets.dart' show RadioGroup;
+
 
 class SettingsScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
@@ -167,6 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: ListView(
                   children: [
                     // テーマ
+                    // テーマ
                     Card(
                       color: colorScheme.surfaceContainerHighest,
                       shape: RoundedRectangleBorder(
@@ -186,44 +189,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            RadioListTile<ThemeMode>(
-                              dense: true,
-                              visualDensity: const VisualDensity(
-                                  horizontal: -2, vertical: -2),
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(l10n.systemDefault),
-                              value: ThemeMode.system,
+                            // ここから：RadioGroup で3つの RadioListTile を包む
+                            RadioGroup<ThemeMode>(
                               groupValue: _themeMode,
                               onChanged: _onThemeChanged,
-                              activeColor: colorScheme.primary,
+                              child: Column(
+                                children: [
+                                  RadioListTile<ThemeMode>(
+                                    dense: true,
+                                    visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(l10n.systemDefault),
+                                    value: ThemeMode.system,
+                                    activeColor: colorScheme.primary,
+                                  ),
+                                  RadioListTile<ThemeMode>(
+                                    dense: true,
+                                    visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(l10n.light),
+                                    value: ThemeMode.light,
+                                    activeColor: colorScheme.primary,
+                                  ),
+                                  RadioListTile<ThemeMode>(
+                                    dense: true,
+                                    visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(l10n.dark),
+                                    value: ThemeMode.dark,
+                                    activeColor: colorScheme.primary,
+                                  ),
+                                ],
+                              ),
                             ),
-                            RadioListTile<ThemeMode>(
-                              dense: true,
-                              visualDensity: const VisualDensity(
-                                  horizontal: -2, vertical: -2),
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(l10n.light),
-                              value: ThemeMode.light,
-                              groupValue: _themeMode,
-                              onChanged: _onThemeChanged,
-                              activeColor: colorScheme.primary,
-                            ),
-                            RadioListTile<ThemeMode>(
-                              dense: true,
-                              visualDensity: const VisualDensity(
-                                  horizontal: -2, vertical: -2),
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(l10n.dark),
-                              value: ThemeMode.dark,
-                              groupValue: _themeMode,
-                              onChanged: _onThemeChanged,
-                              activeColor: colorScheme.primary,
-                            ),
+                            // ここまで
                           ],
                         ),
                       ),
                     ),
-
                     // ★ カード間の余白（テーマ ↔ 体重管理 を狭める）
                     const SizedBox(height: gap),
 
@@ -252,7 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           SettingsManager.setShowWeightInput(value);
                           widget.settingsBox.put('showWeightInput', value);
                         },
-                        activeColor: colorScheme.primary,
+                        activeThumbColor: colorScheme.primary,
                       ),
                     ),
 
@@ -319,7 +322,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         'selectedBodyParts',
                                         _selectedBodyParts);
                                   },
-                                  activeColor: colorScheme.primary,
+                                  activeThumbColor: colorScheme.primary,
                                 );
                               }),
                             ],
