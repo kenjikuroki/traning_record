@@ -5,6 +5,7 @@ import java.io.FileInputStream
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    // Flutter Gradle Plugin は Android/Kotlin の後に適用
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -14,9 +15,13 @@ val keystoreProperties = Properties().apply {
         load(FileInputStream(keystorePropertiesFile))
     }
 }
+val hasKeystore = keystorePropertiesFile.exists()
 
 android {
+    // ★必要に応じて最終のパッケージ名に変更してください
     namespace = "com.yourname.ttrainingrecord"
+
+    // Flutter 側の compileSdk/target/min をそのまま利用
     compileSdk = flutter.compileSdkVersion.toInt()
 
     defaultConfig {
@@ -25,12 +30,14 @@ android {
         targetSdk = flutter.targetSdkVersion.toInt()
         versionCode = flutter.versionCode.toInt()
         versionName = flutter.versionName
+
         multiDexEnabled = true
     }
 
     signingConfigs {
-        create("release") {
-            if (keystorePropertiesFile.exists()) {
+        // key.properties がある場合のみ release 署名を作成
+        if (hasKeystore) {
+            create("release") {
                 val storeFilePath = keystoreProperties.getProperty("storeFile")
                     ?: throw GradleException("key.properties に storeFile がありません")
                 val storePasswordProp = keystoreProperties.getProperty("storePassword")
@@ -39,19 +46,18 @@ android {
                     ?: throw GradleException("key.properties に keyAlias がありません")
                 val keyPasswordProp = keystoreProperties.getProperty("keyPassword")
                     ?: throw GradleException("key.properties に keyPassword がありません")
+
                 storeFile = file(storeFilePath)
                 storePassword = storePasswordProp
                 keyAlias = keyAliasProp
                 keyPassword = keyPasswordProp
-            } else {
-                println("warning: key.properties が見つかりません。Release 署名は未設定です。")
             }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName("release") // ← 常にrelease署名
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -65,11 +71,14 @@ android {
         }
     }
 
+
+    // Java/Kotlin 17
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlin {
+        // Kotlin 2.2+ の推奨記法（jvmToolchainの代わり）
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
