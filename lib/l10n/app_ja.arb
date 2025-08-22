@@ -69,5 +69,11 @@
   "exercise": "種目",
   "partAlreadySelected": "この部位はすでに選択されています。",
   "pace": "ペース",
-  "selectPartPlaceholder": "部位を選択"
+  "selectPartPlaceholder": "部位を選択",
+  "hintCalendarTapDate": "記録する日付を選択",
+  "hintGraphFavorite": "お気に入りに登録すると呼び出しに便利です。",
+  "hintGraphChartArea": "記録したデータのグラフが出力されます。",
+  "hintGraphSelectPart": "部位・種目を選択",
+  "hintRecordSelectPart": "トレーニングする部位を選択してください。",
+  "coachBubbleSemantic": "ヒント"
 }

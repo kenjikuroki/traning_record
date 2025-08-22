@@ -69,5 +69,11 @@
   "partAlreadySelected": "This part is already selected.",
   "distanceHint": "Enter distance",
   "pace": "Pace",
-  "selectPartPlaceholder": "Select part"
+  "selectPartPlaceholder": "Select part",
+  "hintCalendarTapDate": "Select a date to record.",
+  "hintGraphFavorite": "Mark as favorite to quickly recall later.",
+  "hintGraphChartArea": "The chart of your recorded data will appear here.",
+  "hintGraphSelectPart": "Select body part and exercise.",
+  "hintRecordSelectPart": "Please select the body part you will train.",
+  "coachBubbleSemantic": "Hint"
 }

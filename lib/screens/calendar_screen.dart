@@ -11,6 +11,9 @@ import 'record_screen.dart';
 import 'graph_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/ad_square.dart';
+import '../widgets/coach_bubble.dart';
+
+
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -35,6 +38,7 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
+  final GlobalKey _kCalendarCard = GlobalKey();
   late DateTime _focusedDay;
   DateTime? _selectedDay;
 
@@ -45,6 +49,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
         DateTime(widget.selectedDate.year, widget.selectedDate.month, 1);
     _selectedDay = DateTime(widget.selectedDate.year, widget.selectedDate.month,
         widget.selectedDate.day);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final seen = widget.settingsBox.get('hint_seen_calendar') as bool? ?? false;
+      if (seen) return;
+
+      final l10n = AppLocalizations.of(context)!;
+      await CoachBubbleController.showSequence(
+        context: context,
+        anchors: [_kCalendarCard], // ← カレンダーカードに付けた GlobalKey
+        messages: [l10n.hintCalendarTapDate],
+        semanticsPrefix: l10n.coachBubbleSemantic,
+      );
+
+      await widget.settingsBox.put('hint_seen_calendar', true);
+    });
   }
 
   // ---------- Helpers ----------
@@ -242,6 +260,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
+      key: _kCalendarCard,
       color: colorScheme.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       elevation: 4,

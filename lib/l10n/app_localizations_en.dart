@@ -221,4 +221,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get selectPartPlaceholder => 'Select part';
+
+  @override
+  String get hintCalendarTapDate => 'Select a date to record.';
+
+  @override
+  String get hintGraphFavorite => 'Mark as favorite to quickly recall later.';
+
+  @override
+  String get hintGraphChartArea => 'The chart of your recorded data will appear here.';
+
+  @override
+  String get hintGraphSelectPart => 'Select body part and exercise.';
+
+  @override
+  String get hintRecordSelectPart => 'Please select the body part you will train.';
+
+  @override
+  String get coachBubbleSemantic => 'Hint';
 }

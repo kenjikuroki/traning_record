@@ -221,4 +221,22 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get selectPartPlaceholder => '部位を選択';
+
+  @override
+  String get hintCalendarTapDate => '記録する日付を選択';
+
+  @override
+  String get hintGraphFavorite => 'お気に入りに登録すると呼び出しに便利です。';
+
+  @override
+  String get hintGraphChartArea => '記録したデータのグラフが出力されます。';
+
+  @override
+  String get hintGraphSelectPart => '部位・種目を選択';
+
+  @override
+  String get hintRecordSelectPart => 'トレーニングする部位を選択してください。';
+
+  @override
+  String get coachBubbleSemantic => 'ヒント';
 }

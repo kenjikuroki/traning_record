@@ -7,7 +7,6 @@ import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_en.dart';
 import 'app_localizations_ja.dart';
-import 'app_localizations_kl.dart';
 
 // ignore_for_file: type=lint
 
@@ -93,8 +92,7 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
-    Locale('ja'),
-    Locale('kl')
+    Locale('ja')
   ];
 
   /// No description provided for @appTitle.
@@ -516,6 +514,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select part'**
   String get selectPartPlaceholder;
+
+  /// No description provided for @hintCalendarTapDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a date to record.'**
+  String get hintCalendarTapDate;
+
+  /// No description provided for @hintGraphFavorite.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as favorite to quickly recall later.'**
+  String get hintGraphFavorite;
+
+  /// No description provided for @hintGraphChartArea.
+  ///
+  /// In en, this message translates to:
+  /// **'The chart of your recorded data will appear here.'**
+  String get hintGraphChartArea;
+
+  /// No description provided for @hintGraphSelectPart.
+  ///
+  /// In en, this message translates to:
+  /// **'Select body part and exercise.'**
+  String get hintGraphSelectPart;
+
+  /// No description provided for @hintRecordSelectPart.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select the body part you will train.'**
+  String get hintRecordSelectPart;
+
+  /// No description provided for @coachBubbleSemantic.
+  ///
+  /// In en, this message translates to:
+  /// **'Hint'**
+  String get coachBubbleSemantic;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
@@ -527,7 +561,7 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'ja', 'kl'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'ja'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -540,7 +574,6 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   switch (locale.languageCode) {
     case 'en': return AppLocalizationsEn();
     case 'ja': return AppLocalizationsJa();
-    case 'kl': return AppLocalizationsKl();
   }
 
   throw FlutterError(
