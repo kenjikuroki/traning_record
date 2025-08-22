@@ -13,6 +13,7 @@ import '../widgets/ad_banner.dart';
 import 'calendar_screen.dart';
 import 'graph_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/coach_bubble.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -37,6 +38,11 @@ class RecordScreen extends StatefulWidget {
 }
 
 class _RecordScreenState extends State<RecordScreen> {
+  final GlobalKey _kRecordPart = GlobalKey();      // 部位ドロップダウン（初回ヒント用）
+  final GlobalKey _kExerciseField = GlobalKey();   // 種目TextField
+  final GlobalKey _kAddExerciseBtn = GlobalKey();  // ＋種目ボタン
+  final GlobalKey _kChangePartBtn = GlobalKey();   // （任意）部位変更ボタン/チップ
+  final GlobalKey _kOpenSettingsBtn = GlobalKey(); // 設定へボタン（歯車など）
   bool _firstBuildDone = false;
 
   List<String> _filteredBodyParts = [];
@@ -49,10 +55,32 @@ class _RecordScreenState extends State<RecordScreen> {
   @override
   void initState() {
     super.initState();
+
+    // 既存：初回ビルド完了フラグ
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _firstBuildDone = true);
     });
+
+    // ④ ここに追記：Record画面の「初回だけ」ヒント
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
+      final box = widget.settingsBox; // 既存の設定Box
+      final seen = box.get('hint_seen_record') as bool? ?? false;
+      if (seen) return;
+
+      final l10n = AppLocalizations.of(context)!;
+      await CoachBubbleController.showSequence(
+        context: context,
+        anchors: [_kRecordPart],               // ← 部位Dropdownに付けた GlobalKey
+        messages: [l10n.hintRecordSelectPart], // 「トレーニングする部位を選択してください。」
+        semanticsPrefix: l10n.coachBubbleSemantic,
+      );
+
+      await box.put('hint_seen_record', true); // 一度きり
+    });
   }
+
 
   @override
   void didChangeDependencies() {
@@ -741,6 +769,7 @@ class _RecordScreenState extends State<RecordScreen> {
                         child: Align(
                           alignment: Alignment.centerRight,
                           child: CircularAddButtonWithText(
+                            key: _kChangePartBtn,
                             label: l10n.addPart,
                             onPressed: _addTargetSection,
                             normalBgColorOverride: partNormalBgColor,
@@ -775,6 +804,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                   children: [
                                     Expanded(
                                       child: DropdownButtonFormField<String>(
+                                        key: _kRecordPart,
                                         decoration: InputDecoration(
                                           hintText: l10n.selectTrainingPart,
                                           hintStyle: TextStyle(
@@ -985,6 +1015,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                                   _currentSetCount;
                                             }
                                           });
+                                          _scheduleHintsAfterPart();
                                         },
                                         dropdownColor:
                                             colorScheme.surfaceContainer,
@@ -1048,6 +1079,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                                 padding:
                                                     const EdgeInsets.all(16.0),
                                                 child: MenuList(
+                                                  key: menuIndex == 0 ? _kExerciseField : null,
                                                   menuController:
                                                       section.menuControllers[
                                                           menuIndex],
@@ -1110,6 +1142,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                       Align(
                                         alignment: Alignment.centerLeft,
                                         child: CircularAddButtonWithText(
+                                          key: _kAddExerciseBtn,
                                           label: l10n.addExercise,
                                           onPressed: () =>
                                               _addMenuItem(secIndex),
@@ -1136,16 +1169,16 @@ class _RecordScreenState extends State<RecordScreen> {
           ),
         ),
         bottomNavigationBar: BottomNavigationBar(
-            items: const <BottomNavigationBarItem>[
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.calendar_today), label: 'Calendar'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.edit_note), label: 'Record'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.bar_chart), label: 'Graph'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.settings), label: 'Settings'),
+            items: <BottomNavigationBarItem>[
+              const BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
+              const BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'),
+              const BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
+              BottomNavigationBarItem( // ← ここだけ非 const
+                icon: Icon(Icons.settings, key: _kOpenSettingsBtn), // ★追加
+                label: 'Settings',
+              ),
             ],
+
             currentIndex: 1,
             selectedItemColor: colorScheme.primary,
             unselectedItemColor: colorScheme.onSurfaceVariant,
@@ -1206,6 +1239,56 @@ class _RecordScreenState extends State<RecordScreen> {
             }),
       ),
     );
+  }
+  Future<void> _scheduleHintsAfterPart() async {
+    final box = widget.settingsBox;
+    final seen = box.get('hint_seen_record_after_part') as bool? ?? false;
+    if (seen) return;
+
+    // UIが出揃うのを待つ（部位選択直後はまだ描画途中のため）
+    await Future<void>.delayed(const Duration(milliseconds: 16));
+    final deadline = DateTime.now().add(const Duration(milliseconds: 600));
+    while (DateTime.now().isBefore(deadline)) {
+      if (!mounted) return;
+      if (_kExerciseField.currentContext != null ||
+          _kAddExerciseBtn.currentContext != null ||
+          _kOpenSettingsBtn.currentContext != null ||
+          _kChangePartBtn.currentContext != null) {
+        break;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 16));
+    }
+    if (!mounted) return;
+
+    final l10n = AppLocalizations.of(context)!;
+
+    // 画面に存在するものだけ順に並べる（無いものはスキップ）
+    final anchors = <GlobalKey>[];
+    final messages = <String>[];
+
+    void addIfVisible(GlobalKey k, String msg) {
+      if (k.currentContext != null) {
+        anchors.add(k);
+        messages.add(msg);
+      }
+    }
+
+    // ★ 表示順：種目入力 → 設定（セット数は設定で変更） → ＋種目 →（任意）部位変更
+    addIfVisible(_kExerciseField,   l10n.hintRecordExerciseField);
+    addIfVisible(_kOpenSettingsBtn, l10n.hintRecordOpenSettings);
+    addIfVisible(_kAddExerciseBtn,  l10n.hintRecordAddExercise);
+    addIfVisible(_kChangePartBtn,   l10n.hintRecordChangePart);
+
+    if (anchors.isEmpty) return;
+
+    await CoachBubbleController.showSequence(
+      context: context,
+      anchors: anchors,
+      messages: messages,
+      semanticsPrefix: l10n.coachBubbleSemantic,
+    );
+
+    await box.put('hint_seen_record_after_part', true); // 一度きり
   }
 }
 
@@ -1294,6 +1377,9 @@ class SectionData {
     }
   }
 }
+
+
+
 
 class SetInputData {
   TextEditingController weightController;

@@ -239,4 +239,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachBubbleSemantic => 'ヒント';
+
+  @override
+  String get hintRecordOpenSettings => 'セット数の初期値は設定から変更できます。';
+
+  @override
+  String get hintRecordExerciseField => 'ここに種目名を入力します。';
+
+  @override
+  String get hintRecordAddExercise => 'ここをタップして種目を追加します。';
+
+  @override
+  String get hintRecordChangePart => 'ここから部位を追加できます。';
 }

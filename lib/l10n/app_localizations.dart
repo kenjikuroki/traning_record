@@ -550,6 +550,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hint'**
   String get coachBubbleSemantic;
+
+  /// No description provided for @hintRecordOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'You can change default sets in Settings.'**
+  String get hintRecordOpenSettings;
+
+  /// No description provided for @hintRecordExerciseField.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter exercise name here.'**
+  String get hintRecordExerciseField;
+
+  /// No description provided for @hintRecordAddExercise.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap here to add the exercise.'**
+  String get hintRecordAddExercise;
+
+  /// No description provided for @hintRecordChangePart.
+  ///
+  /// In en, this message translates to:
+  /// **'You can add another body part here.'**
+  String get hintRecordChangePart;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

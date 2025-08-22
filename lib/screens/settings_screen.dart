@@ -9,7 +9,7 @@ import '../settings_manager.dart';
 import 'record_screen.dart';
 import 'graph_screen.dart';
 import '../models/menu_data.dart';
-import 'package:flutter/widgets.dart' show RadioGroup;
+
 
 
 class SettingsScreen extends StatefulWidget {

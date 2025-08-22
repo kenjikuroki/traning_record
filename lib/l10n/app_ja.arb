@@ -75,5 +75,10 @@
   "hintGraphChartArea": "記録したデータのグラフが出力されます。",
   "hintGraphSelectPart": "部位・種目を選択",
   "hintRecordSelectPart": "トレーニングする部位を選択してください。",
-  "coachBubbleSemantic": "ヒント"
+  "coachBubbleSemantic": "ヒント",
+  "hintRecordExerciseField": "ここに種目名を入力します。",
+  "hintRecordAddExercise": "ここをタップして種目を追加します。",
+  "hintRecordChangePart": "ここから部位を追加できます。",
+  "hintRecordOpenSettings": "セット数の初期値は設定から変更できます。"
+
 }

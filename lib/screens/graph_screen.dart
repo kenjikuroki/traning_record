@@ -1347,11 +1347,11 @@ class _GraphScreenState extends State<GraphScreen> {
       final l10n = AppLocalizations.of(context)!;
       await CoachBubbleController.showSequence(
         context: context,
-        anchors: [_kFav, _kChart, _kPart],
+        anchors: [  _kPart,_kChart,_kFav],
         messages: [
-          l10n.hintGraphFavorite,
-          l10n.hintGraphChartArea,
-          l10n.hintGraphSelectPart,
+          l10n.hintGraphSelectPart,  // 「部位と種目を選択してください」
+          l10n.hintGraphChartArea,   // 「ここに記録のグラフが表示されます」
+          l10n.hintGraphFavorite,    // 「あとで素早く呼び出すために★でお気に入り」
         ],
         semanticsPrefix: l10n.coachBubbleSemantic,
       );

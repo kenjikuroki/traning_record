@@ -75,5 +75,10 @@
   "hintGraphChartArea": "The chart of your recorded data will appear here.",
   "hintGraphSelectPart": "Select body part and exercise.",
   "hintRecordSelectPart": "Please select the body part you will train.",
-  "coachBubbleSemantic": "Hint"
+  "coachBubbleSemantic": "Hint",
+  "hintRecordOpenSettings": "You can change default sets in Settings.",
+  "hintRecordExerciseField": "Enter exercise name here.",
+  "hintRecordAddExercise": "Tap here to add the exercise.",
+  "hintRecordChangePart": "You can add another body part here."
+
 }

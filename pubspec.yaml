@@ -22,7 +22,7 @@ flutter_intl:
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.9+10
+version: 1.0.10+11
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -65,6 +65,7 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/images/icon_1.png"
+  remove_alpha_ios: true
 
   # Android 8.0 (API 26) 以降のアダプティブアイコンに関する設定
   # アダプティブアイコンの前景に 'icon_1.png' を使用します。

@@ -239,4 +239,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachBubbleSemantic => 'Hint';
+
+  @override
+  String get hintRecordOpenSettings => 'You can change default sets in Settings.';
+
+  @override
+  String get hintRecordExerciseField => 'Enter exercise name here.';
+
+  @override
+  String get hintRecordAddExercise => 'Tap here to add the exercise.';
+
+  @override
+  String get hintRecordChangePart => 'You can add another body part here.';
 }

@@ -1,32 +1,35 @@
+// lib/widgets/coach_bubble.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 
-/// しっぽの向き
+/// しっぽの取り付け位置（バルーンに対して）
 enum _Tail { top, bottom }
 
-/// 青系ピル型のコーチバルーン（依存パッケージなし・Overlayのみ）
+/// 青系ピル型のコーチバルーン（Overlayのみで実装）
 class CoachBubbleController {
   CoachBubbleController._();
 
-  /// anchors と messages は同じ長さ。バルーン or 画面どこでもタップで次へ進みます。
+  /// anchors と messages は同数。バルーン or 背景どこでもタップで次へ。
   static Future<void> showSequence({
     required BuildContext context,
     required List<GlobalKey> anchors,
     required List<String> messages,
     String semanticsPrefix = 'Hint',
-    Color bubbleColor = const Color(0xFF2F6AA6), // 落ち着いた青系
+    Color bubbleColor = const Color(0xFF2F6AA6), // 落ち着いた青
     Duration appear = const Duration(milliseconds: 280),
     Duration disappear = const Duration(milliseconds: 200),
+    EdgeInsets screenPadding = const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+    double maxBubbleWidth = 320,
   }) async {
     assert(anchors.length == messages.length);
 
-    final overlay = Overlay.of(context);
+    final overlay = Overlay.maybeOf(context);
     if (overlay == null) return;
 
-    // 半透明の暗転（ポインタはこのエントリでは受けない）
+    // 半透明バリア（入力は受けない）
     final barrier = OverlayEntry(
       builder: (_) => IgnorePointer(
-        child: Container(color: Colors.black.withOpacity(0.25)),
+        child: Container(color: Colors.black.withValues(alpha: 0.25)),
       ),
     );
     overlay.insert(barrier);
@@ -35,29 +38,30 @@ class CoachBubbleController {
       for (var i = 0; i < anchors.length; i++) {
         final visible = ValueNotifier<bool>(false);
         final completer = Completer<void>();
-        bool stepDone = false; // 二重完了防止
+        bool stepDone = false;
 
         late OverlayEntry entry;
         entry = OverlayEntry(
           builder: (ctx) {
-            final box =
-            anchors[i].currentContext?.findRenderObject() as RenderBox?;
+            final box = anchors[i].currentContext?.findRenderObject() as RenderBox?;
             if (box == null) return const SizedBox.shrink();
 
             final anchorSize = box.size;
             final anchorPos = box.localToGlobal(Offset.zero);
             final screenSize = MediaQuery.of(ctx).size;
 
+            // しっぽ方向の決定
             const gap = 8.0;
-            const maxW = 320.0;
-            final belowSpace =
-                screenSize.height - (anchorPos.dy + anchorSize.height);
-            final placeBelow = belowSpace > 96.0; // 2行想定の目安
+            final belowSpace = screenSize.height - (anchorPos.dy + anchorSize.height);
+            final placeBelow = belowSpace > 96.0; // 下側に十分スペースがある
             final tail = placeBelow ? _Tail.top : _Tail.bottom;
 
+            // バルーンの左端。中心をアンカーに合わせつつ画面端でクランプ
             final centerX = anchorPos.dx + anchorSize.width / 2;
-            final left =
-            (centerX - maxW / 2).clamp(12.0, screenSize.width - 12.0 - maxW);
+            final left = (centerX - maxBubbleWidth / 2)
+                .clamp(screenPadding.left, screenSize.width - screenPadding.right - maxBubbleWidth);
+
+            // バルーンの Y 位置
             final top = tail == _Tail.top
                 ? anchorPos.dy + anchorSize.height + gap
                 : anchorPos.dy - gap;
@@ -65,38 +69,36 @@ class CoachBubbleController {
             Future<void> next() async {
               if (stepDone) return;
               stepDone = true;
-              visible.value = false;              // フワッと消える
+              visible.value = false;               // ふわっと消える
               await Future<void>.delayed(disappear);
               if (!completer.isCompleted) completer.complete();
             }
 
-            // visible の変化で再ビルド → Animated* が発火
+            // visible の切替だけで出入りアニメーション
             return ValueListenableBuilder<bool>(
               valueListenable: visible,
               builder: (ctx, vis, _) {
                 return GestureDetector(
-                  behavior: HitTestBehavior.opaque, // 画面どこでもタップ可
-                  onTap: next,                      // ★ 背景タップで次へ
+                  behavior: HitTestBehavior.opaque, // 背景どこでもOK
+                  onTap: next,
                   child: AnimatedScale(
                     duration: appear,
                     curve: Curves.easeOutCubic,
-                    scale: vis ? 1.0 : 0.92, // 出現時にフワッ
+                    scale: vis ? 1.0 : 0.92,
                     child: AnimatedOpacity(
                       duration: appear,
                       curve: Curves.easeOutCubic,
                       opacity: vis ? 1.0 : 0.0,
                       child: Stack(
                         children: [
-                          // バルーン本体（こちらのタップでも next）
                           Positioned(
                             left: left,
                             top: tail == _Tail.top ? top : null,
                             bottom: tail == _Tail.bottom
-                                ? (screenSize.height - top)
+                                ? (MediaQuery.of(ctx).size.height - top)
                                 : null,
                             child: ConstrainedBox(
-                              constraints:
-                              const BoxConstraints(maxWidth: maxW),
+                              constraints: BoxConstraints(maxWidth: maxBubbleWidth),
                               child: Semantics(
                                 label: '$semanticsPrefix: ${messages[i]}',
                                 button: true,
@@ -106,7 +108,7 @@ class CoachBubbleController {
                                   tail: tail,
                                   bubbleLeft: left,
                                   targetX: centerX,
-                                  onTap: next, // ★ バルーン自体をタップしても次へ
+                                  onTap: next, // バルーン自体のタップ
                                 ),
                               ),
                             ),
@@ -123,7 +125,7 @@ class CoachBubbleController {
 
         overlay.insert(entry);
 
-        // 1フレーム後に可視化して“ふわっ”と出す
+        // 1フレーム後に可視化 → ふわっと出す
         await Future<void>.delayed(const Duration(milliseconds: 16));
         // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
         entry.markNeedsBuild();
@@ -138,21 +140,20 @@ class CoachBubbleController {
   }
 }
 
-/// ピル型＋三角しっぽのバルーン
+/// ピル型＋三角しっぽのバルーン本体
 class _Bubble extends StatelessWidget {
   final String text;
   final Color color;
   final _Tail tail;
   final VoidCallback onTap;
 
-  /// バルーンの左端（画面座標）
+  /// バルーン左端（画面座標）
   final double bubbleLeft;
 
-  /// アンカーの中心X座標
+  /// アンカー中心 X（画面座標）
   final double targetX;
 
   const _Bubble({
-    super.key,
     required this.text,
     required this.color,
     required this.tail,
@@ -163,60 +164,67 @@ class _Bubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tailWidget = CustomPaint(
-      painter: _TailPainter(color: color, tail: tail),
-      size: const Size(18, 10),
-    );
-
-    final bubble = Material(
-      elevation: 8,
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Text(
-            text,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              height: 1.25,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ),
-    );
-
-    // 実際の幅に合わせてしっぽの位置を計算
+    // 実際の幅を取って、しっぽの水平位置を算出
     return LayoutBuilder(
       builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        final frac = ((targetX - bubbleLeft) / w).clamp(0.08, 0.92);
+        final w = constraints.maxWidth; // 実表示幅
+        // バルーン左端から見たアンカー位置（0.0〜1.0）
+        final frac = ((targetX - bubbleLeft) / w).clamp(0.10, 0.90);
+        // Alignment の -1.0〜+1.0 に変換
         final alignX = frac * 2 - 1;
 
-        final tailAligned = Align(
-          alignment: Alignment(alignX, 0),
-          child: CustomPaint(
-            painter: _TailPainter(color: color, tail: tail),
-            size: const Size(18, 10),
+        // しっぽ
+        Widget tailWidget() => SizedBox(
+          width: w,
+          height: 10,
+          child: Align(
+            alignment: Alignment(alignX, 0),
+            child: CustomPaint(
+              size: const Size(18, 10),
+              painter: _TailPainter(color: color, tail: tail),
+            ),
           ),
         );
 
+        // バルーン本体
+        final bubble = Material(
+          elevation: 8,
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(18),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: const [
+                  BoxShadow(blurRadius: 8, offset: Offset(0, 3), color: Color(0x33000000)),
+                ],
+              ),
+              child: Text(
+                text,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  height: 1.25,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        );
+
+        // しっぽの取り付け方向に応じた並び
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (tail == _Tail.top) tailAligned,   // 上側に三角
+            if (tail == _Tail.top) tailWidget(), // 上にしっぽ → バルーンは下
             bubble,
-            if (tail == _Tail.bottom) tailAligned, // 下側に三角
+            if (tail == _Tail.bottom) tailWidget(), // 下にしっぽ → バルーンは上
           ],
         );
       },
@@ -228,16 +236,18 @@ class _TailPainter extends CustomPainter {
   final Color color;
   final _Tail tail;
 
-  _TailPainter({required this.color, required this.tail});
+  const _TailPainter({required this.color, required this.tail});
 
   @override
   void paint(Canvas canvas, Size size) {
     final path = Path();
     if (tail == _Tail.top) {
+      // ▲（上向き）…上辺中央が頂点
       path.moveTo(size.width / 2, 0);
       path.lineTo(0, size.height);
       path.lineTo(size.width, size.height);
     } else {
+      // ▼（下向き）…下辺中央が頂点
       path.moveTo(0, 0);
       path.lineTo(size.width, 0);
       path.lineTo(size.width / 2, size.height);
@@ -248,6 +258,6 @@ class _TailPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _TailPainter oldDelegate) =>
-      oldDelegate.color != color || oldDelegate.tail != tail;
+  bool shouldRepaint(covariant _TailPainter old) =>
+      old.color != color || old.tail != tail;
 }
