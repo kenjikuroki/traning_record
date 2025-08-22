@@ -1,19 +1,18 @@
 // lib/screens/graph_screen.dart
 import 'dart:math';
-
 import 'package:collection/collection.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
-import 'package:ttraining_record/l10n/app_localizations.dart';
-
+import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../settings_manager.dart';
 import 'calendar_screen.dart';
 import 'record_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/ad_banner.dart';
+import '../widgets/coach_bubble.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -40,6 +39,10 @@ class GraphScreen extends StatefulWidget {
 }
 
 class _GraphScreenState extends State<GraphScreen> {
+  // ★ 吹き出しのアンカー
+  final GlobalKey _kFav = GlobalKey();   // お気に入りピル／★ボタン
+  final GlobalKey _kChart = GlobalKey(); // グラフの親Card
+  final GlobalKey _kPart = GlobalKey();  // 部位セレクタのDropdown
   static const String _prefGraphPart = 'graph_selected_part';
   static const String _prefGraphMenu = 'graph_selected_menu';
   static const String _prefGraphMode = 'graph_display_mode';
@@ -847,6 +850,7 @@ class _GraphScreenState extends State<GraphScreen> {
                   const Spacer(),
                   if (_selectedPart != l10n.favorites)
                     FavoritePillButton(
+                      key: _kFav, // ★ 追加
                       isFavorite: _isFavorite,
                       label: l10n.favorites,
                       onTap: _toggleFavorite,
@@ -898,6 +902,7 @@ class _GraphScreenState extends State<GraphScreen> {
               const SizedBox(height: 12.0),
               Expanded(
                 child: Card(
+                  key: _kChart,
                   color: colorScheme.surfaceContainerHighest,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16.0),
@@ -1151,6 +1156,7 @@ class _GraphScreenState extends State<GraphScreen> {
               Column(
                 children: [
                   DropdownButtonFormField<String>(
+                    key: _kPart,
                     decoration: InputDecoration(
                       hintText: l10n.selectTrainingPart,
                       hintStyle: TextStyle(
@@ -1328,6 +1334,32 @@ class _GraphScreenState extends State<GraphScreen> {
       ),
     );
   }
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final box = widget.settingsBox;
+      final seen = box.get('hint_seen_graph') as bool? ?? false;
+      if (seen) return;
+
+      final l10n = AppLocalizations.of(context)!;
+      await CoachBubbleController.showSequence(
+        context: context,
+        anchors: [_kFav, _kChart, _kPart],
+        messages: [
+          l10n.hintGraphFavorite,
+          l10n.hintGraphChartArea,
+          l10n.hintGraphSelectPart,
+        ],
+        semanticsPrefix: l10n.coachBubbleSemantic,
+      );
+
+      await box.put('hint_seen_graph', true);
+    });
+  }
+
 }
 
 class FavoritePillButton extends StatelessWidget {

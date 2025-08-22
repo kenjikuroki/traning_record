@@ -1,8 +1,8 @@
 // lib/screens/settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:ttraining_record/l10n/app_localizations.dart';
-import 'package:ttraining_record/screens/calendar_screen.dart';
+import '../l10n/app_localizations.dart';
+import '../screens/calendar_screen.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/ad_square.dart';
 import '../settings_manager.dart';

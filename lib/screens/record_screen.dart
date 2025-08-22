@@ -4,8 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'dart:math';
 import 'package:intl/intl.dart';
-import 'package:ttraining_record/l10n/app_localizations.dart';
-
+import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../widgets/animated_list_item.dart';
 import '../widgets/custom_widgets.dart';
