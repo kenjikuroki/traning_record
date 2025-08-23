@@ -9,6 +9,7 @@ import '../settings_manager.dart';
 import 'record_screen.dart';
 import 'graph_screen.dart';
 import '../models/menu_data.dart';
+import '../widgets/swipe_to_calendar.dart';
 
 
 
@@ -134,19 +135,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // カード内の標準パディング（内側）
     const EdgeInsets cardPad = EdgeInsets.all(12.0);
 
-    return PopScope(
-      canPop: true,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) {
-          _saveSettings();
-        }
-      },
-      child: Scaffold(
-        backgroundColor: colorScheme.surface,
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: Text(
-            l10n.settingsScreenTitle,
+    return SwipeToCalendar(
+        calendarBuilder: (_) => CalendarScreen(
+          recordsBox: widget.recordsBox,
+          lastUsedMenusBox: widget.lastUsedMenusBox,
+          settingsBox: widget.settingsBox,
+          setCountBox: widget.setCountBox,
+          selectedDate: DateTime.now(),
+        ),
+        child: PopScope(
+          canPop: false,
+          onPopInvoked: (didPop) {
+            if (didPop) return;
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) => CalendarScreen(
+                  recordsBox: widget.recordsBox,
+                  lastUsedMenusBox: widget.lastUsedMenusBox,
+                  settingsBox: widget.settingsBox,
+                  setCountBox: widget.setCountBox,
+                  selectedDate: DateTime.now(),
+                ),
+              ),
+                  (route) => false,
+            );
+          },
+          child: Scaffold(
+            backgroundColor: colorScheme.surface,
+            appBar: AppBar(
+              automaticallyImplyLeading: false,
+              title: Text(
+                l10n.settingsScreenTitle,
             style: TextStyle(
               color: colorScheme.onSurface,
               fontWeight: FontWeight.bold,
@@ -540,6 +559,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           },
         ),
       ),
+        ),
     );
   }
 }

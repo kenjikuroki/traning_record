@@ -13,6 +13,8 @@ import 'record_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/coach_bubble.dart';
+import '../widgets/swipe_to_calendar.dart';
+
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -789,9 +791,31 @@ class _GraphScreenState extends State<GraphScreen> {
 
     final unitText = _unitOverlayText(l10n);
 
-    return PopScope(
-      canPop: true,
-      onPopInvokedWithResult: (didPop, result) {},
+    return SwipeToCalendar(
+        calendarBuilder: (_) => CalendarScreen(
+          recordsBox: widget.recordsBox,
+          lastUsedMenusBox: widget.lastUsedMenusBox,
+          settingsBox: widget.settingsBox,
+          setCountBox: widget.setCountBox,
+          selectedDate: DateTime.now(),
+        ),
+        child: PopScope(
+          canPop: false,
+          onPopInvoked: (didPop) {
+            if (didPop) return;
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) => CalendarScreen(
+                  recordsBox: widget.recordsBox,
+                  lastUsedMenusBox: widget.lastUsedMenusBox,
+                  settingsBox: widget.settingsBox,
+                  setCountBox: widget.setCountBox,
+                  selectedDate: DateTime.now(),
+                ),
+              ),
+                  (route) => false,
+            );
+          },
       child: Scaffold(
         backgroundColor: colorScheme.surface,
         appBar: AppBar(
@@ -1332,6 +1356,7 @@ class _GraphScreenState extends State<GraphScreen> {
           },
         ),
       ),
+        ),
     );
   }
 
@@ -1355,11 +1380,10 @@ class _GraphScreenState extends State<GraphScreen> {
         ],
         semanticsPrefix: l10n.coachBubbleSemantic,
       );
-
       await box.put('hint_seen_graph', true);
-    });
+    }
+    );
   }
-
 }
 
 class FavoritePillButton extends StatelessWidget {
