@@ -6,7 +6,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'l10n/app_localizations.dart';
 import 'models/menu_data.dart';
-import 'screens/calendar_screen.dart';
+import 'screens/home_screen.dart';
 import 'settings_manager.dart';
 
 Future<void> main() async {
@@ -86,12 +86,11 @@ class _MyAppState extends State<MyApp> {
             GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: const [Locale('en', ''), Locale('ja', '')],
-          home: CalendarScreen(
-            recordsBox: widget.recordsBox,
-            lastUsedMenusBox: widget.lastUsedMenusBox,
-            settingsBox: widget.settingsBox,
-            setCountBox: widget.setCountBox,
-            selectedDate: DateTime.now(),
+          home: HomeScreen(
+                         recordsBox: widget.recordsBox,
+                         lastUsedMenusBox: widget.lastUsedMenusBox,
+                         settingsBox: widget.settingsBox,
+                         setCountBox: widget.setCountBox,
           ),
           debugShowCheckedModeBanner: false,
         );

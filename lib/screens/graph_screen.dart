@@ -1245,46 +1245,6 @@ class _GraphScreenState extends State<GraphScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_today), label: 'Calendar'),
-          // BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'), // 今後別機能で使用予定のため一時的に無効化
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
-        ],
-        currentIndex: 1,
-        selectedItemColor: colorScheme.primary,
-        unselectedItemColor: colorScheme.onSurfaceVariant,
-        backgroundColor: colorScheme.surface,
-        onTap: (index) async {
-          if (index == 1) return; // Graph 自身
-                    if (index == 0) {
-                      await Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (_) => CalendarScreen(
-                            recordsBox: widget.recordsBox,
-                            lastUsedMenusBox: widget.lastUsedMenusBox,
-                           settingsBox: widget.settingsBox,
-                            setCountBox: widget.setCountBox,
-                            selectedDate: DateTime.now(),
-                          ),
-                        ),
-                      );
-                    } else if (index == 2) {
-                      await Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (_) => SettingsScreen(
-                  recordsBox: widget.recordsBox,
-                  lastUsedMenusBox: widget.lastUsedMenusBox,
-                  settingsBox: widget.settingsBox,
-                  setCountBox: widget.setCountBox,
-                ),
-              ),
-            );
-          }
-        },
-      ),
     );
   }
 
