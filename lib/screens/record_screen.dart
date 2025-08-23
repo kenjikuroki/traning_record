@@ -81,7 +81,6 @@ class _RecordScreenState extends State<RecordScreen> {
     });
   }
 
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -252,7 +251,7 @@ class _RecordScreenState extends State<RecordScreen> {
 
       final section = tempSectionsMap.putIfAbsent(
         translatedPart,
-        () => SectionData(
+            () => SectionData(
           key: UniqueKey(),
           selectedPart: translatedPart,
           menuControllers: [],
@@ -269,7 +268,7 @@ class _RecordScreenState extends State<RecordScreen> {
       final recList = record.menus[originalPart] ?? <MenuData>[];
       final dynamic rawLU = widget.lastUsedMenusBox.get(originalPart);
       final luList =
-          (rawLU is List) ? rawLU.whereType<MenuData>().toList() : <MenuData>[];
+      (rawLU is List) ? rawLU.whereType<MenuData>().toList() : <MenuData>[];
 
       final Map<String, MenuData> recBy = {for (final m in recList) m.name: m};
       final Map<String, MenuData> luBy = {for (final m in luList) m.name: m};
@@ -311,9 +310,9 @@ class _RecordScreenState extends State<RecordScreen> {
           section.setInputDataList.add(<SetInputData>[]);
         } else {
           final int recLen =
-              rec == null ? 0 : min(rec.weights.length, rec.reps.length);
+          rec == null ? 0 : min(rec.weights.length, rec.reps.length);
           final int luLen =
-              lu == null ? 0 : min(lu.weights.length, lu.reps.length);
+          lu == null ? 0 : min(lu.weights.length, lu.reps.length);
           final int mergedLen = max(_currentSetCount, max(recLen, luLen));
 
           final row = <SetInputData>[];
@@ -529,19 +528,65 @@ class _RecordScreenState extends State<RecordScreen> {
         final sets = _currentSetCount;
         final row = List<SetInputData>.generate(
           sets,
-          (_) => SetInputData(
+              (_) => SetInputData(
             weightController: TextEditingController(),
             repController: TextEditingController(),
             isSuggestion: true,
           ),
         );
         while (
-            section.setInputDataList.length < section.menuControllers.length) {
+        section.setInputDataList.length < section.menuControllers.length) {
           section.setInputDataList.add(<SetInputData>[]);
         }
         final idx = section.menuControllers.length - 1;
         section.setInputDataList[idx] = row;
         section.initialSetCount = max(section.initialSetCount ?? 0, sets);
+      }
+    });
+  }
+
+  // ★★★ 追加：無酸素 1セット追加（最大10）
+  void _addOneSetAt(int sectionIndex, int menuIndex) {
+    final section = _sections[sectionIndex];
+    if (menuIndex < 0 || menuIndex >= section.setInputDataList.length) return;
+    final list = section.setInputDataList[menuIndex];
+    if (list.length >= 10) return; // 最大10
+    setState(() {
+      list.add(
+        SetInputData(
+          weightController: TextEditingController(),
+          repController: TextEditingController(),
+          isSuggestion: true,
+        ),
+      );
+    });
+  }
+
+  // ★★★ 追加：有酸素 同名行をもう1本追加（最大10本）
+  void _addAerobicSetRow(int sectionIndex, int menuIndex) {
+    final section = _sections[sectionIndex];
+    if (menuIndex < 0 || menuIndex >= section.menuControllers.length) return;
+    final currentName = section.menuControllers[menuIndex].text;
+
+    // 同名行の本数を数えて 10 本まで
+    int sameCount = 0;
+    for (final ctrl in section.menuControllers) {
+      if (ctrl.text == currentName) sameCount++;
+    }
+    if (sameCount >= 10) return;
+
+    final insertAt = menuIndex + 1;
+    setState(() {
+      section.menuControllers.insert(insertAt, TextEditingController(text: currentName));
+      section.menuKeys.insert(insertAt, UniqueKey());
+      section.menuIds.insert(insertAt, section.nextMenuId++);
+
+      section.aerobicDistanceCtrls.insert(insertAt, TextEditingController());
+      section.aerobicDurationCtrls.insert(insertAt, TextEditingController());
+      section.aerobicSuggestFlags.insert(insertAt, true);
+
+      if (section.setInputDataList.length < section.menuControllers.length) {
+        section.setInputDataList.insert(insertAt, <SetInputData>[]);
       }
     });
   }
@@ -575,7 +620,7 @@ class _RecordScreenState extends State<RecordScreen> {
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
               child:
-                  Text(l10n.delete, style: const TextStyle(color: Colors.red))),
+              Text(l10n.delete, style: const TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -632,11 +677,11 @@ class _RecordScreenState extends State<RecordScreen> {
     final formattedDate = DateFormat('yyyy/MM/dd').format(widget.selectedDate);
 
     final Color partNormalBgColor =
-        isLight ? const Color(0xFF333333) : const Color(0xFF2C2F33);
+    isLight ? const Color(0xFF333333) : const Color(0xFF2C2F33);
     final Color partPressedBgColor =
-        isLight ? const Color(0xFF1A1A1A) : const Color(0xFF383C40);
+    isLight ? const Color(0xFF1A1A1A) : const Color(0xFF383C40);
     final Color partTextColor =
-        isLight ? Colors.white : const Color(0xFFCCCCCC);
+    isLight ? Colors.white : const Color(0xFFCCCCCC);
     final Color partAccentColor = const Color(0xFF60A5FA);
 
     final bool isInitialEmptyState =
@@ -696,7 +741,7 @@ class _RecordScreenState extends State<RecordScreen> {
                             padding: const EdgeInsets.all(16.0),
                             child: Row(
                               mainAxisAlignment:
-                                  MainAxisAlignment.center, // カード内を中央寄せ
+                              MainAxisAlignment.center, // カード内を中央寄せ
                               children: [
                                 Text(
                                   '${l10n.enterYourWeight}${Localizations.localeOf(context).languageCode == "ja" ? "：" : ":"}',
@@ -722,15 +767,15 @@ class _RecordScreenState extends State<RecordScreen> {
                                                 RegExp(r'^\d*\.?\d*')),
                                           ],
                                           normalTextColor:
-                                              colorScheme.onSurface,
+                                          colorScheme.onSurface,
                                           suggestionTextColor: colorScheme
                                               .onSurfaceVariant
                                               .withValues(alpha: 0.5),
                                           fillColor:
-                                              colorScheme.surfaceContainer,
+                                          colorScheme.surfaceContainer,
                                           contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                  vertical: 8, horizontal: 10),
+                                          const EdgeInsets.symmetric(
+                                              vertical: 8, horizontal: 10),
                                           textAlign: TextAlign.right, // 入力値は右寄せ
                                         ),
                                       ),
@@ -801,46 +846,46 @@ class _RecordScreenState extends State<RecordScreen> {
                                           hintText: l10n.selectTrainingPart,
                                           hintStyle: TextStyle(
                                               color:
-                                                  colorScheme.onSurfaceVariant,
+                                              colorScheme.onSurfaceVariant,
                                               fontSize: 14.0),
                                           filled: true,
                                           fillColor:
-                                              colorScheme.surfaceContainer,
+                                          colorScheme.surfaceContainer,
                                           border: OutlineInputBorder(
                                             borderRadius:
-                                                BorderRadius.circular(25.0),
+                                            BorderRadius.circular(25.0),
                                             borderSide: BorderSide.none,
                                           ),
                                           enabledBorder: OutlineInputBorder(
                                             borderRadius:
-                                                BorderRadius.circular(25.0),
+                                            BorderRadius.circular(25.0),
                                             borderSide: BorderSide.none,
                                           ),
                                           focusedBorder: OutlineInputBorder(
                                             borderRadius:
-                                                BorderRadius.circular(25.0),
+                                            BorderRadius.circular(25.0),
                                             borderSide: BorderSide.none,
                                           ),
                                           contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                  vertical: 12, horizontal: 20),
+                                          const EdgeInsets.symmetric(
+                                              vertical: 12, horizontal: 20),
                                         ),
                                         initialValue: section.selectedPart,
                                         items: _filteredBodyParts
                                             .map(
                                               (p) => DropdownMenuItem(
-                                                value: p,
-                                                child: Text(
-                                                  p,
-                                                  style: TextStyle(
-                                                    color:
-                                                        colorScheme.onSurface,
-                                                    fontSize: 14.0,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
+                                            value: p,
+                                            child: Text(
+                                              p,
+                                              style: TextStyle(
+                                                color:
+                                                colorScheme.onSurface,
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.bold,
                                               ),
-                                            )
+                                            ),
+                                          ),
+                                        )
                                             .toList(),
                                         onChanged: (value) {
                                           setState(() {
@@ -853,10 +898,10 @@ class _RecordScreenState extends State<RecordScreen> {
 
                                             if (section.selectedPart != null) {
                                               final current =
-                                                  section.selectedPart!;
+                                              section.selectedPart!;
                                               final originalPart =
-                                                  _getOriginalPartName(
-                                                      context, current);
+                                              _getOriginalPartName(
+                                                  context, current);
                                               final dateKey = _getDateKey(
                                                   widget.selectedDate);
                                               final record = widget.recordsBox
@@ -870,17 +915,17 @@ class _RecordScreenState extends State<RecordScreen> {
                                                   .get(originalPart);
                                               final luList = (rawLU is List)
                                                   ? rawLU
-                                                      .whereType<MenuData>()
-                                                      .toList()
+                                                  .whereType<MenuData>()
+                                                  .toList()
                                                   : <MenuData>[];
 
                                               final Map<String, MenuData>
-                                                  recBy = {
+                                              recBy = {
                                                 for (final m in recList)
                                                   m.name: m
                                               };
                                               final Map<String, MenuData> luBy =
-                                                  {
+                                              {
                                                 for (final m in luList)
                                                   m.name: m
                                               };
@@ -889,13 +934,13 @@ class _RecordScreenState extends State<RecordScreen> {
                                                 ...recList.map((m) => m.name),
                                                 ...luList
                                                     .where((m) => !recBy
-                                                        .containsKey(m.name))
+                                                    .containsKey(m.name))
                                                     .map((m) => m.name),
                                               ];
                                               if (names.isEmpty) names.add('');
 
                                               final l10n =
-                                                  AppLocalizations.of(context)!;
+                                              AppLocalizations.of(context)!;
                                               final isAerobic = current ==
                                                   l10n.aerobicExercise;
 
@@ -913,39 +958,39 @@ class _RecordScreenState extends State<RecordScreen> {
 
                                                 if (isAerobic) {
                                                   final String dist = (rec
-                                                              ?.distance
-                                                              ?.trim()
-                                                              .isNotEmpty ??
-                                                          false)
+                                                      ?.distance
+                                                      ?.trim()
+                                                      .isNotEmpty ??
+                                                      false)
                                                       ? rec!.distance!.trim()
                                                       : (lu?.distance?.trim() ??
-                                                          '');
+                                                      '');
                                                   final String dura = (rec
-                                                              ?.duration
-                                                              ?.trim()
-                                                              .isNotEmpty ??
-                                                          false)
+                                                      ?.duration
+                                                      ?.trim()
+                                                      .isNotEmpty ??
+                                                      false)
                                                       ? rec!.duration!.trim()
                                                       : (lu?.duration?.trim() ??
-                                                          '');
+                                                      '');
                                                   final bool isSug = !(rec
-                                                              ?.distance
-                                                              ?.trim()
-                                                              .isNotEmpty ==
-                                                          true ||
+                                                      ?.distance
+                                                      ?.trim()
+                                                      .isNotEmpty ==
+                                                      true ||
                                                       rec?.duration
-                                                              ?.trim()
-                                                              .isNotEmpty ==
+                                                          ?.trim()
+                                                          .isNotEmpty ==
                                                           true);
 
                                                   section.aerobicDistanceCtrls
                                                       .add(
-                                                          TextEditingController(
-                                                              text: dist));
+                                                      TextEditingController(
+                                                          text: dist));
                                                   section.aerobicDurationCtrls
                                                       .add(
-                                                          TextEditingController(
-                                                              text: dura));
+                                                      TextEditingController(
+                                                          text: dura));
                                                   section.aerobicSuggestFlags
                                                       .add(isSug);
                                                   section.setInputDataList
@@ -954,19 +999,19 @@ class _RecordScreenState extends State<RecordScreen> {
                                                   final int recLen = rec == null
                                                       ? 0
                                                       : min(rec.weights.length,
-                                                          rec.reps.length);
+                                                      rec.reps.length);
                                                   final int luLen = lu == null
                                                       ? 0
                                                       : min(lu.weights.length,
-                                                          lu.reps.length);
+                                                      lu.reps.length);
                                                   final int mergedLen = max(
                                                       _currentSetCount,
                                                       max(recLen, luLen));
 
                                                   final row = <SetInputData>[];
                                                   for (int i = 0;
-                                                      i < mergedLen;
-                                                      i++) {
+                                                  i < mergedLen;
+                                                  i++) {
                                                     String w = '';
                                                     String r = '';
                                                     bool isSuggestion = true;
@@ -985,13 +1030,13 @@ class _RecordScreenState extends State<RecordScreen> {
                                                     }
                                                     row.add(SetInputData(
                                                       weightController:
-                                                          TextEditingController(
-                                                              text: w),
+                                                      TextEditingController(
+                                                          text: w),
                                                       repController:
-                                                          TextEditingController(
-                                                              text: r),
+                                                      TextEditingController(
+                                                          text: r),
                                                       isSuggestion:
-                                                          isSuggestion,
+                                                      isSuggestion,
                                                     ));
                                                   }
                                                   section.setInputDataList
@@ -1010,14 +1055,14 @@ class _RecordScreenState extends State<RecordScreen> {
                                           _scheduleHintsAfterPart();
                                         },
                                         dropdownColor:
-                                            colorScheme.surfaceContainer,
+                                        colorScheme.surfaceContainer,
                                         style: TextStyle(
                                           color: colorScheme.onSurface,
                                           fontSize: 14.0,
                                           fontWeight: FontWeight.bold,
                                         ),
                                         borderRadius:
-                                            BorderRadius.circular(15.0),
+                                        BorderRadius.circular(15.0),
                                       ),
                                     ),
                                   ],
@@ -1029,9 +1074,9 @@ class _RecordScreenState extends State<RecordScreen> {
                                       ListView.builder(
                                         shrinkWrap: true,
                                         physics:
-                                            const NeverScrollableScrollPhysics(),
+                                        const NeverScrollableScrollPhysics(),
                                         itemCount:
-                                            section.menuControllers.length,
+                                        section.menuControllers.length,
                                         itemBuilder: (context, menuIndex) {
                                           return AnimatedSwitcher(
                                             duration: const Duration(
@@ -1044,9 +1089,9 @@ class _RecordScreenState extends State<RecordScreen> {
                                                 return child;
                                               }
                                               final offset = Tween<Offset>(
-                                                      begin: const Offset(
-                                                          0, -0.12),
-                                                      end: Offset.zero)
+                                                  begin: const Offset(
+                                                      0, -0.12),
+                                                  end: Offset.zero)
                                                   .animate(animation);
                                               return FadeTransition(
                                                 opacity: animation,
@@ -1061,69 +1106,93 @@ class _RecordScreenState extends State<RecordScreen> {
                                               color: colorScheme.surface,
                                               shape: RoundedRectangleBorder(
                                                   borderRadius:
-                                                      BorderRadius.circular(
-                                                          12.0)),
+                                                  BorderRadius.circular(
+                                                      12.0)),
                                               elevation: 2,
                                               margin:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 8.0),
+                                              const EdgeInsets.symmetric(
+                                                  vertical: 8.0),
                                               child: Padding(
                                                 padding:
-                                                    const EdgeInsets.all(16.0),
-                                                child: MenuList(
-                                                  key: menuIndex == 0 ? _kExerciseField : null,
-                                                  menuController:
+                                                const EdgeInsets.all(16.0),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    MenuList(
+                                                      key: menuIndex == 0 ? _kExerciseField : null,
+                                                      menuController:
                                                       section.menuControllers[
-                                                          menuIndex],
-                                                  removeMenuCallback: () =>
-                                                      _removeMenuItem(
-                                                          secIndex, menuIndex),
-                                                  setCount: section
-                                                      .setInputDataList[
-                                                          menuIndex]
-                                                      .length,
-                                                  setInputDataList:
+                                                      menuIndex],
+                                                      removeMenuCallback: () =>
+                                                          _removeMenuItem(
+                                                              secIndex, menuIndex),
+                                                      setCount: section
+                                                          .setInputDataList[
+                                                      menuIndex]
+                                                          .length,
+                                                      setInputDataList:
                                                       section.setInputDataList[
-                                                          menuIndex],
-                                                  isAerobic:
+                                                      menuIndex],
+                                                      isAerobic:
                                                       section.selectedPart ==
                                                           l10n.aerobicExercise,
-                                                  // 有酸素は per menu のコントローラを渡す
-                                                  distanceController: (menuIndex <
+                                                      // 有酸素は per menu のコントローラを渡す
+                                                      distanceController: (menuIndex <
                                                           section
                                                               .aerobicDistanceCtrls
                                                               .length)
-                                                      ? section
-                                                              .aerobicDistanceCtrls[
-                                                          menuIndex]
-                                                      : TextEditingController(),
-                                                  durationController: (menuIndex <
+                                                          ? section
+                                                          .aerobicDistanceCtrls[
+                                                      menuIndex]
+                                                          : TextEditingController(),
+                                                      durationController: (menuIndex <
                                                           section
                                                               .aerobicDurationCtrls
                                                               .length)
-                                                      ? section
-                                                              .aerobicDurationCtrls[
-                                                          menuIndex]
-                                                      : TextEditingController(),
-                                                  aerobicIsSuggestion: (menuIndex <
+                                                          ? section
+                                                          .aerobicDurationCtrls[
+                                                      menuIndex]
+                                                          : TextEditingController(),
+                                                      aerobicIsSuggestion: (menuIndex <
                                                           section
                                                               .aerobicSuggestFlags
                                                               .length)
-                                                      ? section
-                                                              .aerobicSuggestFlags[
-                                                          menuIndex]
-                                                      : true,
-                                                  onConfirmAerobic: () {
-                                                    setState(() {
-                                                      if (menuIndex <
-                                                          section
-                                                              .aerobicSuggestFlags
-                                                              .length) {
-                                                        section.aerobicSuggestFlags[
+                                                          ? section
+                                                          .aerobicSuggestFlags[
+                                                      menuIndex]
+                                                          : true,
+                                                      onConfirmAerobic: () {
+                                                        setState(() {
+                                                          if (menuIndex <
+                                                              section
+                                                                  .aerobicSuggestFlags
+                                                                  .length) {
+                                                            section.aerobicSuggestFlags[
                                                             menuIndex] = false;
-                                                      }
-                                                    });
-                                                  },
+                                                          }
+                                                        });
+                                                      },
+                                                    ),
+                                                    const SizedBox(height: 8.0),
+                                                    Align(
+                                                      alignment: Alignment.centerLeft,
+                                                      child: CircularAddButtonWithText(
+                                                        label: '＋セット',
+                                                        onPressed: () {
+                                                          final isAerobic = section.selectedPart == l10n.aerobicExercise;
+                                                          if (isAerobic) {
+                                                            _addAerobicSetRow(secIndex, menuIndex);
+                                                          } else {
+                                                            _addOneSetAt(secIndex, menuIndex);
+                                                          }
+                                                        },
+                                                        normalBgColorOverride: partNormalBgColor,
+                                                        pressedBgColorOverride: partPressedBgColor,
+                                                        textColorOverride: partTextColor,
+                                                        accentColorOverride: partAccentColor,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ),
@@ -1139,9 +1208,9 @@ class _RecordScreenState extends State<RecordScreen> {
                                           onPressed: () =>
                                               _addMenuItem(secIndex),
                                           normalBgColorOverride:
-                                              partNormalBgColor,
+                                          partNormalBgColor,
                                           pressedBgColorOverride:
-                                              partPressedBgColor,
+                                          partPressedBgColor,
                                           textColorOverride: partTextColor,
                                           accentColorOverride: partAccentColor,
                                         ),
@@ -1163,6 +1232,7 @@ class _RecordScreenState extends State<RecordScreen> {
       ),
     );
   }
+
   Future<void> _scheduleHintsAfterPart() async {
     final box = widget.settingsBox;
     final seen = box.get('hint_seen_record_after_part') as bool? ?? false;
@@ -1263,15 +1333,15 @@ class SectionData {
       menuControllers: shouldPopulateDefaults ? [TextEditingController()] : [],
       setInputDataList: shouldPopulateDefaults
           ? [
-              List.generate(
-                initialSetCount,
-                (_) => SetInputData(
-                  weightController: TextEditingController(),
-                  repController: TextEditingController(),
-                  isSuggestion: true,
-                ),
-              )
-            ]
+        List.generate(
+          initialSetCount,
+              (_) => SetInputData(
+            weightController: TextEditingController(),
+            repController: TextEditingController(),
+            isSuggestion: true,
+          ),
+        )
+      ]
           : [],
       menuKeys: shouldPopulateDefaults ? [UniqueKey()] : [],
       initialSetCount: initialSetCount,
@@ -1300,9 +1370,6 @@ class SectionData {
     }
   }
 }
-
-
-
 
 class SetInputData {
   TextEditingController weightController;
@@ -1638,7 +1705,7 @@ class _MenuListState extends State<MenuList> {
             )
                 : Column(
               children: List.generate(
-                min(widget.setCount, widget.setInputDataList.length),
+                min(10, widget.setInputDataList.length), // ★ 最大10
                     (setIndex) {
                   final set = widget.setInputDataList[setIndex];
                   return Padding(
@@ -1787,4 +1854,3 @@ class _MenuListState extends State<MenuList> {
     );
   }
 }
-
