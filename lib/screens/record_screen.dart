@@ -646,7 +646,6 @@ class _RecordScreenState extends State<RecordScreen> {
     final int headerCount = showWeight ? 1 : 0;
 
     return PopScope(
-      // ★ 物理/ジェスチャーバックもここで一旦捕まえて、先にキーボードを閉じる
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
@@ -1161,112 +1160,113 @@ class _RecordScreenState extends State<RecordScreen> {
             ],
           ),
         ),
-        bottomNavigationBar: BottomNavigationBar(
-            items: <BottomNavigationBarItem>[
-              const BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
-             // const BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'),
-              const BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
-              BottomNavigationBarItem( // ← ここだけ非 const
-                icon: Icon(Icons.settings, key: _kOpenSettingsBtn), // ★追加
-                label: 'Settings',
-              ),
-            ],
-
-            currentIndex: 1,
-            selectedItemColor: colorScheme.primary,
-            unselectedItemColor: colorScheme.onSurfaceVariant,
-            backgroundColor: colorScheme.surface,
-          ////////ボトムバー４タブ体制//////
-            // onTap: (index) async {
-            //   if (index == 1) return;
-            //   // ★ 遷移前に必ずキーボードを閉じる
-            //
-            //   final nav = Navigator.of(context);
-            //
-            //   await _closeKeyboard();
-            //   _saveAllSectionsData();
-            //
-            //   // ★ await 後に context を使う前にチェック（lint対策）
-            //   if (!context.mounted) return;
-            //
-            //   switch (index) {
-            //     case 0: // Calendar
-            //       nav.push(
-            //         MaterialPageRoute(
-            //           builder: (context) => CalendarScreen(
-            //             recordsBox: widget.recordsBox,
-            //             lastUsedMenusBox: widget.lastUsedMenusBox,
-            //             settingsBox: widget.settingsBox,
-            //             setCountBox: widget.setCountBox,
-            //             selectedDate: DateTime.now(),
-            //           ),
-            //         ),
-            //       );
-            //       break;
-            //
-            //     case 2: // Graph
-            //       nav.push(
-            //         MaterialPageRoute(
-            //           builder: (context) => GraphScreen(
-            //             recordsBox: widget.recordsBox,
-            //             lastUsedMenusBox: widget.lastUsedMenusBox,
-            //             settingsBox: widget.settingsBox,
-            //             setCountBox: widget.setCountBox,
-            //           ),
-            //         ),
-            //       );
-            //       break;
-            //
-            //     case 3: // Settings
-            //       nav.push(
-            //         MaterialPageRoute(
-            //           builder: (context) => SettingsScreen(
-            //             recordsBox: widget.recordsBox,
-            //             lastUsedMenusBox: widget.lastUsedMenusBox,
-            //             settingsBox: widget.settingsBox,
-            //             setCountBox: widget.setCountBox,
-            //           ),
-            //         ),
-            //       );
-            //       break;
-            //   }
-            // }),
-        onTap: (index) async {
-          if (index == 2) return; // Settings
-          final nav = Navigator.of(context);
-          await _closeKeyboard();
-          if (!context.mounted) return;
-
-          switch (index) {
-            case 0: // Calendar
-              nav.pushReplacement(
-                MaterialPageRoute(
-                  builder: (_) => CalendarScreen(
-                    recordsBox: widget.recordsBox,
-                    lastUsedMenusBox: widget.lastUsedMenusBox,
-                    settingsBox: widget.settingsBox,
-                    setCountBox: widget.setCountBox,
-                    selectedDate: DateTime.now(),
-                  ),
-                ),
-              );
-              break;
-            case 1: // Graph
-              nav.pushReplacement(
-                MaterialPageRoute(
-                  builder: (_) => GraphScreen(
-                    recordsBox: widget.recordsBox,
-                    lastUsedMenusBox: widget.lastUsedMenusBox,
-                    settingsBox: widget.settingsBox,
-                    setCountBox: widget.setCountBox,
-                  ),
-                ),
-              );
-              break;
-          }
-        },
-
-      ),),
+      //   bottomNavigationBar: BottomNavigationBar(
+      //       items: <BottomNavigationBarItem>[
+      //         const BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
+      //        // const BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'),
+      //         const BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
+      //         BottomNavigationBarItem( // ← ここだけ非 const
+      //           icon: Icon(Icons.settings, key: _kOpenSettingsBtn), // ★追加
+      //           label: 'Settings',
+      //         ),
+      //       ],
+      //
+      //       currentIndex: 1,
+      //       selectedItemColor: colorScheme.primary,
+      //       unselectedItemColor: colorScheme.onSurfaceVariant,
+      //       backgroundColor: colorScheme.surface,
+      //     ////////ボトムバー４タブ体制//////
+      //       // onTap: (index) async {
+      //       //   if (index == 1) return;
+      //       //   // ★ 遷移前に必ずキーボードを閉じる
+      //       //
+      //       //   final nav = Navigator.of(context);
+      //       //
+      //       //   await _closeKeyboard();
+      //       //   _saveAllSectionsData();
+      //       //
+      //       //   // ★ await 後に context を使う前にチェック（lint対策）
+      //       //   if (!context.mounted) return;
+      //       //
+      //       //   switch (index) {
+      //       //     case 0: // Calendar
+      //       //       nav.push(
+      //       //         MaterialPageRoute(
+      //       //           builder: (context) => CalendarScreen(
+      //       //             recordsBox: widget.recordsBox,
+      //       //             lastUsedMenusBox: widget.lastUsedMenusBox,
+      //       //             settingsBox: widget.settingsBox,
+      //       //             setCountBox: widget.setCountBox,
+      //       //             selectedDate: DateTime.now(),
+      //       //           ),
+      //       //         ),
+      //       //       );
+      //       //       break;
+      //       //
+      //       //     case 2: // Graph
+      //       //       nav.push(
+      //       //         MaterialPageRoute(
+      //       //           builder: (context) => GraphScreen(
+      //       //             recordsBox: widget.recordsBox,
+      //       //             lastUsedMenusBox: widget.lastUsedMenusBox,
+      //       //             settingsBox: widget.settingsBox,
+      //       //             setCountBox: widget.setCountBox,
+      //       //           ),
+      //       //         ),
+      //       //       );
+      //       //       break;
+      //       //
+      //       //     case 3: // Settings
+      //       //       nav.push(
+      //       //         MaterialPageRoute(
+      //       //           builder: (context) => SettingsScreen(
+      //       //             recordsBox: widget.recordsBox,
+      //       //             lastUsedMenusBox: widget.lastUsedMenusBox,
+      //       //             settingsBox: widget.settingsBox,
+      //       //             setCountBox: widget.setCountBox,
+      //       //           ),
+      //       //         ),
+      //       //       );
+      //       //       break;
+      //       //   }
+      //       // }),
+      //   onTap: (index) async {
+      //     if (index == 2) return; // Settings
+      //     final nav = Navigator.of(context);
+      //     await _closeKeyboard();
+      //     if (!context.mounted) return;
+      //
+      //     switch (index) {
+      //       case 0: // Calendar
+      //         nav.pushReplacement(
+      //           MaterialPageRoute(
+      //             builder: (_) => CalendarScreen(
+      //               recordsBox: widget.recordsBox,
+      //               lastUsedMenusBox: widget.lastUsedMenusBox,
+      //               settingsBox: widget.settingsBox,
+      //               setCountBox: widget.setCountBox,
+      //               selectedDate: DateTime.now(),
+      //             ),
+      //           ),
+      //         );
+      //         break;
+      //       case 1: // Graph
+      //         nav.pushReplacement(
+      //           MaterialPageRoute(
+      //             builder: (_) => GraphScreen(
+      //               recordsBox: widget.recordsBox,
+      //               lastUsedMenusBox: widget.lastUsedMenusBox,
+      //               settingsBox: widget.settingsBox,
+      //               setCountBox: widget.setCountBox,
+      //             ),
+      //           ),
+      //         );
+      //         break;
+      //     }
+      //   },
+      //
+      // ),
+      ),
     );
   }
   Future<void> _scheduleHintsAfterPart() async {

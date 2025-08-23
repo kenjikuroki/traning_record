@@ -47,6 +47,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void initState() {
     super.initState();
+
     _focusedDay =
         DateTime(widget.selectedDate.year, widget.selectedDate.month, 1);
     _selectedDay = DateTime(widget.selectedDate.year, widget.selectedDate.month,
@@ -66,6 +67,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       await widget.settingsBox.put('hint_seen_calendar', true);
     });
   }
+
+
 
   // ---------- Helpers ----------
   String _dateKey(DateTime d) =>
@@ -145,6 +148,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return '$min${l10n.min}$sec${l10n.sec}';
   }
 
+  Future<void> _onDayTapped(DateTime day) async {
+    // 先に選択状態を更新してから開く（ハイライトや下部の記録一覧が正しく出るように）
+    setState(() {
+      _selectedDay = DateTime(day.year, day.month, day.day);
+      _focusedDay  = DateTime(day.year, day.month, 1);
+    });
+
+    await showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return SizedBox.expand( // ← const 付けない
+            child: RecordScreen(
+              selectedDate: day,
+              recordsBox: widget.recordsBox,
+              lastUsedMenusBox: widget.lastUsedMenusBox,
+              settingsBox: widget.settingsBox,
+              setCountBox: widget.setCountBox,
+            ),
+            );
+      },
+    );
+
+    // 閉じた直後、●マーカーや一覧を即反映
+    if (mounted) setState(() {});
+  }
+
   // TableCalendar：その日に何か（体重 or トレ）あれば 1 件返す → ● マーカー
   List<Object> _eventLoader(DateTime day) {
     final r = widget.recordsBox.get(_dateKey(day));
@@ -204,69 +238,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
         ],
         currentIndex: 0,
-        ////////ボトムバー４タブ体制//////
-        // onTap: (index) async {
-        //   if (index == 0) return;
-        //   if (index == 1) {
-        //     // ★ 記録画面から戻ったら即 setState で再描画
-        //     await Navigator.push(
-        //       context,
-        //       MaterialPageRoute(
-        //         builder: (_) => RecordScreen(
-        //           selectedDate: _selectedDay ?? DateTime.now(),
-        //           recordsBox: widget.recordsBox,
-        //           lastUsedMenusBox: widget.lastUsedMenusBox,
-        //           settingsBox: widget.settingsBox,
-        //           setCountBox: widget.setCountBox,
-        //         ),
-        //       ),
-        //     );
-        //     setState(() {});
-        //   } else if (index == 2) {
-        //     await Navigator.push(
-        //       context,
-        //       MaterialPageRoute(
-        //         builder: (_) => GraphScreen(
-        //           recordsBox: widget.recordsBox,
-        //           lastUsedMenusBox: widget.lastUsedMenusBox,
-        //           settingsBox: widget.settingsBox,
-        //           setCountBox: widget.setCountBox,
-        //         ),
-        //       ),
-        //     );
-        //     setState(() {});
-        //   } else if (index == 3) {
-        //     await Navigator.push(
-        //       context,
-        //       MaterialPageRoute(
-        //         builder: (_) => SettingsScreen(
-        //           recordsBox: widget.recordsBox,
-        //           lastUsedMenusBox: widget.lastUsedMenusBox,
-        //           settingsBox: widget.settingsBox,
-        //           setCountBox: widget.setCountBox,
-        //         ),
-        //       ),
-        //     );
-        //     setState(() {});
-        //   }
-        // },
-        onTap: (index) async {
-          if (index == 0) return; // Calendar
-          if (index == 1) {
-            // Graph
-            await Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => GraphScreen(
-                  recordsBox: widget.recordsBox,
-                  lastUsedMenusBox: widget.lastUsedMenusBox,
+                  onTap: (index) async {
+             if (index == 0) return;
+           if (index == 1) {
+             await Navigator.of(context).pushReplacement(
+               MaterialPageRoute(
+                 builder: (_) => GraphScreen(
+                   recordsBox: widget.recordsBox,
+                   lastUsedMenusBox: widget.lastUsedMenusBox,
                   settingsBox: widget.settingsBox,
                   setCountBox: widget.setCountBox,
                 ),
               ),
             );
           } else if (index == 2) {
-            // Settings
-            await Navigator.of(context).push(
+            await Navigator.of(context).pushReplacement(
               MaterialPageRoute(
                 builder: (_) => SettingsScreen(
                   recordsBox: widget.recordsBox,
@@ -274,10 +260,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   settingsBox: widget.settingsBox,
                   setCountBox: widget.setCountBox,
                 ),
-              ),
-            );
-          }
-        },
+                ),
+              );
+              }
+           },
+
+
       ),
 
 

@@ -2,16 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../l10n/app_localizations.dart';
-import '../screens/calendar_screen.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/ad_square.dart';
 import '../settings_manager.dart';
-import 'record_screen.dart';
 import 'graph_screen.dart';
 import '../models/menu_data.dart';
-import '../widgets/swipe_to_calendar.dart';
-
-
+import 'calendar_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
@@ -65,7 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _themeMode = SettingsManager.currentThemeMode;
 
     final Map<String, bool>? savedBodyParts =
-        widget.settingsBox.get('selectedBodyParts')?.cast<String, bool>();
+    widget.settingsBox.get('selectedBodyParts')?.cast<String, bool>();
     if (savedBodyParts != null) {
       _selectedBodyParts = Map<String, bool>.from(savedBodyParts);
     } else {
@@ -135,405 +131,379 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // カード内の標準パディング（内側）
     const EdgeInsets cardPad = EdgeInsets.all(12.0);
 
-    return SwipeToCalendar(
-        calendarBuilder: (_) => CalendarScreen(
-          recordsBox: widget.recordsBox,
-          lastUsedMenusBox: widget.lastUsedMenusBox,
-          settingsBox: widget.settingsBox,
-          setCountBox: widget.setCountBox,
-          selectedDate: DateTime.now(),
+    // ★ SwipeToCalendar / PopScope を撤去 → OS標準の「端スワイプだけ戻る」に任せる
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: Text(
+          l10n.settingsScreenTitle,
+          style: TextStyle(
+            color: colorScheme.onSurface,
+            fontWeight: FontWeight.bold,
+            fontSize: 20.0,
+          ),
         ),
-        child: PopScope(
-          canPop: false,
-          onPopInvoked: (didPop) {
-            if (didPop) return;
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                builder: (_) => CalendarScreen(
+        backgroundColor: colorScheme.surface,
+        elevation: 0.0,
+        iconTheme: IconThemeData(color: colorScheme.onSurface),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            const SizedBox(height: 2),
+            const SizedBox(height: 50, child: AdBanner(screenName: 'settings')),
+            const SizedBox(height: 12.0),
+            Expanded(
+              child: ListView(
+                children: [
+                  // テーマ
+                  Card(
+                    color: colorScheme.surfaceContainerHighest,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.0),
+                    ),
+                    child: Padding(
+                      padding: cardPad,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.themeMode,
+                            style: TextStyle(
+                              color: colorScheme.onSurface,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15.0,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          // ここから：RadioGroup で3つの RadioListTile を包む
+                          RadioGroup<ThemeMode>(
+                            groupValue: _themeMode,
+                            onChanged: _onThemeChanged,
+                            child: Column(
+                              children: [
+                                RadioListTile<ThemeMode>(
+                                  dense: true,
+                                  visualDensity: const VisualDensity(
+                                      horizontal: -2, vertical: -2),
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(l10n.systemDefault),
+                                  value: ThemeMode.system,
+                                  activeColor: colorScheme.primary,
+                                ),
+                                RadioListTile<ThemeMode>(
+                                  dense: true,
+                                  visualDensity: const VisualDensity(
+                                      horizontal: -2, vertical: -2),
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(l10n.light),
+                                  value: ThemeMode.light,
+                                  activeColor: colorScheme.primary,
+                                ),
+                                RadioListTile<ThemeMode>(
+                                  dense: true,
+                                  visualDensity: const VisualDensity(
+                                      horizontal: -2, vertical: -2),
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(l10n.dark),
+                                  value: ThemeMode.dark,
+                                  activeColor: colorScheme.primary,
+                                ),
+                              ],
+                            ),
+                          ),
+                          // ここまで
+                        ],
+                      ),
+                    ),
+                  ),
+                  // ★ カード間の余白（テーマ ↔ 体重管理 を狭める）
+                  const SizedBox(height: gap),
+
+                  // 体重管理
+                  Card(
+                    color: colorScheme.surfaceContainerHighest,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.0),
+                    ),
+                    child: SwitchListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 12.0),
+                      title: Text(
+                        l10n.bodyWeightTracking,
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16.0,
+                        ),
+                      ),
+                      value: _showWeightInput,
+                      onChanged: (bool value) {
+                        setState(() => _showWeightInput = value);
+                        SettingsManager.setShowWeightInput(value);
+                        widget.settingsBox.put('showWeightInput', value);
+                      },
+                      activeThumbColor: colorScheme.primary,
+                    ),
+                  ),
+
+                  const SizedBox(height: gap),
+
+                  // 表示する部位を選択（アコーディオン、光らない）
+                  Card(
+                    color: colorScheme.surfaceContainerHighest,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.0),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2.0),
+                      child: Theme(
+                        data: Theme.of(context).copyWith(
+                          dividerColor: Colors.transparent,
+                          splashFactory: NoSplash.splashFactory,
+                          splashColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                          hoverColor: Colors.transparent,
+                        ),
+                        child: ExpansionTile(
+                          initiallyExpanded: _isBodyPartsExpanded,
+                          onExpansionChanged: (v) =>
+                              setState(() => _isBodyPartsExpanded = v),
+                          expandedAlignment: Alignment.centerLeft,
+                          tilePadding:
+                          const EdgeInsets.symmetric(horizontal: 12.0),
+                          childrenPadding:
+                          const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                          title: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              l10n.selectBodyParts,
+                              style: TextStyle(
+                                color: colorScheme.onSurface,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15.0,
+                              ),
+                            ),
+                          ),
+                          children: [
+                            ..._bodyPartsOriginal.map((p) {
+                              final translated = _translatePart(context, p);
+                              final current = _selectedBodyParts[p] ?? true;
+                              return SwitchListTile(
+                                dense: true,
+                                visualDensity: const VisualDensity(
+                                    horizontal: -2, vertical: -3),
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(
+                                  translated,
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface,
+                                    fontSize: 14.0,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                value: current,
+                                onChanged: (bool value) async {
+                                  setState(() => _selectedBodyParts[p] = value);
+                                  await widget.settingsBox.put(
+                                      'selectedBodyParts',
+                                      _selectedBodyParts);
+                                },
+                                activeThumbColor: colorScheme.primary,
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // ★ Large Banner 広告
+                  SizedBox(
+                    height: 100, // ★ Large Banner の高さを先取り
+                    child: Center(
+                      child: AdSquare(
+                        adSize: AdBoxSize.largeBanner, // 320x100
+                        showPlaceholder: false,        // 本番広告のまま
+                        screenName: 'settings',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: gap),
+
+                  // デフォルトセット数
+                  Card(
+                    color: colorScheme.surfaceContainerHighest,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16.0)),
+                    child: Padding(
+                      padding: cardPad,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.defaultSets,
+                            style: TextStyle(
+                              color: colorScheme.onSurface,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15.0,
+                            ),
+                          ),
+                          SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              trackHeight: 3,
+                              thumbShape:
+                              const RoundSliderThumbShape(enabledThumbRadius: 8),
+                            ),
+                            child: Slider(
+                              value: _setCount.toDouble(),
+                              min: 1,
+                              max: 10,
+                              divisions: 9,
+                              label: _setCount.toString(),
+                              onChanged: (double newValue) {
+                                setState(() => _setCount = newValue.round());
+                              },
+                              onChangeEnd: (v) {
+                                widget.setCountBox.put('setCount', v.round());
+                              },
+                              activeColor: colorScheme.primary,
+                              inactiveColor:
+                              colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              '$_setCount${l10n.sets}',
+                              style: TextStyle(
+                                color: colorScheme.onSurface,
+                                fontSize: 14.0,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: gap),
+
+                  // 重量単位
+                  Card(
+                    color: colorScheme.surfaceContainerHighest,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16.0)),
+                    child: Padding(
+                      padding: cardPad,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.unit,
+                            style: TextStyle(
+                              color: colorScheme.onSurface,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15.0,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  dense: true,
+                                  visualDensity: const VisualDensity(
+                                      horizontal: -2, vertical: -2),
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(
+                                    l10n.kg,
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                      fontSize: 14.0,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  value: 'kg',
+                                  groupValue: _selectedUnit,
+                                  onChanged: _onUnitChanged,
+                                  activeColor: colorScheme.primary,
+                                ),
+                              ),
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  dense: true,
+                                  visualDensity: const VisualDensity(
+                                      horizontal: -2, vertical: -2),
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(
+                                    l10n.lbs,
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                      fontSize: 14.0,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  value: 'lbs',
+                                  groupValue: _selectedUnit,
+                                  onChanged: _onUnitChanged,
+                                  activeColor: colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const [
+          BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today), label: 'Calendar'),
+          // BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'), // 今後別機能で使用予定のため一時的に無効化
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+        ],
+        currentIndex: 2,
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: colorScheme.onSurfaceVariant,
+        backgroundColor: colorScheme.surface,
+        onTap: (index) async {
+          if (index == 2) return; // Settings 自身
+                  if (index == 0) {
+                    await Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (_) => CalendarScreen(
+                          recordsBox: widget.recordsBox,
+                          lastUsedMenusBox: widget.lastUsedMenusBox,
+                           settingsBox: widget.settingsBox,
+                           setCountBox: widget.setCountBox,
+                           selectedDate: DateTime.now(),
+                         ),
+                       ),
+                     );
+                   } else if (index == 1) {
+                     await Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+                builder: (_) => GraphScreen(
                   recordsBox: widget.recordsBox,
                   lastUsedMenusBox: widget.lastUsedMenusBox,
                   settingsBox: widget.settingsBox,
                   setCountBox: widget.setCountBox,
-                  selectedDate: DateTime.now(),
                 ),
               ),
-                  (route) => false,
             );
-          },
-          child: Scaffold(
-            backgroundColor: colorScheme.surface,
-            appBar: AppBar(
-              automaticallyImplyLeading: false,
-              title: Text(
-                l10n.settingsScreenTitle,
-            style: TextStyle(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.bold,
-              fontSize: 20.0,
-            ),
-          ),
-          backgroundColor: colorScheme.surface,
-          elevation: 0.0,
-          iconTheme: IconThemeData(color: colorScheme.onSurface),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              const SizedBox(height: 2),
-              const SizedBox(
-                  height: 50, child: AdBanner(screenName: 'settings')),
-              const SizedBox(height: 12.0),
-              Expanded(
-                child: ListView(
-                  children: [
-                    // テーマ
-                    // テーマ
-                    Card(
-                      color: colorScheme.surfaceContainerHighest,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16.0),
-                      ),
-                      child: Padding(
-                        padding: cardPad,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l10n.themeMode,
-                              style: TextStyle(
-                                color: colorScheme.onSurface,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15.0,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            // ここから：RadioGroup で3つの RadioListTile を包む
-                            RadioGroup<ThemeMode>(
-                              groupValue: _themeMode,
-                              onChanged: _onThemeChanged,
-                              child: Column(
-                                children: [
-                                  RadioListTile<ThemeMode>(
-                                    dense: true,
-                                    visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
-                                    contentPadding: EdgeInsets.zero,
-                                    title: Text(l10n.systemDefault),
-                                    value: ThemeMode.system,
-                                    activeColor: colorScheme.primary,
-                                  ),
-                                  RadioListTile<ThemeMode>(
-                                    dense: true,
-                                    visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
-                                    contentPadding: EdgeInsets.zero,
-                                    title: Text(l10n.light),
-                                    value: ThemeMode.light,
-                                    activeColor: colorScheme.primary,
-                                  ),
-                                  RadioListTile<ThemeMode>(
-                                    dense: true,
-                                    visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
-                                    contentPadding: EdgeInsets.zero,
-                                    title: Text(l10n.dark),
-                                    value: ThemeMode.dark,
-                                    activeColor: colorScheme.primary,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // ここまで
-                          ],
-                        ),
-                      ),
-                    ),
-                    // ★ カード間の余白（テーマ ↔ 体重管理 を狭める）
-                    const SizedBox(height: gap),
-
-                    // 体重管理（“太め”に）
-                    Card(
-                      color: colorScheme.surfaceContainerHighest,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16.0),
-                      ),
-                      child: SwitchListTile(
-                        // 太めにするために上下パディングを増やす
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16.0, vertical: 12.0),
-                        // dense は使わない（薄くならないように）
-                        title: Text(
-                          l10n.bodyWeightTracking,
-                          style: TextStyle(
-                            color: colorScheme.onSurface,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16.0,
-                          ),
-                        ),
-                        value: _showWeightInput,
-                        onChanged: (bool value) {
-                          setState(() => _showWeightInput = value);
-                          SettingsManager.setShowWeightInput(value);
-                          widget.settingsBox.put('showWeightInput', value);
-                        },
-                        activeThumbColor: colorScheme.primary,
-                      ),
-                    ),
-
-                    const SizedBox(height: gap),
-
-                    // 表示する部位を選択（アコーディオン、光らない）
-                    Card(
-                      color: colorScheme.surfaceContainerHighest,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16.0),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2.0),
-                        child: Theme(
-                          data: Theme.of(context).copyWith(
-                            dividerColor: Colors.transparent,
-                            splashFactory: NoSplash.splashFactory,
-                            splashColor: Colors.transparent,
-                            highlightColor: Colors.transparent,
-                            hoverColor: Colors.transparent,
-                          ),
-                          child: ExpansionTile(
-                            initiallyExpanded: _isBodyPartsExpanded,
-                            onExpansionChanged: (v) =>
-                                setState(() => _isBodyPartsExpanded = v),
-                            expandedAlignment: Alignment.centerLeft,
-                            tilePadding:
-                                const EdgeInsets.symmetric(horizontal: 12.0),
-                            childrenPadding:
-                                const EdgeInsets.fromLTRB(12, 0, 12, 10),
-                            title: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                l10n.selectBodyParts,
-                                style: TextStyle(
-                                  color: colorScheme.onSurface,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15.0,
-                                ),
-                              ),
-                            ),
-                            children: [
-                              ..._bodyPartsOriginal.map((p) {
-                                final translated = _translatePart(context, p);
-                                final current = _selectedBodyParts[p] ?? true;
-                                return SwitchListTile(
-                                  dense: true,
-                                  visualDensity: const VisualDensity(
-                                      horizontal: -2, vertical: -3),
-                                  contentPadding: EdgeInsets.zero,
-                                  title: Text(
-                                    translated,
-                                    style: TextStyle(
-                                      color: colorScheme.onSurface,
-                                      fontSize: 14.0,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  value: current,
-                                  onChanged: (bool value) async {
-                                    setState(
-                                        () => _selectedBodyParts[p] = value);
-                                    await widget.settingsBox.put(
-                                        'selectedBodyParts',
-                                        _selectedBodyParts);
-                                  },
-                                  activeThumbColor: colorScheme.primary,
-                                );
-                              }),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // ★ Large Banner 広告（320x100）— 選択部位 ↔ デフォルトセット の間
-                    const SizedBox(height: gap),
-                    Center(
-                      child: AdSquare(
-                        adSize: AdBoxSize.largeBanner, // 320x100
-                        showPlaceholder: false, // ★本番広告にする
-                        screenName: 'settings', // ★設定画面用IDを指定
-                      ),
-                    ),
-                    const SizedBox(height: gap),
-
-                    // デフォルトセット数
-                    Card(
-                      color: colorScheme.surfaceContainerHighest,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16.0)),
-                      child: Padding(
-                        padding: cardPad,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l10n.defaultSets,
-                              style: TextStyle(
-                                color: colorScheme.onSurface,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15.0,
-                              ),
-                            ),
-                            SliderTheme(
-                              data: SliderTheme.of(context).copyWith(
-                                trackHeight: 3,
-                                thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius: 8),
-                              ),
-                              child: Slider(
-                                value: _setCount.toDouble(),
-                                min: 1,
-                                max: 10,
-                                divisions: 9,
-                                label: _setCount.toString(),
-                                onChanged: (double newValue) {
-                                  setState(() => _setCount = newValue.round());
-                                },
-                                onChangeEnd: (v) {
-                                  widget.setCountBox.put('setCount', v.round());
-                                },
-                                activeColor: colorScheme.primary,
-                                inactiveColor: colorScheme.onSurfaceVariant
-                                    .withValues(alpha: 0.3),
-                              ),
-                            ),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: Text(
-                                '$_setCount${l10n.sets}',
-                                style: TextStyle(
-                                  color: colorScheme.onSurface,
-                                  fontSize: 14.0,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: gap),
-
-                    // 重量単位
-                    Card(
-                      color: colorScheme.surfaceContainerHighest,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16.0)),
-                      child: Padding(
-                        padding: cardPad,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l10n.unit,
-                              style: TextStyle(
-                                color: colorScheme.onSurface,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15.0,
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: RadioListTile<String>(
-                                    dense: true,
-                                    visualDensity: const VisualDensity(
-                                        horizontal: -2, vertical: -2),
-                                    contentPadding: EdgeInsets.zero,
-                                    title: Text(
-                                      l10n.kg,
-                                      style: TextStyle(
-                                        color: colorScheme.onSurface,
-                                        fontSize: 14.0,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    value: 'kg',
-                                    groupValue: _selectedUnit,
-                                    onChanged: _onUnitChanged,
-                                    activeColor: colorScheme.primary,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: RadioListTile<String>(
-                                    dense: true,
-                                    visualDensity: const VisualDensity(
-                                        horizontal: -2, vertical: -2),
-                                    contentPadding: EdgeInsets.zero,
-                                    title: Text(
-                                      l10n.lbs,
-                                      style: TextStyle(
-                                        color: colorScheme.onSurface,
-                                        fontSize: 14.0,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    value: 'lbs',
-                                    groupValue: _selectedUnit,
-                                    onChanged: _onUnitChanged,
-                                    activeColor: colorScheme.primary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-            bottomNavigationBar: BottomNavigationBar(
-              items: const [
-                BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
-                // BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'), // 今後別機能で使用予定のため一時的に無効化
-                BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
-                BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
-              ],
-              currentIndex: 2,
-              selectedItemColor: colorScheme.primary,
-              unselectedItemColor: colorScheme.onSurfaceVariant,
-              backgroundColor: colorScheme.surface,
-              onTap: (index) {
-                if (index == 2) return;
-                if (index == 0) {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => CalendarScreen(
-                        recordsBox: widget.recordsBox,
-                        lastUsedMenusBox: widget.lastUsedMenusBox,
-                        settingsBox: widget.settingsBox,
-                        setCountBox: widget.setCountBox,
-                        selectedDate: DateTime.now(),
-                      ),
-                    ),
-                  );
-                } else if (index == 1) {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => GraphScreen(
-                        recordsBox: widget.recordsBox,
-                        lastUsedMenusBox: widget.lastUsedMenusBox,
-                        settingsBox: widget.settingsBox,
-                        setCountBox: widget.setCountBox,
-                      ),
-                    ),
-                  );
-                }
-              },
-            ),
-
+          }
+        },
       ),
-        ),
     );
   }
 }
