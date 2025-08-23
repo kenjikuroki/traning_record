@@ -795,7 +795,7 @@ class _GraphScreenState extends State<GraphScreen> {
       child: Scaffold(
         backgroundColor: colorScheme.surface,
         appBar: AppBar(
-          leading: const BackButton(),
+          automaticallyImplyLeading: false,
           title: Text(
             l10n.graphScreenTitle,
             style: TextStyle(

@@ -161,7 +161,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        leading: const BackButton(),
+        automaticallyImplyLeading: false,
         title: Text(
           DateFormat('yyyy/MM').format(_focusedDay),
           style: TextStyle(

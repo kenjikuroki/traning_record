@@ -659,14 +659,7 @@ class _RecordScreenState extends State<RecordScreen> {
         backgroundColor: colorScheme.surface,
         appBar: AppBar(
           // ★ AppBarの戻るもフックして、先にキーボードを閉じる
-          leading: BackButton(
-            onPressed: () async {
-              await _closeKeyboard();
-              if (!context.mounted) return;
-              _saveAllSectionsData();
-              Navigator.of(context).pop();
-            },
-          ),
+          automaticallyImplyLeading: false,
           title: Text(
             formattedDate,
             style: TextStyle(

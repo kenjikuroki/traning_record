@@ -144,7 +144,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Scaffold(
         backgroundColor: colorScheme.surface,
         appBar: AppBar(
-          leading: const BackButton(),
+          automaticallyImplyLeading: false,
           title: Text(
             l10n.settingsScreenTitle,
             style: TextStyle(
