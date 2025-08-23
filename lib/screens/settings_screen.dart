@@ -492,72 +492,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ),
-        bottomNavigationBar: BottomNavigationBar(
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_today),
-              label: 'Calendar',
+            bottomNavigationBar: BottomNavigationBar(
+              items: const [
+                BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
+                // BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'), // 今後別機能で使用予定のため一時的に無効化
+                BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
+                BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+              ],
+              currentIndex: 2,
+              selectedItemColor: colorScheme.primary,
+              unselectedItemColor: colorScheme.onSurfaceVariant,
+              backgroundColor: colorScheme.surface,
+              onTap: (index) {
+                if (index == 2) return;
+                if (index == 0) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => CalendarScreen(
+                        recordsBox: widget.recordsBox,
+                        lastUsedMenusBox: widget.lastUsedMenusBox,
+                        settingsBox: widget.settingsBox,
+                        setCountBox: widget.setCountBox,
+                        selectedDate: DateTime.now(),
+                      ),
+                    ),
+                  );
+                } else if (index == 1) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => GraphScreen(
+                        recordsBox: widget.recordsBox,
+                        lastUsedMenusBox: widget.lastUsedMenusBox,
+                        settingsBox: widget.settingsBox,
+                        setCountBox: widget.setCountBox,
+                      ),
+                    ),
+                  );
+                }
+              },
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.edit_note),
-              label: 'Record',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart),
-              label: 'Graph',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings),
-              label: 'Settings',
-            ),
-          ],
-          currentIndex: 3,
-          selectedItemColor: colorScheme.primary,
-          unselectedItemColor: colorScheme.onSurfaceVariant,
-          backgroundColor: colorScheme.surface,
-          onTap: (index) {
-            if (index == 3) return; // 自分
-            if (index == 0) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CalendarScreen(
-                    recordsBox: widget.recordsBox,
-                    lastUsedMenusBox: widget.lastUsedMenusBox,
-                    settingsBox: widget.settingsBox,
-                    setCountBox: widget.setCountBox,
-                    selectedDate: DateTime.now(),
-                  ),
-                ),
-              );
-            } else if (index == 1) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => RecordScreen(
-                    recordsBox: widget.recordsBox,
-                    lastUsedMenusBox: widget.lastUsedMenusBox,
-                    settingsBox: widget.settingsBox,
-                    setCountBox: widget.setCountBox,
-                    selectedDate: DateTime.now(),
-                  ),
-                ),
-              );
-            } else if (index == 2) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => GraphScreen(
-                    recordsBox: widget.recordsBox,
-                    lastUsedMenusBox: widget.lastUsedMenusBox,
-                    settingsBox: widget.settingsBox,
-                    setCountBox: widget.setCountBox,
-                  ),
-                ),
-              );
-            }
-          },
-        ),
+
       ),
         ),
     );

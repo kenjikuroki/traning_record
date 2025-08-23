@@ -12,6 +12,8 @@ import 'graph_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/ad_square.dart';
 import '../widgets/coach_bubble.dart';
+import '../widgets/lib/routes/slide_up_route.dart'; // ← 追加
+
 
 
 
@@ -196,37 +198,63 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_today), label: 'Calendar'),
-          BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
+          // BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'), // ※今後別機能で使用予定
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.settings), label: 'Settings'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
         ],
         currentIndex: 0,
-        selectedItemColor: colorScheme.primary,
-        unselectedItemColor: colorScheme.onSurfaceVariant,
-        backgroundColor: colorScheme.surface,
+        ////////ボトムバー４タブ体制//////
+        // onTap: (index) async {
+        //   if (index == 0) return;
+        //   if (index == 1) {
+        //     // ★ 記録画面から戻ったら即 setState で再描画
+        //     await Navigator.push(
+        //       context,
+        //       MaterialPageRoute(
+        //         builder: (_) => RecordScreen(
+        //           selectedDate: _selectedDay ?? DateTime.now(),
+        //           recordsBox: widget.recordsBox,
+        //           lastUsedMenusBox: widget.lastUsedMenusBox,
+        //           settingsBox: widget.settingsBox,
+        //           setCountBox: widget.setCountBox,
+        //         ),
+        //       ),
+        //     );
+        //     setState(() {});
+        //   } else if (index == 2) {
+        //     await Navigator.push(
+        //       context,
+        //       MaterialPageRoute(
+        //         builder: (_) => GraphScreen(
+        //           recordsBox: widget.recordsBox,
+        //           lastUsedMenusBox: widget.lastUsedMenusBox,
+        //           settingsBox: widget.settingsBox,
+        //           setCountBox: widget.setCountBox,
+        //         ),
+        //       ),
+        //     );
+        //     setState(() {});
+        //   } else if (index == 3) {
+        //     await Navigator.push(
+        //       context,
+        //       MaterialPageRoute(
+        //         builder: (_) => SettingsScreen(
+        //           recordsBox: widget.recordsBox,
+        //           lastUsedMenusBox: widget.lastUsedMenusBox,
+        //           settingsBox: widget.settingsBox,
+        //           setCountBox: widget.setCountBox,
+        //         ),
+        //       ),
+        //     );
+        //     setState(() {});
+        //   }
+        // },
         onTap: (index) async {
-          if (index == 0) return;
+          if (index == 0) return; // Calendar
           if (index == 1) {
-            // ★ 記録画面から戻ったら即 setState で再描画
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => RecordScreen(
-                  selectedDate: _selectedDay ?? DateTime.now(),
-                  recordsBox: widget.recordsBox,
-                  lastUsedMenusBox: widget.lastUsedMenusBox,
-                  settingsBox: widget.settingsBox,
-                  setCountBox: widget.setCountBox,
-                ),
-              ),
-            );
-            setState(() {});
-          } else if (index == 2) {
-            await Navigator.push(
-              context,
+            // Graph
+            await Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => GraphScreen(
                   recordsBox: widget.recordsBox,
@@ -236,10 +264,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
               ),
             );
-            setState(() {});
-          } else if (index == 3) {
-            await Navigator.push(
-              context,
+          } else if (index == 2) {
+            // Settings
+            await Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => SettingsScreen(
                   recordsBox: widget.recordsBox,
@@ -249,10 +276,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
               ),
             );
-            setState(() {});
           }
         },
       ),
+
+
     );
   }
 

@@ -14,6 +14,7 @@ import 'settings_screen.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/coach_bubble.dart';
 import '../widgets/swipe_to_calendar.dart';
+import 'package:flutter/services.dart';
 
 
 // ignore_for_file: library_private_types_in_public_api
@@ -256,6 +257,13 @@ class _GraphScreenState extends State<GraphScreen> {
     }
   }
 
+  Future<void> _closeKeyboard() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    try {
+      await SystemChannels.textInput.invokeMethod('TextInput.hide');
+    } catch (_) {}
+    await Future<void>.delayed(const Duration(milliseconds: 16));
+  }
 
   // ====== choose loader ======
   void _refreshDataForSelection() {
@@ -1290,35 +1298,22 @@ class _GraphScreenState extends State<GraphScreen> {
           ),
         ),
         bottomNavigationBar: BottomNavigationBar(
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_today),
-              label: 'Calendar',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.edit_note),
-              label: 'Record',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart),
-              label: 'Graph',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings),
-              label: 'Settings',
-            ),
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
+            // BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'), // 今後別機能で使用予定のため一時的に無効化
+            BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
+            BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
           ],
-          currentIndex: 2,
+          currentIndex: 1,
           selectedItemColor: colorScheme.primary,
           unselectedItemColor: colorScheme.onSurfaceVariant,
           backgroundColor: colorScheme.surface,
           onTap: (index) {
-            if (index == 2) return;
+            if (index == 1) return;
             if (index == 0) {
-              Navigator.push(
-                context,
+              Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => CalendarScreen(
+                  builder: (_) => CalendarScreen(
                     recordsBox: widget.recordsBox,
                     lastUsedMenusBox: widget.lastUsedMenusBox,
                     settingsBox: widget.settingsBox,
@@ -1327,24 +1322,10 @@ class _GraphScreenState extends State<GraphScreen> {
                   ),
                 ),
               );
-            } else if (index == 1) {
-              Navigator.push(
-                context,
+            } else if (index == 2) {
+              Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => RecordScreen(
-                    selectedDate: DateTime.now(),
-                    recordsBox: widget.recordsBox,
-                    lastUsedMenusBox: widget.lastUsedMenusBox,
-                    settingsBox: widget.settingsBox,
-                    setCountBox: widget.setCountBox,
-                  ),
-                ),
-              );
-            } else if (index == 3) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SettingsScreen(
+                  builder: (_) => SettingsScreen(
                     recordsBox: widget.recordsBox,
                     lastUsedMenusBox: widget.lastUsedMenusBox,
                     settingsBox: widget.settingsBox,

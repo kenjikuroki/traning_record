@@ -1164,7 +1164,7 @@ class _RecordScreenState extends State<RecordScreen> {
         bottomNavigationBar: BottomNavigationBar(
             items: <BottomNavigationBarItem>[
               const BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
-              const BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'),
+             // const BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Record'),
               const BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
               BottomNavigationBarItem( // ← ここだけ非 const
                 icon: Icon(Icons.settings, key: _kOpenSettingsBtn), // ★追加
@@ -1176,61 +1176,97 @@ class _RecordScreenState extends State<RecordScreen> {
             selectedItemColor: colorScheme.primary,
             unselectedItemColor: colorScheme.onSurfaceVariant,
             backgroundColor: colorScheme.surface,
-            onTap: (index) async {
-              if (index == 1) return;
-              // ★ 遷移前に必ずキーボードを閉じる
+          ////////ボトムバー４タブ体制//////
+            // onTap: (index) async {
+            //   if (index == 1) return;
+            //   // ★ 遷移前に必ずキーボードを閉じる
+            //
+            //   final nav = Navigator.of(context);
+            //
+            //   await _closeKeyboard();
+            //   _saveAllSectionsData();
+            //
+            //   // ★ await 後に context を使う前にチェック（lint対策）
+            //   if (!context.mounted) return;
+            //
+            //   switch (index) {
+            //     case 0: // Calendar
+            //       nav.push(
+            //         MaterialPageRoute(
+            //           builder: (context) => CalendarScreen(
+            //             recordsBox: widget.recordsBox,
+            //             lastUsedMenusBox: widget.lastUsedMenusBox,
+            //             settingsBox: widget.settingsBox,
+            //             setCountBox: widget.setCountBox,
+            //             selectedDate: DateTime.now(),
+            //           ),
+            //         ),
+            //       );
+            //       break;
+            //
+            //     case 2: // Graph
+            //       nav.push(
+            //         MaterialPageRoute(
+            //           builder: (context) => GraphScreen(
+            //             recordsBox: widget.recordsBox,
+            //             lastUsedMenusBox: widget.lastUsedMenusBox,
+            //             settingsBox: widget.settingsBox,
+            //             setCountBox: widget.setCountBox,
+            //           ),
+            //         ),
+            //       );
+            //       break;
+            //
+            //     case 3: // Settings
+            //       nav.push(
+            //         MaterialPageRoute(
+            //           builder: (context) => SettingsScreen(
+            //             recordsBox: widget.recordsBox,
+            //             lastUsedMenusBox: widget.lastUsedMenusBox,
+            //             settingsBox: widget.settingsBox,
+            //             setCountBox: widget.setCountBox,
+            //           ),
+            //         ),
+            //       );
+            //       break;
+            //   }
+            // }),
+        onTap: (index) async {
+          if (index == 2) return; // Settings
+          final nav = Navigator.of(context);
+          await _closeKeyboard();
+          if (!context.mounted) return;
 
-              final nav = Navigator.of(context);
+          switch (index) {
+            case 0: // Calendar
+              nav.pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => CalendarScreen(
+                    recordsBox: widget.recordsBox,
+                    lastUsedMenusBox: widget.lastUsedMenusBox,
+                    settingsBox: widget.settingsBox,
+                    setCountBox: widget.setCountBox,
+                    selectedDate: DateTime.now(),
+                  ),
+                ),
+              );
+              break;
+            case 1: // Graph
+              nav.pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => GraphScreen(
+                    recordsBox: widget.recordsBox,
+                    lastUsedMenusBox: widget.lastUsedMenusBox,
+                    settingsBox: widget.settingsBox,
+                    setCountBox: widget.setCountBox,
+                  ),
+                ),
+              );
+              break;
+          }
+        },
 
-              await _closeKeyboard();
-              _saveAllSectionsData();
-
-              // ★ await 後に context を使う前にチェック（lint対策）
-              if (!context.mounted) return;
-
-              switch (index) {
-                case 0: // Calendar
-                  nav.push(
-                    MaterialPageRoute(
-                      builder: (context) => CalendarScreen(
-                        recordsBox: widget.recordsBox,
-                        lastUsedMenusBox: widget.lastUsedMenusBox,
-                        settingsBox: widget.settingsBox,
-                        setCountBox: widget.setCountBox,
-                        selectedDate: DateTime.now(),
-                      ),
-                    ),
-                  );
-                  break;
-
-                case 2: // Graph
-                  nav.push(
-                    MaterialPageRoute(
-                      builder: (context) => GraphScreen(
-                        recordsBox: widget.recordsBox,
-                        lastUsedMenusBox: widget.lastUsedMenusBox,
-                        settingsBox: widget.settingsBox,
-                        setCountBox: widget.setCountBox,
-                      ),
-                    ),
-                  );
-                  break;
-
-                case 3: // Settings
-                  nav.push(
-                    MaterialPageRoute(
-                      builder: (context) => SettingsScreen(
-                        recordsBox: widget.recordsBox,
-                        lastUsedMenusBox: widget.lastUsedMenusBox,
-                        settingsBox: widget.settingsBox,
-                        setCountBox: widget.setCountBox,
-                      ),
-                    ),
-                  );
-                  break;
-              }
-            }),
-      ),
+      ),),
     );
   }
   Future<void> _scheduleHintsAfterPart() async {
@@ -1466,12 +1502,12 @@ class _MenuListState extends State<MenuList> {
 
   void _updateDurationController() {
     widget.durationController.text =
-        '${_minController.text}:${_secController.text}';
+    '${_minController.text}:${_secController.text}';
   }
 
   void _updateDistanceController() {
     widget.distanceController.text =
-        '${_kmController.text}.${_mController.text}';
+    '${_kmController.text}.${_mController.text}';
   }
 
   @override
@@ -1496,10 +1532,10 @@ class _MenuListState extends State<MenuList> {
                   inputFormatters: [LengthLimitingTextInputFormatter(25)],
                   normalTextColor: colorScheme.onSurface,
                   suggestionTextColor:
-                      colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                  colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                   fillColor: colorScheme.surfaceContainer,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                      vertical: 12, horizontal: 16),
                   textAlign: TextAlign.left,
                 ),
               ),
@@ -1511,8 +1547,11 @@ class _MenuListState extends State<MenuList> {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   alignment: Alignment.center,
                 ),
-                child: Icon(Icons.close,
-                    color: colorScheme.onSurfaceVariant, size: 16),
+                child: Icon(
+                  Icons.close,
+                  color: colorScheme.onSurfaceVariant,
+                  size: 16,
+                ),
               ),
             ],
           ),
@@ -1523,322 +1562,335 @@ class _MenuListState extends State<MenuList> {
             padding: const EdgeInsets.only(left: 12.0),
             child: widget.isAerobic
                 ? Column(
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            l10n.distance,
-                            style: TextStyle(
-                                color: colorScheme.onSurface,
-                                fontSize: 14.0,
-                                fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            flex: 2,
-                            child: Focus(
-                              onFocusChange: (has) {
-                                if (has && widget.aerobicIsSuggestion) {
-                                  widget.onConfirmAerobic?.call();
-                                }
-                              },
-                              child: StylishInput(
-                                controller: _kmController,
-                                hint: '',
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly
-                                ],
-                                normalTextColor: widget.aerobicIsSuggestion
-                                    ? colorScheme.onSurfaceVariant
-                                        .withValues(alpha: 0.5)
-                                    : colorScheme.onSurface,
-                                suggestionTextColor: colorScheme
-                                    .onSurfaceVariant
-                                    .withValues(alpha: 0.5),
-                                fillColor: colorScheme.surfaceContainer,
-                                contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 10, horizontal: 12),
-                                textAlign: TextAlign.right,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            ' ${l10n.km} ',
-                            style: TextStyle(
-                                color: colorScheme.onSurfaceVariant,
-                                fontSize: 14.0,
-                                fontWeight: FontWeight.bold),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Focus(
-                              onFocusChange: (has) {
-                                if (has && widget.aerobicIsSuggestion) {
-                                  widget.onConfirmAerobic?.call();
-                                }
-                              },
-                              child: StylishInput(
-                                controller: _mController,
-                                hint: '',
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly
-                                ],
-                                normalTextColor: widget.aerobicIsSuggestion
-                                    ? colorScheme.onSurfaceVariant
-                                        .withValues(alpha: 0.5)
-                                    : colorScheme.onSurface,
-                                suggestionTextColor: colorScheme
-                                    .onSurfaceVariant
-                                    .withValues(alpha: 0.5),
-                                fillColor: colorScheme.surfaceContainer,
-                                contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 10, horizontal: 12),
-                                textAlign: TextAlign.right,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            ' ${l10n.m}',
-                            style: TextStyle(
-                                color: colorScheme.onSurfaceVariant,
-                                fontSize: 14.0,
-                                fontWeight: FontWeight.bold),
-                          ),
-                        ],
+              children: [
+                // 距離
+                Row(
+                  children: [
+                    Text(
+                      l10n.distance,
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Text(
-                            l10n.time,
-                            style: TextStyle(
-                                color: colorScheme.onSurface,
-                                fontSize: 14.0,
-                                fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            flex: 2,
-                            child: Focus(
-                              onFocusChange: (has) {
-                                if (has && widget.aerobicIsSuggestion) {
-                                  widget.onConfirmAerobic?.call();
-                                }
-                              },
-                              child: StylishInput(
-                                controller: _minController,
-                                hint: '',
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly
-                                ],
-                                normalTextColor: widget.aerobicIsSuggestion
-                                    ? colorScheme.onSurfaceVariant
-                                        .withValues(alpha: 0.5)
-                                    : colorScheme.onSurface,
-                                suggestionTextColor: colorScheme
-                                    .onSurfaceVariant
-                                    .withValues(alpha: 0.5),
-                                fillColor: colorScheme.surfaceContainer,
-                                contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 10, horizontal: 12),
-                                textAlign: TextAlign.right,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            ' ${l10n.min} ',
-                            style: TextStyle(
-                                color: colorScheme.onSurfaceVariant,
-                                fontSize: 14.0,
-                                fontWeight: FontWeight.bold),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Focus(
-                              onFocusChange: (has) {
-                                if (has && widget.aerobicIsSuggestion) {
-                                  widget.onConfirmAerobic?.call();
-                                }
-                              },
-                              child: StylishInput(
-                                controller: _secController,
-                                hint: '',
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly
-                                ],
-                                normalTextColor: widget.aerobicIsSuggestion
-                                    ? colorScheme.onSurfaceVariant
-                                        .withValues(alpha: 0.5)
-                                    : colorScheme.onSurface,
-                                suggestionTextColor: colorScheme
-                                    .onSurfaceVariant
-                                    .withValues(alpha: 0.5),
-                                fillColor: colorScheme.surfaceContainer,
-                                contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 10, horizontal: 12),
-                                textAlign: TextAlign.right,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            ' ${l10n.sec}',
-                            style: TextStyle(
-                                color: colorScheme.onSurfaceVariant,
-                                fontSize: 14.0,
-                                fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: List.generate(
-                      min(widget.setCount, widget.setInputDataList.length),
-                      (setIndex) {
-                        final set = widget.setInputDataList[setIndex];
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4.0),
-                          child: Row(
-                            children: [
-                              Text(
-                                '${setIndex + 1}${l10n.sets}：',
-                                style: TextStyle(
-                                    color: colorScheme.onSurfaceVariant,
-                                    fontSize: 14.0),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Focus(
-                                  onFocusChange: (has) {
-                                    if (has && set.isSuggestion) {
-                                      setState(() => set.isSuggestion = false);
-                                    }
-                                  },
-                                  child: StylishInput(
-                                    controller: set.weightController,
-                                    hint: '',
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                            decimal: true),
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.allow(
-                                          RegExp(r'^\d*\.?\d*')),
-                                    ],
-                                    normalTextColor: set.isSuggestion
-                                        ? colorScheme.onSurfaceVariant
-                                            .withValues(alpha: 0.5)
-                                        : colorScheme.onSurface,
-                                    suggestionTextColor: colorScheme
-                                        .onSurfaceVariant
-                                        .withValues(alpha: 0.5),
-                                    fillColor: colorScheme.surfaceContainer,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        vertical: 10, horizontal: 12),
-                                    textAlign: TextAlign.right,
-                                    onChanged: (text) {
-                                      setState(() {
-                                        if (text.isNotEmpty &&
-                                            set.isSuggestion) {
-                                          set.isSuggestion = false;
-                                        } else if (text.isEmpty &&
-                                            !set.isSuggestion &&
-                                            set.repController.text.isEmpty) {
-                                          final anyOther =
-                                              widget.setInputDataList.any(
-                                            (s) =>
-                                                s != set &&
-                                                (s.weightController.text
-                                                        .isNotEmpty ||
-                                                    s.repController.text
-                                                        .isNotEmpty),
-                                          );
-                                          if (!anyOther) {
-                                            set.isSuggestion = true;
-                                          }
-                                        }
-                                      });
-                                    },
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                ' ${currentUnit == 'kg' ? l10n.kg : l10n.lbs} ',
-                                style: TextStyle(
-                                    color: colorScheme.onSurfaceVariant,
-                                    fontSize: 14.0,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              Expanded(
-                                child: Focus(
-                                  onFocusChange: (has) {
-                                    if (has && set.isSuggestion) {
-                                      setState(() => set.isSuggestion = false);
-                                    }
-                                  },
-                                  child: StylishInput(
-                                    controller: set.repController,
-                                    hint: '',
-                                    keyboardType: TextInputType.number,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.digitsOnly
-                                    ],
-                                    normalTextColor: set.isSuggestion
-                                        ? colorScheme.onSurfaceVariant
-                                            .withValues(alpha: 0.5)
-                                        : colorScheme.onSurface,
-                                    suggestionTextColor: colorScheme
-                                        .onSurfaceVariant
-                                        .withValues(alpha: 0.5),
-                                    fillColor: colorScheme.surfaceContainer,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        vertical: 10, horizontal: 12),
-                                    textAlign: TextAlign.right,
-                                    onChanged: (text) {
-                                      setState(() {
-                                        if (text.isNotEmpty &&
-                                            set.isSuggestion) {
-                                          set.isSuggestion = false;
-                                        } else if (text.isEmpty &&
-                                            !set.isSuggestion &&
-                                            set.weightController.text.isEmpty) {
-                                          final anyOther =
-                                              widget.setInputDataList.any(
-                                            (s) =>
-                                                s != set &&
-                                                (s.weightController.text
-                                                        .isNotEmpty ||
-                                                    s.repController.text
-                                                        .isNotEmpty),
-                                          );
-                                          if (!anyOther) {
-                                            set.isSuggestion = true;
-                                          }
-                                        }
-                                      });
-                                    },
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                ' ${l10n.reps}',
-                                style: TextStyle(
-                                    color: colorScheme.onSurfaceVariant,
-                                    fontSize: 14.0,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: Focus(
+                        onFocusChange: (has) {
+                          if (has && widget.aerobicIsSuggestion) {
+                            widget.onConfirmAerobic?.call();
+                          }
+                        },
+                        child: StylishInput(
+                          controller: _kmController,
+                          hint: '',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          normalTextColor: widget.aerobicIsSuggestion
+                              ? colorScheme.onSurfaceVariant
+                              .withValues(alpha: 0.5)
+                              : colorScheme.onSurface,
+                          suggestionTextColor: colorScheme
+                              .onSurfaceVariant
+                              .withValues(alpha: 0.5),
+                          fillColor: colorScheme.surfaceContainer,
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 12),
+                          textAlign: TextAlign.right,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      ' ${l10n.km} ',
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Focus(
+                        onFocusChange: (has) {
+                          if (has && widget.aerobicIsSuggestion) {
+                            widget.onConfirmAerobic?.call();
+                          }
+                        },
+                        child: StylishInput(
+                          controller: _mController,
+                          hint: '',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          normalTextColor: widget.aerobicIsSuggestion
+                              ? colorScheme.onSurfaceVariant
+                              .withValues(alpha: 0.5)
+                              : colorScheme.onSurface,
+                          suggestionTextColor: colorScheme
+                              .onSurfaceVariant
+                              .withValues(alpha: 0.5),
+                          fillColor: colorScheme.surfaceContainer,
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 12),
+                          textAlign: TextAlign.right,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      ' ${l10n.m}',
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // 時間
+                Row(
+                  children: [
+                    Text(
+                      l10n.time,
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: Focus(
+                        onFocusChange: (has) {
+                          if (has && widget.aerobicIsSuggestion) {
+                            widget.onConfirmAerobic?.call();
+                          }
+                        },
+                        child: StylishInput(
+                          controller: _minController,
+                          hint: '',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          normalTextColor: widget.aerobicIsSuggestion
+                              ? colorScheme.onSurfaceVariant
+                              .withValues(alpha: 0.5)
+                              : colorScheme.onSurface,
+                          suggestionTextColor: colorScheme
+                              .onSurfaceVariant
+                              .withValues(alpha: 0.5),
+                          fillColor: colorScheme.surfaceContainer,
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 12),
+                          textAlign: TextAlign.right,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      ' ${l10n.min} ',
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Focus(
+                        onFocusChange: (has) {
+                          if (has && widget.aerobicIsSuggestion) {
+                            widget.onConfirmAerobic?.call();
+                          }
+                        },
+                        child: StylishInput(
+                          controller: _secController,
+                          hint: '',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          normalTextColor: widget.aerobicIsSuggestion
+                              ? colorScheme.onSurfaceVariant
+                              .withValues(alpha: 0.5)
+                              : colorScheme.onSurface,
+                          suggestionTextColor: colorScheme
+                              .onSurfaceVariant
+                              .withValues(alpha: 0.5),
+                          fillColor: colorScheme.surfaceContainer,
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 12),
+                          textAlign: TextAlign.right,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      ' ${l10n.sec}',
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            )
+                : Column(
+              children: List.generate(
+                min(widget.setCount, widget.setInputDataList.length),
+                    (setIndex) {
+                  final set = widget.setInputDataList[setIndex];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${setIndex + 1}${l10n.sets}：',
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 14.0,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Focus(
+                            onFocusChange: (has) {
+                              if (has && set.isSuggestion) {
+                                setState(() => set.isSuggestion = false);
+                              }
+                            },
+                            child: StylishInput(
+                              controller: set.weightController,
+                              hint: '',
+                              keyboardType:
+                              const TextInputType.numberWithOptions(
+                                  decimal: true),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'^\d*\.?\d*'),
+                                ),
+                              ],
+                              normalTextColor: set.isSuggestion
+                                  ? colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.5)
+                                  : colorScheme.onSurface,
+                              suggestionTextColor: colorScheme
+                                  .onSurfaceVariant
+                                  .withValues(alpha: 0.5),
+                              fillColor: colorScheme.surfaceContainer,
+                              contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 10, horizontal: 12),
+                              textAlign: TextAlign.right,
+                              onChanged: (text) {
+                                setState(() {
+                                  if (text.isNotEmpty &&
+                                      set.isSuggestion) {
+                                    set.isSuggestion = false;
+                                  } else if (text.isEmpty &&
+                                      !set.isSuggestion &&
+                                      set.repController.text.isEmpty) {
+                                    final anyOther =
+                                    widget.setInputDataList.any(
+                                          (s) =>
+                                      s != set &&
+                                          (s.weightController.text
+                                              .isNotEmpty ||
+                                              s.repController.text
+                                                  .isNotEmpty),
+                                    );
+                                    if (!anyOther) {
+                                      set.isSuggestion = true;
+                                    }
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        Text(
+                          ' ${currentUnit == 'kg' ? l10n.kg : l10n.lbs} ',
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Expanded(
+                          child: Focus(
+                            onFocusChange: (has) {
+                              if (has && set.isSuggestion) {
+                                setState(() => set.isSuggestion = false);
+                              }
+                            },
+                            child: StylishInput(
+                              controller: set.repController,
+                              hint: '',
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly
+                              ],
+                              normalTextColor: set.isSuggestion
+                                  ? colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.5)
+                                  : colorScheme.onSurface,
+                              suggestionTextColor: colorScheme
+                                  .onSurfaceVariant
+                                  .withValues(alpha: 0.5),
+                              fillColor: colorScheme.surfaceContainer,
+                              contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 10, horizontal: 12),
+                              textAlign: TextAlign.right,
+                              onChanged: (text) {
+                                setState(() {
+                                  if (text.isNotEmpty &&
+                                      set.isSuggestion) {
+                                    set.isSuggestion = false;
+                                  } else if (text.isEmpty &&
+                                      !set.isSuggestion &&
+                                      set.weightController.text.isEmpty) {
+                                    final anyOther =
+                                    widget.setInputDataList.any(
+                                          (s) =>
+                                      s != set &&
+                                          (s.weightController.text
+                                              .isNotEmpty ||
+                                              s.repController.text
+                                                  .isNotEmpty),
+                                    );
+                                    if (!anyOther) {
+                                      set.isSuggestion = true;
+                                    }
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        Text(
+                          ' ${l10n.reps}',
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 }
+
