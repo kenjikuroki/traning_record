@@ -79,6 +79,8 @@
   "hintRecordExerciseField": "ここに種目名を入力します。",
   "hintRecordAddExercise": "ここをタップして種目を追加します。",
   "hintRecordChangePart": "ここから部位を追加できます。",
-  "hintRecordOpenSettings": "セット数の初期値は設定から変更できます。"
-
+  "hintRecordOpenSettings": "セット数の初期値は設定から変更できます。",
+  "addSet": "＋セット",
+  "hintRecordFab": "ここからセット・種目・部位を追加できます",
+  "openAddMenu": "追加メニューを開く"
 }

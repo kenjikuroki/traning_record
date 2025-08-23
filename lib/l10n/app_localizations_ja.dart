@@ -251,4 +251,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get hintRecordChangePart => 'ここから部位を追加できます。';
+
+  @override
+  String get addSet => '＋セット';
+
+  @override
+  String get openAddMenu => '追加メニューを開く';
+
+  @override
+  String get hintRecordFab => 'ここからセット・種目・部位を追加できます';
 }

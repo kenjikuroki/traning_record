@@ -574,6 +574,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You can add another body part here.'**
   String get hintRecordChangePart;
+
+  /// No description provided for @addSet.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Set'**
+  String get addSet;
+
+  /// No description provided for @openAddMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Open add menu'**
+  String get openAddMenu;
+
+  /// No description provided for @hintRecordFab.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a set, exercise, or body part from here'**
+  String get hintRecordFab;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

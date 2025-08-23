@@ -251,4 +251,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hintRecordChangePart => 'You can add another body part here.';
+
+  @override
+  String get addSet => '+ Set';
+
+  @override
+  String get openAddMenu => 'Open add menu';
+
+  @override
+  String get hintRecordFab => 'Add a set, exercise, or body part from here';
 }

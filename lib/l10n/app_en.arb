@@ -79,6 +79,8 @@
   "hintRecordOpenSettings": "You can change default sets in Settings.",
   "hintRecordExerciseField": "Enter exercise name here.",
   "hintRecordAddExercise": "Tap here to add the exercise.",
-  "hintRecordChangePart": "You can add another body part here."
-
+  "hintRecordChangePart": "You can add another body part here.",
+  "addSet": "+ Set",
+  "openAddMenu": "Open add menu",
+  "hintRecordFab": "Add a set, exercise, or body part from here"
 }
