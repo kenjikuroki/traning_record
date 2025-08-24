@@ -320,6 +320,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
 
+                  const SizedBox(height: gap),
+
                   // ★ Large Banner 広告
                   SizedBox(
                     height: 100, // ★ Large Banner の高さを先取り
