@@ -13,6 +13,8 @@ import '../widgets/ad_banner.dart';
 import 'calendar_screen.dart';
 import 'graph_screen.dart';
 import '../widgets/coach_bubble.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
+import '../widgets/ui_feedback.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -37,6 +39,7 @@ class RecordScreen extends StatefulWidget {
 }
 
 class _RecordScreenState extends State<RecordScreen> {
+  bool _initialized = false;
   // CoachBubble anchors
   final GlobalKey _kRecordPart = GlobalKey();      // 部位ドロップダウン（初回ヒント用）
   final GlobalKey _kExerciseField = GlobalKey();   // 種目TextField（選択後ヒント）
@@ -87,7 +90,10 @@ class _RecordScreenState extends State<RecordScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _loadSettingsAndParts();
+    if (!_initialized) {
+            _initialized = true;
+            _loadSettingsAndParts();
+        }
   }
 
   @override
@@ -504,8 +510,7 @@ class _RecordScreenState extends State<RecordScreen> {
     if (section.selectedPart == null) return;
 
     if (section.menuControllers.length >= 15) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l10n.exerciseLimitReached)));
+      showAppSnack(context, l10n.exerciseLimitReached);
       return;
     }
 
@@ -591,8 +596,7 @@ class _RecordScreenState extends State<RecordScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     if (_sections.length >= 10) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l10n.partLimitReached)));
+      showAppSnack(context, l10n.partLimitReached);
       return;
     }
 
@@ -746,7 +750,8 @@ class _RecordScreenState extends State<RecordScreen> {
                     child: Card(
                       color: colorScheme.surfaceContainerHighest,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16.0)),
+                        borderRadius: BorderRadius.circular(16.0),
+                        ),
                       elevation: 4,
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
@@ -1025,6 +1030,8 @@ class _RecordScreenState extends State<RecordScreen> {
                                       physics: const NeverScrollableScrollPhysics(),
                                       itemCount: section.menuControllers.length,
                                       itemBuilder: (context, menuIndex) {
+                                        final bool isSelected =
+                                               (_currentSectionIndex == secIndex && _currentMenuIndex == menuIndex);
                                         return AnimatedSwitcher(
                                           duration: const Duration(milliseconds: 250),
                                           switchInCurve: Curves.easeOut,
@@ -1047,11 +1054,17 @@ class _RecordScreenState extends State<RecordScreen> {
                                             child: Card(
                                               key: ValueKey(
                                                   'menu_${section.menuIds[menuIndex]}'),
-                                              color: colorScheme.surface,
-                                              shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                  BorderRadius.circular(12.0)),
-                                              elevation: 2,
+                                                color: colorScheme.surface,
+                                                          shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(12.0),
+                                                          side: isSelected
+                                                          ? const BorderSide(color: Colors.white, width: 1.0) // ★ 白い枠線
+                                                       : BorderSide.none,
+                                                 ),
+                                                 elevation: isSelected ? 8 : 2,
+                                                 shadowColor: isSelected
+                                                     ? Colors.white.withOpacity(0.8) // 白いGlow
+                                                     : Colors.black.withOpacity(0.20),
                                               margin: const EdgeInsets.symmetric(vertical: 8.0),
                                               child: Padding(
                                                 padding: const EdgeInsets.all(16.0),
@@ -1125,9 +1138,16 @@ class _RecordScreenState extends State<RecordScreen> {
     );
 
     // ★ FAB（落ち着いた青で統一）
-    final fabMain = FloatingActionButton(
+    final fabMain = AnimatedScale(
+      scale: _fabOpen ? 1.04 : 1.0,
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOut,
+        child: FloatingActionButton(
       key: _kFabKey,
-      onPressed: () => setState(() => _fabOpen = !_fabOpen),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              setState(() => _fabOpen = !_fabOpen);
+            },
       backgroundColor: kBrandBlue,
       child: AnimatedRotation(
         turns: _fabOpen ? .125 : 0,
@@ -1135,6 +1155,7 @@ class _RecordScreenState extends State<RecordScreen> {
         child: const Icon(Icons.add, color: Colors.white),
       ),
       tooltip: l10n.openAddMenu,
+    ),
     );
 
     // ★ テキストだけのミニFAB風チップ（色を統一・白文字）
@@ -1145,6 +1166,7 @@ class _RecordScreenState extends State<RecordScreen> {
           borderRadius: BorderRadius.circular(22),
           onTap: enabled
               ? () {
+            HapticFeedback.selectionClick();
             setState(() => _fabOpen = false);
             onTap();
           }
@@ -1196,29 +1218,57 @@ class _RecordScreenState extends State<RecordScreen> {
     }
 
     final overlay = _fabOpen
-        ? Positioned.fill(
-      child: GestureDetector(
-        onTap: () => setState(() => _fabOpen = false),
-        child: Container(color: Colors.black.withOpacity(0.25)),
-      ),
-    )
-        : const SizedBox.shrink();
+           ? Positioned.fill(
+               child: AnimatedOpacity(
+                 opacity: 1.0,
+                 duration: const Duration(milliseconds: 160),
+                 child: GestureDetector(
+                   onTap: () => setState(() => _fabOpen = false),
+                   child: Container(color: Colors.black.withOpacity(0.25)),
+                 ),
+               ),
+             )
+           : const SizedBox.shrink();
 
     // ★ ダイヤル位置を少し上へ（bottom: 88 → 120）
-    final dial = _fabOpen
-        ? Positioned(
-      right: 16,
-      bottom: 120,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          chipAction(l10n.addSet, () => _handleAddSet(l10n), enabled: canAddSet()),
-          chipAction(l10n.addExercise, _handleAddExercise),
-          chipAction(l10n.addPart, _handleAddPart), // ＋部位が少し上に
-        ],
-      ),
-    )
-        : const SizedBox.shrink();
+    final media = MediaQuery.of(context);
+        final double safeBottom = media.padding.bottom;      // セーフエリア
+        final double kbInset = media.viewInsets.bottom;      // キーボード高さ
+        const double fabSize = 56.0;                         // 標準FABの直径
+        const double fabMargin = 16.0;                       // FAB外側マージン
+        const double gapAboveFab = 12.0;                     // FABとチップ群の隙間
+        // 今回は FAB を自前で上げるので、kbInset を足して追従させる
+        final double dialBottom =
+            (safeBottom > 0 ? safeBottom : fabMargin) + kbInset + fabSize + fabMargin + gapAboveFab;
+
+        final dial = Positioned(
+          right: 16,
+          bottom: dialBottom,
+              child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            switchInCurve: Curves.easeOutBack,
+            switchOutCurve: Curves.easeIn,
+            child: _fabOpen
+                ? TweenAnimationBuilder<double>(
+                    key: const ValueKey('dial-on'),
+                    tween: Tween(begin: 20.0, end: 0.0),
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutBack,
+                    builder: (context, offsetY, child) {
+                      return Transform.translate(offset: Offset(0, offsetY), child: child);
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        chipAction(l10n.addSet, () => _handleAddSet(l10n), enabled: canAddSet()),
+                        chipAction(l10n.addExercise, _handleAddExercise),
+                        chipAction(l10n.addPart, _handleAddPart),
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(key: ValueKey('dial-off')),
+          ),
+        );
 
     return PopScope(
       canPop: false,
@@ -1234,6 +1284,7 @@ class _RecordScreenState extends State<RecordScreen> {
         Navigator.of(context).pop();
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: false,
         backgroundColor: colorScheme.surface,
         appBar: AppBar(
           automaticallyImplyLeading: false,
@@ -1257,8 +1308,13 @@ class _RecordScreenState extends State<RecordScreen> {
             dial,
           ],
         ),
-        floatingActionButton: fabMain,
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          floatingActionButton: AnimatedPadding(
+                       duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    // キーボード分だけ、FABをスムーズに持ち上げる
+                    padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: fabMain,
+            ),
       ),
     );
   }
