@@ -13,7 +13,6 @@ import '../widgets/ad_banner.dart';
 import 'calendar_screen.dart';
 import 'graph_screen.dart';
 import '../widgets/coach_bubble.dart';
-import 'package:flutter/services.dart' show HapticFeedback;
 import '../widgets/ui_feedback.dart';
 
 // ignore_for_file: library_private_types_in_public_api
@@ -39,11 +38,13 @@ class RecordScreen extends StatefulWidget {
 }
 
 class _RecordScreenState extends State<RecordScreen> {
+  final ScrollController _scrollCtrl = ScrollController();
   bool _initialized = false;
+
   // CoachBubble anchors
-  final GlobalKey _kRecordPart = GlobalKey();      // 部位ドロップダウン（初回ヒント用）
-  final GlobalKey _kExerciseField = GlobalKey();   // 種目TextField（選択後ヒント）
-  final GlobalKey _kFabKey = GlobalKey();          // FAB
+  final GlobalKey _kRecordPart = GlobalKey(); // 部位ドロップダウン（初回ヒント用）
+  final GlobalKey _kExerciseField = GlobalKey(); // 種目TextField（選択後ヒント）
+  final GlobalKey _kFabKey = GlobalKey(); // FAB
 
   bool _firstBuildDone = false;
 
@@ -91,13 +92,14 @@ class _RecordScreenState extends State<RecordScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_initialized) {
-            _initialized = true;
-            _loadSettingsAndParts();
-        }
+      _initialized = true;
+      _loadSettingsAndParts();
+    }
   }
 
   @override
   void dispose() {
+    _scrollCtrl.dispose();
     for (var section in _sections) {
       section.dispose();
     }
@@ -106,13 +108,17 @@ class _RecordScreenState extends State<RecordScreen> {
     super.dispose();
   }
 
-  // 共通：遷移前にキーボードを完全に閉じる
-  Future<void> _closeKeyboard() async {
-    FocusManager.instance.primaryFocus?.unfocus();
-    try {
-      await SystemChannels.textInput.invokeMethod('TextInput.hide');
-    } catch (_) {}
-    await Future<void>.delayed(const Duration(milliseconds: 16));
+  // 指定のカードを画面内にスクロールして見えるようにする
+  Future<void> _scrollIntoView(int secIndex, int menuIndex) async {
+    final key = _sections[secIndex].menuKeys[menuIndex];
+    if (key is GlobalKey && key.currentContext != null) {
+      await Scrollable.ensureVisible(
+        key.currentContext!,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        alignment: 0.2,
+      );
+    }
   }
 
   String _getOriginalPartName(BuildContext context, String translatedPart) {
@@ -295,7 +301,7 @@ class _RecordScreenState extends State<RecordScreen> {
         final lu = luBy[name];
 
         section.menuControllers.add(TextEditingController(text: name));
-        section.menuKeys.add(UniqueKey());
+        section.menuKeys.add(GlobalKey());
         section.menuIds.add(section.nextMenuId++);
 
         if (isAerobic) {
@@ -431,7 +437,8 @@ class _RecordScreenState extends State<RecordScreen> {
 
           // Record は未確定を除外
           if (!isSug &&
-              ((distance.trim().isNotEmpty) || (duration.trim().isNotEmpty))) {
+              ((distance.trim().isNotEmpty) ||
+                  (duration.trim().isNotEmpty))) {
             listForRecord.add(MenuData(
               name: name,
               weights: const <String>[],
@@ -459,15 +466,16 @@ class _RecordScreenState extends State<RecordScreen> {
             final set = section.setInputDataList[i][s];
             final w = set.weightController.text;
             final r = set.repController.text;
-            final hasValue = w.trim().isNotEmpty || r.trim().isNotEmpty;
+            final hasValue =
+                w.trim().isNotEmpty || r.trim().isNotEmpty;
             if (!set.isSuggestion && hasValue) {
               weightsConfirmed.add(w);
               repsConfirmed.add(r);
             }
           }
           if (weightsConfirmed.isNotEmpty || repsConfirmed.isNotEmpty) {
-            listForRecord.add(MenuData(
-                name: name, weights: weightsConfirmed, reps: repsConfirmed));
+            listForRecord.add(
+                MenuData(name: name, weights: weightsConfirmed, reps: repsConfirmed));
             hasAnyRecordData = true;
             lastModifiedPart ??= originalPart;
           }
@@ -517,6 +525,7 @@ class _RecordScreenState extends State<RecordScreen> {
     setState(() {
       final nameCtrl = TextEditingController();
       section.menuControllers.add(nameCtrl);
+      section.menuKeys.add(GlobalKey());
       final newId = section.nextMenuId++;
       section.menuIds.add(newId);
       section.recentlyAdded.add(newId);
@@ -578,8 +587,9 @@ class _RecordScreenState extends State<RecordScreen> {
 
     final insertAt = menuIndex + 1;
     setState(() {
-      section.menuControllers.insert(insertAt, TextEditingController(text: currentName));
-      section.menuKeys.insert(insertAt, UniqueKey());
+      section.menuControllers.insert(
+          insertAt, TextEditingController(text: currentName));
+      section.menuKeys.insert(insertAt, GlobalKey());
       section.menuIds.insert(insertAt, section.nextMenuId++);
 
       section.aerobicDistanceCtrls.insert(insertAt, TextEditingController());
@@ -621,8 +631,7 @@ class _RecordScreenState extends State<RecordScreen> {
               child: Text(l10n.cancel)),
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child:
-              Text(l10n.delete, style: const TextStyle(color: Colors.red))),
+              child: Text(l10n.delete, style: const TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -635,6 +644,9 @@ class _RecordScreenState extends State<RecordScreen> {
         }
         _sections[sectionIndex].menuControllers.removeAt(menuIndex);
         _sections[sectionIndex].setInputDataList.removeAt(menuIndex);
+        if (_sections[sectionIndex].menuKeys.length > menuIndex) {
+          _sections[sectionIndex].menuKeys.removeAt(menuIndex);
+        }
 
         if (_sections[sectionIndex].aerobicDistanceCtrls.length > menuIndex) {
           _sections[sectionIndex].aerobicDistanceCtrls[menuIndex].dispose();
@@ -685,11 +697,12 @@ class _RecordScreenState extends State<RecordScreen> {
     final menuIdx = _currentMenuIndex ?? 0;
     final section = _sections[secIdx];
 
+    // 有酸素はセットを増やさない
     if (section.selectedPart == l10n.aerobicExercise) {
-      _addAerobicSetRow(secIdx, menuIdx);
-    } else {
-      _addOneSetAt(secIdx, menuIdx);
+      return;
     }
+
+    _addOneSetAt(secIdx, menuIdx);
   }
 
   void _handleAddExercise() {
@@ -714,16 +727,26 @@ class _RecordScreenState extends State<RecordScreen> {
     final l10n = AppLocalizations.of(context)!;
     final formattedDate = DateFormat('yyyy/MM/dd').format(widget.selectedDate);
 
+    // 端末情報（1か所だけで定義）
+    final media = MediaQuery.of(context);
+    final kbInset = media.viewInsets.bottom;   // キーボード高さ
+    final safeBottom = media.padding.bottom;   // セーフエリア
+
+    // ★ ナビバー（黒帯）透明化スタイル
+    final overlayStyle = isLight
+        ? const SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    )
+        : const SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.light,
+    );
+
     // ★ 統一カラー（落ち着いた青）
     const Color kBrandBlue = Color(0xFF2563EB);
-
-    final Color partNormalBgColor =
-    isLight ? const Color(0xFF333333) : const Color(0xFF2C2F33);
-    final Color partPressedBgColor =
-    isLight ? const Color(0xFF1A1A1A) : const Color(0xFF383C40);
-    final Color partTextColor =
-    isLight ? Colors.white : const Color(0xFFCCCCCC);
-    final Color partAccentColor = const Color(0xFF60A5FA);
 
     final bool isInitialEmptyState =
         _sections.length == 1 && _sections[0].selectedPart == null;
@@ -738,399 +761,516 @@ class _RecordScreenState extends State<RecordScreen> {
           const AdBanner(screenName: 'record'),
           const SizedBox(height: 8.0),
           Expanded(
-            child: ListView.builder(
-              primary: true,
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount:
-              headerCount + _sections.length + (isInitialEmptyState ? 0 : 1),
-              itemBuilder: (context, index) {
-                if (showWeight && index == 0) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Card(
-                      color: colorScheme.surfaceContainerHighest,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16.0),
-                        ),
-                      elevation: 4,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              '${l10n.enterYourWeight}${Localizations.localeOf(context).languageCode == "ja" ? "：" : ":"}',
-                              style: TextStyle(
-                                color: colorScheme.onSurface,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15.0,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            SizedBox(
-                              width: 160,
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: StylishInput(
-                                      controller: _weightController,
-                                      hint: '',
-                                      keyboardType: const TextInputType
-                                          .numberWithOptions(decimal: true),
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.allow(
-                                            RegExp(r'^\d*\.?\d*')),
-                                      ],
-                                      normalTextColor: colorScheme.onSurface,
-                                      suggestionTextColor: colorScheme
-                                          .onSurfaceVariant
-                                          .withValues(alpha: 0.5),
-                                      fillColor: colorScheme.surfaceContainer,
-                                      contentPadding:
-                                      const EdgeInsets.symmetric(
-                                          vertical: 8, horizontal: 10),
-                                      textAlign: TextAlign.right,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    SettingsManager.currentUnit,
-                                    style: TextStyle(
-                                      color: colorScheme.onSurfaceVariant,
-                                      fontSize: 13.0,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                final secIndex = index - headerCount;
-
-                // 旧：＋部位のプレース → FAB統合で非表示
-                if (!isInitialEmptyState && secIndex == _sections.length) {
-                  return const SizedBox.shrink();
-                }
-
-                final section = _sections[secIndex];
-
-                return AnimatedListItem(
-                  key: section.key,
-                  direction:
-                  _firstBuildDone ? AnimationDirection.bottomToTop : AnimationDirection.none,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        _currentSectionIndex = secIndex;
-                        _currentMenuIndex = 0;
-                      },
+            child: AnimatedPadding(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              // キーボード表示時はその高さ + セーフエリア + 16 を下余白に足す
+              padding: EdgeInsets.only(
+                bottom: (kbInset > 0 ? kbInset + safeBottom + 16 : 16),
+              ),
+              child: ListView.builder(
+                controller: _scrollCtrl,
+                primary: false,
+                // ★ 自動でキーボードを閉じない
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount:
+                headerCount + _sections.length + (isInitialEmptyState ? 0 : 1),
+                itemBuilder: (context, index) {
+                  if (showWeight && index == 0) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
                       child: Card(
                         color: colorScheme.surfaceContainerHighest,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16.0)),
+                          borderRadius: BorderRadius.circular(16.0),
+                        ),
                         elevation: 4,
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: DropdownButtonFormField<String>(
-                                      // ★ バグ対策：GlobalKeyは先頭セクションにだけ付与
-                                      key: secIndex == 0 ? _kRecordPart : null,
-                                      decoration: InputDecoration(
-                                        hintText: l10n.selectTrainingPart,
-                                        hintStyle: TextStyle(
-                                            color: colorScheme.onSurfaceVariant,
-                                            fontSize: 14.0),
-                                        filled: true,
+                              Text(
+                                '${l10n.enterYourWeight}${Localizations.localeOf(context).languageCode == "ja" ? "：" : ":"}',
+                                style: TextStyle(
+                                  color: colorScheme.onSurface,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15.0,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              SizedBox(
+                                width: 160,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: StylishInput(
+                                        controller: _weightController,
+                                        hint: '',
+                                        keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                            decimal: true),
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.allow(
+                                              RegExp(r'^\d*\.?\d*')),
+                                        ],
+                                        normalTextColor: colorScheme.onSurface,
+                                        suggestionTextColor: colorScheme
+                                            .onSurfaceVariant
+                                            .withValues(alpha: 0.5),
                                         fillColor: colorScheme.surfaceContainer,
-                                        border: OutlineInputBorder(
-                                          borderRadius:
-                                          BorderRadius.circular(25.0),
-                                          borderSide: BorderSide.none,
-                                        ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius:
-                                          BorderRadius.circular(25.0),
-                                          borderSide: BorderSide.none,
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius:
-                                          BorderRadius.circular(25.0),
-                                          borderSide: BorderSide.none,
-                                        ),
                                         contentPadding:
                                         const EdgeInsets.symmetric(
-                                            vertical: 12, horizontal: 20),
+                                            vertical: 8, horizontal: 10),
+                                        textAlign: TextAlign.right,
                                       ),
-                                      initialValue: section.selectedPart,
-                                      items: _filteredBodyParts
-                                          .map(
-                                            (p) => DropdownMenuItem(
-                                          value: p,
-                                          child: Text(
-                                            p,
-                                            style: TextStyle(
-                                              color: colorScheme.onSurface,
-                                              fontSize: 14.0,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                          .toList(),
-                                      onChanged: (value) {
-                                        setState(() {
-                                          section.selectedPart = value;
-                                          section.menuKeys.clear();
-                                          section.menuIds.clear();
-                                          section.nextMenuId = 0;
-                                          _clearSectionControllersAndMaps(section);
-
-                                          if (section.selectedPart != null) {
-                                            final current = section.selectedPart!;
-                                            final originalPart =
-                                            _getOriginalPartName(context, current);
-                                            final dateKey = _getDateKey(widget.selectedDate);
-                                            final record =
-                                            widget.recordsBox.get(dateKey);
-
-                                            final recList =
-                                                record?.menus[originalPart] ?? <MenuData>[];
-                                            final rawLU =
-                                            widget.lastUsedMenusBox.get(originalPart);
-                                            final luList = (rawLU is List)
-                                                ? rawLU.whereType<MenuData>().toList()
-                                                : <MenuData>[];
-
-                                            final Map<String, MenuData> recBy = {
-                                              for (final m in recList) m.name: m
-                                            };
-                                            final Map<String, MenuData> luBy = {
-                                              for (final m in luList) m.name: m
-                                            };
-
-                                            final List<String> names = [
-                                              ...recList.map((m) => m.name),
-                                              ...luList
-                                                  .where((m) => !recBy.containsKey(m.name))
-                                                  .map((m) => m.name),
-                                            ];
-                                            if (names.isEmpty) names.add('');
-
-                                            final l10n = AppLocalizations.of(context)!;
-                                            final isAerobic =
-                                                current == l10n.aerobicExercise;
-
-                                            for (final name in names) {
-                                              final rec = recBy[name];
-                                              final lu = luBy[name];
-
-                                              section.menuControllers
-                                                  .add(TextEditingController(text: name));
-                                              section.menuKeys.add(UniqueKey());
-                                              section.menuIds.add(section.nextMenuId++);
-
-                                              if (isAerobic) {
-                                                final String dist =
-                                                (rec?.distance?.trim().isNotEmpty ?? false)
-                                                    ? rec!.distance!.trim()
-                                                    : (lu?.distance?.trim() ?? '');
-                                                final String dura =
-                                                (rec?.duration?.trim().isNotEmpty ?? false)
-                                                    ? rec!.duration!.trim()
-                                                    : (lu?.duration?.trim() ?? '');
-                                                final bool isSug = !(rec?.distance
-                                                    ?.trim()
-                                                    .isNotEmpty ==
-                                                    true ||
-                                                    rec?.duration?.trim().isNotEmpty == true);
-
-                                                section.aerobicDistanceCtrls.add(
-                                                    TextEditingController(text: dist));
-                                                section.aerobicDurationCtrls.add(
-                                                    TextEditingController(text: dura));
-                                                section.aerobicSuggestFlags.add(isSug);
-                                                section.setInputDataList.add(<SetInputData>[]);
-                                              } else {
-                                                final int recLen = rec == null
-                                                    ? 0
-                                                    : min(rec.weights.length, rec.reps.length);
-                                                final int luLen = lu == null
-                                                    ? 0
-                                                    : min(lu.weights.length, lu.reps.length);
-                                                final int mergedLen =
-                                                max(_currentSetCount, max(recLen, luLen));
-
-                                                final row = <SetInputData>[];
-                                                for (int i = 0; i < mergedLen; i++) {
-                                                  String w = '';
-                                                  String r = '';
-                                                  bool isSuggestion = true;
-
-                                                  if (i < recLen) {
-                                                    w = rec!.weights[i];
-                                                    r = rec.reps[i];
-                                                    if (w.trim().isNotEmpty ||
-                                                        r.trim().isNotEmpty) {
-                                                      isSuggestion = false;
-                                                    }
-                                                  } else if (i < luLen) {
-                                                    w = lu!.weights[i];
-                                                    r = lu.reps[i];
-                                                    isSuggestion = true;
-                                                  }
-                                                  row.add(SetInputData(
-                                                    weightController:
-                                                    TextEditingController(text: w),
-                                                    repController:
-                                                    TextEditingController(text: r),
-                                                    isSuggestion: isSuggestion,
-                                                  ));
-                                                }
-                                                section.setInputDataList.add(row);
-                                                section.initialSetCount =
-                                                    max(section.initialSetCount ?? 0, mergedLen);
-                                              }
-                                            }
-                                          } else {
-                                            section.initialSetCount = _currentSetCount;
-                                          }
-                                        });
-                                        _scheduleHintsAfterPart(); // ここでFABヒント含めて案内
-                                      },
-                                      dropdownColor: colorScheme.surfaceContainer,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      SettingsManager.currentUnit,
                                       style: TextStyle(
-                                        color: colorScheme.onSurface,
-                                        fontSize: 14.0,
+                                        color: colorScheme.onSurfaceVariant,
+                                        fontSize: 13.0,
                                         fontWeight: FontWeight.bold,
                                       ),
-                                      borderRadius: BorderRadius.circular(15.0),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16.0),
-                              if (section.selectedPart != null)
-                                Column(
-                                  children: [
-                                    ListView.builder(
-                                      shrinkWrap: true,
-                                      physics: const NeverScrollableScrollPhysics(),
-                                      itemCount: section.menuControllers.length,
-                                      itemBuilder: (context, menuIndex) {
-                                        final bool isSelected =
-                                               (_currentSectionIndex == secIndex && _currentMenuIndex == menuIndex);
-                                        return AnimatedSwitcher(
-                                          duration: const Duration(milliseconds: 250),
-                                          switchInCurve: Curves.easeOut,
-                                          switchOutCurve: Curves.easeIn,
-                                          transitionBuilder: (child, animation) {
-                                            if (!_firstBuildDone) return child;
-                                            final offset = Tween<Offset>(
-                                              begin: const Offset(0, -0.12),
-                                              end: Offset.zero,
-                                            ).animate(animation);
-                                            return FadeTransition(
-                                              opacity: animation,
-                                              child:
-                                              SlideTransition(position: offset, child: child),
-                                            );
-                                          },
-                                          child: GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTap: () => _touchCard(secIndex, menuIndex),
-                                            child: Card(
-                                              key: ValueKey(
-                                                  'menu_${section.menuIds[menuIndex]}'),
-                                                color: colorScheme.surface,
-                                                          shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(12.0),
-                                                          side: isSelected
-                                                          ? const BorderSide(color: Colors.white, width: 1.0) // ★ 白い枠線
-                                                       : BorderSide.none,
-                                                 ),
-                                                 elevation: isSelected ? 8 : 2,
-                                                 shadowColor: isSelected
-                                                     ? Colors.white.withOpacity(0.8) // 白いGlow
-                                                     : Colors.black.withOpacity(0.20),
-                                              margin: const EdgeInsets.symmetric(vertical: 8.0),
-                                              child: Padding(
-                                                padding: const EdgeInsets.all(16.0),
-                                                child: MenuList(
-                                                  // ★ バグ対策：先頭セクションの先頭メニューだけにキーを付与
-                                                  key: (secIndex == 0 && menuIndex == 0)
-                                                      ? _kExerciseField
-                                                      : null,
-                                                  menuController:
-                                                  section.menuControllers[menuIndex],
-                                                  removeMenuCallback: () =>
-                                                      _removeMenuItem(secIndex, menuIndex),
-                                                  setCount: section
-                                                      .setInputDataList[menuIndex].length,
-                                                  setInputDataList:
-                                                  section.setInputDataList[menuIndex],
-                                                  isAerobic: section.selectedPart ==
-                                                      l10n.aerobicExercise,
-                                                  distanceController: (menuIndex <
-                                                      section.aerobicDistanceCtrls.length)
-                                                      ? section.aerobicDistanceCtrls[menuIndex]
-                                                      : TextEditingController(),
-                                                  durationController: (menuIndex <
-                                                      section.aerobicDurationCtrls.length)
-                                                      ? section.aerobicDurationCtrls[menuIndex]
-                                                      : TextEditingController(),
-                                                  aerobicIsSuggestion: (menuIndex <
-                                                      section.aerobicSuggestFlags.length)
-                                                      ? section.aerobicSuggestFlags[menuIndex]
-                                                      : true,
-                                                  onConfirmAerobic: () {
-                                                    setState(() {
-                                                      if (menuIndex <
-                                                          section.aerobicSuggestFlags.length) {
-                                                        section.aerobicSuggestFlags[menuIndex] =
-                                                        false;
-                                                      }
-                                                    });
-                                                  },
-                                                  onAnyFieldFocused: () =>
-                                                      _touchCard(secIndex, menuIndex),
-                                                  // 追加：種目名の変化通知（空→非空で保存）
-                                                  onNameChanged: (prevEmpty, nowEmpty) {
-                                                    if (prevEmpty && !nowEmpty) {
-                                                      _saveAllSectionsData();
-                                                    }
-                                                  },
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    const SizedBox(height: 16.0),
-                                    const SizedBox.shrink(), // 旧＋種目ボタンは非表示
                                   ],
                                 ),
+                              ),
                             ],
                           ),
                         ),
                       ),
+                    );
+                  }
+
+                  final secIndex = index - headerCount;
+
+                  // 旧：＋部位のプレース → FAB統合で非表示
+                  if (!isInitialEmptyState && secIndex == _sections.length) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final section = _sections[secIndex];
+
+                  return AnimatedListItem(
+                    key: section.key,
+                    direction: _firstBuildDone
+                        ? AnimationDirection.bottomToTop
+                        : AnimationDirection.none,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          _currentSectionIndex = secIndex;
+                          _currentMenuIndex = 0;
+                        },
+                        child: Card(
+                          color: colorScheme.surfaceContainerHighest,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16.0)),
+                          elevation: 4,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: DropdownButtonFormField<String>(
+                                        // ★ バグ対策：GlobalKeyは先頭セクションにだけ付与
+                                        key: secIndex == 0 ? _kRecordPart : null,
+                                        decoration: InputDecoration(
+                                          hintText: l10n.selectTrainingPart,
+                                          hintStyle: TextStyle(
+                                              color: colorScheme.onSurfaceVariant,
+                                              fontSize: 14.0),
+                                          filled: true,
+                                          fillColor: colorScheme.surfaceContainer,
+                                          border: OutlineInputBorder(
+                                            borderRadius:
+                                            BorderRadius.circular(25.0),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius:
+                                            BorderRadius.circular(25.0),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius:
+                                            BorderRadius.circular(25.0),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                          contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              vertical: 12, horizontal: 20),
+                                        ),
+                                        initialValue: section.selectedPart,
+                                        items: _filteredBodyParts
+                                            .map(
+                                              (p) => DropdownMenuItem(
+                                            value: p,
+                                            child: Text(
+                                              p,
+                                              style: TextStyle(
+                                                color: colorScheme.onSurface,
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                            .toList(),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            section.selectedPart = value;
+                                            section.menuKeys.clear();
+                                            section.menuIds.clear();
+                                            section.nextMenuId = 0;
+                                            _clearSectionControllersAndMaps(
+                                                section);
+
+                                            if (section.selectedPart != null) {
+                                              final current =
+                                              section.selectedPart!;
+                                              final originalPart =
+                                              _getOriginalPartName(
+                                                  context, current);
+                                              final dateKey = _getDateKey(
+                                                  widget.selectedDate);
+                                              final record =
+                                              widget.recordsBox.get(dateKey);
+
+                                              final recList =
+                                                  record?.menus[originalPart] ??
+                                                      <MenuData>[];
+                                              final rawLU =
+                                              widget.lastUsedMenusBox.get(
+                                                  originalPart);
+                                              final luList = (rawLU is List)
+                                                  ? rawLU
+                                                  .whereType<MenuData>()
+                                                  .toList()
+                                                  : <MenuData>[];
+
+                                              final Map<String, MenuData> recBy = {
+                                                for (final m in recList)
+                                                  m.name: m
+                                              };
+                                              final Map<String, MenuData> luBy = {
+                                                for (final m in luList)
+                                                  m.name: m
+                                              };
+
+                                              final List<String> names = [
+                                                ...recList.map((m) => m.name),
+                                                ...luList
+                                                    .where((m) =>
+                                                !recBy.containsKey(m.name))
+                                                    .map((m) => m.name),
+                                              ];
+                                              if (names.isEmpty) names.add('');
+
+                                              final l10n =
+                                              AppLocalizations.of(context)!;
+                                              final isAerobic =
+                                                  current == l10n.aerobicExercise;
+
+                                              for (final name in names) {
+                                                final rec = recBy[name];
+                                                final lu = luBy[name];
+
+                                                section.menuControllers
+                                                    .add(TextEditingController(
+                                                    text: name));
+                                                section.menuKeys.add(UniqueKey());
+                                                section.menuIds
+                                                    .add(section.nextMenuId++);
+
+                                                if (isAerobic) {
+                                                  final String dist = (rec
+                                                      ?.distance
+                                                      ?.trim()
+                                                      .isNotEmpty ??
+                                                      false)
+                                                      ? rec!.distance!.trim()
+                                                      : (lu?.distance?.trim() ??
+                                                      '');
+                                                  final String dura = (rec
+                                                      ?.duration
+                                                      ?.trim()
+                                                      .isNotEmpty ??
+                                                      false)
+                                                      ? rec!.duration!.trim()
+                                                      : (lu?.duration?.trim() ??
+                                                      '');
+                                                  final bool isSug = !(rec
+                                                      ?.distance
+                                                      ?.trim()
+                                                      .isNotEmpty ==
+                                                      true ||
+                                                      rec?.duration
+                                                          ?.trim()
+                                                          .isNotEmpty ==
+                                                          true);
+
+                                                  section.aerobicDistanceCtrls.add(
+                                                      TextEditingController(
+                                                          text: dist));
+                                                  section.aerobicDurationCtrls.add(
+                                                      TextEditingController(
+                                                          text: dura));
+                                                  section.aerobicSuggestFlags
+                                                      .add(isSug);
+                                                  section.setInputDataList
+                                                      .add(<SetInputData>[]);
+                                                } else {
+                                                  final int recLen = rec == null
+                                                      ? 0
+                                                      : min(rec.weights.length,
+                                                      rec.reps.length);
+                                                  final int luLen = lu == null
+                                                      ? 0
+                                                      : min(lu.weights.length,
+                                                      lu.reps.length);
+                                                  final int mergedLen = max(
+                                                      _currentSetCount,
+                                                      max(recLen, luLen));
+
+                                                  final row = <SetInputData>[];
+                                                  for (int i = 0;
+                                                  i < mergedLen;
+                                                  i++) {
+                                                    String w = '';
+                                                    String r = '';
+                                                    bool isSuggestion = true;
+
+                                                    if (i < recLen) {
+                                                      w = rec!.weights[i];
+                                                      r = rec.reps[i];
+                                                      if (w.trim().isNotEmpty ||
+                                                          r.trim().isNotEmpty) {
+                                                        isSuggestion = false;
+                                                      }
+                                                    } else if (i < luLen) {
+                                                      w = lu!.weights[i];
+                                                      r = lu.reps[i];
+                                                      isSuggestion = true;
+                                                    }
+                                                    row.add(SetInputData(
+                                                      weightController:
+                                                      TextEditingController(
+                                                          text: w),
+                                                      repController:
+                                                      TextEditingController(
+                                                          text: r),
+                                                      isSuggestion: isSuggestion,
+                                                    ));
+                                                  }
+                                                  section.setInputDataList
+                                                      .add(row);
+                                                  section.initialSetCount = max(
+                                                      section.initialSetCount ??
+                                                          0,
+                                                      mergedLen);
+                                                }
+                                              }
+                                            } else {
+                                              section.initialSetCount =
+                                                  _currentSetCount;
+                                            }
+                                          });
+                                          _scheduleHintsAfterPart(); // ここでFABヒント含めて案内
+                                        },
+                                        dropdownColor:
+                                        colorScheme.surfaceContainer,
+                                        style: TextStyle(
+                                          color: colorScheme.onSurface,
+                                          fontSize: 14.0,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        borderRadius:
+                                        BorderRadius.circular(15.0),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16.0),
+                                if (section.selectedPart != null)
+                                  Column(
+                                    children: [
+                                      ListView.builder(
+                                        shrinkWrap: true,
+                                        physics:
+                                        const NeverScrollableScrollPhysics(),
+                                        itemCount:
+                                        section.menuControllers.length,
+                                        itemBuilder: (context, menuIndex) {
+                                          final bool isSelected =
+                                          (_currentSectionIndex ==
+                                              secIndex &&
+                                              _currentMenuIndex ==
+                                                  menuIndex);
+
+                                          // ライト/ダークで目立つ選択装飾
+                                          final borderColor = isSelected
+                                              ? (isLight
+                                              ? kBrandBlue
+                                              : Colors.white)
+                                              : Colors.transparent;
+                                          final glowColor = isSelected
+                                              ? (isLight
+                                              ? kBrandBlue
+                                              .withOpacity(0.45)
+                                              : Colors.white
+                                              .withOpacity(0.70))
+                                              : Colors.black
+                                              .withOpacity(0.20);
+
+                                          return AnimatedSwitcher(
+                                            duration:
+                                            const Duration(milliseconds: 250),
+                                            switchInCurve: Curves.easeOut,
+                                            switchOutCurve: Curves.easeIn,
+                                            transitionBuilder:
+                                                (child, animation) {
+                                              if (!_firstBuildDone) return child;
+                                              final offset = Tween<Offset>(
+                                                begin: const Offset(0, -0.12),
+                                                end: Offset.zero,
+                                              ).animate(animation);
+                                              return FadeTransition(
+                                                opacity: animation,
+                                                child: SlideTransition(
+                                                    position: offset,
+                                                    child: child),
+                                              );
+                                            },
+                                            child: GestureDetector(
+                                              behavior: HitTestBehavior.opaque,
+                                              onTap: () => _touchCard(
+                                                  secIndex, menuIndex),
+                                              child: Card(
+                                                key: section.menuKeys[menuIndex],
+                                                color: colorScheme.surface,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                  BorderRadius.circular(12.0),
+                                                  side: BorderSide(
+                                                    color: borderColor,
+                                                    width: isSelected ? 1.5 : 0,
+                                                  ),
+                                                ),
+                                                elevation: isSelected ? 10 : 2,
+                                                shadowColor: glowColor,
+                                                margin:
+                                                const EdgeInsets.symmetric(
+                                                    vertical: 8.0),
+                                                child: Padding(
+                                                  padding:
+                                                  const EdgeInsets.all(16.0),
+                                                  child: MenuList(
+                                                    key: (secIndex == 0 &&
+                                                        menuIndex == 0)
+                                                        ? _kExerciseField
+                                                        : null,
+                                                    menuController: section
+                                                        .menuControllers[
+                                                    menuIndex],
+                                                    removeMenuCallback: () =>
+                                                        _removeMenuItem(secIndex,
+                                                            menuIndex),
+                                                    setCount: section
+                                                        .setInputDataList[
+                                                    menuIndex]
+                                                        .length,
+                                                    setInputDataList: section
+                                                        .setInputDataList[
+                                                    menuIndex],
+                                                    isAerobic: section
+                                                        .selectedPart ==
+                                                        l10n.aerobicExercise,
+                                                    distanceController: (menuIndex <
+                                                        section
+                                                            .aerobicDistanceCtrls
+                                                            .length)
+                                                        ? section
+                                                        .aerobicDistanceCtrls[
+                                                    menuIndex]
+                                                        : TextEditingController(),
+                                                    durationController: (menuIndex <
+                                                        section
+                                                            .aerobicDurationCtrls
+                                                            .length)
+                                                        ? section
+                                                        .aerobicDurationCtrls[
+                                                    menuIndex]
+                                                        : TextEditingController(),
+                                                    aerobicIsSuggestion: (menuIndex <
+                                                        section
+                                                            .aerobicSuggestFlags
+                                                            .length)
+                                                        ? section
+                                                        .aerobicSuggestFlags[
+                                                    menuIndex]
+                                                        : true,
+                                                    onConfirmAerobic: () {
+                                                      setState(() {
+                                                        if (menuIndex <
+                                                            section
+                                                                .aerobicSuggestFlags
+                                                                .length) {
+                                                          section.aerobicSuggestFlags[
+                                                          menuIndex] =
+                                                          false;
+                                                        }
+                                                      });
+                                                    },
+                                                    onAnyFieldFocused: () {
+                                                      _touchCard(
+                                                          secIndex, menuIndex);
+                                                      // フォーカス後に自動スクロール（隠れ防止）
+                                                      WidgetsBinding.instance
+                                                          .addPostFrameCallback(
+                                                              (_) {
+                                                            if (mounted) {
+                                                              _scrollIntoView(
+                                                                  secIndex,
+                                                                  menuIndex);
+                                                            }
+                                                          });
+                                                    },
+                                                    onNameChanged: (prevEmpty,
+                                                        nowEmpty) {
+                                                      if (prevEmpty &&
+                                                          !nowEmpty) {
+                                                        _saveAllSectionsData();
+                                                      }
+                                                    },
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      const SizedBox(height: 16.0),
+                                      const SizedBox.shrink(), // 旧＋種目ボタンは非表示
+                                    ],
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -1142,23 +1282,23 @@ class _RecordScreenState extends State<RecordScreen> {
       scale: _fabOpen ? 1.04 : 1.0,
       duration: const Duration(milliseconds: 160),
       curve: Curves.easeOut,
-        child: FloatingActionButton(
-      key: _kFabKey,
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              setState(() => _fabOpen = !_fabOpen);
-            },
-      backgroundColor: kBrandBlue,
-      child: AnimatedRotation(
-        turns: _fabOpen ? .125 : 0,
-        duration: const Duration(milliseconds: 180),
-        child: const Icon(Icons.add, color: Colors.white),
+      child: FloatingActionButton(
+        key: _kFabKey,
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          setState(() => _fabOpen = !_fabOpen);
+        },
+        backgroundColor: kBrandBlue,
+        child: AnimatedRotation(
+          turns: _fabOpen ? .125 : 0,
+          duration: const Duration(milliseconds: 180),
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
+        tooltip: l10n.openAddMenu,
       ),
-      tooltip: l10n.openAddMenu,
-    ),
     );
 
-    // ★ テキストだけのミニFAB風チップ（色を統一・白文字）
+    // ★ テキストだけのミニFAB風チップ
     Widget chipAction(String label, VoidCallback onTap, {bool enabled = true}) {
       return Opacity(
         opacity: enabled ? 1.0 : 0.6,
@@ -1173,9 +1313,9 @@ class _RecordScreenState extends State<RecordScreen> {
               : null,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            margin: const EdgeInsets.symmetric(vertical: 5), // 少し詰める
+            margin: const EdgeInsets.symmetric(vertical: 5),
             decoration: BoxDecoration(
-              color: kBrandBlue,            // ← 統一カラー
+              color: kBrandBlue,
               borderRadius: BorderRadius.circular(22),
               boxShadow: [
                 BoxShadow(
@@ -1188,7 +1328,7 @@ class _RecordScreenState extends State<RecordScreen> {
             child: Text(
               label,
               style: const TextStyle(
-                color: Colors.white,        // ← 白文字で視認性UP
+                color: Colors.white,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1201,120 +1341,133 @@ class _RecordScreenState extends State<RecordScreen> {
       if (_sections.isEmpty) return false;
       final sec = _sections[_currentSectionIndex ?? 0];
       final l10n = AppLocalizations.of(context)!;
+
+      // 有酸素はセットの概念を使わない → 常に false
       if (sec.selectedPart == l10n.aerobicExercise) {
-        final menuIdx = _currentMenuIndex ?? 0;
-        if (menuIdx >= sec.menuControllers.length) return false;
-        final name = sec.menuControllers[menuIdx].text;
-        int same = 0;
-        for (final c in sec.menuControllers) {
-          if (c.text == name) same++;
-        }
-        return same < 10;
-      } else {
-        final menuIdx = _currentMenuIndex ?? 0;
-        if (menuIdx >= sec.setInputDataList.length) return false;
-        return sec.setInputDataList[menuIdx].length < 10;
+        return false;
       }
+
+      final menuIdx = _currentMenuIndex ?? 0;
+      if (menuIdx >= sec.setInputDataList.length) return false;
+      return sec.setInputDataList[menuIdx].length < 10;
     }
 
+
     final overlay = _fabOpen
-           ? Positioned.fill(
-               child: AnimatedOpacity(
-                 opacity: 1.0,
-                 duration: const Duration(milliseconds: 160),
-                 child: GestureDetector(
-                   onTap: () => setState(() => _fabOpen = false),
-                   child: Container(color: Colors.black.withOpacity(0.25)),
-                 ),
-               ),
-             )
-           : const SizedBox.shrink();
+        ? Positioned.fill(
+      child: AnimatedOpacity(
+        opacity: 1.0,
+        duration: const Duration(milliseconds: 160),
+        child: GestureDetector(
+          onTap: () => setState(() => _fabOpen = false),
+          child: Container(color: Colors.black.withOpacity(0.25)),
+        ),
+      ),
+    )
+        : const SizedBox.shrink();
 
-    // ★ ダイヤル位置を少し上へ（bottom: 88 → 120）
-    final media = MediaQuery.of(context);
-        final double safeBottom = media.padding.bottom;      // セーフエリア
-        final double kbInset = media.viewInsets.bottom;      // キーボード高さ
-        const double fabSize = 56.0;                         // 標準FABの直径
-        const double fabMargin = 16.0;                       // FAB外側マージン
-        const double gapAboveFab = 12.0;                     // FABとチップ群の隙間
-        // 今回は FAB を自前で上げるので、kbInset を足して追従させる
-        final double dialBottom =
-            (safeBottom > 0 ? safeBottom : fabMargin) + kbInset + fabSize + fabMargin + gapAboveFab;
+    // ★ ダイヤル位置（キーボード追従）
+    const double fabSize = 56.0; // 標準FABの直径
+    const double fabMargin = 16.0; // FAB外側マージン
+    const double gapAboveFab = 28.0; // FABとチップ群の隙間
+    final double dialBottom = (safeBottom > 0 ? safeBottom : fabMargin) +
+        kbInset +
+        fabSize +
+        fabMargin +
+        gapAboveFab;
 
-        final dial = Positioned(
-          right: 16,
-          bottom: dialBottom,
-              child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
-            switchInCurve: Curves.easeOutBack,
-            switchOutCurve: Curves.easeIn,
-            child: _fabOpen
-                ? TweenAnimationBuilder<double>(
-                    key: const ValueKey('dial-on'),
-                    tween: Tween(begin: 20.0, end: 0.0),
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutBack,
-                    builder: (context, offsetY, child) {
-                      return Transform.translate(offset: Offset(0, offsetY), child: child);
-                    },
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        chipAction(l10n.addSet, () => _handleAddSet(l10n), enabled: canAddSet()),
-                        chipAction(l10n.addExercise, _handleAddExercise),
-                        chipAction(l10n.addPart, _handleAddPart),
-                      ],
-                    ),
-                  )
-                : const SizedBox.shrink(key: ValueKey('dial-off')),
+// （dial を作る直前あたりの）既存コードの Column(children: [...]) を差し替え
+    final dial = Positioned(
+      right: 16,
+      bottom: dialBottom,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        switchInCurve: Curves.easeOutBack,
+        switchOutCurve: Curves.easeIn,
+        child: _fabOpen
+            ? TweenAnimationBuilder<double>(
+          key: const ValueKey('dial-on'),
+          tween: Tween(begin: 20.0, end: 0.0),
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutBack,
+          builder: (context, offsetY, child) {
+            return Transform.translate(offset: Offset(0, offsetY), child: child);
+          },
+          child: Builder(
+            builder: (context) {
+              final items = <Widget>[];
+              if (canAddSet()) {
+                items.add(chipAction(l10n.addSet, () => _handleAddSet(l10n)));
+              }
+              items.addAll([
+                chipAction(l10n.addExercise, _handleAddExercise),
+                chipAction(l10n.addPart, _handleAddPart),
+              ]);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: items,
+              );
+            },
           ),
-        );
+        )
+            : const SizedBox.shrink(key: ValueKey('dial-off')),
+      ),
+    );
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        if (_fabOpen) {
-          setState(() => _fabOpen = false);
-          return;
-        }
-        await _closeKeyboard();
-        if (!context.mounted) return;
-        _saveAllSectionsData();
-        Navigator.of(context).pop();
-      },
-      child: Scaffold(
-        resizeToAvoidBottomInset: false,
-        backgroundColor: colorScheme.surface,
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: Text(
-            formattedDate,
-            style: TextStyle(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.bold,
-              fontSize: 20.0,
-            ),
-          ),
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlayStyle, // ← 黒帯解消（ナビバー透過）
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (didPop) return;
+          if (_fabOpen) {
+            setState(() => _fabOpen = false);
+            return;
+          }
+          // 自動でキーボードは閉じない
+          if (!context.mounted) return;
+          _saveAllSectionsData();
+          Navigator.of(context).pop();
+        },
+        child: Scaffold(
+          extendBody: true, // ← ボディを下まで描画して段差/帯をなくす
+          resizeToAvoidBottomInset: false,
           backgroundColor: colorScheme.surface,
-          elevation: 0.0,
-          iconTheme: IconThemeData(color: colorScheme.onSurface),
-          actions: const [],
-        ),
-        body: Stack(
-          children: [
-            body,
-            overlay,
-            dial,
-          ],
-        ),
-          floatingActionButton: AnimatedPadding(
-                       duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    // キーボード分だけ、FABをスムーズに持ち上げる
-                    padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-              child: fabMain,
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            title: Text(
+              formattedDate,
+              style: TextStyle(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+                fontSize: 20.0,
+              ),
             ),
+            backgroundColor: colorScheme.surface,
+            elevation: 0.0,
+            iconTheme: IconThemeData(color: colorScheme.onSurface),
+            actions: const [],
+          ),
+          body: Stack(
+            children: [
+              body,
+              overlay,
+              dial,
+            ],
+          ),
+          floatingActionButton: AnimatedPadding(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            // キーボード表示時に FAB 自体も自然に持ち上げる
+            padding: EdgeInsets.only(
+              bottom: (kbInset > 0 ? kbInset + 12 : 16),
+            ),
+            child: fabMain,
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          // bottomNavigationBar は置かない（黒帯回避）
+        ),
       ),
     );
   }
@@ -1322,7 +1475,8 @@ class _RecordScreenState extends State<RecordScreen> {
   // 部位選択後のヒント（ここで FAB も案内）
   Future<void> _scheduleHintsAfterPart() async {
     final box = widget.settingsBox;
-    final seen = box.get('hint_seen_record_after_part') as bool? ?? false;
+    final seen =
+        box.get('hint_seen_record_after_part') as bool? ?? false;
     if (seen) return;
 
     await Future<void>.delayed(const Duration(milliseconds: 16));
@@ -1349,7 +1503,7 @@ class _RecordScreenState extends State<RecordScreen> {
       }
     }
 
-    // 表示順：種目入力 → FAB → 設定
+    // 表示順：種目入力 → FAB
     addIfVisible(_kExerciseField, l10n.hintRecordExerciseField);
     addIfVisible(_kFabKey, l10n.hintRecordFab);
 
@@ -1400,8 +1554,10 @@ class SectionData {
     List<bool>? aerobicSuggestFlags,
   })  : menuIds = menuIds ?? <int>[],
         nextMenuId = nextMenuId ?? 0,
-        aerobicDistanceCtrls = aerobicDistanceCtrls ?? <TextEditingController>[],
-        aerobicDurationCtrls = aerobicDurationCtrls ?? <TextEditingController>[],
+        aerobicDistanceCtrls =
+            aerobicDistanceCtrls ?? <TextEditingController>[],
+        aerobicDurationCtrls =
+            aerobicDurationCtrls ?? <TextEditingController>[],
         aerobicSuggestFlags = aerobicSuggestFlags ?? <bool>[];
 
   factory SectionData.createEmpty(int initialSetCount,
@@ -1422,7 +1578,7 @@ class SectionData {
         )
       ]
           : [],
-      menuKeys: shouldPopulateDefaults ? [UniqueKey()] : [],
+      menuKeys: shouldPopulateDefaults ? [GlobalKey()] : [],
       initialSetCount: initialSetCount,
       menuIds: shouldPopulateDefaults ? [0] : [],
       nextMenuId: shouldPopulateDefaults ? 1 : 0,
@@ -1603,8 +1759,8 @@ class _MenuListState extends State<MenuList> {
                     suggestionTextColor:
                     colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                     fillColor: colorScheme.surfaceContainer,
-                    contentPadding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 16),
                     textAlign: TextAlign.left,
                   ),
                 ),
@@ -1826,7 +1982,8 @@ class _MenuListState extends State<MenuList> {
                         (setIndex) {
                       final set = widget.setInputDataList[setIndex];
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        padding:
+                        const EdgeInsets.symmetric(vertical: 4.0),
                         child: Row(
                           children: [
                             Text(
@@ -1842,14 +1999,16 @@ class _MenuListState extends State<MenuList> {
                                 onFocusChange: (has) {
                                   notifyFocus(has);
                                   if (has && set.isSuggestion) {
-                                    setState(() => set.isSuggestion = false);
+                                    setState(() =>
+                                    set.isSuggestion = false);
                                   }
                                 },
                                 child: StylishInput(
                                   controller: set.weightController,
                                   hint: '',
-                                  keyboardType: const TextInputType
-                                      .numberWithOptions(decimal: true),
+                                  keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
                                   inputFormatters: [
                                     FilteringTextInputFormatter.allow(
                                       RegExp(r'^\d*\.?\d*'),
@@ -1862,22 +2021,29 @@ class _MenuListState extends State<MenuList> {
                                   suggestionTextColor: colorScheme
                                       .onSurfaceVariant
                                       .withValues(alpha: 0.5),
-                                  fillColor: colorScheme.surfaceContainer,
-                                  contentPadding: const EdgeInsets.symmetric(
+                                  fillColor:
+                                  colorScheme.surfaceContainer,
+                                  contentPadding:
+                                  const EdgeInsets.symmetric(
                                       vertical: 10, horizontal: 12),
                                   textAlign: TextAlign.right,
                                   onChanged: (text) {
                                     setState(() {
-                                      if (text.isNotEmpty && set.isSuggestion) {
+                                      if (text.isNotEmpty &&
+                                          set.isSuggestion) {
                                         set.isSuggestion = false;
                                       } else if (text.isEmpty &&
                                           !set.isSuggestion &&
-                                          set.repController.text.isEmpty) {
-                                        final anyOther = widget.setInputDataList.any(
+                                          set.repController.text
+                                              .isEmpty) {
+                                        final anyOther =
+                                        widget.setInputDataList.any(
                                               (s) =>
                                           s != set &&
-                                              (s.weightController.text.isNotEmpty ||
-                                                  s.repController.text.isNotEmpty),
+                                              (s.weightController.text
+                                                  .isNotEmpty ||
+                                                  s.repController.text
+                                                      .isNotEmpty),
                                         );
                                         if (!anyOther) {
                                           set.isSuggestion = true;
@@ -1901,7 +2067,8 @@ class _MenuListState extends State<MenuList> {
                                 onFocusChange: (has) {
                                   notifyFocus(has);
                                   if (has && set.isSuggestion) {
-                                    setState(() => set.isSuggestion = false);
+                                    setState(() =>
+                                    set.isSuggestion = false);
                                   }
                                 },
                                 child: StylishInput(
@@ -1909,7 +2076,8 @@ class _MenuListState extends State<MenuList> {
                                   hint: '',
                                   keyboardType: TextInputType.number,
                                   inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly
+                                    FilteringTextInputFormatter
+                                        .digitsOnly
                                   ],
                                   normalTextColor: set.isSuggestion
                                       ? colorScheme.onSurfaceVariant
@@ -1918,22 +2086,29 @@ class _MenuListState extends State<MenuList> {
                                   suggestionTextColor: colorScheme
                                       .onSurfaceVariant
                                       .withValues(alpha: 0.5),
-                                  fillColor: colorScheme.surfaceContainer,
-                                  contentPadding: const EdgeInsets.symmetric(
+                                  fillColor:
+                                  colorScheme.surfaceContainer,
+                                  contentPadding:
+                                  const EdgeInsets.symmetric(
                                       vertical: 10, horizontal: 12),
                                   textAlign: TextAlign.right,
                                   onChanged: (text) {
                                     setState(() {
-                                      if (text.isNotEmpty && set.isSuggestion) {
+                                      if (text.isNotEmpty &&
+                                          set.isSuggestion) {
                                         set.isSuggestion = false;
                                       } else if (text.isEmpty &&
                                           !set.isSuggestion &&
-                                          set.weightController.text.isEmpty) {
-                                        final anyOther = widget.setInputDataList.any(
+                                          set.weightController.text
+                                              .isEmpty) {
+                                        final anyOther =
+                                        widget.setInputDataList.any(
                                               (s) =>
                                           s != set &&
-                                              (s.weightController.text.isNotEmpty ||
-                                                  s.repController.text.isNotEmpty),
+                                              (s.weightController.text
+                                                  .isNotEmpty ||
+                                                  s.repController.text
+                                                      .isNotEmpty),
                                         );
                                         if (!anyOther) {
                                           set.isSuggestion = true;
