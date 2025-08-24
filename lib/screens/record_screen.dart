@@ -44,6 +44,13 @@ class _RecordScreenState extends State<RecordScreen> {
   // 体重入力にフォーカス中フラグ（フォーカス中は＋FABを無効化）
   bool _weightFocused = false;
 
+  bool _isTopMostRoute(BuildContext context) {
+    final route = ModalRoute.of(context);
+    // 画面がまだ push 中などで isCurrent=false の可能性に備えつつ、
+    // null（モーダル外など）なら true 扱いに
+    return route?.isCurrent ?? true;
+  }
+
   // CoachBubble anchors
   final GlobalKey _kRecordPart = GlobalKey(); // 部位ドロップダウン（初回ヒント用）
   final GlobalKey _kExerciseField = GlobalKey(); // 種目TextField（選択後ヒント）
@@ -76,9 +83,23 @@ class _RecordScreenState extends State<RecordScreen> {
     // 初回表示ヒント：部位だけ（FABヒントは出さない）
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+
+      // RecordScreen が本当に前面かどうか確認
+      final route = ModalRoute.of(context);
+      if (route?.isCurrent != true) return;
+
       final box = widget.settingsBox;
       final seen = box.get('hint_seen_record') as bool? ?? false;
       if (seen) return;
+
+      // アンカーが描画されるのを少し待つ
+      final deadline = DateTime.now().add(const Duration(milliseconds: 800));
+      while (DateTime.now().isBefore(deadline)) {
+        if (!mounted) return;
+        if (_kRecordPart.currentContext != null) break;
+        await Future<void>.delayed(const Duration(milliseconds: 16));
+      }
+      if (!mounted || _kRecordPart.currentContext == null) return;
 
       final l10n = AppLocalizations.of(context)!;
       await CoachBubbleController.showSequence(
@@ -90,6 +111,7 @@ class _RecordScreenState extends State<RecordScreen> {
       await box.put('hint_seen_record', true);
     });
   }
+
 
   @override
   void didChangeDependencies() {

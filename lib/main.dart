@@ -9,6 +9,7 @@ import 'models/menu_data.dart';
 import 'screens/home_screen.dart';
 import 'settings_manager.dart';
 
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 

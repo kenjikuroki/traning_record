@@ -26,12 +26,16 @@ class GraphScreen extends StatefulWidget {
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
 
+  // ★ 追加: このタブがアクティブか（親から渡す）
+  final bool isActive;
+
   const GraphScreen({
     super.key,
     required this.recordsBox,
     required this.lastUsedMenusBox,
     required this.settingsBox,
     required this.setCountBox,
+    required this.isActive, // ★ 追加
   });
 
   @override
@@ -127,11 +131,78 @@ class _GraphScreenState extends State<GraphScreen> {
     }
   }
 
+  // ====== Graphヒント: 可視になったら一度だけ表示 ======
+  bool _graphCoachDone = false;
+
+  bool _isActuallyVisible() {
+    if (!mounted) return false;
+    // 親から明示されたアクティブ状態を最優先
+    if (widget.isActive == false) return false;
+
+    // 念のため（保険）
+    final ticker = context.findAncestorWidgetOfExactType<TickerMode>();
+    if (ticker != null && ticker.enabled == false) return false;
+
+    final ro = context.findRenderObject();
+    if (ro is RenderBox) {
+      if (!ro.attached) return false;
+      final size = ro.hasSize ? ro.size : Size.zero;
+      if (size.isEmpty) return false;
+    }
+    return true;
+  }
+
+  Future<void> _tryShowGraphCoachIfVisible() async {
+    if (!mounted || _graphCoachDone) return;
+
+    final seen = (widget.settingsBox.get('hint_seen_graph') as bool?) ?? false;
+    if (seen) {
+      _graphCoachDone = true;
+      return;
+    }
+
+    if (!_isActuallyVisible()) return;
+
+    // アンカーが用意できているか
+    final anchorsReady = [
+      _kPart.currentContext,
+      _kChart.currentContext,
+      _kFav.currentContext,
+    ].every((c) => c != null);
+    if (!anchorsReady) return;
+
+    final l10n = AppLocalizations.of(context)!;
+
+    await CoachBubbleController.showSequence(
+      context: context,
+      anchors: [_kPart, _kChart, _kFav],
+      messages: [
+        l10n.hintGraphSelectPart,
+        l10n.hintGraphChartArea,
+        l10n.hintGraphFavorite,
+      ],
+      semanticsPrefix: l10n.coachBubbleSemantic,
+    );
+
+    await widget.settingsBox.put('hint_seen_graph', true);
+    _graphCoachDone = true;
+  }
+
   // ====== lifecycle ======
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _loadSettingsAndParts();
+  }
+
+  @override
+  void didUpdateWidget(covariant GraphScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.isActive && widget.isActive) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _tryShowGraphCoachIfVisible();
+      });
+    }
   }
 
   void _loadSettingsAndParts() {
@@ -176,10 +247,12 @@ class _GraphScreenState extends State<GraphScreen> {
 
     _filteredBodyParts = (savedBodyPartsSettings == null ||
         savedBodyPartsSettings.isEmpty)
-        ? allBodyParts.map((p) => _translatePartToLocale(context, p)).toList()
+        ? allBodyParts
+        .map<String>((p) => _translatePartToLocale(context, p))
+        .toList() // ★ 型明示
         : allBodyParts
         .where((p) => savedBodyPartsSettings![p] == true)
-        .map((p) => _translatePartToLocale(context, p))
+        .map<String>((p) => _translatePartToLocale(context, p)) // ★ 型明示
         .toList();
 
     _filteredBodyParts = [
@@ -774,7 +847,7 @@ class _GraphScreenState extends State<GraphScreen> {
     return '${DateFormat('M/d', locale).format(d)}${_weekSuffix()}';
   }
 
-  // X axis: すべての目盛りにラベル／縦線は整数インデックスのみ
+  // X axis
   Widget _bottomTitle(double value, TitleMeta meta) {
     if (_xDates.isEmpty) return const SizedBox.shrink();
     if ((value - value.round()).abs() > 1e-6) return const SizedBox.shrink();
@@ -798,7 +871,7 @@ class _GraphScreenState extends State<GraphScreen> {
     );
   }
 
-  // Y axis: 上下端は非表示（ダブり防止）、_yLabelStep 間隔
+  // Y axis
   Widget _leftTitle(double value, TitleMeta meta) {
     if (!_isLabelTick(value)) return const SizedBox.shrink();
 
@@ -808,8 +881,7 @@ class _GraphScreenState extends State<GraphScreen> {
     if (isMin || isMax) return const SizedBox.shrink();
 
     final isInteger = (_yLabelStep % 1 == 0);
-    final label =
-    isInteger ? value.round().toString() : value.toStringAsFixed(1);
+    final label = isInteger ? value.round().toString() : value.toStringAsFixed(1);
 
     return SideTitleWidget(
       axisSide: meta.axisSide,
@@ -868,6 +940,11 @@ class _GraphScreenState extends State<GraphScreen> {
     final isAerobic = _isAerobicContext();
     final unitText = _unitOverlayText(l10n);
 
+    // アクティブ時のみ post-frame でヒント判定
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _tryShowGraphCoachIfVisible();
+    });
+
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
@@ -885,7 +962,7 @@ class _GraphScreenState extends State<GraphScreen> {
         iconTheme: IconThemeData(color: colorScheme.onSurface),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0), // ← named 引数でビルドエラー解消
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             const AdBanner(screenName: 'graph'),
@@ -984,7 +1061,7 @@ class _GraphScreenState extends State<GraphScreen> {
                   borderRadius: BorderRadius.circular(16.0),
                 ),
                 elevation: 4,
-                clipBehavior: Clip.antiAlias, // ★ 角丸外へのはみ出し防止
+                clipBehavior: Clip.antiAlias,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
                   child: LayoutBuilder(
@@ -1026,7 +1103,7 @@ class _GraphScreenState extends State<GraphScreen> {
                             maxX: 1,
                             minY: _minYForChart,
                             maxY: _maxYForChart,
-                            clipData: const FlClipData.all(), // ★ クリップ
+                            clipData: const FlClipData.all(),
                             lineBarsData: const [],
                             titlesData: FlTitlesData(
                               leftTitles: AxisTitles(
@@ -1065,9 +1142,11 @@ class _GraphScreenState extends State<GraphScreen> {
                               show: true,
                               border: Border(
                                 left: BorderSide(
-                                    color: colorScheme.outlineVariant),
+                                    color:
+                                    colorScheme.outlineVariant),
                                 bottom: BorderSide(
-                                    color: colorScheme.outlineVariant),
+                                    color:
+                                    colorScheme.outlineVariant),
                               ),
                             ),
                           ),
@@ -1100,11 +1179,11 @@ class _GraphScreenState extends State<GraphScreen> {
                               child: LineChart(
                                 LineChartData(
                                   minX: 0,
-                                  maxX: (_xDates.length - 1).toDouble(),
+                                  maxX:
+                                  (_xDates.length - 1).toDouble(),
                                   minY: _minYForChart,
                                   maxY: _maxYForChart,
-                                  clipData:
-                                  const FlClipData.all(), // ★ クリップ
+                                  clipData: const FlClipData.all(),
                                   lineBarsData: [
                                     LineChartBarData(
                                       spots: _spots,
@@ -1119,8 +1198,8 @@ class _GraphScreenState extends State<GraphScreen> {
                                   ],
                                   titlesData: FlTitlesData(
                                     leftTitles: const AxisTitles(
-                                      sideTitles:
-                                      SideTitles(showTitles: false),
+                                      sideTitles: SideTitles(
+                                          showTitles: false),
                                     ),
                                     bottomTitles: AxisTitles(
                                       sideTitles: SideTitles(
@@ -1131,12 +1210,12 @@ class _GraphScreenState extends State<GraphScreen> {
                                       ),
                                     ),
                                     topTitles: const AxisTitles(
-                                      sideTitles:
-                                      SideTitles(showTitles: false),
+                                      sideTitles: SideTitles(
+                                          showTitles: false),
                                     ),
                                     rightTitles: const AxisTitles(
-                                      sideTitles:
-                                      SideTitles(showTitles: false),
+                                      sideTitles: SideTitles(
+                                          showTitles: false),
                                     ),
                                   ),
                                   gridData: FlGridData(
@@ -1186,14 +1265,18 @@ class _GraphScreenState extends State<GraphScreen> {
                                               i < _xDates.length)
                                               ? _xDates[i]
                                               : null;
-                                          final dateStr = (_displayMode ==
+                                          final dateStr =
+                                          (_displayMode ==
                                               DisplayMode.day)
                                               ? (d != null
-                                              ? DateFormat('M/d', loc)
+                                              ? DateFormat(
+                                              'M/d',
+                                              loc)
                                               .format(d)
                                               : '')
                                               : (d != null
-                                              ? _formatWeekLabel(d)
+                                              ? _formatWeekLabel(
+                                              d)
                                               : '');
                                           final valStr =
                                           _formatTooltipValue(
@@ -1357,25 +1440,6 @@ class _GraphScreenState extends State<GraphScreen> {
   @override
   void initState() {
     super.initState();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final box = widget.settingsBox;
-      final seen = box.get('hint_seen_graph') as bool? ?? false;
-      if (seen) return;
-
-      final l10n = AppLocalizations.of(context)!;
-      await CoachBubbleController.showSequence(
-        context: context,
-        anchors: [_kPart, _kChart, _kFav],
-        messages: [
-          l10n.hintGraphSelectPart,
-          l10n.hintGraphChartArea,
-          l10n.hintGraphFavorite,
-        ],
-        semanticsPrefix: l10n.coachBubbleSemantic,
-      );
-      await box.put('hint_seen_graph', true);
-    });
   }
 }
 

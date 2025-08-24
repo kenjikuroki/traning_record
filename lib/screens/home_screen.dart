@@ -76,6 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   lastUsedMenusBox: widget.lastUsedMenusBox,
                   settingsBox: widget.settingsBox,
                   setCountBox: widget.setCountBox,
+                  isActive: _currentIndex == 1,
                 ),
                 SettingsScreen(
                   recordsBox: widget.recordsBox,
