@@ -55,31 +55,37 @@ class _HomeScreenState extends State<HomeScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          CalendarScreen(
-            recordsBox: widget.recordsBox,
-            lastUsedMenusBox: widget.lastUsedMenusBox,
-            settingsBox: widget.settingsBox,
-            setCountBox: widget.setCountBox,
-            selectedDate: DateTime.now(),
+        body: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                transitionBuilder: (child, animation) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        child: IndexedStack(
+          key: ValueKey<int>(_currentIndex),
+          index: _currentIndex,
+          children: [
+            CalendarScreen(
+              recordsBox: widget.recordsBox,
+              lastUsedMenusBox: widget.lastUsedMenusBox,
+                  settingsBox: widget.settingsBox,
+                  setCountBox: widget.setCountBox,
+                  selectedDate: DateTime.now(),
+                ),
+                GraphScreen(
+                  recordsBox: widget.recordsBox,
+                  lastUsedMenusBox: widget.lastUsedMenusBox,
+                  settingsBox: widget.settingsBox,
+                  setCountBox: widget.setCountBox,
+                ),
+                SettingsScreen(
+                  recordsBox: widget.recordsBox,
+                  lastUsedMenusBox: widget.lastUsedMenusBox,
+                  settingsBox: widget.settingsBox,
+                  setCountBox: widget.setCountBox,
+                ),
+              ],
+            ),
           ),
-          GraphScreen(
-            recordsBox: widget.recordsBox,
-            lastUsedMenusBox: widget.lastUsedMenusBox,
-            settingsBox: widget.settingsBox,
-            setCountBox: widget.setCountBox,
-          ),
-          SettingsScreen(
-            recordsBox: widget.recordsBox,
-            lastUsedMenusBox: widget.lastUsedMenusBox,
-            settingsBox: widget.settingsBox,
-            setCountBox: widget.setCountBox,
-          ),
-        ],
-      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         selectedItemColor: colorScheme.primary,
