@@ -43,7 +43,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onItemTapped(int index) {
     setState(() => _currentIndex = index);
-    _pageController.jumpToPage(index);
+      _pageController.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+      );
   }
 
   @override
@@ -53,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: PageView(
         controller: _pageController,
-        onPageChanged: (index) => setState(() => _currentIndex = index),
+        physics: const NeverScrollableScrollPhysics(),
         children: [
           CalendarScreen(
             recordsBox: widget.recordsBox,

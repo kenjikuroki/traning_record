@@ -86,11 +86,14 @@ class _MyAppState extends State<MyApp> {
             GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: const [Locale('en', ''), Locale('ja', '')],
-          home: HomeScreen(
-                         recordsBox: widget.recordsBox,
-                         lastUsedMenusBox: widget.lastUsedMenusBox,
-                         settingsBox: widget.settingsBox,
-                         setCountBox: widget.setCountBox,
+          home: PopScope(
+                        canPop: false, // ルートでの「戻る」= アプリ最小化をブロック+
+             child: HomeScreen(
+               recordsBox: widget.recordsBox,
+               lastUsedMenusBox: widget.lastUsedMenusBox,
+               settingsBox: widget.settingsBox,
+               setCountBox: widget.setCountBox,
+             ),
           ),
           debugShowCheckedModeBanner: false,
         );
