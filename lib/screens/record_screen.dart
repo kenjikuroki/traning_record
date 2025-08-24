@@ -41,6 +41,9 @@ class _RecordScreenState extends State<RecordScreen> {
   final ScrollController _scrollCtrl = ScrollController();
   bool _initialized = false;
 
+  // 体重入力にフォーカス中フラグ（フォーカス中は＋FABを無効化）
+  bool _weightFocused = false;
+
   // CoachBubble anchors
   final GlobalKey _kRecordPart = GlobalKey(); // 部位ドロップダウン（初回ヒント用）
   final GlobalKey _kExerciseField = GlobalKey(); // 種目TextField（選択後ヒント）
@@ -573,35 +576,6 @@ class _RecordScreenState extends State<RecordScreen> {
     });
   }
 
-  // 有酸素：同名行をもう1本（最大10本）
-  void _addAerobicSetRow(int sectionIndex, int menuIndex) {
-    final section = _sections[sectionIndex];
-    if (menuIndex < 0 || menuIndex >= section.menuControllers.length) return;
-    final currentName = section.menuControllers[menuIndex].text;
-
-    int sameCount = 0;
-    for (final ctrl in section.menuControllers) {
-      if (ctrl.text == currentName) sameCount++;
-    }
-    if (sameCount >= 10) return;
-
-    final insertAt = menuIndex + 1;
-    setState(() {
-      section.menuControllers.insert(
-          insertAt, TextEditingController(text: currentName));
-      section.menuKeys.insert(insertAt, GlobalKey());
-      section.menuIds.insert(insertAt, section.nextMenuId++);
-
-      section.aerobicDistanceCtrls.insert(insertAt, TextEditingController());
-      section.aerobicDurationCtrls.insert(insertAt, TextEditingController());
-      section.aerobicSuggestFlags.insert(insertAt, true);
-
-      if (section.setInputDataList.length < section.menuControllers.length) {
-        section.setInputDataList.insert(insertAt, <SetInputData>[]);
-      }
-    });
-  }
-
   void _addTargetSection() {
     final l10n = AppLocalizations.of(context)!;
 
@@ -690,18 +664,14 @@ class _RecordScreenState extends State<RecordScreen> {
     _currentMenuIndex = menuIndex;
   }
 
-  // FAB アクション
+  // FAB アクション（有酸素にはセット追加しない）
   void _handleAddSet(AppLocalizations l10n) {
     if (_sections.isEmpty) return;
     final secIdx = _currentSectionIndex ?? 0;
     final menuIdx = _currentMenuIndex ?? 0;
     final section = _sections[secIdx];
 
-    // 有酸素はセットを増やさない
-    if (section.selectedPart == l10n.aerobicExercise) {
-      return;
-    }
-
+    if (section.selectedPart == l10n.aerobicExercise) return; // 有酸素は無視
     _addOneSetAt(secIdx, menuIdx);
   }
 
@@ -805,25 +775,35 @@ class _RecordScreenState extends State<RecordScreen> {
                                 child: Row(
                                   children: [
                                     Expanded(
-                                      child: StylishInput(
-                                        controller: _weightController,
-                                        hint: '',
-                                        keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                            decimal: true),
-                                        inputFormatters: [
-                                          FilteringTextInputFormatter.allow(
-                                              RegExp(r'^\d*\.?\d*')),
-                                        ],
-                                        normalTextColor: colorScheme.onSurface,
-                                        suggestionTextColor: colorScheme
-                                            .onSurfaceVariant
-                                            .withValues(alpha: 0.5),
-                                        fillColor: colorScheme.surfaceContainer,
-                                        contentPadding:
-                                        const EdgeInsets.symmetric(
-                                            vertical: 8, horizontal: 10),
-                                        textAlign: TextAlign.right,
+                                      child: Focus(
+                                        onFocusChange: (has) {
+                                          setState(() {
+                                            _weightFocused = has;
+                                            if (has) _fabOpen = false;
+                                          });
+                                        },
+                                        child: StylishInput(
+                                          controller: _weightController,
+                                          hint: '',
+                                          keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                              decimal: true),
+                                          inputFormatters: [
+                                            FilteringTextInputFormatter.allow(
+                                              RegExp(r'^\d*\.?\d*'),
+                                            ),
+                                          ],
+                                          normalTextColor: colorScheme.onSurface,
+                                          suggestionTextColor: colorScheme
+                                              .onSurfaceVariant
+                                              .withValues(alpha: 0.5),
+                                          fillColor:
+                                          colorScheme.surfaceContainer,
+                                          contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              vertical: 8, horizontal: 10),
+                                          textAlign: TextAlign.right,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -1277,14 +1257,16 @@ class _RecordScreenState extends State<RecordScreen> {
       ),
     );
 
-    // ★ FAB（落ち着いた青で統一）
+    // ★ FAB（落ち着いた青で統一／体重フォーカス中は無効）
     final fabMain = AnimatedScale(
       scale: _fabOpen ? 1.04 : 1.0,
       duration: const Duration(milliseconds: 160),
       curve: Curves.easeOut,
       child: FloatingActionButton(
         key: _kFabKey,
-        onPressed: () {
+        onPressed: _weightFocused
+            ? null
+            : () {
           HapticFeedback.lightImpact();
           setState(() => _fabOpen = !_fabOpen);
         },
@@ -1352,7 +1334,6 @@ class _RecordScreenState extends State<RecordScreen> {
       return sec.setInputDataList[menuIdx].length < 10;
     }
 
-
     final overlay = _fabOpen
         ? Positioned.fill(
       child: AnimatedOpacity(
@@ -1366,17 +1347,16 @@ class _RecordScreenState extends State<RecordScreen> {
     )
         : const SizedBox.shrink();
 
-    // ★ ダイヤル位置（キーボード追従）
+    // ★ ダイヤル位置（キーボード追従 & ドロップダウンと干渉しにくい余白）
     const double fabSize = 56.0; // 標準FABの直径
     const double fabMargin = 16.0; // FAB外側マージン
-    const double gapAboveFab = 28.0; // FABとチップ群の隙間
+    const double gapAboveFab = 28.0; // FABとチップ群の隙間（被り対策で広め）
     final double dialBottom = (safeBottom > 0 ? safeBottom : fabMargin) +
         kbInset +
         fabSize +
         fabMargin +
         gapAboveFab;
 
-// （dial を作る直前あたりの）既存コードの Column(children: [...]) を差し替え
     final dial = Positioned(
       right: 16,
       bottom: dialBottom,
@@ -1413,7 +1393,6 @@ class _RecordScreenState extends State<RecordScreen> {
             : const SizedBox.shrink(key: ValueKey('dial-off')),
       ),
     );
-
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle, // ← 黒帯解消（ナビバー透過）
