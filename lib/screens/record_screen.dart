@@ -12,7 +12,6 @@ import '../settings_manager.dart';
 import '../widgets/ad_banner.dart';
 import 'calendar_screen.dart';
 import 'graph_screen.dart';
-import 'settings_screen.dart';
 import '../widgets/coach_bubble.dart';
 
 // ignore_for_file: library_private_types_in_public_api
@@ -41,7 +40,6 @@ class _RecordScreenState extends State<RecordScreen> {
   // CoachBubble anchors
   final GlobalKey _kRecordPart = GlobalKey();      // 部位ドロップダウン（初回ヒント用）
   final GlobalKey _kExerciseField = GlobalKey();   // 種目TextField（選択後ヒント）
-  final GlobalKey _kOpenSettingsBtn = GlobalKey(); // 設定へボタン
   final GlobalKey _kFabKey = GlobalKey();          // FAB
 
   bool _firstBuildDone = false;
@@ -1250,26 +1248,7 @@ class _RecordScreenState extends State<RecordScreen> {
           backgroundColor: colorScheme.surface,
           elevation: 0.0,
           iconTheme: IconThemeData(color: colorScheme.onSurface),
-          actions: [
-            IconButton(
-              key: _kOpenSettingsBtn,
-              icon: const Icon(Icons.settings),
-              onPressed: () async {
-                await _closeKeyboard();
-                if (!context.mounted) return;
-                await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => SettingsScreen(
-                      recordsBox: widget.recordsBox,
-                      lastUsedMenusBox: widget.lastUsedMenusBox,
-                      settingsBox: widget.settingsBox,
-                      setCountBox: widget.setCountBox,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
+          actions: const [],
         ),
         body: Stack(
           children: [
@@ -1295,7 +1274,6 @@ class _RecordScreenState extends State<RecordScreen> {
     while (DateTime.now().isBefore(deadline)) {
       if (!mounted) return;
       if (_kExerciseField.currentContext != null ||
-          _kOpenSettingsBtn.currentContext != null ||
           _kFabKey.currentContext != null) {
         break;
       }
@@ -1318,7 +1296,6 @@ class _RecordScreenState extends State<RecordScreen> {
     // 表示順：種目入力 → FAB → 設定
     addIfVisible(_kExerciseField, l10n.hintRecordExerciseField);
     addIfVisible(_kFabKey, l10n.hintRecordFab);
-    addIfVisible(_kOpenSettingsBtn, l10n.hintRecordOpenSettings);
 
     if (anchors.isEmpty) return;
 
