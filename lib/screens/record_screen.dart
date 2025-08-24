@@ -712,6 +712,9 @@ class _RecordScreenState extends State<RecordScreen> {
     final l10n = AppLocalizations.of(context)!;
     final formattedDate = DateFormat('yyyy/MM/dd').format(widget.selectedDate);
 
+    // ★ 統一カラー（落ち着いた青）
+    const Color kBrandBlue = Color(0xFF2563EB);
+
     final Color partNormalBgColor =
     isLight ? const Color(0xFF333333) : const Color(0xFF2C2F33);
     final Color partPressedBgColor =
@@ -840,7 +843,8 @@ class _RecordScreenState extends State<RecordScreen> {
                                 children: [
                                   Expanded(
                                     child: DropdownButtonFormField<String>(
-                                      key: _kRecordPart,
+                                      // ★ バグ対策：GlobalKeyは先頭セクションにだけ付与
+                                      key: secIndex == 0 ? _kRecordPart : null,
                                       decoration: InputDecoration(
                                         hintText: l10n.selectTrainingPart,
                                         hintStyle: TextStyle(
@@ -1001,7 +1005,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                             section.initialSetCount = _currentSetCount;
                                           }
                                         });
-                                        _scheduleHintsAfterPart(); // ここでFABヒントを含めて案内
+                                        _scheduleHintsAfterPart(); // ここでFABヒント含めて案内
                                       },
                                       dropdownColor: colorScheme.surfaceContainer,
                                       style: TextStyle(
@@ -1054,7 +1058,10 @@ class _RecordScreenState extends State<RecordScreen> {
                                               child: Padding(
                                                 padding: const EdgeInsets.all(16.0),
                                                 child: MenuList(
-                                                  key: menuIndex == 0 ? _kExerciseField : null,
+                                                  // ★ バグ対策：先頭セクションの先頭メニューだけにキーを付与
+                                                  key: (secIndex == 0 && menuIndex == 0)
+                                                      ? _kExerciseField
+                                                      : null,
                                                   menuController:
                                                   section.menuControllers[menuIndex],
                                                   removeMenuCallback: () =>
@@ -1119,11 +1126,11 @@ class _RecordScreenState extends State<RecordScreen> {
       ),
     );
 
-    // FAB（スピードダイヤル：テキストのみ）
+    // ★ FAB（落ち着いた青で統一）
     final fabMain = FloatingActionButton(
       key: _kFabKey,
       onPressed: () => setState(() => _fabOpen = !_fabOpen),
-      backgroundColor: colorScheme.primary,
+      backgroundColor: kBrandBlue,
       child: AnimatedRotation(
         turns: _fabOpen ? .125 : 0,
         duration: const Duration(milliseconds: 180),
@@ -1132,12 +1139,12 @@ class _RecordScreenState extends State<RecordScreen> {
       tooltip: l10n.openAddMenu,
     );
 
-    // テキストだけのチップボタン
+    // ★ テキストだけのミニFAB風チップ（色を統一・白文字）
     Widget chipAction(String label, VoidCallback onTap, {bool enabled = true}) {
       return Opacity(
-        opacity: enabled ? 1 : 0.4,
+        opacity: enabled ? 1.0 : 0.6,
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
           onTap: enabled
               ? () {
             setState(() => _fabOpen = false);
@@ -1146,15 +1153,22 @@ class _RecordScreenState extends State<RecordScreen> {
               : null,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            margin: const EdgeInsets.symmetric(vertical: 6),
+            margin: const EdgeInsets.symmetric(vertical: 5), // 少し詰める
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(20),
+              color: kBrandBlue,            // ← 統一カラー
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             child: Text(
               label,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
+              style: const TextStyle(
+                color: Colors.white,        // ← 白文字で視認性UP
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1192,16 +1206,17 @@ class _RecordScreenState extends State<RecordScreen> {
     )
         : const SizedBox.shrink();
 
+    // ★ ダイヤル位置を少し上へ（bottom: 88 → 120）
     final dial = _fabOpen
         ? Positioned(
       right: 16,
-      bottom: 88,
+      bottom: 120,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           chipAction(l10n.addSet, () => _handleAddSet(l10n), enabled: canAddSet()),
           chipAction(l10n.addExercise, _handleAddExercise),
-          chipAction(l10n.addPart, _handleAddPart),
+          chipAction(l10n.addPart, _handleAddPart), // ＋部位が少し上に
         ],
       ),
     )
