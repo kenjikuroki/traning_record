@@ -1,89 +1,61 @@
 name: ttraining_record
 description: "A new Flutter project."
-# The following line prevents the package from being accidentally published to
-# pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: 'none'
 
-# The following section is an automatically generated one by the
-# Flutter tool in order to align your application with the
-# Flutter internationalization standard.
+# Flutter Intl（多言語化）
 flutter_intl:
-  enabled: true # ★多言語化を有効にする設定
+  enabled: true
   main_locale: kl
-# The following defines the version and build number for your application.
-# A version number is three numbers separated by dots, like 1.2.43
-# followed by an optional build number separated by a +.
-# Both the version and the builder number may be overridden in flutter
-# build by specifying --build-name and --build-number, respectively.
-# In Android, build-name is used as versionName while build-number used as versionCode.
-# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
-# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
-# Read more about iOS versioning at
-# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-# In Windows, build-name is used as the major, minor, and patch parts
-# of the product and file versions while build-number is used as the build suffix.
-version: 1.0.10+11
+
+# バージョン
+version: 1.1.1+13
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
-# Dependencies specify other packages that your package needs in order to work.
-# To automatically upgrade your package dependencies to the latest versions
-# consider running `flutter pub upgrade --major-versions`. Alternatively,
-# dependencies can be manually updated by changing the version numbers below to
-# the latest version available on pub.dev. To see which dependencies have newer
-# versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
     sdk: flutter
+  # UI / グラフ
   fl_chart: ^0.68.0
+  # 広告
   google_mobile_ads: ^6.0.0
+  # UI コンポーネント
   numberpicker: ^2.1.2
-  # 基本パッケージ
   cupertino_icons: ^1.0.8
   table_calendar: ^3.1.2
+  # データ/永続化
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  intl: ^0.20.2 # ★バージョン競合解決のため 0.20.2 に固定
-  flutter_localizations: # ★多言語対応のため
-    sdk: flutter # ★多言語対応のため
+  # i18n
+  intl: ^0.20.2
+  flutter_localizations:
+    sdk: flutter
+  # パッケージ名変更ツール
   change_app_package_name: ^1.5.0
-
+  # その他
   collection: any
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
   # コード生成とリンティング
   flutter_lints: ^6.0.0
   build_runner: ^2.4.11
   hive_generator: ^2.0.1
+  # ランチャーアイコン生成
   flutter_launcher_icons: ^0.14.4
 
-# flutter_launcher_icons セクション
+# flutter_launcher_icons セクション（修正済み）
 flutter_launcher_icons:
-  android: true
+  android: true   # ← "adaptive" をやめる
   ios: true
-  image_path: "assets/images/icon_1.png"
-  remove_alpha_ios: true
+  image_path: assets/images/icon_1.png
 
-  # Android 8.0 (API 26) 以降のアダプティブアイコンに関する設定
-  # アダプティブアイコンの前景に 'icon_1.png' を使用します。
-  # 'icon_1.png' は、背景が透過された前景画像として機能する必要があります。
-  adaptive_icon_background: "#ffffff"
-  adaptive_icon_foreground: "assets/images/icon_1.png"
-
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
-
-# The following section is specific to Flutter packages.
 flutter:
-
   uses-material-design: true
+  generate: true
 
-  generate: true # ★L10nコード生成を有効にするため追加
-
-  # アプリ内で画像を使用する場合、assetsセクションで宣言します。
-  # ランチャーアイコンの画像もここに含めることをお勧めします。
   assets:
-    - assets/images/icon_1.png
+    - assets/images/app_icon.png   # （新）トリミング後のアイコン
+    - assets/images/icon_1.png     # 元画像（任意で残す）
