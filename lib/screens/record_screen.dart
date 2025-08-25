@@ -357,20 +357,27 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     final dateKey = _getDateKey(widget.selectedDate);
     final record = widget.recordsBox.get(dateKey);
 
+    // 既存セクション破棄
     for (var s in _sections) {
       s.dispose();
     }
     _sections.clear();
 
+    // 体重を復元
     if (record?.weight != null) {
       _weightController.text = record!.weight.toString();
     } else {
       _weightController.clear();
     }
 
+    // 記録なし（日の新規）
     if (record == null || record.menus.isEmpty) {
-      _sections.add(SectionData.createEmpty(_currentSetCount,
-          shouldPopulateDefaults: false));
+      _sections.add(
+        SectionData.createEmpty(
+          _currentSetCount,
+          shouldPopulateDefaults: false,
+        ),
+      );
       _sections[0].initialSetCount = _currentSetCount;
 
       // 既存記録なし → 選択なし
@@ -381,6 +388,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       return;
     }
 
+    // 記録あり → セクション生成
     final Map<String, SectionData> tempSectionsMap = {};
     final partsFromRecords = record.menus.keys.toList();
 
@@ -398,6 +406,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           setInputDataList: [],
           initialSetCount: _currentSetCount,
           menuKeys: [],
+          // 有酸素用 per menu
           aerobicDistanceCtrls: [],
           aerobicDurationCtrls: [],
           aerobicSuggestFlags: [],
@@ -475,12 +484,12 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
             ));
           }
           section.setInputDataList.add(row);
-          section.initialSetCount =
-              max(section.initialSetCount ?? 0, mergedLen);
+          section.initialSetCount = max(section.initialSetCount ?? 0, mergedLen);
         }
       }
     }
 
+    // 並び替え
     _sections = tempSectionsMap.values.toList();
     _sections.sort((a, b) {
       if (a.selectedPart == null && b.selectedPart == null) return 0;
@@ -491,16 +500,23 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       return ia.compareTo(ib);
     });
 
-    // ★ 実績がある日は、先頭の種目カードを選択状態に
-    _currentSectionIndex = 0;
-    _currentMenuIndex = 0;
-
-    setState(() {});
-    // 先頭を画面内へ（ビルド後）
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _scrollIntoView(0, 0);
-    });
+    // ★ 実績がある日は、先頭の種目カードを選択状態に（安全ガード付き）
+    if (_sections.isNotEmpty &&
+        _sections.first.selectedPart != null &&
+        _sections.first.menuControllers.isNotEmpty) {
+      _currentSectionIndex = 0;
+      _currentMenuIndex = 0;
+      setState(() {}); // ハイライト反映
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scrollIntoView(0, 0);
+      });
+    } else {
+      _currentSectionIndex = null;
+      _currentMenuIndex = null;
+      setState(() {});
+    }
   }
+
 
   String _getDateKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';

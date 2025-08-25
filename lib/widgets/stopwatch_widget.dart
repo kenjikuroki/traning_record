@@ -1,234 +1,230 @@
 // lib/widgets/stopwatch_widget.dart
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/cupertino.dart';
 
-/// 親から制御するためのコントローラ
-class StopwatchController {
-  _StopwatchWidgetState? _state;
-  void _attach(_StopwatchWidgetState s) => _state = s;
-  void _detach(_StopwatchWidgetState s) {
-    if (identical(_state, s)) _state = null;
+/// モード
+enum ClockMode { stopwatch, timer }
+
+/// 外部から制御するためのコントローラ
+class StopwatchController extends ChangeNotifier {
+  StopwatchController({ClockMode initialMode = ClockMode.stopwatch})
+      : _mode = initialMode;
+
+  static const _tick = Duration(seconds: 1); // 秒刻み
+  static const _hardCap = Duration(hours: 5); // 5時間上限
+
+  Timer? _ticker;
+  Duration _elapsed = Duration.zero; // ストップウォッチの経過、またはタイマーの経過
+  Duration _timerTarget = const Duration(minutes: 30); // タイマーの設定値
+  bool _isRunning = false;
+  ClockMode _mode;
+
+  /// API（RecordScreen が使っているもの）
+  bool get isRunning => _isRunning;
+  void start() => _start(); // 互換
+  void pause() => _pause();
+  void reset() => _reset();
+
+  /// 追加API
+  Duration get elapsed => _elapsed;
+  ClockMode get mode => _mode;
+  set mode(ClockMode m) {
+    if (_mode == m) return;
+    _mode = m;
+    notifyListeners();
   }
 
-  bool get isRunning => _state?._running ?? false;
-  void start() => _state?._start();
-  void pause() => _state?._pause();
-  void reset() => _state?._reset();
-  void setTimer(Duration d) => _state?._setTimer(d);
+  Duration get timerTarget => _timerTarget;
+  set timerTarget(Duration d) {
+    _timerTarget = d;
+    if (_mode == ClockMode.timer && _elapsed > _timerTarget) {
+      _elapsed = _timerTarget;
+    }
+    notifyListeners();
+  }
+
+  bool get isFinishedTimer =>
+      _mode == ClockMode.timer && _elapsed >= _timerTarget;
+
+  void toggle() {
+    if (_mode == ClockMode.timer && isFinishedTimer) {
+      // タイマー完了状態で開始要求 → リセットして再スタート
+      _reset();
+    }
+    _isRunning ? _pause() : _start();
+  }
+
+  void _tickOnce() {
+    if (!_isRunning) return;
+
+    // 5時間で自動一時停止
+    if (_elapsed >= _hardCap) {
+      _pause();
+      return;
+    }
+
+    if (_mode == ClockMode.stopwatch) {
+      _elapsed += _tick;
+      notifyListeners();
+    } else {
+      // timer = 経過を積み上げて、target に達したら停止
+      final next = _elapsed + _tick;
+      if (next >= _timerTarget) {
+        _elapsed = _timerTarget;
+        _pause(); // 停止
+      } else {
+        _elapsed = next;
+        notifyListeners();
+      }
+    }
+  }
+
+  void _ensureTicker() {
+    _ticker ??= Timer.periodic(_tick, (_) => _tickOnce());
+  }
+
+  void _start() {
+    if (_isRunning) return;
+    _isRunning = true;
+    _ensureTicker();
+    notifyListeners();
+    HapticFeedback.lightImpact();
+  }
+
+  void _pause() {
+    if (!_isRunning) return;
+    _isRunning = false;
+    notifyListeners();
+    HapticFeedback.selectionClick();
+  }
+
+  void _reset() {
+    _elapsed = Duration.zero;
+    _isRunning = false;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    _ticker = null;
+    super.dispose();
+  }
 }
 
+/// 見た目のバリエーション
 class StopwatchWidget extends StatefulWidget {
-  final ValueChanged<bool>? onRunningChanged;
-  final StopwatchController? controller;
-
-  /// true でコンパクト表示（1行・小さめフォント・余白少なめ）
-  final bool compact;
-
   const StopwatchWidget({
     super.key,
-    this.onRunningChanged,
-    this.controller,
+    required this.controller,
     this.compact = false,
   });
+
+  final StopwatchController controller;
+  final bool compact;
 
   @override
   State<StopwatchWidget> createState() => _StopwatchWidgetState();
 }
 
-enum _Mode { stopwatch, timer }
-
-class _StopwatchWidgetState extends State<StopwatchWidget> {
-  _Mode _mode = _Mode.stopwatch;
-  bool _running = false;
-
-  Duration _elapsed = Duration.zero; // stopwatch
-  Duration _remaining = const Duration(minutes: 1); // timer
-  final TextEditingController _timerTextCtrl =
-  TextEditingController(text: '01:00');
-
-  Timer? _ticker;
+class _StopwatchWidgetState extends State<StopwatchWidget>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseCtrl;
 
   @override
   void initState() {
     super.initState();
-    widget.controller?._attach(this);
+    widget.controller.addListener(_onChanged);
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
   }
 
   @override
   void didUpdateWidget(covariant StopwatchWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
-      oldWidget.controller?._detach(this);
-      widget.controller?._attach(this);
+      oldWidget.controller.removeListener(_onChanged);
+      widget.controller.addListener(_onChanged);
     }
   }
 
   @override
   void dispose() {
-    widget.controller?._detach(this);
-    _ticker?.cancel();
-    _timerTextCtrl.dispose();
+    widget.controller.removeListener(_onChanged);
+    _pulseCtrl.dispose();
     super.dispose();
   }
 
-  void _tick(Timer _) {
+  void _onChanged() {
     if (!mounted) return;
-    setState(() {
-      if (_mode == _Mode.stopwatch) {
-        _elapsed += const Duration(milliseconds: 100);
-      } else {
-        _remaining -= const Duration(milliseconds: 100);
-        if (_remaining <= Duration.zero) {
-          _remaining = Duration.zero;
-          _stop(reachedZero: true);
-          HapticFeedback.heavyImpact();
-        }
-      }
-    });
+    setState(() {});
   }
 
-  void _start() {
-    if (_running) return;
-    if (_mode == _Mode.timer) {
-      final parsed = _parseTimerText(_timerTextCtrl.text);
-      if (parsed != null) _remaining = parsed;
-      if (_remaining <= Duration.zero) return;
-    }
-    setState(() => _running = true);
-    widget.onRunningChanged?.call(true);
-    _ticker?.cancel();
-    _ticker = Timer.periodic(const Duration(milliseconds: 100), _tick);
-    HapticFeedback.lightImpact();
+  // ミリ秒なし（h:mm:ss / mm:ss）
+  String _fmt(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes % 60;
+    final s = d.inSeconds % 60;
+    String two(int v) => v.toString().padLeft(2, '0');
+    return h > 0 ? '$h:${two(m)}:${two(s)}' : '${two(m)}:${two(s)}';
   }
 
-  void _pause() {
-    if (!_running) return;
-    _ticker?.cancel();
-    setState(() => _running = false);
-    widget.onRunningChanged?.call(false);
-    HapticFeedback.selectionClick();
-  }
-
-  void _reset() {
-    _ticker?.cancel();
-    setState(() {
-      _running = false;
-      _elapsed = Duration.zero;
-      _remaining =
-          _parseTimerText(_timerTextCtrl.text) ?? const Duration(minutes: 1);
-    });
-    widget.onRunningChanged?.call(false);
-    HapticFeedback.selectionClick();
-  }
-
-  void _setTimer(Duration d) {
-    setState(() {
-      _mode = _Mode.timer;
-      _remaining = d;
-      _timerTextCtrl.text = _format(d, withHundredth: false);
-    });
-  }
-
-  void _toggle() => _running ? _pause() : _start();
-
-  Duration? _parseTimerText(String text) {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return null;
-    if (trimmed.contains(':')) {
-      final parts = trimmed.split(':');
-      if (parts.length != 2) return null;
-      final m = int.tryParse(parts[0]) ?? 0;
-      final s = int.tryParse(parts[1]) ?? 0;
-      return Duration(minutes: m, seconds: s);
-    } else {
-      final s = int.tryParse(trimmed);
-      if (s == null) return null;
-      return Duration(seconds: s);
-    }
-  }
-
-  String _format(Duration d, {bool withHundredth = true}) {
-    final totalHundredths = (d.inMilliseconds / 10).floor();
-    final hundredths = totalHundredths % 100;
-    final seconds = d.inSeconds % 60;
-    final minutes = d.inMinutes;
-    final mm = minutes.toString().padLeft(2, '0');
-    final ss = seconds.toString().padLeft(2, '0');
-    final hh = hundredths.toString().padLeft(2, '0');
-    return withHundredth ? '$mm:$ss.$hh' : '$mm:$ss';
-  }
-
-  Future<void> _openTimerPicker() async {
-    // iOS/Android問わず使える軽量ボトムシートに CupertinoTimerPicker を表示
-    Duration tmp = _parseTimerText(_timerTextCtrl.text) ?? _remaining;
+  Future<void> _pickTimer(BuildContext context) async {
+    final initial = widget.controller.timerTarget;
+    Duration? picked = initial;
     await showModalBottomSheet<void>(
       context: context,
-      useSafeArea: true,
+      useRootNavigator: true,
+      showDragHandle: true,
       isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (ctx) {
-        final cs = Theme.of(ctx).colorScheme;
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ヘッダー
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Row(
-                  children: [
-                    Text('タイマー設定', style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: cs.onSurface,
-                    )),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('キャンセル'),
-                    ),
-                    const SizedBox(width: 4),
-                    FilledButton(
-                      onPressed: () {
-                        setState(() {
-                          _mode = _Mode.timer;
-                          _setTimer(tmp);
-                        });
-                        Navigator.pop(ctx);
-                      },
-                      child: const Text('OK'),
-                    ),
-                  ],
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 6),
+                Text('タイマー時間', style: Theme.of(ctx).textTheme.titleMedium),
+                SizedBox(
+                  height: 200,
+                  child: CupertinoTimerPicker(
+                    mode: CupertinoTimerPickerMode.hm, // 時・分（秒は非表示）
+                    initialTimerDuration: initial,
+                    onTimerDurationChanged: (d) => picked = d,
+                  ),
                 ),
-              ),
-              SizedBox(
-                height: 180,
-                child: CupertinoTimerPicker(
-                  mode: CupertinoTimerPickerMode.ms,
-                  initialTimerDuration: tmp,
-                  onTimerDurationChanged: (d) => tmp = d,
+                const SizedBox(height: 8),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('決定'),
                 ),
-              ),
-              const SizedBox(height: 16),
-            ],
+              ],
+            ),
           ),
         );
       },
     );
+    if (picked != null) {
+      setState(() {
+        widget.controller.timerTarget = picked!;
+        widget.controller.reset();
+      });
+    }
   }
 
-  void _applyQuick(String key) {
-    switch (key) {
-      case '1m': _setTimer(const Duration(minutes: 1)); break;
-      case '3m': _setTimer(const Duration(minutes: 3)); break;
-      case '5m': _setTimer(const Duration(minutes: 5)); break;
-      case '+10s': _setTimer(_remaining + const Duration(seconds: 10)); break;
-      case '+30s': _setTimer(_remaining + const Duration(seconds: 30)); break;
-      case '+1m': _setTimer(_remaining + const Duration(minutes: 1)); break;
-      case 'clr': _setTimer(Duration.zero); break;
-    }
+  // Duration を  min..max に丸めるユーティリティ
+  Duration _clampDuration(Duration d, Duration min, Duration max) {
+    if (d < min) return min;
+    if (d > max) return max;
+    return d;
   }
 
   @override
@@ -236,380 +232,532 @@ class _StopwatchWidgetState extends State<StopwatchWidget> {
     return widget.compact ? _buildCompact(context) : _buildFull(context);
   }
 
-  // ========= Compact UI（モード切替＋タップで時間Picker＋…メニュー）=========
+// ===== COMPACT =====
   Widget _buildCompact(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final timeStyle = TextStyle(
-      fontFeatures: const [FontFeature.tabularFigures()],
-      fontSize: 20,
-      fontWeight: FontWeight.w700,
-      color: cs.onSurface,
-    );
+    final c = Theme.of(context).colorScheme;
+    final ctl = widget.controller;
+    final isRunning = ctl.isRunning;
+    final isTimer = ctl.mode == ClockMode.timer;
 
-    final timeText =
-    _mode == _Mode.stopwatch ? _format(_elapsed) : _format(_remaining);
+    final time = isTimer ? (ctl.timerTarget - ctl.elapsed) : ctl.elapsed;
+    final display = time.isNegative ? Duration.zero : time;
 
-    final timeWidget = InkWell(
-      onTap: (_mode == _Mode.timer && !_running) ? _openTimerPicker : null,
-      borderRadius: BorderRadius.circular(6),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Text(
-          timeText,
-          style: timeStyle.copyWith(
-            decoration: (_mode == _Mode.timer && !_running)
-                ? TextDecoration.underline
-                : TextDecoration.none,
-            decorationStyle: TextDecorationStyle.dotted,
-          ),
-          maxLines: 1,
-        ),
-      ),
-    );
+    return LayoutBuilder(
+      builder: (context, box) {
+        final w = box.maxWidth;
 
-    return Row(
-      children: [
-        _MiniModeToggle(
-          mode: _mode,
-          enabled: !_running,
-          onChanged: (m) => setState(() => _mode = m),
-        ),
-        const SizedBox(width: 8),
+        // 段階的にコンパクト化
+        final ultraTight = w < 310;     // リセットを隠す
+        final veryTight  = w < 340;
+        final tight      = w < 380;
 
-        // 残り/経過時間（タイマーモード停止中はタップでPicker）
-        Expanded(
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: timeWidget,
-          ),
-        ),
+        final pillW   = ultraTight ? 72.0 : (veryTight ? 80.0 : (tight ? 90.0 : 96.0));
+        final pillH   = ultraTight ? 30.0 : (veryTight ? 32.0 : (tight ? 36.0 : 40.0));
+        final knobW   = ultraTight ? 28.0 : (veryTight ? 30.0 : (tight ? 34.0 : 44.0));
+        final knobH   = ultraTight ? 22.0 : (veryTight ? 24.0 : (tight ? 28.0 : 32.0));
+        final pillIc  = ultraTight ? 14.0 : (veryTight ? 16.0 : (tight ? 18.0 : 20.0));
 
-        // 省スペースなクイックメニュー（…）
-        if (_mode == _Mode.timer && !_running) ...[
-          PopupMenuButton<String>(
-            itemBuilder: (ctx) => [
-              const PopupMenuItem(value: '1m', child: Text('1:00 に設定')),
-              const PopupMenuItem(value: '3m', child: Text('3:00 に設定')),
-              const PopupMenuItem(value: '5m', child: Text('5:00 に設定')),
-              const PopupMenuDivider(),
-              const PopupMenuItem(value: '+10s', child: Text('+10 秒')),
-              const PopupMenuItem(value: '+30s', child: Text('+30 秒')),
-              const PopupMenuItem(value: '+1m', child: Text('+1 分')),
-              const PopupMenuDivider(),
-              const PopupMenuItem(value: 'clr', child: Text('00:00 にリセット')),
-            ],
-            onSelected: _applyQuick,
-            tooltip: 'クイック設定',
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4),
-              child: Icon(Icons.more_vert, size: 20),
+        final playDia = ultraTight ? 30.0 : (veryTight ? 32.0 : (tight ? 36.0 : 38.0));
+        final playIc  = ultraTight ? 16.0 : (veryTight ? 16.0 : (tight ? 18.0 : 20.0));
+
+        final resetDia = ultraTight ? 0.0  : (veryTight ? 30.0 : (tight ? 34.0 : 36.0));
+        final resetIc  = ultraTight ? 0.0  : (veryTight ? 16.0 : (tight ? 17.0 : 18.0));
+        final showReset = !ultraTight;
+
+        final gapXS = ultraTight ? 4.0 : 6.0;
+        final gapS  = ultraTight ? 6.0 : 8.0;
+        final gapM  = ultraTight ? 8.0 : 10.0;
+
+        final hPad = ultraTight ? 6.0 : (veryTight ? 8.0 : 12.0);
+        final vPad = ultraTight ? 4.0 : 6.0;
+
+        // モード切替ピル
+        final modePill = _ModePill(
+          isTimer: isTimer,
+          onTapStopwatch: () {
+            HapticFeedback.selectionClick();
+            ctl.mode = ClockMode.stopwatch;
+            ctl.pause();
+          },
+          onTapTimer: () {
+            HapticFeedback.selectionClick();
+            ctl.mode = ClockMode.timer;
+            ctl.pause();
+          },
+          width: pillW,
+          height: pillH,
+          knobWidth: knobW,
+          knobHeight: knobH,
+          iconSize: pillIc,
+        );
+
+        return Row(
+          children: [
+            modePill,
+            SizedBox(width: gapXS),
+
+            // Start/Pause（小さめ）
+            _RoundIconButton(
+              icon: isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              bg: isRunning ? c.tertiary : c.primary,
+              fg: c.onPrimary,
+              semantic: isRunning ? '一時停止' : '開始',
+              onTap: () => ctl.toggle(),
+              diameter: playDia,
+              iconSize: playIc,
             ),
-          ),
-        ],
+            SizedBox(width: gapM),
 
-        // 再生/一時停止 & リセット（小型化）
-        const SizedBox(width: 4),
-        SizedBox(
-          width: 36,
-          height: 36,
-          child: IconButton(
-            padding: EdgeInsets.zero,
-            onPressed: _toggle,
-            icon: Icon(_running ? Icons.pause : Icons.play_arrow, size: 20),
-            tooltip: _running ? 'Pause' : 'Start',
-          ),
-        ),
-        const SizedBox(width: 2),
-        SizedBox(
-          width: 36,
-          height: 36,
-          child: IconButton(
-            padding: EdgeInsets.zero,
-            onPressed: _reset,
-            icon: const Icon(Icons.replay, size: 18),
-            tooltip: 'Reset',
-          ),
-        ),
-      ],
+            // 時刻表示（タイマー時はタップで編集／超狭い時は長押しでリセット）
+            Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: isTimer ? () => _pickTimer(context) : null,
+                onLongPress: (!showReset && ctl.elapsed > Duration.zero)
+                    ? () {
+                  HapticFeedback.mediumImpact();
+                  ctl.reset();
+                }
+                    : null,
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: vPad, horizontal: hPad),
+                  decoration: BoxDecoration(
+                    color: c.surfaceContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.centerLeft,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      _fmt(display),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                        fontWeight: FontWeight.w700,
+                        color: c.onSurface,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: gapS),
+
+            // Reset（狭い幅では自動的に隠す）
+            if (showReset)
+              _RoundIconButton(
+                icon: Icons.restart_alt_rounded,
+                bg: c.surfaceContainerHighest,
+                fg: c.onSurfaceVariant,
+                semantic: 'リセット',
+                onTap: ctl.elapsed > Duration.zero ? () => ctl.reset() : null,
+                diameter: resetDia,
+                iconSize: resetIc,
+              ),
+          ],
+        );
+      },
     );
   }
 
-  // ========= Full UI（従来の大きめ）=========
+  // ===== FULL =====
   Widget _buildFull(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final bigStyle = TextStyle(
-      fontFeatures: const [FontFeature.tabularFigures()],
-      fontSize: 36,
-      fontWeight: FontWeight.w700,
-      color: cs.onSurface,
-    );
-    final subStyle = TextStyle(
-      color: cs.onSurfaceVariant,
-      fontSize: 12,
-    );
+    final c = Theme.of(context).colorScheme;
+    final ctl = widget.controller;
+    final isRunning = ctl.isRunning;
+    final isTimer = ctl.mode == ClockMode.timer;
 
-    final timeText =
-    _mode == _Mode.stopwatch ? _format(_elapsed) : _format(_remaining);
+    final elapsed = ctl.elapsed;
+    final target = ctl.timerTarget;
+
+    final rawRemain = isTimer ? (target - elapsed) : elapsed;
+    final remain = isTimer
+        ? _clampDuration(rawRemain, Duration.zero, target)
+        : rawRemain;
+
+    final progress = isTimer && target.inMilliseconds > 0
+        ? (elapsed.inMilliseconds / target.inMilliseconds).clamp(0.0, 1.0)
+        : 0.0;
+
+    final timeStr = isTimer ? _fmt(remain) : _fmt(elapsed);
+
+    final modePill = _ModePill(
+      isTimer: isTimer,
+      onTapStopwatch: () {
+        HapticFeedback.selectionClick();
+        ctl.mode = ClockMode.stopwatch;
+        ctl.pause();
+      },
+      onTapTimer: () {
+        HapticFeedback.selectionClick();
+        ctl.mode = ClockMode.timer;
+        ctl.pause();
+      },
+    );
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildHeader(context),
+        // Ring + Big time
+        SizedBox(
+          height: 180,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Progress ring (timer時のみ)
+              AnimatedBuilder(
+                animation: _pulseCtrl,
+                builder: (_, __) {
+                  final pulse =
+                      (math.sin(_pulseCtrl.value * 2 * math.pi) + 1) / 2;
+                  return CustomPaint(
+                    size: const Size.square(160),
+                    painter: _RingPainter(
+                      progress: isTimer ? progress : null,
+                      baseColor: c.surfaceContainerHighest,
+                      stroke: 10,
+                      glowStrength: isRunning ? (0.4 + pulse * 0.4) : 0.0,
+                      glowColor: c.primary,
+                    ),
+                  );
+                },
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: isTimer ? () => _pickTimer(context) : null,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 6,
+                        horizontal: 10,
+                      ),
+                      child: Text(
+                        timeStr,
+                        textAlign: TextAlign.center,
+                        style:
+                        Theme.of(context).textTheme.displaySmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: const [
+                            FontFeature.tabularFigures()
+                          ],
+                          color: c.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isTimer
+                        ? '目標 ${_humanize(target)}（数字タップで編集）'
+                        : (isRunning ? '計測中' : '待機中'),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: c.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 8),
+
+        // Buttons row（左：モード、右：操作）
         Row(
           children: [
-            Expanded(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(timeText, style: bigStyle),
+            modePill,
+            const Spacer(),
+            ElevatedButton.icon(
+              onPressed: () => ctl.toggle(),
+              icon: Icon(
+                isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              ),
+              label: Text(isRunning ? '一時停止' : '開始'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isRunning ? c.tertiary : c.primary,
+                foregroundColor: c.onPrimary,
+                padding:
+                const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
             const SizedBox(width: 8),
-            _PrimaryButton(running: _running, onPressed: _toggle),
-            const SizedBox(width: 8),
-            _SecondaryButton(icon: Icons.replay, label: 'Reset', onPressed: _reset),
+            IconButton.filledTonal(
+              onPressed: ctl.elapsed > Duration.zero ? () => ctl.reset() : null,
+              icon: const Icon(Icons.restart_alt_rounded),
+              tooltip: 'リセット',
+            ),
+            // （時間編集ボタンは廃止。数字タップで編集）
           ],
         ),
-        if (_mode == _Mode.timer && !_running) ...[
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _QuickBtn('1:00', const Duration(minutes: 1)),
-              _QuickBtn('3:00', const Duration(minutes: 3)),
-              _QuickBtn('5:00', const Duration(minutes: 5)),
-              _QuickBtn('+30s', const Duration(seconds: 30), add: true),
-              _QuickBtn('+1m', const Duration(minutes: 1), add: true),
-            ],
-          )
-        ],
-        if (_mode == _Mode.timer && _running) ...[
-          const SizedBox(height: 4),
-          Text('Counting down', style: subStyle),
-        ],
-        if (_mode == _Mode.stopwatch && _running) ...[
-          const SizedBox(height: 4),
-          Text('Counting up', style: subStyle),
-        ]
       ],
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.all(4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _ModeChip(
-                label: 'STOPWATCH',
-                selected: _mode == _Mode.stopwatch,
-                onTap: _running ? null : () => setState(() => _mode = _Mode.stopwatch),
-              ),
-              const SizedBox(width: 4),
-              _ModeChip(
-                label: 'TIMER',
-                selected: _mode == _Mode.timer,
-                onTap: _running ? null : () => setState(() => _mode = _Mode.timer),
-              ),
-            ],
-          ),
-        ),
-        const Spacer(),
-        if (_mode == _Mode.timer && !_running)
-          SizedBox(
-            width: 96,
-            child: TextField(
-              controller: _timerTextCtrl,
-              decoration: const InputDecoration(
-                isDense: true,
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                hintText: 'MM:SS',
-              ),
-              keyboardType: TextInputType.number,
-              onSubmitted: (_) {
-                final parsed = _parseTimerText(_timerTextCtrl.text);
-                if (parsed != null) setState(() => _remaining = parsed);
-              },
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _QuickBtn(String label, Duration d, {bool add = false}) {
-    return OutlinedButton(
-      onPressed: () {
-        final base = add ? _remaining : Duration.zero;
-        final newD = add ? (base + d) : d;
-        setState(() {
-          _mode = _Mode.timer;
-          _remaining = newD;
-          _timerTextCtrl.text = _format(newD, withHundredth: false);
-        });
-      },
-      child: Text(label),
-    );
-  }
-
-  void _stop({bool reachedZero = false}) {
-    _ticker?.cancel();
-    setState(() => _running = false);
-    widget.onRunningChanged?.call(false);
+  String _humanize(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes % 60;
+    if (h > 0) {
+      return '${h}時間${m > 0 ? ' ${m}分' : ''}';
+    }
+    return '${m}分';
   }
 }
 
-/// ====== 極小トグル（⏱ / ⏲）======
-/// ToggleButtons未使用。古いFlutterでも動くよう自前実装。
-class _MiniModeToggle extends StatelessWidget {
-  final _Mode mode;
-  final bool enabled;
-  final ValueChanged<_Mode> onChanged;
+/// タイマー/ストップウォッチ切替の“おしゃれピルスイッチ”
+/// 左：ストップウォッチ（av_timer） 右：タイマー（hourglass）
+/// タイマー/ストップウォッチ切替の“おしゃれピルスイッチ”
+class _ModePill extends StatelessWidget {
+  final bool isTimer;
+  final VoidCallback onTapStopwatch;
+  final VoidCallback onTapTimer;
 
-  const _MiniModeToggle({
-    required this.mode,
-    required this.enabled,
-    required this.onChanged,
+  // レスポンシブに調整できるよう外からサイズ指定可能
+  final double width;
+  final double height;
+  final double knobWidth;
+  final double knobHeight;
+  final double iconSize;
+
+  const _ModePill({
+    super.key,
+    required this.isTimer,
+    required this.onTapStopwatch,
+    required this.onTapTimer,
+    this.width = 96,
+    this.height = 40,
+    this.knobWidth = 44,
+    this.knobHeight = 32,
+    this.iconSize = 20,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    Widget buildBtn(IconData icon, _Mode m, {BorderRadius? br}) {
-      final selected = mode == m;
-      return InkWell(
-        onTap: enabled ? () => onChanged(m) : null,
-        borderRadius: br ?? BorderRadius.circular(8),
-        child: Container(
-          width: 36,
-          height: 28,
-          decoration: BoxDecoration(
-            color: selected ? cs.primaryContainer : Colors.transparent,
-            borderRadius: br ?? BorderRadius.circular(8),
-            border: Border.all(
-              color: selected ? cs.primary : cs.outlineVariant,
+    return Container(
+      height: height,
+      width: width,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: cs.outlineVariant, width: 1),
+      ),
+      child: Stack(
+        children: [
+          // 選択インジケータ
+          AnimatedAlign(
+            alignment: isTimer ? Alignment.centerRight : Alignment.centerLeft,
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            child: Container(
+              width: knobWidth,
+              height: knobHeight,
+              decoration: BoxDecoration(
+                color: cs.primary.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(999),
+              ),
             ),
           ),
-          alignment: Alignment.center,
-          child: Icon(
-            icon,
-            size: 18,
-            color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+          // アイコン2つ
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _ModeIcon(
+                icon: Icons.av_timer,
+                tooltip: 'ストップウォッチ',
+                boxWidth: knobWidth,
+                boxHeight: knobHeight,
+                iconSize: iconSize,
+              ),
+              _ModeIcon(
+                icon: Icons.hourglass_bottom_rounded,
+                tooltip: 'タイマー',
+                boxWidth: knobWidth,
+                boxHeight: knobHeight,
+                iconSize: iconSize,
+              ),
+            ],
+          ),
+          // タップ領域（左右に分けてヒットさせる）
+          Row(
+            children: [
+              Expanded(child: GestureDetector(onTap: onTapStopwatch)),
+              Expanded(child: GestureDetector(onTap: onTapTimer)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeIcon extends StatelessWidget {
+  const _ModeIcon({
+    required this.icon,
+    required this.tooltip,
+    required this.boxWidth,
+    required this.boxHeight,
+    required this.iconSize,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final double boxWidth;
+  final double boxHeight;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox(
+        width: boxWidth,
+        height: boxHeight,
+        child: Icon(icon, size: iconSize),
+      ),
+    );
+  }
+}
+
+/// 丸い小ボタン（コンパクト用）
+class _RoundIconButton extends StatelessWidget {
+  const _RoundIconButton({
+    required this.icon,
+    required this.bg,
+    required this.fg,
+    required this.semantic,
+    this.onTap,
+    this.diameter = 40,
+    this.iconSize = 20,
+  });
+
+  final IconData icon;
+  final Color bg;
+  final Color fg;
+  final String semantic;
+  final VoidCallback? onTap;
+  final double diameter;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return Semantics(
+      button: true,
+      label: semantic,
+      child: Material(
+        color: enabled ? bg : Theme.of(context).colorScheme.surfaceContainer,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap == null
+              ? null
+              : () {
+            HapticFeedback.selectionClick();
+            onTap!();
+          },
+          child: SizedBox(
+            width: diameter,
+            height: diameter,
+            child: Center(
+              child: Icon(icon, color: enabled ? fg : Colors.grey, size: iconSize),
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// タイマーの円形プログレス
+class _RingPainter extends CustomPainter {
+  _RingPainter({
+    required this.baseColor,
+    required this.stroke,
+    this.progress, // null のときは淡色ベースのみ
+    this.glowStrength = 0.0,
+    this.glowColor,
+  });
+
+  final double stroke;
+  final Color baseColor;
+  final double? progress; // 0..1
+  final double glowStrength;
+  final Color? glowColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final center = rect.center;
+    final radius = (size.shortestSide - stroke) / 2;
+
+    // ベース
+    final basePaint = Paint()
+      ..color = baseColor
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = stroke;
+    canvas.drawCircle(center, radius, basePaint);
+
+    // プログレス
+    if (progress != null) {
+      final start = -math.pi / 2;
+      final sweep = (progress!).clamp(0.0, 1.0) * 2 * math.pi;
+
+      final gradient = SweepGradient(
+        startAngle: start,
+        endAngle: start + sweep,
+        colors: [
+          (glowColor ?? Colors.blue).withOpacity(0.9),
+          (glowColor ?? Colors.blue).withOpacity(0.6),
+          (glowColor ?? Colors.blue).withOpacity(0.9),
+        ],
+      );
+      final progPaint = Paint()
+        ..shader = gradient.createShader(rect)
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = stroke;
+
+      // ぼかし光彩（鼓動）
+      if (glowStrength > 0) {
+        final glowPaint = Paint()
+          ..color = (glowColor ?? Colors.blue).withOpacity(0.35 * glowStrength)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 16 * glowStrength)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke;
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          start,
+          sweep,
+          false,
+          glowPaint,
+        );
+      }
+
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        start,
+        sweep,
+        false,
+        progPaint,
       );
     }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        buildBtn(Icons.av_timer, _Mode.stopwatch,
-            br: const BorderRadius.only(
-              topLeft: Radius.circular(8),
-              bottomLeft: Radius.circular(8),
-            )),
-        const SizedBox(width: 4),
-        buildBtn(Icons.timer, _Mode.timer,
-            br: const BorderRadius.only(
-              topRight: Radius.circular(8),
-              bottomRight: Radius.circular(8),
-            )),
-      ],
-    );
   }
-}
-
-class _ModeChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  const _ModeChip({
-    required this.label,
-    required this.selected,
-    this.onTap,
-  });
 
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: selected ? cs.primaryContainer : Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: selected ? cs.primary : cs.outlineVariant),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-              fontSize: 12,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PrimaryButton extends StatelessWidget {
-  final bool running;
-  final VoidCallback onPressed;
-
-  const _PrimaryButton({required this.running, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return FilledButton.icon(
-      onPressed: onPressed,
-      icon: Icon(running ? Icons.pause : Icons.play_arrow),
-      label: Text(running ? 'Pause' : 'Start'),
-      style: FilledButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-    );
-  }
-}
-
-class _SecondaryButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
-
-  const _SecondaryButton({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, color: cs.onSurfaceVariant),
-      label: Text(label),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      ),
-    );
+  bool shouldRepaint(covariant _RingPainter old) {
+    return old.progress != progress ||
+        old.baseColor != baseColor ||
+        old.stroke != stroke ||
+        old.glowStrength != glowStrength ||
+        old.glowColor != glowColor;
   }
 }

@@ -57,5 +57,4 @@ flutter:
   generate: true
 
   assets:
-    - assets/images/app_icon.png   # （新）トリミング後のアイコン
     - assets/images/icon_1.png     # 元画像（任意で残す）
