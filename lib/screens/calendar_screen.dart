@@ -12,7 +12,7 @@ import 'graph_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/ad_square.dart';
 import '../widgets/coach_bubble.dart';
-import '../widgets/lib/routes/slide_up_route.dart'; // ← 追加
+import '../routes/slide_up_route.dart'; // ← 追加
 
 
 

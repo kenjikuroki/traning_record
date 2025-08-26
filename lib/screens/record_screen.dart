@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'dart:math';
-import 'dart:async';
 import 'package:intl/intl.dart';
 import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
@@ -11,7 +10,6 @@ import '../widgets/animated_list_item.dart';
 import '../widgets/custom_widgets.dart';
 import '../settings_manager.dart';
 import '../widgets/ad_banner.dart';
-import '../widgets/stopwatch_widget.dart';
 import 'calendar_screen.dart';
 import 'graph_screen.dart';
 import '../widgets/coach_bubble.dart';
@@ -39,12 +37,7 @@ class RecordScreen extends StatefulWidget {
   State<RecordScreen> createState() => _RecordScreenState();
 }
 
-class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver {
-  // ====== 自動一時停止の基準 ======
-  static const Duration _kIdleAutoPause = Duration(hours: 5); // 無操作
-  static const Duration _kHardCap      = Duration(hours: 5); // 連続稼働上限
-  // =================================
-
+class _RecordScreenState extends State<RecordScreen> {
   final ScrollController _scrollCtrl = ScrollController();
   bool _initialized = false;
 
@@ -53,6 +46,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
   bool _isTopMostRoute(BuildContext context) {
     final route = ModalRoute.of(context);
+    // 画面がまだ push 中などで isCurrent=false の可能性に備えつつ、
+    // null（モーダル外など）なら true 扱いに
     return route?.isCurrent ?? true;
   }
 
@@ -76,24 +71,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
   final TextEditingController _weightController = TextEditingController();
 
-  // ==== ストップウォッチ：常時固定＆制御 ====
-  // 画面遷移でも状態を保つため static 化
-  static final StopwatchController _swController = StopwatchController();
-
-  DateTime _lastInteractionAt = DateTime.now();
-  Timer? _inactivityTimer; // 無操作監視
-  Timer? _capTimer;        // 連続稼働上限監視
-  DateTime? _backgroundedAt;
-
-  // 連続稼働時間の自前管理（elapsed無しで判定するため）
-  bool _wasRunning = false;
-  DateTime? _resumedAt; // 直近で走り始めた時刻
-  // ===================================
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
 
     // 初回ビルド完了フラグ
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -104,6 +84,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
 
+      // RecordScreen が本当に前面かどうか確認
       final route = ModalRoute.of(context);
       if (route?.isCurrent != true) return;
 
@@ -111,6 +92,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       final seen = box.get('hint_seen_record') as bool? ?? false;
       if (seen) return;
 
+      // アンカーが描画されるのを少し待つ
       final deadline = DateTime.now().add(const Duration(milliseconds: 800));
       while (DateTime.now().isBefore(deadline)) {
         if (!mounted) return;
@@ -128,43 +110,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       );
       await box.put('hint_seen_record', true);
     });
-
-    // 無操作監視（5時間で一時停止）
-    _inactivityTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      final idle = DateTime.now().difference(_lastInteractionAt);
-      if (idle >= _kIdleAutoPause && _swController.isRunning) {
-        _pauseWithSnack('無操作が5時間続いたため一時停止しました');
-      }
-    });
-
-    // 連続稼働5時間で一時停止（elapsed が無いので自前で判定）
-    _capTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      final running = _swController.isRunning;
-
-      // 状態遷移を検出
-      if (running && !_wasRunning) {
-        // 走り始め
-        _resumedAt = DateTime.now();
-      } else if (!running && _wasRunning) {
-        // 停止したら連続稼働ストリークはクリア
-        _resumedAt = null;
-      }
-
-      // 連続稼働の判定
-      if (running && _resumedAt != null) {
-        final runFor = DateTime.now().difference(_resumedAt!);
-        if (runFor >= _kHardCap) {
-          _pauseWithSnack('5時間を超えたため一時停止しました', withResume: true);
-          _resumedAt = null;
-        }
-      }
-
-      _wasRunning = running;
-    });
-
-    // スクロール＝操作扱い
-    _scrollCtrl.addListener(() => _lastInteractionAt = DateTime.now());
   }
+
 
   @override
   void didChangeDependencies() {
@@ -177,9 +124,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _inactivityTimer?.cancel();
-    _capTimer?.cancel();
     _scrollCtrl.dispose();
     for (var section in _sections) {
       section.dispose();
@@ -189,55 +133,15 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     super.dispose();
   }
 
-  // Appライフサイクル（バックグラウンド30分で自動一時停止）
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
-      _backgroundedAt = DateTime.now();
-    } else if (state == AppLifecycleState.resumed) {
-      if (_backgroundedAt != null) {
-        final away = DateTime.now().difference(_backgroundedAt!);
-        if (away.inMinutes >= 30 && _swController.isRunning) {
-          _pauseWithSnack('アプリが30分以上バックグラウンドのため一時停止しました', withResume: true);
-        }
-      }
-      _backgroundedAt = null;
-      _lastInteractionAt = DateTime.now();
-    }
-  }
-
-  void _pauseWithSnack(String message, {bool withResume = false}) {
-    _swController.pause();
-    if (!mounted || !_isTopMostRoute(context)) return;
-    final action = withResume
-        ? SnackBarAction(
-      label: '再開',
-      onPressed: () {
-        _swController.start();
-        _lastInteractionAt = DateTime.now();
-        _resumedAt = DateTime.now();
-        _wasRunning = true;
-      },
-    )
-        : null;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 7),
-        action: action,
-      ),
-    );
-  }
-
   // 指定のカードを画面内にスクロールして見えるようにする
   Future<void> _scrollIntoView(int secIndex, int menuIndex) async {
     final key = _sections[secIndex].menuKeys[menuIndex];
     if (key is GlobalKey && key.currentContext != null) {
       await Scrollable.ensureVisible(
         key.currentContext!,
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        alignment: 0.15,
+        alignment: 0.2,
       );
     }
   }
@@ -357,38 +261,25 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     final dateKey = _getDateKey(widget.selectedDate);
     final record = widget.recordsBox.get(dateKey);
 
-    // 既存セクション破棄
     for (var s in _sections) {
       s.dispose();
     }
     _sections.clear();
 
-    // 体重を復元
     if (record?.weight != null) {
       _weightController.text = record!.weight.toString();
     } else {
       _weightController.clear();
     }
 
-    // 記録なし（日の新規）
     if (record == null || record.menus.isEmpty) {
-      _sections.add(
-        SectionData.createEmpty(
-          _currentSetCount,
-          shouldPopulateDefaults: false,
-        ),
-      );
+      _sections.add(SectionData.createEmpty(_currentSetCount,
+          shouldPopulateDefaults: false));
       _sections[0].initialSetCount = _currentSetCount;
-
-      // 既存記録なし → 選択なし
-      _currentSectionIndex = null;
-      _currentMenuIndex = null;
-
       setState(() {});
       return;
     }
 
-    // 記録あり → セクション生成
     final Map<String, SectionData> tempSectionsMap = {};
     final partsFromRecords = record.menus.keys.toList();
 
@@ -484,12 +375,12 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
             ));
           }
           section.setInputDataList.add(row);
-          section.initialSetCount = max(section.initialSetCount ?? 0, mergedLen);
+          section.initialSetCount =
+              max(section.initialSetCount ?? 0, mergedLen);
         }
       }
     }
 
-    // 並び替え
     _sections = tempSectionsMap.values.toList();
     _sections.sort((a, b) {
       if (a.selectedPart == null && b.selectedPart == null) return 0;
@@ -500,23 +391,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       return ia.compareTo(ib);
     });
 
-    // ★ 実績がある日は、先頭の種目カードを選択状態に（安全ガード付き）
-    if (_sections.isNotEmpty &&
-        _sections.first.selectedPart != null &&
-        _sections.first.menuControllers.isNotEmpty) {
-      _currentSectionIndex = 0;
-      _currentMenuIndex = 0;
-      setState(() {}); // ハイライト反映
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _scrollIntoView(0, 0);
-      });
-    } else {
-      _currentSectionIndex = null;
-      _currentMenuIndex = null;
-      setState(() {});
-    }
+    setState(() {});
   }
-
 
   String _getDateKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -542,6 +418,36 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     section.aerobicDurationCtrls.clear();
     section.aerobicSuggestFlags.clear();
   }
+
+  // すべてのTextEditingControllerで未確定（composing）を確定させる
+  void _commitAllComposingTexts() {
+    // 体重
+    _weightController.value = _weightController.value.copyWith(
+      composing: TextRange.empty,
+    );
+
+    // セクション内の各コントローラ
+    for (final sec in _sections) {
+      for (final c in sec.menuControllers) {
+        c.value = c.value.copyWith(composing: TextRange.empty);
+      }
+      for (final row in sec.setInputDataList) {
+        for (final d in row) {
+          d.weightController.value =
+              d.weightController.value.copyWith(composing: TextRange.empty);
+          d.repController.value =
+              d.repController.value.copyWith(composing: TextRange.empty);
+        }
+      }
+      for (final c in sec.aerobicDistanceCtrls) {
+        c.value = c.value.copyWith(composing: TextRange.empty);
+      }
+      for (final c in sec.aerobicDurationCtrls) {
+        c.value = c.value.copyWith(composing: TextRange.empty);
+      }
+    }
+  }
+
 
   void _saveAllSectionsData() {
     final dateKey = _getDateKey(widget.selectedDate);
@@ -575,6 +481,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
               ? section.aerobicSuggestFlags[i]
               : true;
 
+          // lastUsed には常に保存
           listForLastUsed.add(MenuData(
             name: name,
             weights: const <String>[],
@@ -583,6 +490,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
             duration: duration,
           ));
 
+          // Record は未確定を除外
           if (!isSug &&
               ((distance.trim().isNotEmpty) ||
                   (duration.trim().isNotEmpty))) {
@@ -613,7 +521,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
             final set = section.setInputDataList[i][s];
             final w = set.weightController.text;
             final r = set.repController.text;
-            final hasValue = w.trim().isNotEmpty || r.trim().isNotEmpty;
+            final hasValue =
+                w.trim().isNotEmpty || r.trim().isNotEmpty;
             if (!set.isSuggestion && hasValue) {
               weightsConfirmed.add(w);
               repsConfirmed.add(r);
@@ -699,13 +608,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         section.setInputDataList[idx] = row;
         section.initialSetCount = max(section.initialSetCount ?? 0, sets);
       }
-    });
-
-    // 追加直後にそのカードを選択状態に
-    _touchCard(sectionIndex, _sections[sectionIndex].menuControllers.length - 1);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _scrollIntoView(sectionIndex,
-          _sections[sectionIndex].menuControllers.length - 1);
     });
   }
 
@@ -808,13 +710,10 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     });
   }
 
-  // タップ/フォーカスで対象更新（即ハイライト）
+  // タップ/フォーカスで対象更新
   void _touchCard(int sectionIndex, int menuIndex) {
-    setState(() {
-      _currentSectionIndex = sectionIndex;
-      _currentMenuIndex = menuIndex;
-      _lastInteractionAt = DateTime.now();
-    });
+    _currentSectionIndex = sectionIndex;
+    _currentMenuIndex = menuIndex;
   }
 
   // FAB アクション（有酸素にはセット追加しない）
@@ -829,8 +728,11 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   }
 
   void _handleAddExercise() {
-    // 前提：canAddExercise() が true のときのみ呼ばれる
-    final secIdx = _currentSectionIndex!;
+    if (_sections.isEmpty) {
+      _addTargetSection();
+      return;
+    }
+    final secIdx = _currentSectionIndex ?? 0;
     _addMenuItem(secIdx);
     _currentSectionIndex = secIdx;
     _currentMenuIndex = _sections[secIdx].menuControllers.length - 1;
@@ -840,34 +742,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     _addTargetSection();
   }
 
-  // 「＋種目」を押せる条件：セクションが選ばれていて、部位が選択済み
-  bool _canAddExercise() {
-    if (_sections.isEmpty) return false;
-    final si = _currentSectionIndex;
-    if (si == null) return false;
-    if (si < 0 || si >= _sections.length) return false;
-    return _sections[si].selectedPart != null;
-  }
-
-  // ストップウォッチカード（コンパクト）
-  Widget _buildStopwatchCard() {
-    final cs = Theme.of(context).colorScheme;
-    return Card(
-      color: cs.surfaceContainerHighest,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16.0),
-      ),
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: StopwatchWidget(
-          compact: true,
-          controller: _swController, // static で保持
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -875,10 +749,12 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     final l10n = AppLocalizations.of(context)!;
     final formattedDate = DateFormat('yyyy/MM/dd').format(widget.selectedDate);
 
+    // 端末情報（1か所だけで定義）
     final media = MediaQuery.of(context);
     final kbInset = media.viewInsets.bottom;   // キーボード高さ
     final safeBottom = media.padding.bottom;   // セーフエリア
 
+    // ★ ナビバー（黒帯）透明化スタイル
     final overlayStyle = isLight
         ? const SystemUiOverlayStyle(
       systemNavigationBarColor: Colors.transparent,
@@ -891,46 +767,41 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       systemNavigationBarIconBrightness: Brightness.light,
     );
 
+    // ★ 統一カラー（落ち着いた青）
     const Color kBrandBlue = Color(0xFF2563EB);
 
     final bool isInitialEmptyState =
         _sections.length == 1 && _sections[0].selectedPart == null;
 
     final bool showWeight = SettingsManager.showWeightInput;
-    final int headerCount = (showWeight ? 1 : 0); // ストップウォッチは常時広告直下固定
+    final int headerCount = showWeight ? 1 : 0;
 
     final body = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
           const AdBanner(screenName: 'record'),
-          const SizedBox(height: 4.0),
-
-          // ストップウォッチは常に広告直下
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4.0),
-            child: _buildStopwatchCard(),
-          ),
-
+          const SizedBox(height: 8.0),
           Expanded(
             child: AnimatedPadding(
-              duration: const Duration(milliseconds: 160),
+              duration: const Duration(milliseconds: 180),
               curve: Curves.easeOutCubic,
+              // キーボード表示時はその高さ + セーフエリア + 16 を下余白に足す
               padding: EdgeInsets.only(
-                bottom: (kbInset > 0 ? kbInset + safeBottom + 12 : 12),
+                bottom: (kbInset > 0 ? kbInset + safeBottom + 16 : 16),
               ),
               child: ListView.builder(
                 controller: _scrollCtrl,
                 primary: false,
+                // ★ 自動でキーボードを閉じない
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
                 physics: const AlwaysScrollableScrollPhysics(),
                 itemCount:
                 headerCount + _sections.length + (isInitialEmptyState ? 0 : 1),
                 itemBuilder: (context, index) {
-                  // ① 体重カード
                   if (showWeight && index == 0) {
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 6.0),
+                      padding: const EdgeInsets.only(bottom: 8.0),
                       child: Card(
                         color: colorScheme.surfaceContainerHighest,
                         shape: RoundedRectangleBorder(
@@ -938,7 +809,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                         ),
                         elevation: 4,
                         child: Padding(
-                          padding: const EdgeInsets.all(12.0),
+                          padding: const EdgeInsets.all(16.0),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -947,12 +818,12 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                 style: TextStyle(
                                   color: colorScheme.onSurface,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 14.0,
+                                  fontSize: 15.0,
                                 ),
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 12),
                               SizedBox(
-                                width: 150,
+                                width: 160,
                                 child: Row(
                                   children: [
                                     Expanded(
@@ -962,7 +833,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                             _weightFocused = has;
                                             if (has) _fabOpen = false;
                                           });
-                                          _lastInteractionAt = DateTime.now();
                                         },
                                         child: StylishInput(
                                           controller: _weightController,
@@ -979,7 +849,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                           suggestionTextColor: colorScheme
                                               .onSurfaceVariant
                                               .withValues(alpha: 0.5),
-                                          fillColor: colorScheme.surfaceContainer,
+                                          fillColor:
+                                          colorScheme.surfaceContainer,
                                           contentPadding:
                                           const EdgeInsets.symmetric(
                                               vertical: 8, horizontal: 10),
@@ -992,7 +863,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                       SettingsManager.currentUnit,
                                       style: TextStyle(
                                         color: colorScheme.onSurfaceVariant,
-                                        fontSize: 12.0,
+                                        fontSize: 13.0,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -1021,11 +892,12 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                         ? AnimationDirection.bottomToTop
                         : AnimationDirection.none,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () {
-                          _touchCard(secIndex, 0);
+                          _currentSectionIndex = secIndex;
+                          _currentMenuIndex = 0;
                         },
                         child: Card(
                           color: colorScheme.surfaceContainerHighest,
@@ -1033,7 +905,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                               borderRadius: BorderRadius.circular(16.0)),
                           elevation: 4,
                           child: Padding(
-                            padding: const EdgeInsets.all(12.0),
+                            padding: const EdgeInsets.all(16.0),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -1041,44 +913,34 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                   children: [
                                     Expanded(
                                       child: DropdownButtonFormField<String>(
+                                        // ★ バグ対策：GlobalKeyは先頭セクションにだけ付与
                                         key: secIndex == 0 ? _kRecordPart : null,
                                         decoration: InputDecoration(
                                           hintText: l10n.selectTrainingPart,
                                           hintStyle: TextStyle(
                                               color: colorScheme.onSurfaceVariant,
-                                              fontSize: 13.0),
+                                              fontSize: 14.0),
                                           filled: true,
                                           fillColor: colorScheme.surfaceContainer,
                                           border: OutlineInputBorder(
                                             borderRadius:
-                                            BorderRadius.circular(22.0),
+                                            BorderRadius.circular(25.0),
                                             borderSide: BorderSide.none,
                                           ),
                                           enabledBorder: OutlineInputBorder(
                                             borderRadius:
-                                            BorderRadius.circular(22.0),
+                                            BorderRadius.circular(25.0),
                                             borderSide: BorderSide.none,
                                           ),
                                           focusedBorder: OutlineInputBorder(
                                             borderRadius:
-                                            BorderRadius.circular(22.0),
+                                            BorderRadius.circular(25.0),
                                             borderSide: BorderSide.none,
                                           ),
                                           contentPadding:
                                           const EdgeInsets.symmetric(
-                                              vertical: 10, horizontal: 16),
+                                              vertical: 12, horizontal: 20),
                                         ),
-                                        isDense: true,
-                                        iconSize: 20,
-                                        dropdownColor:
-                                        colorScheme.surfaceContainer,
-                                        style: TextStyle(
-                                          color: colorScheme.onSurface,
-                                          fontSize: 14.0,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        borderRadius:
-                                        BorderRadius.circular(14.0),
                                         initialValue: section.selectedPart,
                                         items: _filteredBodyParts
                                             .map(
@@ -1087,8 +949,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                             child: Text(
                                               p,
                                               style: TextStyle(
-                                                color:
-                                                colorScheme.onSurface,
+                                                color: colorScheme.onSurface,
                                                 fontSize: 14.0,
                                                 fontWeight: FontWeight.bold,
                                               ),
@@ -1113,8 +974,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                   context, current);
                                               final dateKey = _getDateKey(
                                                   widget.selectedDate);
-                                              final record = widget.recordsBox
-                                                  .get(dateKey);
+                                              final record =
+                                              widget.recordsBox.get(dateKey);
 
                                               final recList =
                                                   record?.menus[originalPart] ??
@@ -1128,13 +989,11 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                   .toList()
                                                   : <MenuData>[];
 
-                                              final Map<String, MenuData> recBy =
-                                              {
+                                              final Map<String, MenuData> recBy = {
                                                 for (final m in recList)
                                                   m.name: m
                                               };
-                                              final Map<String, MenuData> luBy =
-                                              {
+                                              final Map<String, MenuData> luBy = {
                                                 for (final m in luList)
                                                   m.name: m
                                               };
@@ -1143,30 +1002,26 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                 ...recList.map((m) => m.name),
                                                 ...luList
                                                     .where((m) =>
-                                                !recBy.containsKey(
-                                                    m.name))
+                                                !recBy.containsKey(m.name))
                                                     .map((m) => m.name),
                                               ];
                                               if (names.isEmpty) names.add('');
 
                                               final l10n =
-                                              AppLocalizations.of(
-                                                  context)!;
+                                              AppLocalizations.of(context)!;
                                               final isAerobic =
-                                                  current ==
-                                                      l10n.aerobicExercise;
+                                                  current == l10n.aerobicExercise;
 
                                               for (final name in names) {
                                                 final rec = recBy[name];
                                                 final lu = luBy[name];
 
-                                                section.menuControllers.add(
-                                                    TextEditingController(
-                                                        text: name));
-                                                section.menuKeys
-                                                    .add(UniqueKey());
-                                                section.menuIds.add(
-                                                    section.nextMenuId++);
+                                                section.menuControllers
+                                                    .add(TextEditingController(
+                                                    text: name));
+                                                section.menuKeys.add(UniqueKey());
+                                                section.menuIds
+                                                    .add(section.nextMenuId++);
 
                                                 if (isAerobic) {
                                                   final String dist = (rec
@@ -1195,12 +1050,12 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                           .isNotEmpty ==
                                                           true);
 
-                                                  section.aerobicDistanceCtrls
-                                                      .add(TextEditingController(
-                                                      text: dist));
-                                                  section.aerobicDurationCtrls
-                                                      .add(TextEditingController(
-                                                      text: dura));
+                                                  section.aerobicDistanceCtrls.add(
+                                                      TextEditingController(
+                                                          text: dist));
+                                                  section.aerobicDurationCtrls.add(
+                                                      TextEditingController(
+                                                          text: dura));
                                                   section.aerobicSuggestFlags
                                                       .add(isSug);
                                                   section.setInputDataList
@@ -1245,8 +1100,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                       repController:
                                                       TextEditingController(
                                                           text: r),
-                                                      isSuggestion:
-                                                      isSuggestion,
+                                                      isSuggestion: isSuggestion,
                                                     ));
                                                   }
                                                   section.setInputDataList
@@ -1257,31 +1111,27 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                       mergedLen);
                                                 }
                                               }
-
-                                              // ★ 部位選択直後に先頭の種目カードを自動選択
-                                              _currentSectionIndex = secIndex;
-                                              _currentMenuIndex = 0;
                                             } else {
                                               section.initialSetCount =
                                                   _currentSetCount;
                                             }
                                           });
-
-                                          // 先頭カードへスクロール
-                                          WidgetsBinding.instance
-                                              .addPostFrameCallback((_) {
-                                            if (mounted) {
-                                              _scrollIntoView(secIndex, 0);
-                                            }
-                                          });
-
-                                          _scheduleHintsAfterPart();
+                                          _scheduleHintsAfterPart(); // ここでFABヒント含めて案内
                                         },
+                                        dropdownColor:
+                                        colorScheme.surfaceContainer,
+                                        style: TextStyle(
+                                          color: colorScheme.onSurface,
+                                          fontSize: 14.0,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        borderRadius:
+                                        BorderRadius.circular(15.0),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8.0),
+                                const SizedBox(height: 16.0),
                                 if (section.selectedPart != null)
                                   Column(
                                     children: [
@@ -1298,6 +1148,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                               _currentMenuIndex ==
                                                   menuIndex);
 
+                                          // ライト/ダークで目立つ選択装飾
                                           final borderColor = isSelected
                                               ? (isLight
                                               ? kBrandBlue
@@ -1313,17 +1164,15 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                               .withOpacity(0.20);
 
                                           return AnimatedSwitcher(
-                                            duration: const Duration(
-                                                milliseconds: 220),
+                                            duration:
+                                            const Duration(milliseconds: 250),
                                             switchInCurve: Curves.easeOut,
                                             switchOutCurve: Curves.easeIn,
                                             transitionBuilder:
                                                 (child, animation) {
-                                              if (!_firstBuildDone) {
-                                                return child;
-                                              }
+                                              if (!_firstBuildDone) return child;
                                               final offset = Tween<Offset>(
-                                                begin: const Offset(0, -0.10),
+                                                begin: const Offset(0, -0.12),
                                                 end: Offset.zero,
                                               ).animate(animation);
                                               return FadeTransition(
@@ -1342,8 +1191,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                 color: colorScheme.surface,
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius:
-                                                  BorderRadius.circular(
-                                                      12.0),
+                                                  BorderRadius.circular(12.0),
                                                   side: BorderSide(
                                                     color: borderColor,
                                                     width: isSelected ? 1.5 : 0,
@@ -1353,10 +1201,10 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                 shadowColor: glowColor,
                                                 margin:
                                                 const EdgeInsets.symmetric(
-                                                    vertical: 4.0),
+                                                    vertical: 8.0),
                                                 child: Padding(
                                                   padding:
-                                                  const EdgeInsets.all(10.0),
+                                                  const EdgeInsets.all(16.0),
                                                   child: MenuList(
                                                     key: (secIndex == 0 &&
                                                         menuIndex == 0)
@@ -1417,6 +1265,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                     onAnyFieldFocused: () {
                                                       _touchCard(
                                                           secIndex, menuIndex);
+                                                      // フォーカス後に自動スクロール（隠れ防止）
                                                       WidgetsBinding.instance
                                                           .addPostFrameCallback(
                                                               (_) {
@@ -1441,7 +1290,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                           );
                                         },
                                       ),
-                                      const SizedBox(height: 10.0),
+                                      const SizedBox(height: 16.0),
                                       const SizedBox.shrink(), // 旧＋種目ボタンは非表示
                                     ],
                                   ),
@@ -1460,10 +1309,10 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       ),
     );
 
-    // FAB（体重フォーカス中は無効）
+    // ★ FAB（落ち着いた青で統一／体重フォーカス中は無効）
     final fabMain = AnimatedScale(
       scale: _fabOpen ? 1.04 : 1.0,
-      duration: const Duration(milliseconds: 140),
+      duration: const Duration(milliseconds: 160),
       curve: Curves.easeOut,
       child: FloatingActionButton(
         key: _kFabKey,
@@ -1476,17 +1325,17 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         backgroundColor: kBrandBlue,
         child: AnimatedRotation(
           turns: _fabOpen ? .125 : 0,
-          duration: const Duration(milliseconds: 160),
+          duration: const Duration(milliseconds: 180),
           child: const Icon(Icons.add, color: Colors.white),
         ),
         tooltip: l10n.openAddMenu,
       ),
     );
 
-    // テキストだけのミニFAB風チップ
+    // ★ テキストだけのミニFAB風チップ
     Widget chipAction(String label, VoidCallback onTap, {bool enabled = true}) {
       return Opacity(
-        opacity: enabled ? 1.0 : 0.5,
+        opacity: enabled ? 1.0 : 0.6,
         child: InkWell(
           borderRadius: BorderRadius.circular(22),
           onTap: enabled
@@ -1497,16 +1346,16 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           }
               : null,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            margin: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            margin: const EdgeInsets.symmetric(vertical: 5),
             decoration: BoxDecoration(
               color: kBrandBlue,
               borderRadius: BorderRadius.circular(22),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.12),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
@@ -1541,7 +1390,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         ? Positioned.fill(
       child: AnimatedOpacity(
         opacity: 1.0,
-        duration: const Duration(milliseconds: 140),
+        duration: const Duration(milliseconds: 160),
         child: GestureDetector(
           onTap: () => setState(() => _fabOpen = false),
           child: Container(color: Colors.black.withOpacity(0.25)),
@@ -1550,10 +1399,10 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     )
         : const SizedBox.shrink();
 
-    // ダイヤル位置
-    const double fabSize = 56.0;
-    const double fabMargin = 14.0;
-    const double gapAboveFab = 24.0;
+    // ★ ダイヤル位置（キーボード追従 & ドロップダウンと干渉しにくい余白）
+    const double fabSize = 56.0; // 標準FABの直径
+    const double fabMargin = 16.0; // FAB外側マージン
+    const double gapAboveFab = 28.0; // FABとチップ群の隙間（被り対策で広め）
     final double dialBottom = (safeBottom > 0 ? safeBottom : fabMargin) +
         kbInset +
         fabSize +
@@ -1561,21 +1410,20 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         gapAboveFab;
 
     final dial = Positioned(
-      right: 14,
+      right: 16,
       bottom: dialBottom,
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 220),
         switchInCurve: Curves.easeOutBack,
         switchOutCurve: Curves.easeIn,
         child: _fabOpen
             ? TweenAnimationBuilder<double>(
           key: const ValueKey('dial-on'),
-          tween: Tween(begin: 18.0, end: 0.0),
-          duration: const Duration(milliseconds: 200),
+          tween: Tween(begin: 20.0, end: 0.0),
+          duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutBack,
           builder: (context, offsetY, child) {
-            return Transform.translate(
-                offset: Offset(0, offsetY), child: child);
+            return Transform.translate(offset: Offset(0, offsetY), child: child);
           },
           child: Builder(
             builder: (context) {
@@ -1584,8 +1432,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                 items.add(chipAction(l10n.addSet, () => _handleAddSet(l10n)));
               }
               items.addAll([
-                chipAction(l10n.addExercise, _handleAddExercise,
-                    enabled: _canAddExercise()),
+                chipAction(l10n.addExercise, _handleAddExercise),
                 chipAction(l10n.addPart, _handleAddPart),
               ]);
               return Column(
@@ -1602,29 +1449,39 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
       child: PopScope(
-        canPop: false,
+        canPop: true,
         onPopInvokedWithResult: (didPop, result) async {
-          if (didPop) return;
+          // どの経路（左スワイプ/戻るボタン/左上←）でも必ず実行する
           if (_fabOpen) {
             setState(() => _fabOpen = false);
-            return;
+            // スワイプ完了時でもここで打ち切らず保存は続行
           }
-          if (!context.mounted) return;
-          _saveAllSectionsData();
-          Navigator.of(context).pop();
+
+          // 1) すべての入力の未確定文字を確定させる
+          _commitAllComposingTexts();
+          // 2) キーボードを閉じる（フォーカスを外す）
+          FocusManager.instance.primaryFocus?.unfocus();
+
+          // 3) 保存
+          if (context.mounted) {
+            _saveAllSectionsData();
+          }
+
+          // Pop 自体はプラットフォーム標準に任せる
+          // didPop == true（スワイプなど）でも、ここまでの処理は必ず通る
         },
         child: Scaffold(
           extendBody: true,
           resizeToAvoidBottomInset: false,
           backgroundColor: colorScheme.surface,
           appBar: AppBar(
-            automaticallyImplyLeading: false,
+            automaticallyImplyLeading: true, // ← 左上に戻る矢印が出る
             title: Text(
               formattedDate,
               style: TextStyle(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
-                fontSize: 19.0,
+                fontSize: 20.0,
               ),
             ),
             backgroundColor: colorScheme.surface,
@@ -1640,14 +1497,16 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
             ],
           ),
           floatingActionButton: AnimatedPadding(
-            duration: const Duration(milliseconds: 180),
+            duration: const Duration(milliseconds: 200),
             curve: Curves.easeOutCubic,
+            // キーボード表示時に FAB 自体も自然に持ち上げる
             padding: EdgeInsets.only(
-              bottom: (kbInset > 0 ? kbInset + 10 : 14),
+              bottom: (kbInset > 0 ? kbInset + 12 : 16),
             ),
             child: fabMain,
           ),
           floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          // bottomNavigationBar は置かない（黒帯回避）
         ),
       ),
     );
@@ -1656,7 +1515,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   // 部位選択後のヒント（ここで FAB も案内）
   Future<void> _scheduleHintsAfterPart() async {
     final box = widget.settingsBox;
-    final seen = box.get('hint_seen_record_after_part') as bool? ?? false;
+    final seen =
+        box.get('hint_seen_record_after_part') as bool? ?? false;
     if (seen) return;
 
     await Future<void>.delayed(const Duration(milliseconds: 16));
@@ -1815,7 +1675,7 @@ class MenuList extends StatefulWidget {
   final VoidCallback? onConfirmAerobic;
   final VoidCallback? onAnyFieldFocused;
 
-  // 種目名の空⇔非空遷移を親に通知
+  // 追加：種目名の空⇔非空遷移を親に通知
   final void Function(bool prevEmpty, bool nowEmpty)? onNameChanged;
 
   const MenuList({
@@ -1920,7 +1780,7 @@ class _MenuListState extends State<MenuList> {
     final bool nameFilled = widget.menuController.text.trim().isNotEmpty;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1940,7 +1800,7 @@ class _MenuListState extends State<MenuList> {
                     colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                     fillColor: colorScheme.surfaceContainer,
                     contentPadding: const EdgeInsets.symmetric(
-                        vertical: 10, horizontal: 14),
+                        vertical: 12, horizontal: 16),
                     textAlign: TextAlign.left,
                   ),
                 ),
@@ -1961,11 +1821,11 @@ class _MenuListState extends State<MenuList> {
               ),
             ],
           ),
-          const SizedBox(height: 8.0),
+          const SizedBox(height: 12.0),
 
           // 入力群
           Padding(
-            padding: const EdgeInsets.only(left: 10.0),
+            padding: const EdgeInsets.only(left: 12.0),
             child: widget.isAerobic
                 ? Column(
               children: [
@@ -1980,7 +1840,7 @@ class _MenuListState extends State<MenuList> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Expanded(
                       flex: 2,
                       child: Focus(
@@ -2006,7 +1866,7 @@ class _MenuListState extends State<MenuList> {
                               .withValues(alpha: 0.5),
                           fillColor: colorScheme.surfaceContainer,
                           contentPadding: const EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 10),
+                              vertical: 10, horizontal: 12),
                           textAlign: TextAlign.right,
                         ),
                       ),
@@ -2044,7 +1904,7 @@ class _MenuListState extends State<MenuList> {
                               .withValues(alpha: 0.5),
                           fillColor: colorScheme.surfaceContainer,
                           contentPadding: const EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 10),
+                              vertical: 10, horizontal: 12),
                           textAlign: TextAlign.right,
                         ),
                       ),
@@ -2059,7 +1919,7 @@ class _MenuListState extends State<MenuList> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 // 時間
                 Row(
                   children: [
@@ -2071,7 +1931,7 @@ class _MenuListState extends State<MenuList> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Expanded(
                       flex: 2,
                       child: Focus(
@@ -2097,7 +1957,7 @@ class _MenuListState extends State<MenuList> {
                               .withValues(alpha: 0.5),
                           fillColor: colorScheme.surfaceContainer,
                           contentPadding: const EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 10),
+                              vertical: 10, horizontal: 12),
                           textAlign: TextAlign.right,
                         ),
                       ),
@@ -2135,7 +1995,7 @@ class _MenuListState extends State<MenuList> {
                               .withValues(alpha: 0.5),
                           fillColor: colorScheme.surfaceContainer,
                           contentPadding: const EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 10),
+                              vertical: 10, horizontal: 12),
                           textAlign: TextAlign.right,
                         ),
                       ),
@@ -2155,7 +2015,7 @@ class _MenuListState extends State<MenuList> {
                 : Opacity(
               opacity: nameFilled ? 1.0 : 0.5,
               child: IgnorePointer(
-                ignoring: !nameFilled, // 種目名が空の間は操作不可
+                ignoring: !nameFilled, // ★ 種目名が空の間は操作不可
                 child: Column(
                   children: List.generate(
                     min(10, widget.setInputDataList.length),
@@ -2163,24 +2023,24 @@ class _MenuListState extends State<MenuList> {
                       final set = widget.setInputDataList[setIndex];
                       return Padding(
                         padding:
-                        const EdgeInsets.symmetric(vertical: 3.0),
+                        const EdgeInsets.symmetric(vertical: 4.0),
                         child: Row(
                           children: [
                             Text(
                               '${setIndex + 1}${l10n.sets}：',
                               style: TextStyle(
                                 color: colorScheme.onSurfaceVariant,
-                                fontSize: 13.0,
+                                fontSize: 14.0,
                               ),
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Focus(
                                 onFocusChange: (has) {
                                   notifyFocus(has);
                                   if (has && set.isSuggestion) {
-                                    setState(
-                                            () => set.isSuggestion = false);
+                                    setState(() =>
+                                    set.isSuggestion = false);
                                   }
                                 },
                                 child: StylishInput(
@@ -2201,10 +2061,11 @@ class _MenuListState extends State<MenuList> {
                                   suggestionTextColor: colorScheme
                                       .onSurfaceVariant
                                       .withValues(alpha: 0.5),
-                                  fillColor: colorScheme.surfaceContainer,
+                                  fillColor:
+                                  colorScheme.surfaceContainer,
                                   contentPadding:
                                   const EdgeInsets.symmetric(
-                                      vertical: 8, horizontal: 10),
+                                      vertical: 10, horizontal: 12),
                                   textAlign: TextAlign.right,
                                   onChanged: (text) {
                                     setState(() {
@@ -2215,9 +2076,8 @@ class _MenuListState extends State<MenuList> {
                                           !set.isSuggestion &&
                                           set.repController.text
                                               .isEmpty) {
-                                        final anyOther = widget
-                                            .setInputDataList
-                                            .any(
+                                        final anyOther =
+                                        widget.setInputDataList.any(
                                               (s) =>
                                           s != set &&
                                               (s.weightController.text
@@ -2238,7 +2098,7 @@ class _MenuListState extends State<MenuList> {
                               ' ${currentUnit == 'kg' ? l10n.kg : l10n.lbs} ',
                               style: TextStyle(
                                 color: colorScheme.onSurfaceVariant,
-                                fontSize: 13.0,
+                                fontSize: 14.0,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -2247,8 +2107,8 @@ class _MenuListState extends State<MenuList> {
                                 onFocusChange: (has) {
                                   notifyFocus(has);
                                   if (has && set.isSuggestion) {
-                                    setState(
-                                            () => set.isSuggestion = false);
+                                    setState(() =>
+                                    set.isSuggestion = false);
                                   }
                                 },
                                 child: StylishInput(
@@ -2266,10 +2126,11 @@ class _MenuListState extends State<MenuList> {
                                   suggestionTextColor: colorScheme
                                       .onSurfaceVariant
                                       .withValues(alpha: 0.5),
-                                  fillColor: colorScheme.surfaceContainer,
+                                  fillColor:
+                                  colorScheme.surfaceContainer,
                                   contentPadding:
                                   const EdgeInsets.symmetric(
-                                      vertical: 8, horizontal: 10),
+                                      vertical: 10, horizontal: 12),
                                   textAlign: TextAlign.right,
                                   onChanged: (text) {
                                     setState(() {
@@ -2280,9 +2141,8 @@ class _MenuListState extends State<MenuList> {
                                           !set.isSuggestion &&
                                           set.weightController.text
                                               .isEmpty) {
-                                        final anyOther = widget
-                                            .setInputDataList
-                                            .any(
+                                        final anyOther =
+                                        widget.setInputDataList.any(
                                               (s) =>
                                           s != set &&
                                               (s.weightController.text
@@ -2303,7 +2163,7 @@ class _MenuListState extends State<MenuList> {
                               ' ${l10n.reps}',
                               style: TextStyle(
                                 color: colorScheme.onSurfaceVariant,
-                                fontSize: 13.0,
+                                fontSize: 14.0,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
