@@ -44,13 +44,20 @@ class GraphScreen extends StatefulWidget {
 
 class _GraphScreenState extends State<GraphScreen> {
   // ★ 吹き出しのアンカー
-  final GlobalKey _kFav = GlobalKey();   // お気に入りピル／★ボタン
+  final GlobalKey _kFav = GlobalKey(); // お気に入りピル／★ボタン
   final GlobalKey _kChart = GlobalKey(); // グラフの親Card
-  final GlobalKey _kPart = GlobalKey();  // 部位セレクタのDropdown
+  final GlobalKey _kPart = GlobalKey(); // 部位セレクタのDropdown
   static const String _prefGraphPart = 'graph_selected_part';
   static const String _prefGraphMenu = 'graph_selected_menu';
   static const String _prefGraphMode = 'graph_display_mode';
   static const String _prefAeroMetric = 'graph_aero_metric';
+  double _plotHeightPx = 1.0; // ★ プロット領域の実高さ（パン感度に使用）
+  // コントロール群の統一サイズ
+  static const double _kControlHeight = 40.0;
+  static const double _kControlRadius = 20.0;
+
+  // X 方向の1データ当たりの横幅（目盛り幅を狭く：既存70→48）
+  static const double _kXStridePx = 48.0;
 
   List<String> _filteredBodyParts = [];
   String? _selectedPart;
@@ -70,18 +77,17 @@ class _GraphScreenState extends State<GraphScreen> {
   double _yLabelStep = 5;
 
   // ====== Yパン／ズーム用の状態 ======
-  // 計算上のベース範囲（データから決めた初期範囲＝20%余白込み）
   double _baseMinY = 0;
   double _baseMaxY = 0;
-
-  // 現在表示中の範囲（null のときはベースを使う）
   double? _viewMinY;
   double? _viewMaxY;
-
-  // スケールの操作用
   double _gestureStartScale = 1.0;
   double _gestureStartMinY = 0;
   double _gestureStartMaxY = 0;
+
+  // ====== 目標ライン（入力値） ======
+  final TextEditingController _goalController = TextEditingController();
+  double? _goalValue; // 現在のコンテキストでの目標値（単位も現在の軸に合わせる）
 
   // ====== part name mapping ======
   String _getOriginalPartName(BuildContext context, String translatedPart) {
@@ -136,13 +142,9 @@ class _GraphScreenState extends State<GraphScreen> {
 
   bool _isActuallyVisible() {
     if (!mounted) return false;
-    // 親から明示されたアクティブ状態を最優先
     if (widget.isActive == false) return false;
-
-    // 念のため（保険）
     final ticker = context.findAncestorWidgetOfExactType<TickerMode>();
     if (ticker != null && ticker.enabled == false) return false;
-
     final ro = context.findRenderObject();
     if (ro is RenderBox) {
       if (!ro.attached) return false;
@@ -154,16 +156,12 @@ class _GraphScreenState extends State<GraphScreen> {
 
   Future<void> _tryShowGraphCoachIfVisible() async {
     if (!mounted || _graphCoachDone) return;
-
     final seen = (widget.settingsBox.get('hint_seen_graph') as bool?) ?? false;
     if (seen) {
       _graphCoachDone = true;
       return;
     }
-
     if (!_isActuallyVisible()) return;
-
-    // アンカーが用意できているか
     final anchorsReady = [
       _kPart.currentContext,
       _kChart.currentContext,
@@ -172,7 +170,6 @@ class _GraphScreenState extends State<GraphScreen> {
     if (!anchorsReady) return;
 
     final l10n = AppLocalizations.of(context)!;
-
     await CoachBubbleController.showSequence(
       context: context,
       anchors: [_kPart, _kChart, _kFav],
@@ -203,6 +200,12 @@ class _GraphScreenState extends State<GraphScreen> {
         _tryShowGraphCoachIfVisible();
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _goalController.dispose();
+    super.dispose();
   }
 
   void _loadSettingsAndParts() {
@@ -249,10 +252,10 @@ class _GraphScreenState extends State<GraphScreen> {
         savedBodyPartsSettings.isEmpty)
         ? allBodyParts
         .map<String>((p) => _translatePartToLocale(context, p))
-        .toList() // ★ 型明示
+        .toList()
         : allBodyParts
         .where((p) => savedBodyPartsSettings![p] == true)
-        .map<String>((p) => _translatePartToLocale(context, p)) // ★ 型明示
+        .map<String>((p) => _translatePartToLocale(context, p))
         .toList();
 
     _filteredBodyParts = [
@@ -287,6 +290,7 @@ class _GraphScreenState extends State<GraphScreen> {
       _loadBodyWeightData();
       _checkIfFavorite();
       _saveGraphPrefs();
+      _loadGoalForCurrentContext(); // ★ 目標値
       setState(() {});
       return;
     }
@@ -324,6 +328,7 @@ class _GraphScreenState extends State<GraphScreen> {
           _maxY = 0;
           _checkIfFavorite();
           _saveGraphPrefs();
+          _loadGoalForCurrentContext();
         } else {
           _refreshDataForSelection();
         }
@@ -343,7 +348,8 @@ class _GraphScreenState extends State<GraphScreen> {
   void _refreshDataForSelection() {
     final l10n = AppLocalizations.of(context)!;
     final isBody =
-        (_selectedPart == l10n.bodyWeight) || (_selectedMenu == l10n.bodyWeight);
+        (_selectedPart == l10n.bodyWeight) ||
+            (_selectedMenu == l10n.bodyWeight);
     final isAero = _isAerobicContext();
 
     if (isBody) {
@@ -355,6 +361,7 @@ class _GraphScreenState extends State<GraphScreen> {
     }
     _checkIfFavorite();
     _saveGraphPrefs();
+    _loadGoalForCurrentContext(); // ★ 目標値
   }
 
   bool _menuIsAerobic(String? menuName) {
@@ -378,6 +385,16 @@ class _GraphScreenState extends State<GraphScreen> {
         (_selectedPart == l10n.favorites && _menuIsAerobic(_selectedMenu));
   }
 
+  bool _isBodyWeightContext() {
+    final l10n = AppLocalizations.of(context)!;
+    return _selectedPart == l10n.bodyWeight || _selectedMenu == l10n.bodyWeight;
+  }
+
+  bool _isStrengthContext() {
+    return !_isAerobicContext() && !_isBodyWeightContext() &&
+        _selectedMenu != null;
+  }
+
   // ====== parse helpers ======
   double? _parseDistanceKm(String? raw) {
     if (raw == null) return null;
@@ -393,11 +410,14 @@ class _GraphScreenState extends State<GraphScreen> {
     if (raw == null) return null;
     final s = raw.trim();
     if (s.isEmpty) return null;
+    // "MM:SS" も許容
     final parts = s.split(':');
-    if (parts.length < 2) return double.tryParse(s);
-    final mm = int.tryParse(parts[0]) ?? 0;
-    final ss = int.tryParse(parts[1]) ?? 0;
-    return mm + ss / 60.0;
+    if (parts.length == 2) {
+      final mm = int.tryParse(parts[0]) ?? 0;
+      final ss = int.tryParse(parts[1]) ?? 0;
+      return mm + ss / 60.0;
+    }
+    return double.tryParse(s);
   }
 
   String _formatMinToMMSS(double minutes) {
@@ -409,7 +429,10 @@ class _GraphScreenState extends State<GraphScreen> {
 
   // ====== body weight ======
   void _loadBodyWeightData() {
-    final records = widget.recordsBox.toMap().values.whereType<DailyRecord>();
+    final records = widget.recordsBox
+        .toMap()
+        .values
+        .whereType<DailyRecord>();
 
     final Map<DateTime, double> map = {};
     if (_displayMode == DisplayMode.day) {
@@ -456,7 +479,10 @@ class _GraphScreenState extends State<GraphScreen> {
     ];
 
     final Iterable<DailyRecord> records =
-    widget.recordsBox.toMap().values.whereType<DailyRecord>();
+    widget.recordsBox
+        .toMap()
+        .values
+        .whereType<DailyRecord>();
 
     final Map<DateTime, double> map = {};
 
@@ -511,7 +537,10 @@ class _GraphScreenState extends State<GraphScreen> {
   // ====== aerobic ======
   void _loadAerobicData(String menuName) {
     final Iterable<DailyRecord> records =
-    widget.recordsBox.toMap().values.whereType<DailyRecord>();
+    widget.recordsBox
+        .toMap()
+        .values
+        .whereType<DailyRecord>();
 
     final Map<DateTime, double> map = {};
 
@@ -592,12 +621,12 @@ class _GraphScreenState extends State<GraphScreen> {
     setState(() {});
   }
 
-  // ====== “綺麗な”目盛り間隔を選ぶ ======
+  // ====== “綺麗な”目盛り間隔 ======
   double _niceStepForRange(double range, {int targetTicks = 10}) {
     if (range <= 0) return 1;
     final raw = range / targetTicks;
     final exp = pow(10, (log(raw) / ln10).floor()).toDouble();
-    final f = raw / exp; // 1〜10 の間
+    final f = raw / exp; // 1〜10
     double nice;
     if (f < 1.5) {
       nice = 1;
@@ -618,12 +647,12 @@ class _GraphScreenState extends State<GraphScreen> {
     _minY = 0;
     _maxY = 0;
     if (map.isEmpty) {
-      // 参照が空のときは表示も空に
       _viewMinY = _viewMaxY = null;
       return;
     }
 
-    final sortedDates = map.keys.toList()..sort();
+    final sortedDates = map.keys.toList()
+      ..sort();
 
     // full x (day/weekly)
     final List<DateTime> full = [];
@@ -659,32 +688,44 @@ class _GraphScreenState extends State<GraphScreen> {
       _maxY = (_spots.length == 1) ? y : max(_maxY, y);
     }
 
-    // “綺麗な”境界に合わせて丸め
+    // きれいな境界に合わせて丸め
     double floorTo(double v, double step) => (v / step).floorToDouble() * step;
     double ceilTo(double v, double step) => (v / step).ceilToDouble() * step;
 
-    // まずステップを仮決定して丸める
+    // グラフ種別ごとの固定ステップ
+    double? forcedStep;
+    if (_isBodyWeightContext()) {
+      forcedStep = 0.5; // ★ 体重は0.5kg
+    } else if (_isStrengthContext()) {
+      forcedStep =
+      (SettingsManager.currentUnit == 'kg') ? 5.0 : 11.0; // ★ 筋トレは5kg相当
+    }
+
     final roughRange = max(1e-6, _maxY - _minY);
-    final baseStep = _niceStepForRange(roughRange, targetTicks: 8);
+    final baseStep = forcedStep ??
+        _niceStepForRange(roughRange, targetTicks: 8);
+
     double minNice = floorTo(_minY, baseStep);
     double maxNice = ceilTo(_maxY, baseStep);
 
-    // 初期表示は 20% 余白
+    // 初期表示 20% 余白
     final rangeNice = max(1e-6, maxNice - minNice);
     final extra = rangeNice * 0.2;
     _baseMinY = minNice - extra;
     _baseMaxY = maxNice + extra;
 
-    // 初期ビューをベースにリセット
+    // 初期ビューをベースに
     _resetYViewToBase();
 
-    // 目盛り間隔を（表示レンジをもとに）再計算
+    // 目盛り間隔を再決定（固定優先）
     final currentRange = max(1e-6, (_viewMaxY! - _viewMinY!));
-    _yLabelStep = _niceStepForRange(currentRange, targetTicks: 10);
+    _yLabelStep =
+        forcedStep ?? _niceStepForRange(currentRange, targetTicks: 10);
   }
 
-  // ====== Yレンジの決定（ビュー or ベース） ======
+  // ====== Yレンジの決定 ======
   double get _minYForChart => _viewMinY ?? _baseMinY;
+
   double get _maxYForChart => _viewMaxY ?? _baseMaxY;
 
   void _resetYViewToBase() {
@@ -694,14 +735,12 @@ class _GraphScreenState extends State<GraphScreen> {
 
   void _clampYView() {
     if (_viewMinY == null || _viewMaxY == null) return;
-    // ベース範囲の±50%まで動ける
     final baseRange = max(1e-6, _baseMaxY - _baseMinY);
     final pad = baseRange * 0.5;
     final hardMin = _baseMinY - pad;
     final hardMax = _baseMaxY + pad;
 
     final viewRange = max(1e-6, _viewMaxY! - _viewMinY!);
-    // 下限・上限クランプ
     if (_viewMinY! < hardMin) {
       _viewMaxY = hardMin + viewRange;
       _viewMinY = hardMin;
@@ -711,16 +750,23 @@ class _GraphScreenState extends State<GraphScreen> {
       _viewMaxY = hardMax;
     }
 
-    // 目盛り間隔も再計算
-    _yLabelStep = _niceStepForRange(viewRange, targetTicks: 10);
+    // 目盛り間隔更新（固定優先）
+    if (_isBodyWeightContext()) {
+      _yLabelStep = 0.5;
+    } else if (_isStrengthContext()) {
+      _yLabelStep = (SettingsManager.currentUnit == 'kg') ? 5.0 : 11.0;
+    } else {
+      _yLabelStep = _niceStepForRange(viewRange, targetTicks: 10);
+    }
   }
 
-  // 縦ドラッグ（パン）
+  // 縦ドラッグ（パン）— ★ 方向を「逆」に変更
   void _onVerticalDragUpdate(DragUpdateDetails d) {
     if (_viewMinY == null || _viewMaxY == null) return;
-    // ドラッグ量をレンジに比例させる。感度は 0.01 で調整。
     final range = max(1e-6, _viewMaxY! - _viewMinY!);
-    final deltaY = -d.delta.dy * (range * 0.01);
+// 画面上の移動(px) / 描画高さ(px) = 表示レンジに対する比率 → その分だけ等倍でパン
+    final h = _plotHeightPx <= 0 ? 1.0 : _plotHeightPx;
+    final deltaY = (d.delta.dy / h) * range; // ★ 指の移動に等倍で追従（前回の方向反転は維持）
     _viewMinY = _viewMinY! + deltaY;
     _viewMaxY = _viewMaxY! + deltaY;
     _clampYView();
@@ -736,23 +782,21 @@ class _GraphScreenState extends State<GraphScreen> {
 
   void _onScaleUpdate(ScaleUpdateDetails d) {
     if (_xDates.isEmpty) return;
-    // 1本指のときは無視（横スクロールに委譲）
     if (d.pointerCount < 2) return;
 
-    final scale = d.verticalScale; // 縦方向のスケール変化
+    final scale = d.verticalScale;
     if (!scale.isFinite || scale == 0) return;
 
     final startRange = max(1e-6, _gestureStartMaxY - _gestureStartMinY);
-    // 画面中心を基準にスケーリング
     final center = (_gestureStartMinY + _gestureStartMaxY) / 2.0;
     final newRange = startRange / scale.clamp(0.2, 5.0);
     _viewMinY = center - newRange / 2;
     _viewMaxY = center + newRange / 2;
 
-    // ズーム下限・上限（あまり極端にならないよう制限）
+    // ズーム範囲制約
     final baseRange = max(1e-6, _baseMaxY - _baseMinY);
-    final minRange = baseRange * 0.05; // 5% まで拡大可
-    final maxRange = baseRange * 5.0;  // 5倍まで縮小可
+    final minRange = baseRange * 0.05;
+    final maxRange = baseRange * 5.0;
     final vr = (_viewMaxY! - _viewMinY!).clamp(minRange, maxRange);
     final c = (_viewMinY! + _viewMaxY!) / 2;
     _viewMinY = c - vr / 2;
@@ -831,9 +875,88 @@ class _GraphScreenState extends State<GraphScreen> {
     widget.settingsBox.put(_prefAeroMetric, _aeroMetric.index);
   }
 
+  // ====== 目標ライン：保存キー & 永続化 ======
+  String _goalStorageKey() {
+    final l10n = AppLocalizations.of(context)!;
+    String ctx;
+    if (_isBodyWeightContext()) {
+      ctx = 'body';
+    } else if (_isAerobicContext()) {
+      ctx = 'aero_${_aeroMetric.name}_${_selectedMenu ?? ''}';
+    } else if (_isStrengthContext()) {
+      ctx = 'strength_${_selectedMenu ?? ''}';
+    } else {
+      ctx = 'unknown';
+    }
+    // 単位も含めてキー化（kg/lbs や min/minkm 等の混同防止）
+    final unit = _unitOverlayText(l10n);
+    return 'graph_goal::$ctx::$unit';
+  }
+
+  void _loadGoalForCurrentContext() {
+    final key = _goalStorageKey();
+    final v = widget.settingsBox.get(key);
+    double? parsed;
+    if (v is num) {
+      parsed = v.toDouble();
+    } else if (v is String) {
+      parsed = _parseDurationMin(v) ?? double.tryParse(v);
+    }
+    _goalValue = parsed;
+    // 表示値はメトリクスにより小数桁を調整
+    if (_goalValue == null) {
+      _goalController.text = '';
+    } else {
+      if (_isAerobicContext() && _aeroMetric != AerobicMetric.distance) {
+        // time/pace は分単位（小数）で保持。表示はMM:SSに寄せずそのまま数値で。
+        _goalController.text = _goalValue!.toStringAsFixed(2);
+      } else {
+        // weight/distance
+        _goalController.text = (_isBodyWeightContext() || _isStrengthContext())
+            ? _goalValue!.toStringAsFixed(1)
+            : _goalValue!.toStringAsFixed(2);
+      }
+    }
+    setState(() {});
+  }
+
+  void _saveGoalForCurrentContext() {
+    final key = _goalStorageKey();
+    if (_goalValue == null) {
+      widget.settingsBox.delete(key);
+    } else {
+      widget.settingsBox.put(key, _goalValue);
+    }
+  }
+
+  void _applyGoalFromText(String raw) {
+    final s = raw.trim();
+    if (s.isEmpty) {
+      setState(() {
+        _goalValue = null;
+      });
+      _saveGoalForCurrentContext();
+      return;
+    }
+    double? v;
+    if (_isAerobicContext() && (_aeroMetric == AerobicMetric.time ||
+        _aeroMetric == AerobicMetric.pace)) {
+      // "MM:SS" または "分(少数)" を分単位で
+      v = _parseDurationMin(s);
+    } else {
+      v = double.tryParse(s);
+    }
+    setState(() {
+      _goalValue = v;
+    });
+    _saveGoalForCurrentContext();
+  }
+
   // ====== labels ======
   String _weekSuffix() {
-    final lang = Localizations.localeOf(context).languageCode;
+    final lang = Localizations
+        .localeOf(context)
+        .languageCode;
     return (lang == 'ja') ? '週' : 'wk';
   }
 
@@ -860,12 +983,15 @@ class _GraphScreenState extends State<GraphScreen> {
 
     return SideTitleWidget(
       axisSide: meta.axisSide,
-      space: 6,
+      space: 4,
       child: Text(
         text,
         style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          fontSize: 10,
+          color: Theme
+              .of(context)
+              .colorScheme
+              .onSurfaceVariant,
+          fontSize: 9, // ★ 少し小さく
         ),
       ),
     );
@@ -881,7 +1007,8 @@ class _GraphScreenState extends State<GraphScreen> {
     if (isMin || isMax) return const SizedBox.shrink();
 
     final isInteger = (_yLabelStep % 1 == 0);
-    final label = isInteger ? value.round().toString() : value.toStringAsFixed(1);
+    final label = isInteger ? value.round().toString() : value.toStringAsFixed(
+        1);
 
     return SideTitleWidget(
       axisSide: meta.axisSide,
@@ -889,7 +1016,10 @@ class _GraphScreenState extends State<GraphScreen> {
       child: Text(
         label,
         style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          color: Theme
+              .of(context)
+              .colorScheme
+              .onSurfaceVariant,
           fontSize: 10,
         ),
       ),
@@ -899,7 +1029,8 @@ class _GraphScreenState extends State<GraphScreen> {
   // unit overlay text
   String _unitOverlayText(AppLocalizations l10n) {
     final bool isBody =
-        (_selectedPart == l10n.bodyWeight) || (_selectedMenu == l10n.bodyWeight);
+        (_selectedPart == l10n.bodyWeight) ||
+            (_selectedMenu == l10n.bodyWeight);
     final bool hasMenu = _selectedMenu != null;
     if (!isBody && !hasMenu) return '';
 
@@ -935,7 +1066,9 @@ class _GraphScreenState extends State<GraphScreen> {
   // ====== UI ======
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final isAerobic = _isAerobicContext();
     final unitText = _unitOverlayText(l10n);
@@ -944,6 +1077,98 @@ class _GraphScreenState extends State<GraphScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _tryShowGraphCoachIfVisible();
     });
+
+    // コントロール群（同サイズに統一）
+    Widget dayWeekToggle = SizedBox(
+      height: _kControlHeight,
+      child: ToggleButtons(
+        isSelected: [
+          _displayMode == DisplayMode.day,
+          _displayMode == DisplayMode.week
+        ],
+        onPressed: (index) {
+          setState(() {
+            _displayMode = index == 0 ? DisplayMode.day : DisplayMode.week;
+            _saveGraphPrefs();
+            _refreshDataForSelection();
+          });
+        },
+        constraints: const BoxConstraints(minHeight: _kControlHeight),
+        borderRadius: BorderRadius.circular(_kControlRadius),
+        selectedColor: colorScheme.onPrimary,
+        fillColor: colorScheme.primary,
+        color: colorScheme.onSurface,
+        borderColor: colorScheme.outlineVariant,
+        selectedBorderColor: colorScheme.primary,
+        splashColor: colorScheme.primary.withValues(alpha: 0.2),
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: Text(l10n.dayDisplay),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: Text(l10n.weekDisplay),
+          ),
+        ],
+      ),
+    );
+
+    // 目標入力（単位はグラフに合わせて表示）
+    final goalSuffix = unitText.isEmpty ? '' : unitText;
+    Widget goalField = SizedBox(
+      height: _kControlHeight,
+      child: TextFormField(
+        controller: _goalController,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        textInputAction: TextInputAction.done,
+        onFieldSubmitted: _applyGoalFromText,
+        onEditingComplete: () {
+          _applyGoalFromText(_goalController.text);
+          _closeKeyboard();
+        },
+        decoration: InputDecoration(
+          contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12, vertical: 10),
+          hintText: l10n.enterGoal,
+          hintStyle: TextStyle( // プレースホルダーを薄く表示
+            fontWeight: FontWeight.w400,
+          ),
+          // l10nに「目標値を入力」などがある想定
+          suffixText: goalSuffix,
+          filled: true,
+          fillColor: colorScheme.surfaceContainer,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.0),
+            borderSide: BorderSide(color: colorScheme.outlineVariant),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.0),
+            borderSide: BorderSide(color: colorScheme.outlineVariant),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.0),
+            borderSide: BorderSide(color: colorScheme.primary),
+          ),
+        ),
+        style: TextStyle(
+          color: colorScheme.onSurface,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+
+    // お気に入り（同じ高さで表示）
+    Widget favButton = (_selectedPart != l10n.favorites)
+        ? FavoritePillButton(
+      key: _kFav,
+      isFavorite: _isFavorite,
+      label: l10n.favorites,
+      onTap: _toggleFavorite,
+      height: _kControlHeight, // ★ 同サイズ化
+    )
+        : const SizedBox.shrink();
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -961,55 +1186,31 @@ class _GraphScreenState extends State<GraphScreen> {
         elevation: 0.0,
         iconTheme: IconThemeData(color: colorScheme.onSurface),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
+      resizeToAvoidBottomInset: false,
+        body: MediaQuery.removeViewInsets(
+            context: context,
+            removeBottom: true,
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: _closeKeyboard, // 画面タップでキーボードを閉じる（便利）
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
           children: [
             const AdBanner(screenName: 'graph'),
             const SizedBox(height: 16.0),
+
+            // ★ コントロール列：日週トグル／目標入力／お気に入り（同サイズ）
             Row(
               children: [
-                ToggleButtons(
-                  isSelected: [
-                    _displayMode == DisplayMode.day,
-                    _displayMode == DisplayMode.week
-                  ],
-                  onPressed: (index) {
-                    setState(() {
-                      _displayMode =
-                      index == 0 ? DisplayMode.day : DisplayMode.week;
-                      _saveGraphPrefs();
-                      _refreshDataForSelection();
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(20.0),
-                  selectedColor: colorScheme.onPrimary,
-                  fillColor: colorScheme.primary,
-                  color: colorScheme.onSurface,
-                  borderColor: colorScheme.outlineVariant,
-                  selectedBorderColor: colorScheme.primary,
-                  splashColor: colorScheme.primary.withValues(alpha: 0.2),
-                  children: <Widget>[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Text(l10n.dayDisplay),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Text(l10n.weekDisplay),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                if (_selectedPart != l10n.favorites)
-                  FavoritePillButton(
-                    key: _kFav,
-                    isFavorite: _isFavorite,
-                    label: l10n.favorites,
-                    onTap: _toggleFavorite,
-                  ),
+                Expanded(child: dayWeekToggle),
+                const SizedBox(width: 8),
+                Expanded(child: goalField),
+                const SizedBox(width: 8),
+                Expanded(child: favButton),
               ],
             ),
+
             if (isAerobic) ...[
               const SizedBox(height: 8),
               Align(
@@ -1027,8 +1228,10 @@ class _GraphScreenState extends State<GraphScreen> {
                       if (_selectedMenu != null) {
                         _loadAerobicData(_selectedMenu!);
                       }
+                      _loadGoalForCurrentContext(); // メトリクス切替時
                     });
                   },
+                  constraints: const BoxConstraints(minHeight: 34),
                   borderRadius: BorderRadius.circular(18),
                   selectedColor: colorScheme.onPrimary,
                   fillColor: colorScheme.primary,
@@ -1052,7 +1255,9 @@ class _GraphScreenState extends State<GraphScreen> {
                 ),
               ),
             ],
+
             const SizedBox(height: 12.0),
+
             Expanded(
               child: Card(
                 key: _kChart,
@@ -1069,11 +1274,13 @@ class _GraphScreenState extends State<GraphScreen> {
                       final totalW = constraints.maxWidth;
                       final totalH = constraints.maxHeight;
 
+
+                      _plotHeightPx = totalH; // ★ ビルド毎に最新の高さを保持（setState不要）
                       final yAxisPanelW = _xDates.isEmpty ? 0.0 : 40.0;
                       final plotAvailW = max(60.0, totalW - yAxisPanelW - 4);
-                      const stride = 70.0;
                       final points = max(1, _xDates.length);
-                      final chartW = max(plotAvailW, points * stride);
+                      final chartW = max(
+                          plotAvailW, points * _kXStridePx); // ★ 狭く
 
                       final unitOverlay =
                       (unitText.isEmpty || _xDates.isEmpty)
@@ -1115,40 +1322,36 @@ class _GraphScreenState extends State<GraphScreen> {
                                 ),
                               ),
                               bottomTitles: const AxisTitles(
-                                sideTitles:
-                                SideTitles(showTitles: false),
+                                sideTitles: SideTitles(showTitles: false),
                               ),
                               topTitles: const AxisTitles(
-                                sideTitles:
-                                SideTitles(showTitles: false),
+                                sideTitles: SideTitles(showTitles: false),
                               ),
                               rightTitles: const AxisTitles(
-                                sideTitles:
-                                SideTitles(showTitles: false),
+                                sideTitles: SideTitles(showTitles: false),
                               ),
                             ),
                             gridData: FlGridData(
                               show: true,
                               horizontalInterval: _yLabelStep,
-                              checkToShowHorizontalLine: (v) =>
-                                  _isLabelTick(v),
+                              checkToShowHorizontalLine: (v) => _isLabelTick(v),
                               drawVerticalLine: false,
-                              getDrawingHorizontalLine: (v) => FlLine(
-                                color: colorScheme.outlineVariant,
-                                strokeWidth: 0.5,
-                              ),
+                              getDrawingHorizontalLine: (v) =>
+                                  FlLine(
+                                    color: colorScheme.outlineVariant,
+                                    strokeWidth: 0.5,
+                                  ),
                             ),
                             borderData: FlBorderData(
                               show: true,
                               border: Border(
                                 left: BorderSide(
-                                    color:
-                                    colorScheme.outlineVariant),
+                                    color: colorScheme.outlineVariant),
                                 bottom: BorderSide(
-                                    color:
-                                    colorScheme.outlineVariant),
+                                    color: colorScheme.outlineVariant),
                               ),
                             ),
+                            // 左パネルには目標線は描かない
                           ),
                         ),
                       );
@@ -1179,8 +1382,7 @@ class _GraphScreenState extends State<GraphScreen> {
                               child: LineChart(
                                 LineChartData(
                                   minX: 0,
-                                  maxX:
-                                  (_xDates.length - 1).toDouble(),
+                                  maxX: (_xDates.length - 1).toDouble(),
                                   minY: _minYForChart,
                                   maxY: _maxYForChart,
                                   clipData: const FlClipData.all(),
@@ -1190,32 +1392,27 @@ class _GraphScreenState extends State<GraphScreen> {
                                       isCurved: false,
                                       color: colorScheme.primary,
                                       barWidth: 3,
-                                      dotData:
-                                      const FlDotData(show: true),
-                                      belowBarData:
-                                      BarAreaData(show: false),
+                                      dotData: const FlDotData(show: true),
+                                      belowBarData: BarAreaData(show: false),
                                     ),
                                   ],
                                   titlesData: FlTitlesData(
                                     leftTitles: const AxisTitles(
-                                      sideTitles: SideTitles(
-                                          showTitles: false),
+                                      sideTitles: SideTitles(showTitles: false),
                                     ),
                                     bottomTitles: AxisTitles(
                                       sideTitles: SideTitles(
                                         showTitles: true,
                                         interval: 1,
-                                        reservedSize: 22,
+                                        reservedSize: 20,
                                         getTitlesWidget: _bottomTitle,
                                       ),
                                     ),
                                     topTitles: const AxisTitles(
-                                      sideTitles: SideTitles(
-                                          showTitles: false),
+                                      sideTitles: SideTitles(showTitles: false),
                                     ),
                                     rightTitles: const AxisTitles(
-                                      sideTitles: SideTitles(
-                                          showTitles: false),
+                                      sideTitles: SideTitles(showTitles: false),
                                     ),
                                   ),
                                   gridData: FlGridData(
@@ -1229,14 +1426,12 @@ class _GraphScreenState extends State<GraphScreen> {
                                     (v - v.round()).abs() < 1e-6,
                                     getDrawingHorizontalLine: (v) =>
                                         FlLine(
-                                          color:
-                                          colorScheme.outlineVariant,
+                                          color: colorScheme.outlineVariant,
                                           strokeWidth: 0.5,
                                         ),
                                     getDrawingVerticalLine: (v) =>
                                         FlLine(
-                                          color:
-                                          colorScheme.outlineVariant,
+                                          color: colorScheme.outlineVariant,
                                           strokeWidth: 0.5,
                                         ),
                                   ),
@@ -1244,55 +1439,55 @@ class _GraphScreenState extends State<GraphScreen> {
                                     show: true,
                                     border: Border(
                                       bottom: BorderSide(
-                                          color: colorScheme
-                                              .outlineVariant),
+                                          color: colorScheme.outlineVariant),
                                       right: BorderSide(
-                                          color: colorScheme
-                                              .outlineVariant),
+                                          color: colorScheme.outlineVariant),
                                     ),
                                   ),
                                   lineTouchData: LineTouchData(
-                                    touchTooltipData:
-                                    LineTouchTooltipData(
+                                    touchTooltipData: LineTouchTooltipData(
                                       getTooltipItems: (items) {
-                                        final loc =
-                                        Localizations.localeOf(
-                                            context)
-                                            .toString();
+                                        final loc = Localizations.localeOf(
+                                            context).toString();
                                         return items.map((s) {
                                           final i = s.x.toInt();
                                           final d = (i >= 0 &&
                                               i < _xDates.length)
                                               ? _xDates[i]
                                               : null;
-                                          final dateStr =
-                                          (_displayMode ==
+                                          final dateStr = (_displayMode ==
                                               DisplayMode.day)
-                                              ? (d != null
-                                              ? DateFormat(
-                                              'M/d',
-                                              loc)
-                                              .format(d)
-                                              : '')
+                                              ? (d != null ? DateFormat(
+                                              'M/d', loc).format(d) : '')
                                               : (d != null
-                                              ? _formatWeekLabel(
-                                              d)
+                                              ? _formatWeekLabel(d)
                                               : '');
-                                          final valStr =
-                                          _formatTooltipValue(
+                                          final valStr = _formatTooltipValue(
                                               s.y, l10n);
                                           return LineTooltipItem(
                                             '$dateStr\n$valStr',
                                             TextStyle(
                                               color: colorScheme
                                                   .onPrimaryContainer,
-                                              fontWeight:
-                                              FontWeight.w600,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                           );
                                         }).toList();
                                       },
                                     ),
+                                  ),
+                                  // ★ 目標ライン
+                                  extraLinesData: ExtraLinesData(
+                                    horizontalLines: (_goalValue != null)
+                                        ? [
+                                      HorizontalLine(
+                                        y: _goalValue!,
+                                        color: colorScheme.tertiary,
+                                        strokeWidth: 2,
+                                        dashArray: [6, 4],
+                                      ),
+                                    ]
+                                        : const [],
                                   ),
                                 ),
                               ),
@@ -1342,17 +1537,18 @@ class _GraphScreenState extends State<GraphScreen> {
                   initialValue: _selectedPart,
                   items: _filteredBodyParts
                       .map(
-                        (p) => DropdownMenuItem(
-                      value: p,
-                      child: Text(
-                        p,
-                        style: TextStyle(
-                          color: colorScheme.onSurface,
-                          fontSize: 14.0,
-                          fontWeight: FontWeight.bold,
+                        (p) =>
+                        DropdownMenuItem(
+                          value: p,
+                          child: Text(
+                            p,
+                            style: TextStyle(
+                              color: colorScheme.onSurface,
+                              fontSize: 14.0,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
                   )
                       .toList(),
                   onChanged: (value) {
@@ -1390,17 +1586,18 @@ class _GraphScreenState extends State<GraphScreen> {
                     initialValue: _selectedMenu,
                     items: _menusForPart
                         .map(
-                          (menu) => DropdownMenuItem(
-                        value: menu,
-                        child: Text(
-                          menu,
-                          style: TextStyle(
-                            color: colorScheme.onSurface,
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.bold,
+                          (menu) =>
+                          DropdownMenuItem(
+                            value: menu,
+                            child: Text(
+                              menu,
+                              style: TextStyle(
+                                color: colorScheme.onSurface,
+                                fontSize: 14.0,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
                     )
                         .toList(),
                     onChanged: (value) {
@@ -1432,7 +1629,7 @@ class _GraphScreenState extends State<GraphScreen> {
               ],
             ),
           ],
-        ),
+        ),),),
       ),
     );
   }
@@ -1447,34 +1644,43 @@ class FavoritePillButton extends StatelessWidget {
   final bool isFavorite;
   final String label;
   final VoidCallback onTap;
+  final double height; // ★ 追加：同サイズ化
 
   const FavoritePillButton({
     super.key,
     required this.isFavorite,
     required this.label,
     required this.onTap,
+    this.height = 40.0,
   });
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final cs = Theme
+        .of(context)
+        .colorScheme;
     final text = isFavorite ? '$label★' : '$label✩';
 
-    return Material(
-      color: cs.surfaceContainerHighest,
-      shape: const StadiumBorder(),
-      elevation: 2,
-      child: InkWell(
-        customBorder: const StadiumBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: isFavorite ? cs.primary : cs.onSurface,
+    return SizedBox(
+      height: height,
+      child: Material(
+        color: cs.surfaceContainerHighest,
+        shape: const StadiumBorder(),
+        elevation: 2,
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onTap,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: isFavorite ? cs.primary : cs.onSurface,
+                ),
+              ),
             ),
           ),
         ),

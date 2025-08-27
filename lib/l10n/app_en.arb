@@ -87,5 +87,6 @@
   "changeSetCount": "Change Set Count",
   "themeTitle": "Theme",
   "unitTitle": "Unit",
-  "useDarkMode": "dark mode"
+  "useDarkMode": "dark mode",
+  "enterGoal": "Goal"
 }

@@ -275,4 +275,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get useDarkMode => 'ダークモード';
+
+  @override
+  String get enterGoal => '目標値';
 }

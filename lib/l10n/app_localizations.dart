@@ -622,6 +622,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'dark mode'**
   String get useDarkMode;
+
+  /// No description provided for @enterGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal'**
+  String get enterGoal;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

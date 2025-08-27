@@ -87,5 +87,6 @@
   "changeSetCount": "セット数の変更",
   "themeTitle": "テーマ",
   "unitTitle": "単位",
-  "useDarkMode": "ダークモード"
+  "useDarkMode": "ダークモード",
+  "enterGoal": "目標値"
 }
