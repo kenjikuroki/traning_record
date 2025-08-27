@@ -294,7 +294,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const Icon(Icons.format_list_numbered_outlined),
                       const SizedBox(width: 8),
                       Text(
-                        l10n.changeSetCount,
+                        l10n.defaultSets,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15.0,
@@ -375,7 +375,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const Icon(Icons.dark_mode_outlined),
                   const SizedBox(width: 8),
                   Text(
-                    l10n.themeTitle,
+                    l10n.useDarkMode,
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 15.0),
                   ),
@@ -386,11 +386,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: SwitchListTile(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          l10n.useDarkMode, // ← l10n 登録済みキー
-                          style: const TextStyle(
-                              fontSize: 16.0, fontWeight: FontWeight.w600),
-                        ),
                         value: _darkSwitchValue(context),
                         onChanged: (bool value) {
                           // 触られたら system 追従をやめて固定保存（dark / light）

@@ -57,7 +57,7 @@
   "bodyWeightTracking": "体重管理",
   "selectBodyParts": "表示する部位を選択",
   "unit": "単位",
-  "defaultSets": "セット数の変更",
+  "defaultSets": "初期セット数",
   "menuNameHint": "種目名を入力",
   "durationHint": "時間:分",
   "minutes": "分",

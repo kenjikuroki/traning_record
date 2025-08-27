@@ -184,7 +184,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get unit => '単位';
 
   @override
-  String get defaultSets => 'セット数の変更';
+  String get defaultSets => '初期セット数';
 
   @override
   String get menuNameHint => '種目名を入力';
