@@ -17,6 +17,7 @@ import 'graph_screen.dart';
 import '../widgets/coach_bubble.dart';
 import '../widgets/ui_feedback.dart';
 
+
 // ignore_for_file: library_private_types_in_public_api
 
 class RecordScreen extends StatefulWidget {
@@ -72,6 +73,17 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   int? _currentSectionIndex;
   int? _currentMenuIndex;
 
+  void _onBackPressed() {
+    // FABが開いていたらまず閉じるだけ
+    if (_fabOpen) {
+      setState(() => _fabOpen = false);
+      return;
+    }
+    // データ保存してから閉じる
+    _saveAllSectionsData();
+    if (mounted) Navigator.of(context).pop();
+  }
+
   bool _fabOpen = false;
 
   final TextEditingController _weightController = TextEditingController();
@@ -88,10 +100,19 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   DateTime? _resumedAt; // 直近で走り始めた時刻
   // ===================================
 
+    // 設定変更通知で再ビルド（表示/非表示の分岐は build 内で読む）
+    void _onShowStopwatchChanged() {
+        if (!mounted) return;
+        setState(() {});
+      }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    SettingsManager.showStopwatchNotifier.addListener(_onShowStopwatchChanged);
+
+    // 設定「ストップウォッチ表示」変更を監視して即時反映
 
     // 初回ビルド完了フラグ
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -175,6 +196,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
   @override
   void dispose() {
+    SettingsManager.showStopwatchNotifier.removeListener(_onShowStopwatchChanged);
     WidgetsBinding.instance.removeObserver(this);
     _inactivityTimer?.cancel();
     _capTimer?.cancel();
@@ -896,8 +918,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         _sections.length == 1 && _sections[0].selectedPart == null;
 
     final bool showWeight = SettingsManager.showWeightInput;
-    final int headerCount = (showWeight ? 1 : 0); // ストップウォッチは常時広告直下固定
-
+    final int headerCount = (showWeight ? 1 : 0); //  ストップウォッチはリスト外（広告直下）
     final body = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
       child: Column(
@@ -905,10 +926,16 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           const AdBanner(screenName: 'record'),
           const SizedBox(height: 4.0),
 
-          // ストップウォッチは常に広告直下
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4.0),
-            child: _buildStopwatchCard(),
+          // ストップウォッチ（設定ONのときのみ広告直下に表示）
+          Visibility(
+            visible: SettingsManager.showStopwatch,
+            maintainState: true,
+            maintainAnimation: true,
+            maintainSize: false,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: _buildStopwatchCard(),
+            ),
           ),
 
           Expanded(
@@ -1556,6 +1583,12 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           backgroundColor: colorScheme.surface,
           appBar: AppBar(
             automaticallyImplyLeading: false,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new),
+              color: colorScheme.onSurface,
+              onPressed: _onBackPressed,   // ← さっき追加したやつ
+              tooltip: '戻る',
+            ),
             title: Text(
               formattedDate,
               style: TextStyle(

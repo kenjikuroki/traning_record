@@ -82,5 +82,10 @@
   "hintRecordOpenSettings": "セット数の初期値は設定から変更できます。",
   "addSet": "＋セット",
   "hintRecordFab": "ここからセット・種目・部位を追加できます",
-  "openAddMenu": "追加メニューを開く"
+  "openAddMenu": "追加メニューを開く",
+  "settingsStopwatchTimerVisibility": "ストップウォッチ/タイマー表示",
+  "changeSetCount": "セット数の変更",
+  "themeTitle": "テーマ",
+  "unitTitle": "単位",
+  "useDarkMode": "ダークモードを使用"
 }

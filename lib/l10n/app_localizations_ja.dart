@@ -260,4 +260,19 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get hintRecordFab => 'ここからセット・種目・部位を追加できます';
+
+  @override
+  String get settingsStopwatchTimerVisibility => 'ストップウォッチ/タイマー表示';
+
+  @override
+  String get changeSetCount => 'セット数の変更';
+
+  @override
+  String get themeTitle => 'テーマ';
+
+  @override
+  String get unitTitle => '単位';
+
+  @override
+  String get useDarkMode => 'ダークモードを使用';
 }

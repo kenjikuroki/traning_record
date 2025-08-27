@@ -260,4 +260,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hintRecordFab => 'Add a set, exercise, or body part from here';
+
+  @override
+  String get settingsStopwatchTimerVisibility => 'Show Stopwatch/Timer';
+
+  @override
+  String get changeSetCount => 'Change Set Count';
+
+  @override
+  String get themeTitle => 'Theme';
+
+  @override
+  String get unitTitle => 'Unit';
+
+  @override
+  String get useDarkMode => 'Use dark mode';
 }

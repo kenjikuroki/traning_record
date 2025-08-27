@@ -82,5 +82,10 @@
   "hintRecordChangePart": "You can add another body part here.",
   "addSet": "+ Set",
   "openAddMenu": "Open add menu",
-  "hintRecordFab": "Add a set, exercise, or body part from here"
+  "hintRecordFab": "Add a set, exercise, or body part from here",
+  "settingsStopwatchTimerVisibility": "Show Stopwatch/Timer",
+  "changeSetCount": "Change Set Count",
+  "themeTitle": "Theme",
+  "unitTitle": "Unit",
+  "useDarkMode": "Use dark mode"
 }

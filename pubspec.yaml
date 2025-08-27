@@ -8,7 +8,7 @@ flutter_intl:
   main_locale: kl
 
 # バージョン
-version: 1.1.5+17
+version: 1.1.6+18
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -59,6 +59,7 @@ flutter_launcher_icons:
 
 # Flutter 本体設定（不要な asset 参照は置かない）
 flutter:
+  generate: true
   uses-material-design: true
   # もしアプリ内でアイコン画像を Asset としても使いたい場合は下を開ける
   # assets:

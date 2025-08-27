@@ -592,6 +592,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add a set, exercise, or body part from here'**
   String get hintRecordFab;
+
+  /// No description provided for @settingsStopwatchTimerVisibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Stopwatch/Timer'**
+  String get settingsStopwatchTimerVisibility;
+
+  /// No description provided for @changeSetCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Set Count'**
+  String get changeSetCount;
+
+  /// No description provided for @themeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get themeTitle;
+
+  /// No description provided for @unitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get unitTitle;
+
+  /// No description provided for @useDarkMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Use dark mode'**
+  String get useDarkMode;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
