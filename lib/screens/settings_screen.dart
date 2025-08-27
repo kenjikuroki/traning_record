@@ -126,7 +126,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.settings),
+        automaticallyImplyLeading: true, // 戻る矢印が必要な場合
+        backgroundColor: colorScheme.surface,
+        elevation: 0.0,
+        iconTheme: IconThemeData(color: colorScheme.onSurface),
+        title: Text(
+          l10n.settings,
+          style: TextStyle(
+            color: colorScheme.onSurface,
+            fontWeight: FontWeight.bold,
+            fontSize: 19.0,
+          ),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),

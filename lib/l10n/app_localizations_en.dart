@@ -274,5 +274,5 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unitTitle => 'Unit';
 
   @override
-  String get useDarkMode => 'Use dark mode';
+  String get useDarkMode => 'dark mode';
 }

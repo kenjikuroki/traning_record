@@ -274,5 +274,5 @@ class AppLocalizationsJa extends AppLocalizations {
   String get unitTitle => '単位';
 
   @override
-  String get useDarkMode => 'ダークモードを使用';
+  String get useDarkMode => 'ダークモード';
 }
