@@ -4,7 +4,7 @@ import 'package:hive/hive.dart';
 import '../widgets/ad_square.dart';
 import '../widgets/ad_banner.dart';
 import '../l10n/app_localizations.dart';
-import '../models/menu_data.dart'; // DailyRecord などのモデル
+import '../models/menu_data.dart';
 import '../settings_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -26,41 +26,27 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // 通常のカード間隔はゼロ
-  static const double _kGap = 0.0;
-  // 「セット数の変更」と広告の間／広告と「テーマ」の間だけ広め
-  static const double _kGapAd = 12.0;
-  // カード同士の“すこーしだけ”の間（見た目を詰めつつ完全ゼロは避ける）
+  // 見た目の統一
+  static const double _kGap = 0.0;                 // カード間
+  static const double _kGapAd = 12.0;              // 広告前後
   static const EdgeInsets _kCardMargin = EdgeInsets.symmetric(vertical: 2.0);
-  // テーマ見出しとスイッチの間（横並びの余白）
-  static const double _kThemeGap = 56.0;
+  static const double _kTileHeight = 56.0;         // 見出し行の高さ
+  static const double _kIconGap = 12.0;            // アイコンと文字の距離
+  static const EdgeInsets _kOuterPad = EdgeInsets.symmetric(horizontal: 16, vertical: 12);// 初期セット数カード基準の外側Padding
 
-  // 表示系
+  // 状態
   late bool _showStopwatch;
   late bool _showWeightInput;
 
-  // 部位
   final List<String> _bodyPartsOriginal = const [
-    '有酸素運動',
-    '腕',
-    '胸',
-    '背中',
-    '肩',
-    '足',
-    '全身',
-    'その他１',
-    'その他２',
-    'その他３',
+    '有酸素運動','腕','胸','背中','肩','足','全身','その他１','その他２','その他３',
   ];
   late Map<String, bool> _selectedBodyParts;
   bool _isBodyPartsExpanded = false;
 
-  // セット数
   late int _setCount;
-
-  // テーマ・単位
   ThemeMode _themeMode = ThemeMode.system;
-  String _selectedUnit = 'kg'; // 'kg' | 'lbs'
+  String _selectedUnit = 'kg';
 
   @override
   void initState() {
@@ -68,28 +54,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadSettings();
   }
 
-  // ====== 設定読み込み ======
   void _loadSettings() {
-    // 表示系
     _showWeightInput = SettingsManager.showWeightInput;
-    _showStopwatch = SettingsManager.showStopwatch;
+    _showStopwatch   = SettingsManager.showStopwatch;
 
-    // 部位
-    final Map stored =
-        (widget.settingsBox.get('selectedBodyParts') as Map?) ?? {};
-    _selectedBodyParts = {
-      for (final p in _bodyPartsOriginal) p: (stored[p] as bool?) ?? true,
-    };
+    final Map stored = (widget.settingsBox.get('selectedBodyParts') as Map?) ?? {};
+    _selectedBodyParts = { for (final p in _bodyPartsOriginal) p: (stored[p] as bool?) ?? true };
 
-    // セット数
-    _setCount = widget.setCountBox.get('setCount') ?? 3;
-
-    // テーマ / 単位（SettingsManager に統一）
-    _themeMode = SettingsManager.currentThemeMode;
+    _setCount   = widget.setCountBox.get('setCount') ?? 3;
+    _themeMode  = SettingsManager.currentThemeMode;
     _selectedUnit = SettingsManager.currentUnit;
   }
 
-  // ====== ハンドラ ======
   void _onThemeChanged(ThemeMode? m) {
     if (m == null) return;
     setState(() => _themeMode = m);
@@ -102,14 +78,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     SettingsManager.setUnit(u);
   }
 
-  String _translatePart(BuildContext context, String part) {
-    // 必要なら l10n と紐付け。今は原文返しで運用。
-    return part;
-  }
+  String _translatePart(BuildContext context, String part) => part;
 
-  /// 初期表示時のダークスイッチ値を決める:
-  /// - ThemeMode.system のときは現在の端末テーマに追従
-  /// - dark / light のときはその値を表示
   bool _darkSwitchValue(BuildContext context) {
     final mode = SettingsManager.currentThemeMode;
     if (mode == ThemeMode.system) {
@@ -118,15 +88,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return mode == ThemeMode.dark;
   }
 
+  // ---- ヘッダー行をきっちり中央に揃える共通ウィジェット（ListTileは使わない）----
+  Widget _headerRow({
+    required IconData icon,
+    required String title,
+    required Widget trailing,
+  }) {
+    return SizedBox(
+      height: _kTileHeight,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center, // ←縦センター
+        children: [
+          Icon(icon),
+          const SizedBox(width: _kIconGap),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15.0),
+              ),
+            ),
+          ),
+          trailing,
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
-    const EdgeInsets cardPad = EdgeInsets.fromLTRB(16, 12, 16, 12);
 
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: true, // 戻る矢印が必要な場合
+        automaticallyImplyLeading: true,
         backgroundColor: colorScheme.surface,
         elevation: 0.0,
         iconTheme: IconThemeData(color: colorScheme.onSurface),
@@ -142,7 +139,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
         children: [
-          // ====== 画面最上部のバナー広告（復活） ======
+          // ====== 最上部バナー ======
           const AdBanner(screenName: 'settings_top'),
           const SizedBox(height: 6),
 
@@ -150,29 +147,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Card(
             color: colorScheme.surfaceContainerHighest,
             shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
             ),
             margin: _kCardMargin,
-            child: SwitchListTile(
-              contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-              secondary: const Icon(Icons.timer_outlined),
-              title: Text(
-                l10n.settingsStopwatchTimerVisibility,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15.0,
+            child: Padding(
+              padding: _kOuterPad, // 初期セット数と同じ外側Padding
+              child: _headerRow(
+                icon: Icons.timer_outlined,
+                title: l10n.settingsStopwatchTimerVisibility,
+                trailing: Switch(
+                  value: _showStopwatch,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap, // ←縦サイズの過剰さを抑える
+                  onChanged: (v) {
+                    setState(() => _showStopwatch = v);
+                    SettingsManager.setShowStopwatch(v);
+                  },
+                  activeColor: colorScheme.primary,
                 ),
               ),
-              value: _showStopwatch,
-              onChanged: (bool value) {
-                setState(() => _showStopwatch = value);
-                SettingsManager.setShowStopwatch(value);
-              },
-              activeThumbColor: colorScheme.primary,
             ),
           ),
 
@@ -181,27 +173,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // ====== 体重管理 ======
           Card(
             color: colorScheme.surfaceContainerHighest,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.zero,
-            ),
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             margin: _kCardMargin,
-            child: SwitchListTile(
-              contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-              secondary: const Icon(Icons.monitor_weight_outlined),
-              title: Text(
-                l10n.bodyWeightTracking,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15.0,
+            child: Padding(
+              padding: _kOuterPad,
+              child: _headerRow(
+                icon: Icons.monitor_weight_outlined,
+                title: l10n.bodyWeightTracking,
+                trailing: Switch(
+                  value: _showWeightInput,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  onChanged: (v) {
+                    setState(() => _showWeightInput = v);
+                    SettingsManager.setShowWeightInput(v);
+                  },
+                  activeColor: colorScheme.primary,
                 ),
               ),
-              value: _showWeightInput,
-              onChanged: (bool value) {
-                setState(() => _showWeightInput = value);
-                SettingsManager.setShowWeightInput(value);
-              },
-              activeThumbColor: colorScheme.primary,
             ),
           ),
 
@@ -210,12 +198,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // ====== 表示する部位を選択 ======
           Card(
             color: colorScheme.surfaceContainerHighest,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.zero,
-            ),
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             margin: _kCardMargin,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              padding: _kOuterPad,
               child: Theme(
                 data: Theme.of(context).copyWith(
                   dividerColor: Colors.transparent,
@@ -225,46 +211,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   hoverColor: Colors.transparent,
                 ),
                 child: ExpansionTile(
-                  // ★ 要望：体操している人アイコンに変更
+                  // ヘッダーはRowではなくExpansionTile標準だが、横だけにして高さ感は外側Paddingで合わせる
                   leading: const Icon(Icons.sports_gymnastics_outlined),
                   initiallyExpanded: _isBodyPartsExpanded,
-                  onExpansionChanged: (v) =>
-                      setState(() => _isBodyPartsExpanded = v),
+                  onExpansionChanged: (v) => setState(() => _isBodyPartsExpanded = v),
                   expandedAlignment: Alignment.centerLeft,
-                  tilePadding: const EdgeInsets.symmetric(horizontal: 12.0),
-                  childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 0), // 横0（外側で左右16）
+                  childrenPadding: EdgeInsets.zero,
                   title: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       l10n.selectBodyParts,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15.0,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15.0),
                     ),
                   ),
                   children: _bodyPartsOriginal.map((p) {
                     final translated = _translatePart(context, p);
-                    final current = _selectedBodyParts[p] ?? true;
-                    return SwitchListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        translated,
-                        style: const TextStyle(
-                          fontSize: 14.0,
-                          fontWeight: FontWeight.w500,
+                    final current    = _selectedBodyParts[p] ?? true;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 0),
+                      child: SwitchListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          translated,
+                          style: const TextStyle(fontSize: 14.0, fontWeight: FontWeight.w500),
                         ),
+                        value: current,
+                        onChanged: (bool value) async {
+                          setState(() => _selectedBodyParts[p] = value);
+                          await widget.settingsBox.put('selectedBodyParts', _selectedBodyParts);
+                        },
+                        activeThumbColor: colorScheme.primary,
                       ),
-                      value: current,
-                      onChanged: (bool value) async {
-                        setState(() => _selectedBodyParts[p] = value);
-                        await widget.settingsBox.put(
-                          'selectedBodyParts',
-                          _selectedBodyParts,
-                        );
-                      },
-                      activeThumbColor: colorScheme.primary,
                     );
                   }).toList(),
                 ),
@@ -274,40 +253,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: _kGap),
 
-          // ====== セット数の変更 ======
+          // ====== セット数の変更（基準カード） ======
           Card(
             color: colorScheme.surfaceContainerHighest,
             shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              ),
+              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
             ),
             margin: _kCardMargin,
             child: Padding(
-              padding: cardPad,
+              padding: _kOuterPad, // ←基準
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.format_list_numbered_outlined),
-                      const SizedBox(width: 8),
-                      Text(
-                        l10n.defaultSets,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15.0,
-                        ),
-                      ),
-                    ],
+                  _headerRow(
+                    icon: Icons.format_list_numbered_outlined,
+                    title: l10n.defaultSets,
+                    trailing: Text(
+                      '$_setCount${l10n.sets}',
+                      style: const TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold),
+                    ),
                   ),
-                  const SizedBox(height: 4),
                   SliderTheme(
                     data: SliderTheme.of(context).copyWith(
                       trackHeight: 3,
-                      thumbShape:
-                      const RoundSliderThumbShape(enabledThumbRadius: 8),
+                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
                     ),
                     child: Slider(
                       value: _setCount.toDouble(),
@@ -315,25 +284,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       max: 10,
                       divisions: 9,
                       label: _setCount.toString(),
-                      onChanged: (double newValue) {
-                        setState(() => _setCount = newValue.round());
-                      },
-                      onChangeEnd: (v) {
-                        widget.setCountBox.put('setCount', v.round());
-                      },
+                      onChanged: (double newValue) => setState(() => _setCount = newValue.round()),
+                      onChangeEnd: (v) => widget.setCountBox.put('setCount', v.round()),
                       activeColor: colorScheme.primary,
-                      inactiveColor:
-                      colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      '$_setCount${l10n.sets}',
-                      style: const TextStyle(
-                        fontSize: 14.0,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      inactiveColor: colorScheme.onSurfaceVariant.withOpacity(0.3),
                     ),
                   ),
                 ],
@@ -343,10 +297,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: _kGap),
 
-          // ====== 広告（高さ先取りでレイアウトジャンプ抑止） ======
-          const SizedBox(height: _kGapAd), // セット数の変更 ↓ と広告の間を広め
+          // ====== 広告 ======
+          const SizedBox(height: _kGapAd),
           SizedBox(
-            height: 100, // 320x100 ラージバナー想定
+            height: 100,
             child: Center(
               child: AdSquare(
                 adSize: AdBoxSize.largeBanner,
@@ -355,49 +309,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
+          const SizedBox(height: _kGapAd),
 
-          const SizedBox(height: _kGapAd), // 広告と テーマ ↑ の間を広め
-
-          // ====== テーマ（ダークモードを使用：スイッチ1個） ======
+          // ====== ダークモード ======
           Card(
             color: colorScheme.surfaceContainerHighest,
             shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
             ),
             margin: _kCardMargin,
             child: Padding(
-              padding: cardPad,
-              child: Row(
-                children: [
-                  const Icon(Icons.dark_mode_outlined),
-                  const SizedBox(width: 8),
-                  Text(
-                    l10n.useDarkMode,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15.0),
-                  ),
-                  const SizedBox(width: _kThemeGap),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: SwitchListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        value: _darkSwitchValue(context),
-                        onChanged: (bool value) {
-                          // 触られたら system 追従をやめて固定保存（dark / light）
-                          final mode =
-                          value ? ThemeMode.dark : ThemeMode.light;
-                          _onThemeChanged(mode);
-                        },
-                        activeColor: colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                ],
+              padding: _kOuterPad,
+              child: _headerRow(
+                icon: Icons.dark_mode_outlined,
+                title: l10n.useDarkMode,
+                trailing: Switch(
+                  value: _darkSwitchValue(context),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  onChanged: (bool value) {
+                    final mode = value ? ThemeMode.dark : ThemeMode.light;
+                    _onThemeChanged(mode);
+                  },
+                  activeColor: colorScheme.primary,
+                ),
               ),
             ),
           ),
@@ -408,64 +342,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Card(
             color: colorScheme.surfaceContainerHighest,
             shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              ),
+              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
             ),
             margin: _kCardMargin,
             child: Padding(
-              padding: cardPad,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // 左：見出し（1つだけ）
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.fitness_center_outlined), // バーベル
-                      const SizedBox(width: 8),
-                      Text(
-                        l10n.unitTitle,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15.0),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 56), // 見出しと選択群の間
-                  // 右：横並びのラジオ
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Radio<String>(
-                          value: 'kg',
-                          groupValue: _selectedUnit,
-                          onChanged: _onUnitChanged,
-                          activeColor: colorScheme.primary,
-                          materialTapTargetSize:
-                          MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        const SizedBox(width: 8),
-                        const Text('kg',
-                            style: TextStyle(
-                                fontSize: 16.0, fontWeight: FontWeight.w600)),
-                        const SizedBox(width: 32),
-                        Radio<String>(
-                          value: 'lbs',
-                          groupValue: _selectedUnit,
-                          onChanged: _onUnitChanged,
-                          activeColor: colorScheme.primary,
-                          materialTapTargetSize:
-                          MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        const SizedBox(width: 8),
-                        const Text('lbs',
-                            style: TextStyle(
-                                fontSize: 16.0, fontWeight: FontWeight.w600)),
-                      ],
+              padding: _kOuterPad,
+              child: _headerRow(
+                icon: Icons.fitness_center_outlined,
+                title: l10n.unitTitle,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min, // 右端寄せ
+                  children: [
+                    Radio<String>(
+                      value: 'kg',
+                      groupValue: _selectedUnit,
+                      onChanged: _onUnitChanged,
+                      activeColor: colorScheme.primary,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    const Text('kg', style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 24),
+                    Radio<String>(
+                      value: 'lbs',
+                      groupValue: _selectedUnit,
+                      onChanged: _onUnitChanged,
+                      activeColor: colorScheme.primary,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('lbs', style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600)),
+                  ],
+                ),
               ),
             ),
           ),
