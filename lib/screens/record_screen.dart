@@ -41,10 +41,11 @@ class RecordScreen extends StatefulWidget {
   State<RecordScreen> createState() => _RecordScreenState();
 }
 
-class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver {
+class _RecordScreenState extends State<RecordScreen>
+    with WidgetsBindingObserver {
   // ====== 自動一時停止の基準 ======
   static const Duration _kIdleAutoPause = Duration(hours: 5); // 無操作
-  static const Duration _kHardCap      = Duration(hours: 5); // 連続稼働上限
+  static const Duration _kHardCap = Duration(hours: 5); // 連続稼働上限
   // =================================
 
   final ScrollController _scrollCtrl = ScrollController();
@@ -74,15 +75,17 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   int? _currentSectionIndex;
   int? _currentMenuIndex;
 
-  void _onBackPressed() {
+  Future<void> _onBackPressed() async {
     // FABが開いていたらまず閉じるだけ
     if (_fabOpen) {
       setState(() => _fabOpen = false);
       return;
     }
     // データ保存してから閉じる
+    await _dismissKeyboardSafely(context);
     _saveAllSectionsData();
-    if (mounted) Navigator.of(context).pop();
+    if (!mounted) return;
+       Navigator.of(context).pop();
   }
 
   bool _fabOpen = false;
@@ -94,18 +97,18 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
   DateTime _lastInteractionAt = DateTime.now();
   Timer? _inactivityTimer; // 無操作監視
-  Timer? _capTimer;        // 連続稼働上限監視
+  Timer? _capTimer; // 連続稼働上限監視
   DateTime? _backgroundedAt;
 
   bool _wasRunning = false;
   DateTime? _resumedAt; // 直近で走り始めた時刻
   // ===================================
 
-    // 設定変更通知で再ビルド（表示/非表示の分岐は build 内で読む）
-    void _onShowStopwatchChanged() {
-        if (!mounted) return;
-        setState(() {});
-      }
+  // 設定変更通知で再ビルド（表示/非表示の分岐は build 内で読む）
+  void _onShowStopwatchChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
 
   @override
   void initState() {
@@ -174,7 +177,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       if (running && _resumedAt != null) {
         final runFor = DateTime.now().difference(_resumedAt!);
         if (runFor >= _kHardCap) {
-          _pauseWithSnack('5時間を超えたため一時停止しました', withResume: true);
+          _pauseWithSnack(
+              '5時間を超えたため一時停止しました', withResume: true);
           _resumedAt = null;
         }
       }
@@ -197,7 +201,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
   @override
   void dispose() {
-    SettingsManager.showStopwatchNotifier.removeListener(_onShowStopwatchChanged);
+    SettingsManager.showStopwatchNotifier.removeListener(
+        _onShowStopwatchChanged);
     WidgetsBinding.instance.removeObserver(this);
     _inactivityTimer?.cancel();
     _capTimer?.cancel();
@@ -213,13 +218,16 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   // Appライフサイクル（バックグラウンド30分で自動一時停止）
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
       _backgroundedAt = DateTime.now();
     } else if (state == AppLifecycleState.resumed) {
       if (_backgroundedAt != null) {
         final away = DateTime.now().difference(_backgroundedAt!);
         if (away.inMinutes >= 30 && _swController.isRunning) {
-          _pauseWithSnack('アプリが30分以上バックグラウンドのため一時停止しました', withResume: true);
+          _pauseWithSnack(
+              'アプリが30分以上バックグラウンドのため一時停止しました',
+              withResume: true);
         }
       }
       _backgroundedAt = null;
@@ -250,6 +258,23 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     );
   }
 
+  // --- 追加：戻る直前にキーボードを確実に閉じる ---
+  Future<void> _dismissKeyboardSafely(BuildContext ctx) async {
+        // フォーカス解除 & キーボード閉
+        FocusManager.instance.primaryFocus?.unfocus();
+        await SystemChannels.textInput.invokeMethod('TextInput.hide');
+        // 実際に viewInsets が 0 になるまで待つ（最大 ~500ms）
+        final deadline = DateTime.now().add(const Duration(milliseconds: 500));
+        while (mounted &&
+            MediaQuery.of(ctx).viewInsets.bottom > 0 &&
+            DateTime.now().isBefore(deadline)) {
+          // 1フレーム待ち（約16ms）
+          await Future<void>.delayed(const Duration(milliseconds: 16));
+        }
+        // レイアウト安定のため更にフレーム終端まで待機
+        await WidgetsBinding.instance.endOfFrame;
+      }
+
   // 指定のカードを画面内にスクロールして見えるようにする
   Future<void> _scrollIntoView(int secIndex, int menuIndex) async {
     final key = _sections[secIndex].menuKeys[menuIndex];
@@ -261,210 +286,229 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         alignment: 0.15,
       );
     } else {
-         // フォールバック：セクションカード自体へスクロール
-         final sKey = _sections[secIndex].key;
-         if (sKey is GlobalKey && sKey.currentContext != null) {
-           await Scrollable.ensureVisible(
-             sKey.currentContext!,
-             duration: const Duration(milliseconds: 220),
-             curve: Curves.easeOutCubic,
-             alignment: 0.10,
-           );
-         }
+      // フォールバック：セクションカード自体へスクロール
+      final sKey = _sections[secIndex].key;
+      if (sKey is GlobalKey && sKey.currentContext != null) {
+        await Scrollable.ensureVisible(
+          sKey.currentContext!,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          alignment: 0.10,
+        );
+      }
     }
   }
 
   // 追加：セクションカードへ確実にスクロール
-    Future<void> _scrollSectionCardIntoView(int secIndex) async {
-        final sk = _sections[secIndex].key;
-        if (sk is GlobalKey && sk.currentContext != null) {
-          await Scrollable.ensureVisible(
-            sk.currentContext!,
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            alignment: 0.10,
-          );
-        }
-     }
+  Future<void> _scrollSectionCardIntoView(int secIndex) async {
+    final sk = _sections[secIndex].key;
+    if (sk is GlobalKey && sk.currentContext != null) {
+      await Scrollable.ensureVisible(
+        sk.currentContext!,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        alignment: 0.10,
+      );
+    }
+  }
 
-    // 追加：部位選択の適用（Dropdown onChanged の処理を関数化）
-    void _applySelectedPart(int secIndex, String? value) {
-        final section = _sections[secIndex];
-        setState(() {
-          section.selectedPart = value;
-          section.menuKeys.clear();
-          section.menuIds.clear();
-          section.nextMenuId = 0;
-          _clearSectionControllersAndMaps(section);
+  // 追加：部位選択の適用（Dropdown onChanged の処理を関数化）
+  void _applySelectedPart(int secIndex, String? value) {
+    final section = _sections[secIndex];
+    setState(() {
+      section.selectedPart = value;
+      section.menuKeys.clear();
+      section.menuIds.clear();
+      section.nextMenuId = 0;
+      _clearSectionControllersAndMaps(section);
 
-          if (section.selectedPart != null) {
-            final current = section.selectedPart!;
-            final originalPart = _getOriginalPartName(context, current);
-            final dateKey = _getDateKey(widget.selectedDate);
-            final record = widget.recordsBox.get(dateKey);
+      if (section.selectedPart != null) {
+        final current = section.selectedPart!;
+        final originalPart = _getOriginalPartName(context, current);
+        final dateKey = _getDateKey(widget.selectedDate);
+        final record = widget.recordsBox.get(dateKey);
 
-            final recList = record?.menus[originalPart] ?? <MenuData>[];
-            final rawLU = widget.lastUsedMenusBox.get(originalPart);
-            final luList = (rawLU is List)
-                ? rawLU.whereType<MenuData>().toList()
-                : <MenuData>[];
+        final recList = record?.menus[originalPart] ?? <MenuData>[];
+        final rawLU = widget.lastUsedMenusBox.get(originalPart);
+        final luList = (rawLU is List)
+            ? rawLU.whereType<MenuData>().toList()
+            : <MenuData>[];
 
-            final Map<String, MenuData> recBy = {for (final m in recList) m.name: m};
-            final Map<String, MenuData> luBy  = {for (final m in luList) m.name: m};
+        final Map<String, MenuData> recBy = {
+          for (final m in recList) m.name: m
+        };
+        final Map<String, MenuData> luBy = {for (final m in luList) m.name: m};
 
-            final List<String> names = [
-              ...recList.map((m) => m.name),
-              ...luList.where((m) => !recBy.containsKey(m.name)).map((m) => m.name),
-            ];
-            if (names.isEmpty) names.add('');
+        final List<String> names = [
+          ...recList.map((m) => m.name),
+          ...luList.where((m) => !recBy.containsKey(m.name)).map((m) => m.name),
+        ];
+        if (names.isEmpty) names.add('');
 
-            final l10n = AppLocalizations.of(context)!;
-            final isAerobic = current == l10n.aerobicExercise;
+        final l10n = AppLocalizations.of(context)!;
+        final isAerobic = current == l10n.aerobicExercise;
 
-            for (final name in names) {
-              final rec = recBy[name];
-              final lu  = luBy[name];
+        for (final name in names) {
+          final rec = recBy[name];
+          final lu = luBy[name];
 
-              section.menuControllers.add(TextEditingController(text: name));
-              section.menuKeys.add(GlobalKey());
-              section.menuIds.add(section.nextMenuId++);
+          section.menuControllers.add(TextEditingController(text: name));
+          section.menuKeys.add(GlobalKey());
+          section.menuIds.add(section.nextMenuId++);
 
-              if (isAerobic) {
-                final String dist = (rec?.distance?.trim().isNotEmpty ?? false)
-                    ? rec!.distance!.trim()
-                    : (lu?.distance?.trim() ?? '');
-                final String dura = (rec?.duration?.trim().isNotEmpty ?? false)
-                    ? rec!.duration!.trim()
-                    : (lu?.duration?.trim() ?? '');
-                final bool isSug = !(rec?.distance?.trim().isNotEmpty == true ||
-                                     rec?.duration?.trim().isNotEmpty == true);
-                section.aerobicDistanceCtrls.add(TextEditingController(text: dist));
-                section.aerobicDurationCtrls.add(TextEditingController(text: dura));
-                section.aerobicSuggestFlags.add(isSug);
-                section.setInputDataList.add(<SetInputData>[]);
-              } else {
-                final int recLen = rec == null ? 0 : min(rec.weights.length, rec.reps.length);
-                final int luLen  = lu  == null ? 0 : min(lu.weights.length,  lu.reps.length);
-                final int mergedLen = max(_currentSetCount, max(recLen, luLen));
-
-                final row = <SetInputData>[];
-                for (int i = 0; i < mergedLen; i++) {
-                  String w = '';
-                  String r = '';
-                  bool isSuggestion = true;
-                  if (i < recLen) {
-                    w = rec!.weights[i];
-                    r = rec.reps[i];
-                    if (w.trim().isNotEmpty || r.trim().isNotEmpty) isSuggestion = false;
-                  } else if (i < luLen) {
-                    w = lu!.weights[i];
-                    r = lu.reps[i];
-                    isSuggestion = true;
-                  }
-                  row.add(SetInputData(
-                    weightController: TextEditingController(text: w),
-                    repController: TextEditingController(text: r),
-                    isSuggestion: isSuggestion,
-                  ));
-                }
-                section.setInputDataList.add(row);
-                section.initialSetCount = max(section.initialSetCount ?? 0, mergedLen);
-              }
-            }
-
-            // 先頭の種目カードを選択状態に
-            _currentSectionIndex = secIndex;
-            _currentMenuIndex = 0;
+          if (isAerobic) {
+            final String dist = (rec?.distance
+                ?.trim()
+                .isNotEmpty ?? false)
+                ? rec!.distance!.trim()
+                : (lu?.distance?.trim() ?? '');
+            final String dura = (rec?.duration
+                ?.trim()
+                .isNotEmpty ?? false)
+                ? rec!.duration!.trim()
+                : (lu?.duration?.trim() ?? '');
+            final bool isSug = !(rec?.distance
+                ?.trim()
+                .isNotEmpty == true ||
+                rec?.duration
+                    ?.trim()
+                    .isNotEmpty == true);
+            section.aerobicDistanceCtrls.add(TextEditingController(text: dist));
+            section.aerobicDurationCtrls.add(TextEditingController(text: dura));
+            section.aerobicSuggestFlags.add(isSug);
+            section.setInputDataList.add(<SetInputData>[]);
           } else {
-            section.initialSetCount = _currentSetCount;
-          }
-        });
+            final int recLen = rec == null ? 0 : min(
+                rec.weights.length, rec.reps.length);
+            final int luLen = lu == null ? 0 : min(
+                lu.weights.length, lu.reps.length);
+            final int mergedLen = max(_currentSetCount, max(recLen, luLen));
 
-        // 先頭カードへスクロール & ヒント
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _scrollIntoView(secIndex, 0);
+            final row = <SetInputData>[];
+            for (int i = 0; i < mergedLen; i++) {
+              String w = '';
+              String r = '';
+              bool isSuggestion = true;
+              if (i < recLen) {
+                w = rec!.weights[i];
+                r = rec.reps[i];
+                if (w
+                    .trim()
+                    .isNotEmpty || r
+                    .trim()
+                    .isNotEmpty) isSuggestion = false;
+              } else if (i < luLen) {
+                w = lu!.weights[i];
+                r = lu.reps[i];
+                isSuggestion = true;
+              }
+              row.add(SetInputData(
+                weightController: TextEditingController(text: w),
+                repController: TextEditingController(text: r),
+                isSuggestion: isSuggestion,
+              ));
+            }
+            section.setInputDataList.add(row);
+            section.initialSetCount =
+                max(section.initialSetCount ?? 0, mergedLen);
           }
-        });
-        _scheduleHintsAfterPart();
+        }
+
+        // 先頭の種目カードを選択状態に
+        _currentSectionIndex = secIndex;
+        _currentMenuIndex = 0;
+      } else {
+        section.initialSetCount = _currentSetCount;
       }
+    });
 
-    // 追加：iOS風ピッカーで部位を選択
-    Future<void> _showPartPicker(int secIndex) async {
-       final parts = _filteredBodyParts;
-       int initial = 0;
-       final current = _sections[secIndex].selectedPart;
-       if (current != null) {
-         final idx = parts.indexOf(current);
-         if (idx >= 0) initial = idx;
-       }
-       int temp = initial;
+    // 先頭カードへスクロール & ヒント
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _scrollIntoView(secIndex, 0);
+      }
+    });
+    _scheduleHintsAfterPart();
+  }
 
-       final theme = Theme.of(context);
-       final cs = theme.colorScheme;
+  // 追加：iOS風ピッカーで部位を選択
+  Future<void> _showPartPicker(int secIndex) async {
+    final parts = _filteredBodyParts;
+    int initial = 0;
+    final current = _sections[secIndex].selectedPart;
+    if (current != null) {
+      final idx = parts.indexOf(current);
+      if (idx >= 0) initial = idx;
+    }
+    int temp = initial;
 
-       final picked = await showModalBottomSheet<String>(
-         context: context,
-         backgroundColor: cs.surfaceContainerHighest,
-         shape: const RoundedRectangleBorder(
-           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-         ),
-         builder: (ctx) {
-           return SizedBox(
-             height: 260,
-             child: Column(
-               children: [
-                 const SizedBox(height: 8),
-                 Container(
-                   width: 40, height: 4,
-                   decoration: BoxDecoration(
-                     color: cs.onSurfaceVariant.withOpacity(0.4),
-                     borderRadius: BorderRadius.circular(2),
-                   ),
-                 ),
-                 Padding(
-                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                   child: Row(
-                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                     children: [
-                       TextButton(
-                         onPressed: () => Navigator.pop(ctx, null),
-                         child: Text(AppLocalizations.of(context)!.cancel),
-                       ),
-                       TextButton(
-                         onPressed: () => Navigator.pop(ctx, parts[temp]),
-                         child: const Text('OK'),
-                       ),
-                     ],
-                   ),
-                 ),
-                 Expanded(
-                   child: CupertinoPicker(
-                     itemExtent: 36,
-                     scrollController: FixedExtentScrollController(initialItem: initial),
-                     onSelectedItemChanged: (i) => temp = i,
-                     children: parts.map((p) => Center(
-                       child: Text(
-                         p,
-                         style: TextStyle(
-                           color: cs.onSurface,
-                           fontWeight: FontWeight.w600,
-                           fontSize: 16,
-                         ),
-                       ),
-                     )).toList(),
-                   ),
-                 ),
-               ],
-             ),
-           );
-         },
-       );
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
-       if (picked is String) {
-         _applySelectedPart(secIndex, picked);
-       }
-     }
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: cs.surfaceContainerHighest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SizedBox(
+          height: 260,
+          child: Column(
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: cs.onSurfaceVariant.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, null),
+                      child: Text(AppLocalizations.of(context)!.cancel),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, parts[temp]),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 36,
+                  scrollController: FixedExtentScrollController(
+                      initialItem: initial),
+                  onSelectedItemChanged: (i) => temp = i,
+                  children: parts.map((p) =>
+                      Center(
+                        child: Text(
+                          p,
+                          style: TextStyle(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      )).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (picked is String) {
+      _applySelectedPart(secIndex, picked);
+    }
+  }
 
   String _getOriginalPartName(BuildContext context, String translatedPart) {
     final l10n = AppLocalizations.of(context)!;
@@ -623,18 +667,19 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
       final section = tempSectionsMap.putIfAbsent(
         translatedPart,
-            () => SectionData(
-          key: GlobalKey(),
-          selectedPart: translatedPart,
-          menuControllers: [],
-          setInputDataList: [],
-          initialSetCount: _currentSetCount,
-          menuKeys: [],
-          // 有酸素用 per menu
-          aerobicDistanceCtrls: [],
-          aerobicDurationCtrls: [],
-          aerobicSuggestFlags: [],
-        ),
+            () =>
+            SectionData(
+              key: GlobalKey(),
+              selectedPart: translatedPart,
+              menuControllers: [],
+              setInputDataList: [],
+              initialSetCount: _currentSetCount,
+              menuKeys: [],
+              // 有酸素用 per menu
+              aerobicDistanceCtrls: [],
+              aerobicDurationCtrls: [],
+              aerobicSuggestFlags: [],
+            ),
       );
 
       final recList = record.menus[originalPart] ?? <MenuData>[];
@@ -663,15 +708,23 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         section.menuIds.add(section.nextMenuId++);
 
         if (isAerobic) {
-          final String dist = (rec?.distance?.trim().isNotEmpty ?? false)
+          final String dist = (rec?.distance
+              ?.trim()
+              .isNotEmpty ?? false)
               ? rec!.distance!.trim()
               : (lu?.distance?.trim() ?? '');
-          final String dura = (rec?.duration?.trim().isNotEmpty ?? false)
+          final String dura = (rec?.duration
+              ?.trim()
+              .isNotEmpty ?? false)
               ? rec!.duration!.trim()
               : (lu?.duration?.trim() ?? '');
 
-          final bool isSug = !(rec?.distance?.trim().isNotEmpty == true ||
-              rec?.duration?.trim().isNotEmpty == true);
+          final bool isSug = !(rec?.distance
+              ?.trim()
+              .isNotEmpty == true ||
+              rec?.duration
+                  ?.trim()
+                  .isNotEmpty == true);
 
           section.aerobicDistanceCtrls.add(TextEditingController(text: dist));
           section.aerobicDurationCtrls.add(TextEditingController(text: dura));
@@ -693,7 +746,11 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
             if (i < recLen) {
               w = rec!.weights[i];
               r = rec.reps[i];
-              if (w.trim().isNotEmpty || r.trim().isNotEmpty) {
+              if (w
+                  .trim()
+                  .isNotEmpty || r
+                  .trim()
+                  .isNotEmpty) {
                 isSuggestion = false;
               }
             } else if (i < luLen) {
@@ -708,7 +765,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
             ));
           }
           section.setInputDataList.add(row);
-          section.initialSetCount = max(section.initialSetCount ?? 0, mergedLen);
+          section.initialSetCount =
+              max(section.initialSetCount ?? 0, mergedLen);
         }
       }
     }
@@ -742,7 +800,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   }
 
   String _getDateKey(DateTime date) =>
-      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day
+          .toString().padLeft(2, '0')}';
 
   void _clearSectionControllersAndMaps(SectionData section) {
     for (var c in section.menuControllers) {
@@ -807,8 +866,12 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           ));
 
           if (!isSug &&
-              ((distance.trim().isNotEmpty) ||
-                  (duration.trim().isNotEmpty))) {
+              ((distance
+                  .trim()
+                  .isNotEmpty) ||
+                  (duration
+                      .trim()
+                      .isNotEmpty))) {
             listForRecord.add(MenuData(
               name: name,
               weights: const <String>[],
@@ -836,7 +899,11 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
             final set = section.setInputDataList[i][s];
             final w = set.weightController.text;
             final r = set.repController.text;
-            final hasValue = w.trim().isNotEmpty || r.trim().isNotEmpty;
+            final hasValue = w
+                .trim()
+                .isNotEmpty || r
+                .trim()
+                .isNotEmpty;
             if (!set.isSuggestion && hasValue) {
               weightsConfirmed.add(w);
               repsConfirmed.add(r);
@@ -844,7 +911,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           }
           if (weightsConfirmed.isNotEmpty || repsConfirmed.isNotEmpty) {
             listForRecord.add(
-                MenuData(name: name, weights: weightsConfirmed, reps: repsConfirmed));
+                MenuData(name: name,
+                    weights: weightsConfirmed,
+                    reps: repsConfirmed));
             hasAnyRecordData = true;
             lastModifiedPart ??= originalPart;
           }
@@ -909,13 +978,15 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         final sets = _currentSetCount;
         final row = List<SetInputData>.generate(
           min(10, sets),
-              (_) => SetInputData(
-            weightController: TextEditingController(),
-            repController: TextEditingController(),
-            isSuggestion: true,
-          ),
+              (_) =>
+              SetInputData(
+                weightController: TextEditingController(),
+                repController: TextEditingController(),
+                isSuggestion: true,
+              ),
         );
-        while (section.setInputDataList.length < section.menuControllers.length) {
+        while (section.setInputDataList.length <
+            section.menuControllers.length) {
           section.setInputDataList.add(<SetInputData>[]);
         }
         final idx = section.menuControllers.length - 1;
@@ -925,7 +996,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     });
 
     // 追加直後にそのカードを選択状態に
-    _touchCard(sectionIndex, _sections[sectionIndex].menuControllers.length - 1);
+    _touchCard(
+        sectionIndex, _sections[sectionIndex].menuControllers.length - 1);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _scrollIntoView(sectionIndex,
@@ -968,28 +1040,30 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     });
 
     // 追加直後に新しい「部位カード」へスクロール
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              _scrollSectionCardIntoView(_sections.length - 1);
-            }
-          });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _scrollSectionCardIntoView(_sections.length - 1);
+      }
+    });
   }
 
   void _removeMenuItem(int sectionIndex, int menuIndex) async {
     final l10n = AppLocalizations.of(context)!;
     final bool? ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deleteMenuConfirmationTitle),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l10n.cancel)),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n.delete, style: const TextStyle(color: Colors.red))),
-        ],
-      ),
+      builder: (ctx) =>
+          AlertDialog(
+            title: Text(l10n.deleteMenuConfirmationTitle),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(l10n.cancel)),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(
+                      l10n.delete, style: const TextStyle(color: Colors.red))),
+            ],
+          ),
     );
 
     if (ok == true) {
@@ -1083,7 +1157,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
   // ストップウォッチカード（コンパクト）
   Widget _buildStopwatchCard() {
-    final cs = Theme.of(context).colorScheme;
+    final cs = Theme
+        .of(context)
+        .colorScheme;
     return Card(
       color: cs.surfaceContainerHighest,
       shape: RoundedRectangleBorder(
@@ -1103,14 +1179,18 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isLight = Theme.of(context).brightness == Brightness.light;
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
+    final isLight = Theme
+        .of(context)
+        .brightness == Brightness.light;
     final l10n = AppLocalizations.of(context)!;
     final formattedDate = DateFormat('yyyy/MM/dd').format(widget.selectedDate);
 
     final media = MediaQuery.of(context);
-    final kbInset = media.viewInsets.bottom;   // キーボード高さ
-    final safeBottom = media.padding.bottom;   // セーフエリア
+    final kbInset = media.viewInsets.bottom; // キーボード高さ
+    final safeBottom = media.padding.bottom; // セーフエリア
 
     final overlayStyle = isLight
         ? const SystemUiOverlayStyle(
@@ -1160,7 +1240,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
               child: ListView.builder(
                 controller: _scrollCtrl,
                 primary: false,
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior
+                    .manual,
                 physics: const AlwaysScrollableScrollPhysics(),
                 itemCount:
                 headerCount + _sections.length + (isInitialEmptyState ? 0 : 1),
@@ -1181,7 +1262,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                '${l10n.enterYourWeight}${Localizations.localeOf(context).languageCode == "ja" ? "：" : ":"}',
+                                '${l10n.enterYourWeight}${Localizations
+                                    .localeOf(context)
+                                    .languageCode == "ja" ? "：" : ":"}',
                                 style: TextStyle(
                                   color: colorScheme.onSurface,
                                   fontWeight: FontWeight.bold,
@@ -1213,11 +1296,13 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                               RegExp(r'^\d*\.?\d*'),
                                             ),
                                           ],
-                                          normalTextColor: colorScheme.onSurface,
+                                          normalTextColor: colorScheme
+                                              .onSurface,
                                           suggestionTextColor: colorScheme
                                               .onSurfaceVariant
                                               .withValues(alpha: 0.5),
-                                          fillColor: colorScheme.surfaceContainer,
+                                          fillColor: colorScheme
+                                              .surfaceContainer,
                                           contentPadding:
                                           const EdgeInsets.symmetric(
                                               vertical: 8, horizontal: 10),
@@ -1282,10 +1367,12 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                       child: Container(
                                         decoration: BoxDecoration(
                                           color: colorScheme.surfaceContainer,
-                                          borderRadius: BorderRadius.circular(22.0),
+                                          borderRadius: BorderRadius.circular(
+                                              22.0),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withOpacity(0.06),
+                                              color: Colors.black.withOpacity(
+                                                  0.06),
                                               blurRadius: 8,
                                               offset: const Offset(0, 2),
                                             ),
@@ -1294,29 +1381,42 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 4, vertical: 2),
-                                            child: GestureDetector(
-                                                                                           key: secIndex == 0 ? _kRecordPart : null,
-                                                                                           behavior: HitTestBehavior.opaque,
-                                                                                           onTap: () => _showPartPicker(secIndex),
-                                                                 child: Padding(
-                                                               padding: const EdgeInsets.symmetric(
-                                                                     vertical: 14, horizontal: 20),
-                                                                 child: Row(
-                                                               children: [
-                                                                 Expanded(
-                                                                   child: Text(
-                                                                     section.selectedPart ?? l10n.selectTrainingPart,
-                                                                         style: TextStyle(
-                                                                       color: (section.selectedPart == null)
-                                                                             ? colorScheme.onSurfaceVariant
-                                                                             : colorScheme.onSurface,
-                                                                         fontSize: 15.0,
-                                                                         fontWeight: FontWeight.bold,
-                                                                       ),
-                                                                     overflow: TextOverflow.ellipsis,
-                                                                   ),
+                                          child: GestureDetector(
+                                            key: secIndex == 0
+                                                ? _kRecordPart
+                                                : null,
+                                            behavior: HitTestBehavior.opaque,
+                                            onTap: () =>
+                                                _showPartPicker(secIndex),
+                                            child: Padding(
+                                              padding: const EdgeInsets
+                                                  .symmetric(
+                                                  vertical: 14, horizontal: 20),
+                                              child: Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      section.selectedPart ??
+                                                          l10n
+                                                              .selectTrainingPart,
+                                                      style: TextStyle(
+                                                        color: (section
+                                                            .selectedPart ==
+                                                            null)
+                                                            ? colorScheme
+                                                            .onSurfaceVariant
+                                                            : colorScheme
+                                                            .onSurface,
+                                                        fontSize: 15.0,
+                                                        fontWeight: FontWeight
+                                                            .bold,
                                                       ),
-                                                  const Icon(Icons.expand_more, size: 22),
+                                                      overflow: TextOverflow
+                                                          .ellipsis,
+                                                    ),
+                                                  ),
+                                                  const Icon(Icons.expand_more,
+                                                      size: 22),
                                                 ],
                                               ),
                                             ),
@@ -1345,7 +1445,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                   menuIndex);
 
                                           final borderColor = isSelected
-                                              ? (isLight ? kBrandBlue : Colors.white)
+                                              ? (isLight ? kBrandBlue : Colors
+                                              .white)
                                               : Colors.transparent;
                                           final glowColor = isSelected
                                               ? (isLight
@@ -1376,10 +1477,12 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                             },
                                             child: GestureDetector(
                                               behavior: HitTestBehavior.opaque,
-                                              onTap: () => _touchCard(
-                                                  secIndex, menuIndex),
+                                              onTap: () =>
+                                                  _touchCard(
+                                                      secIndex, menuIndex),
                                               child: Card(
-                                                key: section.menuKeys[menuIndex],
+                                                key: section
+                                                    .menuKeys[menuIndex],
                                                 color: colorScheme.surface,
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius:
@@ -1406,7 +1509,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                         .menuControllers[
                                                     menuIndex],
                                                     removeMenuCallback: () =>
-                                                        _removeMenuItem(secIndex,
+                                                        _removeMenuItem(
+                                                            secIndex,
                                                             menuIndex),
                                                     setCount: section
                                                         .setInputDataList[
@@ -1448,7 +1552,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                             section
                                                                 .aerobicSuggestFlags
                                                                 .length) {
-                                                          section.aerobicSuggestFlags[
+                                                          section
+                                                              .aerobicSuggestFlags[
                                                           menuIndex] =
                                                           false;
                                                         }
@@ -1560,7 +1665,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 18, vertical: 12),
                 child: Text(
                   label,
                   style: const TextStyle(
@@ -1604,9 +1710,11 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           ? Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          chipAction(l10n.addSet, () => _handleAddSet(l10n), enabled: canAddSet()),
+          chipAction(
+              l10n.addSet, () => _handleAddSet(l10n), enabled: canAddSet()),
           const SizedBox(height: 8),
-          chipAction(l10n.addExercise, _handleAddExercise, enabled: _canAddExercise()),
+          chipAction(
+              l10n.addExercise, _handleAddExercise, enabled: _canAddExercise()),
           const SizedBox(height: 8),
           chipAction(l10n.addPart, _handleAddPart),
         ],
@@ -1625,6 +1733,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
             return;
           }
           if (!context.mounted) return;
+          await _dismissKeyboardSafely(context);
           _saveAllSectionsData();
           Navigator.of(context).pop();
         },
@@ -1635,10 +1744,10 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           appBar: AppBar(
             automaticallyImplyLeading: false,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new),
-              color: colorScheme.onSurface,
-              onPressed: _onBackPressed,   // ← さっき追加したやつ
-              tooltip: '戻る',
+                icon: const Icon(Icons.arrow_back_ios_new),
+                              color: colorScheme.onSurface,
+                              onPressed: () => _onBackPressed(), // async を明示的に呼ぶ
+                        tooltip: '戻る',
             ),
             title: Text(
               formattedDate,
@@ -1753,7 +1862,8 @@ class SectionData {
     List<TextEditingController>? aerobicDistanceCtrls,
     List<TextEditingController>? aerobicDurationCtrls,
     List<bool>? aerobicSuggestFlags,
-  })  : menuIds = menuIds ?? <int>[],
+  })
+      : menuIds = menuIds ?? <int>[],
         nextMenuId = nextMenuId ?? 0,
         aerobicDistanceCtrls =
             aerobicDistanceCtrls ?? <TextEditingController>[],
@@ -1771,11 +1881,12 @@ class SectionData {
           ? [
         List.generate(
           initialSetCount,
-              (_) => SetInputData(
-            weightController: TextEditingController(),
-            repController: TextEditingController(),
-            isSuggestion: true,
-          ),
+              (_) =>
+              SetInputData(
+                weightController: TextEditingController(),
+                repController: TextEditingController(),
+                isSuggestion: true,
+              ),
         )
       ]
           : [],
@@ -1875,7 +1986,9 @@ class _MenuListState extends State<MenuList> {
     _minController.addListener(_updateDurationController);
     _secController.addListener(_updateDurationController);
 
-    _prevNameEmpty = widget.menuController.text.trim().isEmpty;
+    _prevNameEmpty = widget.menuController.text
+        .trim()
+        .isEmpty;
     widget.menuController.addListener(_handleNameChanged);
   }
 
@@ -1890,7 +2003,9 @@ class _MenuListState extends State<MenuList> {
   }
 
   void _handleNameChanged() {
-    final nowEmpty = widget.menuController.text.trim().isEmpty;
+    final nowEmpty = widget.menuController.text
+        .trim()
+        .isEmpty;
     if (nowEmpty != _prevNameEmpty) {
       widget.onNameChanged?.call(_prevNameEmpty, nowEmpty);
       setState(() {}); // フィールド活性/不活性の見た目更新
@@ -1930,7 +2045,9 @@ class _MenuListState extends State<MenuList> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final String currentUnit = SettingsManager.currentUnit;
 
@@ -1938,7 +2055,9 @@ class _MenuListState extends State<MenuList> {
       if (has) widget.onAnyFieldFocused?.call();
     }
 
-    final bool nameFilled = widget.menuController.text.trim().isNotEmpty;
+    final bool nameFilled = widget.menuController.text
+        .trim()
+        .isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),
