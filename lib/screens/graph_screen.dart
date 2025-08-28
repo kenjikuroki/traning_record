@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import '../l10n/app_localizations.dart';
@@ -51,7 +52,9 @@ class _GraphScreenState extends State<GraphScreen> {
   static const String _prefGraphMenu = 'graph_selected_menu';
   static const String _prefGraphMode = 'graph_display_mode';
   static const String _prefAeroMetric = 'graph_aero_metric';
+
   double _plotHeightPx = 1.0; // ★ プロット領域の実高さ（パン感度に使用）
+
   // コントロール群の統一サイズ
   static const double _kControlHeight = 40.0;
   static const double _kControlRadius = 20.0;
@@ -85,8 +88,7 @@ class _GraphScreenState extends State<GraphScreen> {
   double _gestureStartMinY = 0;
   double _gestureStartMaxY = 0;
 
-  // ====== 目標ライン（入力値） ======
-  final TextEditingController _goalController = TextEditingController();
+  // ====== 目標ライン（ピッカーで設定） ======
   double? _goalValue; // 現在のコンテキストでの目標値（単位も現在の軸に合わせる）
 
   // ====== part name mapping ======
@@ -204,7 +206,6 @@ class _GraphScreenState extends State<GraphScreen> {
 
   @override
   void dispose() {
-    _goalController.dispose();
     super.dispose();
   }
 
@@ -348,8 +349,7 @@ class _GraphScreenState extends State<GraphScreen> {
   void _refreshDataForSelection() {
     final l10n = AppLocalizations.of(context)!;
     final isBody =
-        (_selectedPart == l10n.bodyWeight) ||
-            (_selectedMenu == l10n.bodyWeight);
+        (_selectedPart == l10n.bodyWeight) || (_selectedMenu == l10n.bodyWeight);
     final isAero = _isAerobicContext();
 
     if (isBody) {
@@ -391,8 +391,7 @@ class _GraphScreenState extends State<GraphScreen> {
   }
 
   bool _isStrengthContext() {
-    return !_isAerobicContext() && !_isBodyWeightContext() &&
-        _selectedMenu != null;
+    return !_isAerobicContext() && !_isBodyWeightContext() && _selectedMenu != null;
   }
 
   // ====== parse helpers ======
@@ -429,10 +428,7 @@ class _GraphScreenState extends State<GraphScreen> {
 
   // ====== body weight ======
   void _loadBodyWeightData() {
-    final records = widget.recordsBox
-        .toMap()
-        .values
-        .whereType<DailyRecord>();
+    final records = widget.recordsBox.toMap().values.whereType<DailyRecord>();
 
     final Map<DateTime, double> map = {};
     if (_displayMode == DisplayMode.day) {
@@ -479,10 +475,7 @@ class _GraphScreenState extends State<GraphScreen> {
     ];
 
     final Iterable<DailyRecord> records =
-    widget.recordsBox
-        .toMap()
-        .values
-        .whereType<DailyRecord>();
+    widget.recordsBox.toMap().values.whereType<DailyRecord>();
 
     final Map<DateTime, double> map = {};
 
@@ -537,10 +530,7 @@ class _GraphScreenState extends State<GraphScreen> {
   // ====== aerobic ======
   void _loadAerobicData(String menuName) {
     final Iterable<DailyRecord> records =
-    widget.recordsBox
-        .toMap()
-        .values
-        .whereType<DailyRecord>();
+    widget.recordsBox.toMap().values.whereType<DailyRecord>();
 
     final Map<DateTime, double> map = {};
 
@@ -651,8 +641,7 @@ class _GraphScreenState extends State<GraphScreen> {
       return;
     }
 
-    final sortedDates = map.keys.toList()
-      ..sort();
+    final sortedDates = map.keys.toList()..sort();
 
     // full x (day/weekly)
     final List<DateTime> full = [];
@@ -697,13 +686,11 @@ class _GraphScreenState extends State<GraphScreen> {
     if (_isBodyWeightContext()) {
       forcedStep = 0.5; // ★ 体重は0.5kg
     } else if (_isStrengthContext()) {
-      forcedStep =
-      (SettingsManager.currentUnit == 'kg') ? 5.0 : 11.0; // ★ 筋トレは5kg相当
+      forcedStep = (SettingsManager.currentUnit == 'kg') ? 5.0 : 11.0; // ★ 筋トレは5kg相当
     }
 
     final roughRange = max(1e-6, _maxY - _minY);
-    final baseStep = forcedStep ??
-        _niceStepForRange(roughRange, targetTicks: 8);
+    final baseStep = forcedStep ?? _niceStepForRange(roughRange, targetTicks: 8);
 
     double minNice = floorTo(_minY, baseStep);
     double maxNice = ceilTo(_maxY, baseStep);
@@ -719,13 +706,11 @@ class _GraphScreenState extends State<GraphScreen> {
 
     // 目盛り間隔を再決定（固定優先）
     final currentRange = max(1e-6, (_viewMaxY! - _viewMinY!));
-    _yLabelStep =
-        forcedStep ?? _niceStepForRange(currentRange, targetTicks: 10);
+    _yLabelStep = forcedStep ?? _niceStepForRange(currentRange, targetTicks: 10);
   }
 
   // ====== Yレンジの決定 ======
   double get _minYForChart => _viewMinY ?? _baseMinY;
-
   double get _maxYForChart => _viewMaxY ?? _baseMaxY;
 
   void _resetYViewToBase() {
@@ -760,13 +745,12 @@ class _GraphScreenState extends State<GraphScreen> {
     }
   }
 
-  // 縦ドラッグ（パン）— ★ 方向を「逆」に変更
+  // 縦ドラッグ（パン）— ★ 指の移動に等倍で追従（操作感UP）
   void _onVerticalDragUpdate(DragUpdateDetails d) {
     if (_viewMinY == null || _viewMaxY == null) return;
     final range = max(1e-6, _viewMaxY! - _viewMinY!);
-// 画面上の移動(px) / 描画高さ(px) = 表示レンジに対する比率 → その分だけ等倍でパン
     final h = _plotHeightPx <= 0 ? 1.0 : _plotHeightPx;
-    final deltaY = (d.delta.dy / h) * range; // ★ 指の移動に等倍で追従（前回の方向反転は維持）
+    final deltaY = (d.delta.dy / h) * range; // 上下移動(px)をレンジにマップ
     _viewMinY = _viewMinY! + deltaY;
     _viewMaxY = _viewMaxY! + deltaY;
     _clampYView();
@@ -900,24 +884,11 @@ class _GraphScreenState extends State<GraphScreen> {
     if (v is num) {
       parsed = v.toDouble();
     } else if (v is String) {
-      parsed = _parseDurationMin(v) ?? double.tryParse(v);
+      parsed = double.tryParse(v) ?? _parseDurationMin(v);
     }
-    _goalValue = parsed;
-    // 表示値はメトリクスにより小数桁を調整
-    if (_goalValue == null) {
-      _goalController.text = '';
-    } else {
-      if (_isAerobicContext() && _aeroMetric != AerobicMetric.distance) {
-        // time/pace は分単位（小数）で保持。表示はMM:SSに寄せずそのまま数値で。
-        _goalController.text = _goalValue!.toStringAsFixed(2);
-      } else {
-        // weight/distance
-        _goalController.text = (_isBodyWeightContext() || _isStrengthContext())
-            ? _goalValue!.toStringAsFixed(1)
-            : _goalValue!.toStringAsFixed(2);
-      }
-    }
-    setState(() {});
+    setState(() {
+      _goalValue = parsed;
+    });
   }
 
   void _saveGoalForCurrentContext() {
@@ -929,34 +900,178 @@ class _GraphScreenState extends State<GraphScreen> {
     }
   }
 
-  void _applyGoalFromText(String raw) {
-    final s = raw.trim();
-    if (s.isEmpty) {
-      setState(() {
-        _goalValue = null;
-      });
-      _saveGoalForCurrentContext();
+  // ====== 目標ピッカー関連（キーボード無しで設定） ======
+
+  String _displayGoalText(AppLocalizations l10n) {
+    final unit = _unitOverlayText(l10n);
+    if (_goalValue == null) return '目標値';
+    if (_isAerobicContext() && (_aeroMetric == AerobicMetric.time || _aeroMetric == AerobicMetric.pace)) {
+      return '${_formatMinToMMSS(_goalValue!)} ${unit.isEmpty ? '' : unit}';
+    } else {
+      final bool isDistance = _isAerobicContext() && _aeroMetric == AerobicMetric.distance;
+      final bool isKg = SettingsManager.currentUnit == 'kg';
+      final digits = isDistance ? 1 : (isKg ? 1 : 0);
+      return '${_goalValue!.toStringAsFixed(digits)} ${unit.isEmpty ? '' : unit}';
+    }
+  }
+
+  Future<void> _showGoalPicker() async {
+    final l10n = AppLocalizations.of(context)!;
+
+    if (_isAerobicContext() && (_aeroMetric == AerobicMetric.time || _aeroMetric == AerobicMetric.pace)) {
+      await _showTimerPicker();
       return;
     }
-    double? v;
-    if (_isAerobicContext() && (_aeroMetric == AerobicMetric.time ||
-        _aeroMetric == AerobicMetric.pace)) {
-      // "MM:SS" または "分(少数)" を分単位で
-      v = _parseDurationMin(s);
-    } else {
-      v = double.tryParse(s);
+
+    final bool isDistance = _isAerobicContext() && _aeroMetric == AerobicMetric.distance;
+    final bool isKg = SettingsManager.currentUnit == 'kg';
+
+    final double step  = isDistance ? 0.1 : (isKg ? 0.5 : 1.0);
+    final int fraction = isDistance ? 1   : (isKg ? 1   : 0);
+
+    double minVal = max(0.0, (_minYForChart - 20).floorToDouble());
+    double maxVal = (_maxYForChart + 20).ceilToDouble();
+    if (isDistance) {
+      minVal = 0.0;
+      if (maxVal < 100) maxVal = 100;
     }
-    setState(() {
-      _goalValue = v;
-    });
-    _saveGoalForCurrentContext();
+
+    await _showDecimalPicker(
+      min: minVal,
+      max: maxVal,
+      step: step,
+      fractionDigits: fraction,
+      unit: _unitOverlayText(l10n),
+      initial: _goalValue ?? _minYForChart,
+    );
+  }
+
+  Future<void> _showDecimalPicker({
+    required double min,
+    required double max,
+    required double step,
+    required int fractionDigits,
+    required String unit,
+    required double initial,
+  }) async {
+    final count = ((max - min) / step).floor() + 1;
+    int initialIndex = (((initial - min) / step).round()).clamp(0, count - 1);
+    int selected = initialIndex;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      isScrollControlled: false,
+      builder: (ctx) {
+        return SizedBox(
+          height: 300,
+          child: Column(
+            children: [
+              _buildPickerToolbar(
+                title: unit.isEmpty ? '目標' : '目標 ($unit)',
+                onCancel: () => Navigator.of(ctx).pop(),
+                onDone: () {
+                  final double value = min + selected * step;
+                  setState(() {
+                    _goalValue = double.parse(value.toStringAsFixed(fractionDigits));
+                  });
+                  _saveGoalForCurrentContext();
+                  Navigator.of(ctx).pop();
+                },
+              ),
+              Expanded(
+                child: CupertinoPicker(
+                  scrollController: FixedExtentScrollController(initialItem: initialIndex),
+                  itemExtent: 36,
+                  magnification: 1.06,
+                  squeeze: 1.15,
+                  onSelectedItemChanged: (i) => selected = i,
+                  children: List<Widget>.generate(count, (i) {
+                    final v = min + i * step;
+                    final label = v.toStringAsFixed(fractionDigits);
+                    return Center(child: Text(unit.isEmpty ? label : '$label $unit'));
+                  }),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showTimerPicker() async {
+    final l10n = AppLocalizations.of(context)!;
+    final seconds = ((_goalValue ?? 0) * 60).round();
+    Duration selected = Duration(minutes: seconds ~/ 60, seconds: seconds % 60);
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      isScrollControlled: false,
+      builder: (ctx) {
+        return SizedBox(
+          height: 300,
+          child: Column(
+            children: [
+              _buildPickerToolbar(
+                title: _unitOverlayText(l10n), // "min" など
+                onCancel: () => Navigator.of(ctx).pop(),
+                onDone: () {
+                  setState(() {
+                    _goalValue = selected.inSeconds / 60.0; // 内部は分(少数)
+                  });
+                  _saveGoalForCurrentContext();
+                  Navigator.of(ctx).pop();
+                },
+              ),
+              Expanded(
+                child: CupertinoTimerPicker(
+                  mode: CupertinoTimerPickerMode.ms,
+                  initialTimerDuration: selected,
+                  onTimerDurationChanged: (d) => selected = d,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPickerToolbar({
+    required VoidCallback onCancel,
+    required VoidCallback onDone,
+    String title = '',
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: cs.outlineVariant)),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 4),
+          TextButton(onPressed: onCancel, child: const Text('キャンセル')),
+          Expanded(
+            child: Center(
+              child: Text(
+                title,
+                style: TextStyle(fontWeight: FontWeight.w600, color: cs.onSurface),
+              ),
+            ),
+          ),
+          TextButton(onPressed: onDone, child: const Text('完了')),
+          const SizedBox(width: 4),
+        ],
+      ),
+    );
   }
 
   // ====== labels ======
   String _weekSuffix() {
-    final lang = Localizations
-        .localeOf(context)
-        .languageCode;
+    final lang = Localizations.localeOf(context).languageCode;
     return (lang == 'ja') ? '週' : 'wk';
   }
 
@@ -987,10 +1102,7 @@ class _GraphScreenState extends State<GraphScreen> {
       child: Text(
         text,
         style: TextStyle(
-          color: Theme
-              .of(context)
-              .colorScheme
-              .onSurfaceVariant,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
           fontSize: 9, // ★ 少し小さく
         ),
       ),
@@ -1007,8 +1119,7 @@ class _GraphScreenState extends State<GraphScreen> {
     if (isMin || isMax) return const SizedBox.shrink();
 
     final isInteger = (_yLabelStep % 1 == 0);
-    final label = isInteger ? value.round().toString() : value.toStringAsFixed(
-        1);
+    final label = isInteger ? value.round().toString() : value.toStringAsFixed(1);
 
     return SideTitleWidget(
       axisSide: meta.axisSide,
@@ -1016,10 +1127,7 @@ class _GraphScreenState extends State<GraphScreen> {
       child: Text(
         label,
         style: TextStyle(
-          color: Theme
-              .of(context)
-              .colorScheme
-              .onSurfaceVariant,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
           fontSize: 10,
         ),
       ),
@@ -1029,8 +1137,7 @@ class _GraphScreenState extends State<GraphScreen> {
   // unit overlay text
   String _unitOverlayText(AppLocalizations l10n) {
     final bool isBody =
-        (_selectedPart == l10n.bodyWeight) ||
-            (_selectedMenu == l10n.bodyWeight);
+        (_selectedPart == l10n.bodyWeight) || (_selectedMenu == l10n.bodyWeight);
     final bool hasMenu = _selectedMenu != null;
     if (!isBody && !hasMenu) return '';
 
@@ -1066,9 +1173,7 @@ class _GraphScreenState extends State<GraphScreen> {
   // ====== UI ======
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme
-        .of(context)
-        .colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final isAerobic = _isAerobicContext();
     final unitText = _unitOverlayText(l10n);
@@ -1100,7 +1205,7 @@ class _GraphScreenState extends State<GraphScreen> {
         color: colorScheme.onSurface,
         borderColor: colorScheme.outlineVariant,
         selectedBorderColor: colorScheme.primary,
-        splashColor: colorScheme.primary.withValues(alpha: 0.2),
+        splashColor: colorScheme.primary.withOpacity(0.2),
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
@@ -1114,47 +1219,39 @@ class _GraphScreenState extends State<GraphScreen> {
       ),
     );
 
-    // 目標入力（単位はグラフに合わせて表示）
-    final goalSuffix = unitText.isEmpty ? '' : unitText;
-    Widget goalField = SizedBox(
+    // 目標（タップでピッカー）
+    Widget goalButton = SizedBox(
       height: _kControlHeight,
-      child: TextFormField(
-        controller: _goalController,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        textInputAction: TextInputAction.done,
-        onFieldSubmitted: _applyGoalFromText,
-        onEditingComplete: () {
-          _applyGoalFromText(_goalController.text);
-          _closeKeyboard();
-        },
-        decoration: InputDecoration(
-          contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12, vertical: 10),
-          hintText: l10n.enterGoal,
-          hintStyle: TextStyle( // プレースホルダーを薄く表示
-            fontWeight: FontWeight.w400,
+      child: InkWell(
+        onTap: _showGoalPicker,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainer,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colorScheme.outlineVariant),
           ),
-          // l10nに「目標値を入力」などがある想定
-          suffixText: goalSuffix,
-          filled: true,
-          fillColor: colorScheme.surfaceContainer,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.0),
-            borderSide: BorderSide(color: colorScheme.outlineVariant),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          alignment: Alignment.centerLeft,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _displayGoalText(l10n), // 目標値 or 値+単位
+                  style: TextStyle(
+                    color: (_goalValue == null)
+                        ? colorScheme.onSurfaceVariant.withOpacity(0.5) // ★ 薄く
+                        : colorScheme.onSurface,
+                    fontWeight: _goalValue == null ? FontWeight.w400 : FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.expand_more, size: 18, color: colorScheme.onSurfaceVariant),
+            ],
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.0),
-            borderSide: BorderSide(color: colorScheme.outlineVariant),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.0),
-            borderSide: BorderSide(color: colorScheme.primary),
-          ),
-        ),
-        style: TextStyle(
-          color: colorScheme.onSurface,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -1187,358 +1284,335 @@ class _GraphScreenState extends State<GraphScreen> {
         iconTheme: IconThemeData(color: colorScheme.onSurface),
       ),
       resizeToAvoidBottomInset: false,
-        body: MediaQuery.removeViewInsets(
-            context: context,
-            removeBottom: true,
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTap: _closeKeyboard, // 画面タップでキーボードを閉じる（便利）
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-          children: [
-            const AdBanner(screenName: 'graph'),
-            const SizedBox(height: 16.0),
-
-            // ★ コントロール列：日週トグル／目標入力／お気に入り（同サイズ）
-            Row(
+      body: MediaQuery.removeViewInsets(
+        context: context,
+        removeBottom: true,
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: _closeKeyboard, // 念のため
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
               children: [
-                Expanded(child: dayWeekToggle),
-                const SizedBox(width: 8),
-                Expanded(child: goalField),
-                const SizedBox(width: 8),
-                Expanded(child: favButton),
-              ],
-            ),
+                const AdBanner(screenName: 'graph'),
+                const SizedBox(height: 16.0),
 
-            if (isAerobic) ...[
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: ToggleButtons(
-                  isSelected: [
-                    _aeroMetric == AerobicMetric.distance,
-                    _aeroMetric == AerobicMetric.time,
-                    _aeroMetric == AerobicMetric.pace,
-                  ],
-                  onPressed: (i) {
-                    setState(() {
-                      _aeroMetric = AerobicMetric.values[i];
-                      _saveGraphPrefs();
-                      if (_selectedMenu != null) {
-                        _loadAerobicData(_selectedMenu!);
-                      }
-                      _loadGoalForCurrentContext(); // メトリクス切替時
-                    });
-                  },
-                  constraints: const BoxConstraints(minHeight: 34),
-                  borderRadius: BorderRadius.circular(18),
-                  selectedColor: colorScheme.onPrimary,
-                  fillColor: colorScheme.primary,
-                  color: colorScheme.onSurface,
-                  borderColor: colorScheme.outlineVariant,
-                  selectedBorderColor: colorScheme.primary,
+                // ★ コントロール列：日週トグル／目標／お気に入り（同サイズ）
+                Row(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(l10n.distance),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(l10n.time),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(l10n.pace),
-                    ),
+                    Expanded(child: dayWeekToggle),
+                    const SizedBox(width: 8),
+                    Expanded(child: goalButton),
+                    const SizedBox(width: 8),
+                    Expanded(child: favButton),
                   ],
                 ),
-              ),
-            ],
 
-            const SizedBox(height: 12.0),
-
-            Expanded(
-              child: Card(
-                key: _kChart,
-                color: colorScheme.surfaceContainerHighest,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16.0),
-                ),
-                elevation: 4,
-                clipBehavior: Clip.antiAlias,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final totalW = constraints.maxWidth;
-                      final totalH = constraints.maxHeight;
-
-
-                      _plotHeightPx = totalH; // ★ ビルド毎に最新の高さを保持（setState不要）
-                      final yAxisPanelW = _xDates.isEmpty ? 0.0 : 40.0;
-                      final plotAvailW = max(60.0, totalW - yAxisPanelW - 4);
-                      final points = max(1, _xDates.length);
-                      final chartW = max(
-                          plotAvailW, points * _kXStridePx); // ★ 狭く
-
-                      final unitOverlay =
-                      (unitText.isEmpty || _xDates.isEmpty)
-                          ? const SizedBox.shrink()
-                          : Positioned(
-                        left: 2,
-                        top: 6,
-                        child: Text(
-                          unitText,
-                          style: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
+                if (isAerobic) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: ToggleButtons(
+                      isSelected: [
+                        _aeroMetric == AerobicMetric.distance,
+                        _aeroMetric == AerobicMetric.time,
+                        _aeroMetric == AerobicMetric.pace,
+                      ],
+                      onPressed: (i) {
+                        setState(() {
+                          _aeroMetric = AerobicMetric.values[i];
+                          _saveGraphPrefs();
+                          if (_selectedMenu != null) {
+                            _loadAerobicData(_selectedMenu!);
+                          }
+                          _loadGoalForCurrentContext(); // メトリクス切替時
+                        });
+                      },
+                      constraints: const BoxConstraints(minHeight: 34),
+                      borderRadius: BorderRadius.circular(18),
+                      selectedColor: colorScheme.onPrimary,
+                      fillColor: colorScheme.primary,
+                      color: colorScheme.onSurface,
+                      borderColor: colorScheme.outlineVariant,
+                      selectedBorderColor: colorScheme.primary,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(l10n.distance),
                         ),
-                      );
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(l10n.time),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(l10n.pace),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
-                      // Left Y axis (fixed)
-                      final yAxisChart = SizedBox(
-                        width: yAxisPanelW,
-                        height: totalH,
-                        child: _xDates.isEmpty
-                            ? const SizedBox.shrink()
-                            : LineChart(
-                          LineChartData(
-                            minX: 0,
-                            maxX: 1,
-                            minY: _minYForChart,
-                            maxY: _maxYForChart,
-                            clipData: const FlClipData.all(),
-                            lineBarsData: const [],
-                            titlesData: FlTitlesData(
-                              leftTitles: AxisTitles(
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 36,
-                                  interval: _yLabelStep,
-                                  getTitlesWidget: _leftTitle,
-                                ),
-                              ),
-                              bottomTitles: const AxisTitles(
-                                sideTitles: SideTitles(showTitles: false),
-                              ),
-                              topTitles: const AxisTitles(
-                                sideTitles: SideTitles(showTitles: false),
-                              ),
-                              rightTitles: const AxisTitles(
-                                sideTitles: SideTitles(showTitles: false),
+                const SizedBox(height: 12.0),
+
+                Expanded(
+                  child: Card(
+                    key: _kChart,
+                    color: colorScheme.surfaceContainerHighest,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.0),
+                    ),
+                    elevation: 4,
+                    clipBehavior: Clip.antiAlias,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final totalW = constraints.maxWidth;
+                          final totalH = constraints.maxHeight;
+
+                          _plotHeightPx = totalH; // ★ ビルド毎に最新の高さを保持（setState不要）
+                          final yAxisPanelW = _xDates.isEmpty ? 0.0 : 40.0;
+                          final plotAvailW = max(60.0, totalW - yAxisPanelW - 4);
+                          final points = max(1, _xDates.length);
+                          final chartW = max(plotAvailW, points * _kXStridePx); // ★ 狭く
+
+                          final unitOverlay =
+                          (unitText.isEmpty || _xDates.isEmpty)
+                              ? const SizedBox.shrink()
+                              : Positioned(
+                            left: 2,
+                            top: 6,
+                            child: Text(
+                              unitText,
+                              style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                            gridData: FlGridData(
-                              show: true,
-                              horizontalInterval: _yLabelStep,
-                              checkToShowHorizontalLine: (v) => _isLabelTick(v),
-                              drawVerticalLine: false,
-                              getDrawingHorizontalLine: (v) =>
-                                  FlLine(
+                          );
+
+                          // Left Y axis (fixed)
+                          final yAxisChart = SizedBox(
+                            width: yAxisPanelW,
+                            height: totalH,
+                            child: _xDates.isEmpty
+                                ? const SizedBox.shrink()
+                                : LineChart(
+                              LineChartData(
+                                minX: 0,
+                                maxX: 1,
+                                minY: _minYForChart,
+                                maxY: _maxYForChart,
+                                clipData: const FlClipData.all(),
+                                lineBarsData: const [],
+                                titlesData: FlTitlesData(
+                                  leftTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      reservedSize: 36,
+                                      interval: _yLabelStep,
+                                      getTitlesWidget: _leftTitle,
+                                    ),
+                                  ),
+                                  bottomTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                  topTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                  rightTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                ),
+                                gridData: FlGridData(
+                                  show: true,
+                                  horizontalInterval: _yLabelStep,
+                                  checkToShowHorizontalLine: (v) => _isLabelTick(v),
+                                  drawVerticalLine: false,
+                                  getDrawingHorizontalLine: (v) => FlLine(
                                     color: colorScheme.outlineVariant,
                                     strokeWidth: 0.5,
                                   ),
-                            ),
-                            borderData: FlBorderData(
-                              show: true,
-                              border: Border(
-                                left: BorderSide(
-                                    color: colorScheme.outlineVariant),
-                                bottom: BorderSide(
-                                    color: colorScheme.outlineVariant),
-                              ),
-                            ),
-                            // 左パネルには目標線は描かない
-                          ),
-                        ),
-                      );
-
-                      // Right (scrollable plot)
-                      final scrollChart = Expanded(
-                        child: _xDates.isEmpty
-                            ? Center(
-                          child: Text(
-                            AppLocalizations.of(context)!.noGraphData,
-                            style: TextStyle(
-                              color: colorScheme.onSurfaceVariant,
-                              fontSize: 16,
-                            ),
-                          ),
-                        )
-                            : GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onVerticalDragUpdate: _onVerticalDragUpdate,
-                          onScaleStart: _onScaleStart,
-                          onScaleUpdate: _onScaleUpdate,
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            physics: const BouncingScrollPhysics(),
-                            child: SizedBox(
-                              width: chartW,
-                              height: totalH,
-                              child: LineChart(
-                                LineChartData(
-                                  minX: 0,
-                                  maxX: (_xDates.length - 1).toDouble(),
-                                  minY: _minYForChart,
-                                  maxY: _maxYForChart,
-                                  clipData: const FlClipData.all(),
-                                  lineBarsData: [
-                                    LineChartBarData(
-                                      spots: _spots,
-                                      isCurved: false,
-                                      color: colorScheme.primary,
-                                      barWidth: 3,
-                                      dotData: const FlDotData(show: true),
-                                      belowBarData: BarAreaData(show: false),
-                                    ),
-                                  ],
-                                  titlesData: FlTitlesData(
-                                    leftTitles: const AxisTitles(
-                                      sideTitles: SideTitles(showTitles: false),
-                                    ),
-                                    bottomTitles: AxisTitles(
-                                      sideTitles: SideTitles(
-                                        showTitles: true,
-                                        interval: 1,
-                                        reservedSize: 20,
-                                        getTitlesWidget: _bottomTitle,
-                                      ),
-                                    ),
-                                    topTitles: const AxisTitles(
-                                      sideTitles: SideTitles(showTitles: false),
-                                    ),
-                                    rightTitles: const AxisTitles(
-                                      sideTitles: SideTitles(showTitles: false),
-                                    ),
-                                  ),
-                                  gridData: FlGridData(
-                                    show: true,
-                                    horizontalInterval: _yLabelStep,
-                                    checkToShowHorizontalLine: (v) =>
-                                        _isLabelTick(v),
-                                    drawVerticalLine: true,
-                                    verticalInterval: 1,
-                                    checkToShowVerticalLine: (v) =>
-                                    (v - v.round()).abs() < 1e-6,
-                                    getDrawingHorizontalLine: (v) =>
-                                        FlLine(
-                                          color: colorScheme.outlineVariant,
-                                          strokeWidth: 0.5,
-                                        ),
-                                    getDrawingVerticalLine: (v) =>
-                                        FlLine(
-                                          color: colorScheme.outlineVariant,
-                                          strokeWidth: 0.5,
-                                        ),
-                                  ),
-                                  borderData: FlBorderData(
-                                    show: true,
-                                    border: Border(
-                                      bottom: BorderSide(
-                                          color: colorScheme.outlineVariant),
-                                      right: BorderSide(
-                                          color: colorScheme.outlineVariant),
-                                    ),
-                                  ),
-                                  lineTouchData: LineTouchData(
-                                    touchTooltipData: LineTouchTooltipData(
-                                      getTooltipItems: (items) {
-                                        final loc = Localizations.localeOf(
-                                            context).toString();
-                                        return items.map((s) {
-                                          final i = s.x.toInt();
-                                          final d = (i >= 0 &&
-                                              i < _xDates.length)
-                                              ? _xDates[i]
-                                              : null;
-                                          final dateStr = (_displayMode ==
-                                              DisplayMode.day)
-                                              ? (d != null ? DateFormat(
-                                              'M/d', loc).format(d) : '')
-                                              : (d != null
-                                              ? _formatWeekLabel(d)
-                                              : '');
-                                          final valStr = _formatTooltipValue(
-                                              s.y, l10n);
-                                          return LineTooltipItem(
-                                            '$dateStr\n$valStr',
-                                            TextStyle(
-                                              color: colorScheme
-                                                  .onPrimaryContainer,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          );
-                                        }).toList();
-                                      },
-                                    ),
-                                  ),
-                                  // ★ 目標ライン
-                                  extraLinesData: ExtraLinesData(
-                                    horizontalLines: (_goalValue != null)
-                                        ? [
-                                      HorizontalLine(
-                                        y: _goalValue!,
-                                        color: colorScheme.tertiary,
-                                        strokeWidth: 2,
-                                        dashArray: [6, 4],
-                                      ),
-                                    ]
-                                        : const [],
+                                ),
+                                borderData: FlBorderData(
+                                  show: true,
+                                  border: Border(
+                                    left: BorderSide(color: colorScheme.outlineVariant),
+                                    bottom: BorderSide(color: colorScheme.outlineVariant),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                      );
+                          );
 
-                      return Stack(
-                        children: [
-                          SizedBox(
-                            width: totalW,
-                            height: totalH,
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                yAxisChart,
-                                const SizedBox(width: 2),
-                                scrollChart,
-                              ],
+                          // Right (scrollable plot)
+                          final scrollChart = Expanded(
+                            child: _xDates.isEmpty
+                                ? Center(
+                              child: Text(
+                                AppLocalizations.of(context)!.noGraphData,
+                                style: TextStyle(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            )
+                                : GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onVerticalDragUpdate: _onVerticalDragUpdate,
+                              onScaleStart: _onScaleStart,
+                              onScaleUpdate: _onScaleUpdate,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                physics: const BouncingScrollPhysics(),
+                                child: SizedBox(
+                                  width: chartW,
+                                  height: totalH,
+                                  child: LineChart(
+                                    LineChartData(
+                                      minX: 0,
+                                      maxX: (_xDates.length - 1).toDouble(),
+                                      minY: _minYForChart,
+                                      maxY: _maxYForChart,
+                                      clipData: const FlClipData.all(),
+                                      lineBarsData: [
+                                        LineChartBarData(
+                                          spots: _spots,
+                                          isCurved: false,
+                                          color: colorScheme.primary,
+                                          barWidth: 3,
+                                          dotData: const FlDotData(show: true),
+                                          belowBarData: BarAreaData(show: false),
+                                        ),
+                                      ],
+                                      titlesData: FlTitlesData(
+                                        leftTitles: const AxisTitles(
+                                          sideTitles: SideTitles(showTitles: false),
+                                        ),
+                                        bottomTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            interval: 1,
+                                            reservedSize: 20,
+                                            getTitlesWidget: _bottomTitle,
+                                          ),
+                                        ),
+                                        topTitles: const AxisTitles(
+                                          sideTitles: SideTitles(showTitles: false),
+                                        ),
+                                        rightTitles: const AxisTitles(
+                                          sideTitles: SideTitles(showTitles: false),
+                                        ),
+                                      ),
+                                      gridData: FlGridData(
+                                        show: true,
+                                        horizontalInterval: _yLabelStep,
+                                        checkToShowHorizontalLine: (v) => _isLabelTick(v),
+                                        drawVerticalLine: true,
+                                        verticalInterval: 1,
+                                        checkToShowVerticalLine: (v) => (v - v.round()).abs() < 1e-6,
+                                        getDrawingHorizontalLine: (v) => FlLine(
+                                          color: colorScheme.outlineVariant,
+                                          strokeWidth: 0.5,
+                                        ),
+                                        getDrawingVerticalLine: (v) => FlLine(
+                                          color: colorScheme.outlineVariant,
+                                          strokeWidth: 0.5,
+                                        ),
+                                      ),
+                                      borderData: FlBorderData(
+                                        show: true,
+                                        border: Border(
+                                          bottom: BorderSide(color: colorScheme.outlineVariant),
+                                          right: BorderSide(color: colorScheme.outlineVariant),
+                                        ),
+                                      ),
+                                      lineTouchData: LineTouchData(
+                                        touchTooltipData: LineTouchTooltipData(
+                                          getTooltipItems: (items) {
+                                            final loc = Localizations.localeOf(context).toString();
+                                            return items.map((s) {
+                                              final i = s.x.toInt();
+                                              final d = (i >= 0 && i < _xDates.length) ? _xDates[i] : null;
+                                              final dateStr = (_displayMode == DisplayMode.day)
+                                                  ? (d != null ? DateFormat('M/d', loc).format(d) : '')
+                                                  : (d != null ? _formatWeekLabel(d) : '');
+                                              final valStr = _formatTooltipValue(s.y, l10n);
+                                              return LineTooltipItem(
+                                                '$dateStr\n$valStr',
+                                                TextStyle(
+                                                  color: colorScheme.onPrimaryContainer,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              );
+                                            }).toList();
+                                          },
+                                        ),
+                                      ),
+                                      // ★ 目標ライン
+                                      extraLinesData: ExtraLinesData(
+                                        horizontalLines: (_goalValue != null)
+                                            ? [
+                                          HorizontalLine(
+                                            y: _goalValue!,
+                                            color: colorScheme.tertiary,
+                                            strokeWidth: 2,
+                                            // dashArray: [6, 4], // fl_chart の版によっては使えます
+                                          ),
+                                        ]
+                                            : const [],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
-                          unitOverlay,
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12.0),
-            Column(
-              children: [
-                DropdownButtonFormField<String>(
-                  key: _kPart,
-                  decoration: InputDecoration(
-                    hintText: l10n.selectTrainingPart,
-                    hintStyle: TextStyle(
-                        color: colorScheme.onSurfaceVariant, fontSize: 14.0),
-                    filled: true,
-                    fillColor: colorScheme.surfaceContainer,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(25.0),
-                      borderSide: BorderSide.none,
+                          );
+
+                          return Stack(
+                            children: [
+                              SizedBox(
+                                width: totalW,
+                                height: totalH,
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    yAxisChart,
+                                    const SizedBox(width: 2),
+                                    scrollChart,
+                                  ],
+                                ),
+                              ),
+                              unitOverlay,
+                            ],
+                          );
+                        },
+                      ),
                     ),
                   ),
-                  initialValue: _selectedPart,
-                  items: _filteredBodyParts
-                      .map(
-                        (p) =>
-                        DropdownMenuItem(
+                ),
+                const SizedBox(height: 12.0),
+                Column(
+                  children: [
+                    DropdownButtonFormField<String>(
+                      key: _kPart,
+                      decoration: InputDecoration(
+                        hintText: l10n.selectTrainingPart,
+                        hintStyle: TextStyle(
+                            color: colorScheme.onSurfaceVariant, fontSize: 14.0),
+                        filled: true,
+                        fillColor: colorScheme.surfaceContainer,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25.0),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      initialValue: _selectedPart,
+                      items: _filteredBodyParts
+                          .map(
+                            (p) => DropdownMenuItem(
                           value: p,
                           child: Text(
                             p,
@@ -1549,45 +1623,44 @@ class _GraphScreenState extends State<GraphScreen> {
                             ),
                           ),
                         ),
-                  )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _selectedPart = value;
-                        _saveGraphPrefs();
-                        _loadMenusForPart(value);
-                        _checkIfFavorite();
-                      });
-                    }
-                  },
-                  dropdownColor: colorScheme.surfaceContainer,
-                  style: TextStyle(
-                    color: colorScheme.onSurface,
-                    fontSize: 14.0,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  borderRadius: BorderRadius.circular(15.0),
-                ),
-                const SizedBox(height: 8.0),
-                if (_selectedPart != l10n.bodyWeight)
-                  DropdownButtonFormField<String>(
-                    decoration: InputDecoration(
-                      hintText: l10n.selectExercise,
-                      hintStyle: TextStyle(
-                          color: colorScheme.onSurfaceVariant, fontSize: 14.0),
-                      filled: true,
-                      fillColor: colorScheme.surfaceContainer,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25.0),
-                        borderSide: BorderSide.none,
+                      )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _selectedPart = value;
+                            _saveGraphPrefs();
+                            _loadMenusForPart(value);
+                            _checkIfFavorite();
+                          });
+                        }
+                      },
+                      dropdownColor: colorScheme.surfaceContainer,
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold,
                       ),
+                      borderRadius: BorderRadius.circular(15.0),
                     ),
-                    initialValue: _selectedMenu,
-                    items: _menusForPart
-                        .map(
-                          (menu) =>
-                          DropdownMenuItem(
+                    const SizedBox(height: 8.0),
+                    if (_selectedPart != l10n.bodyWeight)
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          hintText: l10n.selectExercise,
+                          hintStyle: TextStyle(
+                              color: colorScheme.onSurfaceVariant, fontSize: 14.0),
+                          filled: true,
+                          fillColor: colorScheme.surfaceContainer,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(25.0),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        initialValue: _selectedMenu,
+                        items: _menusForPart
+                            .map(
+                              (menu) => DropdownMenuItem(
                             value: menu,
                             child: Text(
                               menu,
@@ -1598,38 +1671,40 @@ class _GraphScreenState extends State<GraphScreen> {
                               ),
                             ),
                           ),
-                    )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          _selectedMenu = value;
-                          _saveGraphPrefs();
-                          _refreshDataForSelection();
-                          _checkIfFavorite();
-                        });
-                      } else {
-                        setState(() {
-                          _spots = [];
-                          _xDates = [];
-                          _minY = 0;
-                          _maxY = 0;
-                          _checkIfFavorite();
-                        });
-                      }
-                    },
-                    dropdownColor: colorScheme.surfaceContainer,
-                    style: TextStyle(
-                      color: colorScheme.onSurface,
-                      fontSize: 14.0,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    borderRadius: BorderRadius.circular(15.0),
-                  ),
+                        )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              _selectedMenu = value;
+                              _saveGraphPrefs();
+                              _refreshDataForSelection();
+                              _checkIfFavorite();
+                            });
+                          } else {
+                            setState(() {
+                              _spots = [];
+                              _xDates = [];
+                              _minY = 0;
+                              _maxY = 0;
+                              _checkIfFavorite();
+                            });
+                          }
+                        },
+                        dropdownColor: colorScheme.surfaceContainer,
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        borderRadius: BorderRadius.circular(15.0),
+                      ),
+                  ],
+                ),
               ],
             ),
-          ],
-        ),),),
+          ),
+        ),
       ),
     );
   }
@@ -1656,9 +1731,7 @@ class FavoritePillButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme
-        .of(context)
-        .colorScheme;
+    final cs = Theme.of(context).colorScheme;
     final text = isFavorite ? '$label★' : '$label✩';
 
     return SizedBox(
