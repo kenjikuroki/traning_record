@@ -27,7 +27,7 @@ class GraphScreen extends StatefulWidget {
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
 
-  // ★ 追加: このタブがアクティブか（親から渡す）
+  // ★ 親から渡される「このタブが現在アクティブか」
   final bool isActive;
 
   const GraphScreen({
@@ -36,7 +36,7 @@ class GraphScreen extends StatefulWidget {
     required this.lastUsedMenusBox,
     required this.settingsBox,
     required this.setCountBox,
-    required this.isActive, // ★ 追加
+    required this.isActive,
   });
 
   @override
@@ -45,23 +45,32 @@ class GraphScreen extends StatefulWidget {
 
 class _GraphScreenState extends State<GraphScreen> {
   // ★ 吹き出しのアンカー
-  final GlobalKey _kFav = GlobalKey(); // お気に入りピル／★ボタン
+  final GlobalKey _kFav = GlobalKey();   // お気に入りピル／★ボタン
   final GlobalKey _kChart = GlobalKey(); // グラフの親Card
-  final GlobalKey _kPart = GlobalKey(); // 部位セレクタのDropdown
-  static const String _prefGraphPart = 'graph_selected_part';
-  static const String _prefGraphMenu = 'graph_selected_menu';
-  static const String _prefGraphMode = 'graph_display_mode';
-  static const String _prefAeroMetric = 'graph_aero_metric';
+  final GlobalKey _kPart = GlobalKey();  // 部位セレクタ（ヘルプのため残すだけ）
 
-  double _plotHeightPx = 1.0; // ★ プロット領域の実高さ（パン感度に使用）
+  // 設定キー
+  static const String _prefGraphPart   = 'graph_selected_part';
+  static const String _prefGraphMenu   = 'graph_selected_menu';
+  static const String _prefGraphMode   = 'graph_display_mode';
+  static const String _prefAeroMetric  = 'graph_aero_metric';
 
   // コントロール群の統一サイズ
   static const double _kControlHeight = 40.0;
   static const double _kControlRadius = 20.0;
+  static const double _kPickerHeight = 48.0;
 
-  // X 方向の1データ当たりの横幅（目盛り幅を狭く：既存70→48）
+  // X 方向の1データ当たりの横幅（目盛り幅を狭く：70→48）
   static const double _kXStridePx = 48.0;
 
+  // X軸の「右側に余白スクロール」分（データが無い日付・週をいくつ分だけ足すか）
+  static const int _kPadTailDays  = 7; // 日表示のときに7日分右に余白
+  static const int _kPadTailWeeks = 4; // 週表示のときに4週分右に余白
+
+  // プロット領域の実高さ（縦パン感度に使用）
+  double _plotHeightPx = 1.0;
+
+  // 選択状態
   List<String> _filteredBodyParts = [];
   String? _selectedPart;
   List<String> _menusForPart = [];
@@ -80,16 +89,22 @@ class _GraphScreenState extends State<GraphScreen> {
   double _yLabelStep = 5;
 
   // ====== Yパン／ズーム用の状態 ======
+  // データから決めた初期範囲（20%余白込み）
   double _baseMinY = 0;
   double _baseMaxY = 0;
+
+  // 現在表示中の範囲（null のときはベースを使う）
   double? _viewMinY;
   double? _viewMaxY;
+
+  // スケール操作用
   double _gestureStartScale = 1.0;
   double _gestureStartMinY = 0;
   double _gestureStartMaxY = 0;
 
-  // ====== 目標ライン（ピッカーで設定） ======
-  double? _goalValue; // 現在のコンテキストでの目標値（単位も現在の軸に合わせる）
+  // ====== 目標ライン（入力値） ======
+  final TextEditingController _goalController = TextEditingController();
+  double? _goalValue; // 現在の文脈における目標値（kg/km/分/分毎km など）
 
   // ====== part name mapping ======
   String _getOriginalPartName(BuildContext context, String translatedPart) {
@@ -145,8 +160,10 @@ class _GraphScreenState extends State<GraphScreen> {
   bool _isActuallyVisible() {
     if (!mounted) return false;
     if (widget.isActive == false) return false;
+
     final ticker = context.findAncestorWidgetOfExactType<TickerMode>();
     if (ticker != null && ticker.enabled == false) return false;
+
     final ro = context.findRenderObject();
     if (ro is RenderBox) {
       if (!ro.attached) return false;
@@ -158,12 +175,15 @@ class _GraphScreenState extends State<GraphScreen> {
 
   Future<void> _tryShowGraphCoachIfVisible() async {
     if (!mounted || _graphCoachDone) return;
+
     final seen = (widget.settingsBox.get('hint_seen_graph') as bool?) ?? false;
     if (seen) {
       _graphCoachDone = true;
       return;
     }
+
     if (!_isActuallyVisible()) return;
+
     final anchorsReady = [
       _kPart.currentContext,
       _kChart.currentContext,
@@ -172,6 +192,7 @@ class _GraphScreenState extends State<GraphScreen> {
     if (!anchorsReady) return;
 
     final l10n = AppLocalizations.of(context)!;
+
     await CoachBubbleController.showSequence(
       context: context,
       anchors: [_kPart, _kChart, _kFav],
@@ -206,6 +227,7 @@ class _GraphScreenState extends State<GraphScreen> {
 
   @override
   void dispose() {
+    _goalController.dispose();
     super.dispose();
   }
 
@@ -251,18 +273,17 @@ class _GraphScreenState extends State<GraphScreen> {
 
     _filteredBodyParts = (savedBodyPartsSettings == null ||
         savedBodyPartsSettings.isEmpty)
-        ? allBodyParts
-        .map<String>((p) => _translatePartToLocale(context, p))
-        .toList()
+        ? allBodyParts.map<String>((p) => _translatePartToLocale(context, p)).toList()
         : allBodyParts
         .where((p) => savedBodyPartsSettings![p] == true)
         .map<String>((p) => _translatePartToLocale(context, p))
         .toList();
 
+    // 先頭に「お気に入り」「体重」を追加
     _filteredBodyParts = [
       l10n.favorites,
       l10n.bodyWeight,
-      ..._filteredBodyParts
+      ..._filteredBodyParts,
     ];
 
     final String? savedPart = widget.settingsBox.get(_prefGraphPart) as String?;
@@ -291,7 +312,7 @@ class _GraphScreenState extends State<GraphScreen> {
       _loadBodyWeightData();
       _checkIfFavorite();
       _saveGraphPrefs();
-      _loadGoalForCurrentContext(); // ★ 目標値
+      _loadGoalForCurrentContext();
       setState(() {});
       return;
     }
@@ -361,7 +382,7 @@ class _GraphScreenState extends State<GraphScreen> {
     }
     _checkIfFavorite();
     _saveGraphPrefs();
-    _loadGoalForCurrentContext(); // ★ 目標値
+    _loadGoalForCurrentContext();
   }
 
   bool _menuIsAerobic(String? menuName) {
@@ -409,7 +430,6 @@ class _GraphScreenState extends State<GraphScreen> {
     if (raw == null) return null;
     final s = raw.trim();
     if (s.isEmpty) return null;
-    // "MM:SS" も許容
     final parts = s.split(':');
     if (parts.length == 2) {
       final mm = int.tryParse(parts[0]) ?? 0;
@@ -542,7 +562,7 @@ class _GraphScreenState extends State<GraphScreen> {
         if (m == null) continue;
 
         final km = _parseDistanceKm(m.distance) ?? 0;
-        final min = _parseDurationMin(m.duration) ?? 0;
+        final minVal = _parseDurationMin(m.duration) ?? 0;
 
         double? value;
         switch (_aeroMetric) {
@@ -550,10 +570,10 @@ class _GraphScreenState extends State<GraphScreen> {
             value = km > 0 ? km : null;
             break;
           case AerobicMetric.time:
-            value = min > 0 ? min : null;
+            value = minVal > 0 ? minVal : null;
             break;
           case AerobicMetric.pace:
-            if (km > 0 && min > 0) value = min / km;
+            if (km > 0 && minVal > 0) value = minVal / km;
             break;
         }
         if (value != null) {
@@ -570,7 +590,7 @@ class _GraphScreenState extends State<GraphScreen> {
         if (m == null) continue;
 
         final km = _parseDistanceKm(m.distance) ?? 0;
-        final min = _parseDurationMin(m.duration) ?? 0;
+        final minVal = _parseDurationMin(m.duration) ?? 0;
 
         final day = DateTime(r.date.year, r.date.month, r.date.day);
         final weekStart = day.subtract(Duration(days: day.weekday - 1));
@@ -581,11 +601,11 @@ class _GraphScreenState extends State<GraphScreen> {
             weeklyList.putIfAbsent(key, () => []).add(km);
             break;
           case AerobicMetric.time:
-            weeklyList.putIfAbsent(key, () => []).add(min);
+            weeklyList.putIfAbsent(key, () => []).add(minVal);
             break;
           case AerobicMetric.pace:
-            if (km > 0 && min > 0) {
-              weeklyList.putIfAbsent(key, () => []).add(min / km);
+            if (km > 0 && minVal > 0) {
+              weeklyList.putIfAbsent(key, () => []).add(minVal / km);
             }
             break;
         }
@@ -677,17 +697,17 @@ class _GraphScreenState extends State<GraphScreen> {
       _maxY = (_spots.length == 1) ? y : max(_maxY, y);
     }
 
-    // きれいな境界に合わせて丸め
-    double floorTo(double v, double step) => (v / step).floorToDouble() * step;
-    double ceilTo(double v, double step) => (v / step).ceilToDouble() * step;
-
     // グラフ種別ごとの固定ステップ
     double? forcedStep;
     if (_isBodyWeightContext()) {
-      forcedStep = 0.5; // ★ 体重は0.5kg
+      forcedStep = 0.5; // 体重は0.5kg
     } else if (_isStrengthContext()) {
-      forcedStep = (SettingsManager.currentUnit == 'kg') ? 5.0 : 11.0; // ★ 筋トレは5kg相当
+      forcedStep = (SettingsManager.currentUnit == 'kg') ? 5.0 : 11.0; // 筋トレは5kg相当
     }
+
+    // きれいな境界に合わせて丸め
+    double floorTo(double v, double step) => (v / step).floorToDouble() * step;
+    double ceilTo(double v, double step) => (v / step).ceilToDouble() * step;
 
     final roughRange = max(1e-6, _maxY - _minY);
     final baseStep = forcedStep ?? _niceStepForRange(roughRange, targetTicks: 8);
@@ -707,6 +727,19 @@ class _GraphScreenState extends State<GraphScreen> {
     // 目盛り間隔を再決定（固定優先）
     final currentRange = max(1e-6, (_viewMaxY! - _viewMinY!));
     _yLabelStep = forcedStep ?? _niceStepForRange(currentRange, targetTicks: 10);
+  }
+
+  // ====== X軸のパディング分を足した「描画用」日付配列 ======
+  List<DateTime> get _axisDates {
+    if (_xDates.isEmpty) return [];
+    final List<DateTime> list = List<DateTime>.from(_xDates);
+    final pad = (_displayMode == DisplayMode.day) ? _kPadTailDays : _kPadTailWeeks;
+    DateTime last = list.last;
+    for (int i = 1; i <= pad; i++) {
+      last = last.add(Duration(days: _displayMode == DisplayMode.day ? 1 : 7));
+      list.add(last);
+    }
+    return list;
   }
 
   // ====== Yレンジの決定 ======
@@ -745,12 +778,12 @@ class _GraphScreenState extends State<GraphScreen> {
     }
   }
 
-  // 縦ドラッグ（パン）— ★ 指の移動に等倍で追従（操作感UP）
+  // 縦ドラッグ（パン）— ★ 指の移動に等倍で追従、方向は「逆」（上へドラッグで値も上へ）
   void _onVerticalDragUpdate(DragUpdateDetails d) {
     if (_viewMinY == null || _viewMaxY == null) return;
     final range = max(1e-6, _viewMaxY! - _viewMinY!);
     final h = _plotHeightPx <= 0 ? 1.0 : _plotHeightPx;
-    final deltaY = (d.delta.dy / h) * range; // 上下移動(px)をレンジにマップ
+    final deltaY = (d.delta.dy / h) * range; // 指にピッタリ追従
     _viewMinY = _viewMinY! + deltaY;
     _viewMaxY = _viewMaxY! + deltaY;
     _clampYView();
@@ -765,7 +798,7 @@ class _GraphScreenState extends State<GraphScreen> {
   }
 
   void _onScaleUpdate(ScaleUpdateDetails d) {
-    if (_xDates.isEmpty) return;
+    if (_axisDates.isEmpty) return;
     if (d.pointerCount < 2) return;
 
     final scale = d.verticalScale;
@@ -884,11 +917,17 @@ class _GraphScreenState extends State<GraphScreen> {
     if (v is num) {
       parsed = v.toDouble();
     } else if (v is String) {
-      parsed = double.tryParse(v) ?? _parseDurationMin(v);
+      parsed = _parseDurationMin(v) ?? double.tryParse(v);
     }
-    setState(() {
-      _goalValue = parsed;
-    });
+    _goalValue = parsed;
+
+    if (_goalValue == null) {
+      _goalController.text = '';
+    } else {
+      // 表示用文字列（ボタンラベルに利用）
+      _goalController.text = _goalDisplayString();
+    }
+    setState(() {});
   }
 
   void _saveGoalForCurrentContext() {
@@ -900,173 +939,389 @@ class _GraphScreenState extends State<GraphScreen> {
     }
   }
 
-  // ====== 目標ピッカー関連（キーボード無しで設定） ======
-
-  String _displayGoalText(AppLocalizations l10n) {
-    final unit = _unitOverlayText(l10n);
-    if (_goalValue == null) return '目標値';
-    if (_isAerobicContext() && (_aeroMetric == AerobicMetric.time || _aeroMetric == AerobicMetric.pace)) {
-      return '${_formatMinToMMSS(_goalValue!)} ${unit.isEmpty ? '' : unit}';
-    } else {
-      final bool isDistance = _isAerobicContext() && _aeroMetric == AerobicMetric.distance;
-      final bool isKg = SettingsManager.currentUnit == 'kg';
-      final digits = isDistance ? 1 : (isKg ? 1 : 0);
-      return '${_goalValue!.toStringAsFixed(digits)} ${unit.isEmpty ? '' : unit}';
+  void _applyGoalFromText(String raw) {
+    final s = raw.trim();
+    if (s.isEmpty) {
+      setState(() {
+        _goalValue = null;
+      });
+      _saveGoalForCurrentContext();
+      return;
     }
+    double? v;
+    if (_isAerobicContext() &&
+        (_aeroMetric == AerobicMetric.time || _aeroMetric == AerobicMetric.pace)) {
+      v = _parseDurationMin(s); // "MM:SS" or 小数分
+    } else {
+      v = double.tryParse(s);
+    }
+    setState(() {
+      _goalValue = v;
+      _goalController.text = _goalDisplayString();
+    });
+    _saveGoalForCurrentContext();
   }
 
-  Future<void> _showGoalPicker() async {
+  // ====== GOAL ピッカー（最小限） ======
+
+  // 共通のホイールピッカー（文字列配列）
+  Future<int?> _showWheelPicker({
+    required String title,
+    required List<String> items,
+    required int initialIndex,
+  }) async {
+    if (items.isEmpty) return null;
+    int current = initialIndex.clamp(0, items.length - 1);
+    return showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: false,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 300,
+            child: Column(
+              children: [
+                // ヘッダ（キャンセル／決定）
+                SizedBox(
+                  height: 48,
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 8),
+                      Text(title,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          )),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(null),
+                        child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(current),
+                        child: Text(MaterialLocalizations.of(context).okButtonLabel),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: CupertinoPicker(
+                    scrollController:
+                    FixedExtentScrollController(initialItem: current),
+                    itemExtent: 36,
+                    onSelectedItemChanged: (i) => current = i,
+                    children: items
+                        .map((e) => Center(
+                      child: Text(
+                        e,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ))
+                        .toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // 数値のホイール（min/max/stepで生成）
+  Future<double?> _showNumberPicker({
+    required String title,
+    required double minValue,
+    required double maxValue,
+    required double step,
+    required int fractionDigits,
+    double? current,
+    String suffix = '',
+  }) async {
+    double floorToStep(double v) => (v / step).floorToDouble() * step;
+    double ceilToStep(double v) => (v / step).ceilToDouble() * step;
+
+    double lo = minValue;
+    double hi = maxValue;
+    if (lo > hi) {
+      final t = lo; lo = hi; hi = t;
+    }
+
+    lo = floorToStep(lo);
+    hi = ceilToStep(hi);
+
+    if (current != null) {
+      lo = min(lo, floorToStep(current));
+      hi = max(hi, ceilToStep(current));
+    }
+
+    // 要素数が多すぎる場合の簡易間引き（最大2000）
+    final maxItems = 2000;
+    int itemsCount = ((hi - lo) / step).round() + 1;
+    if (itemsCount > maxItems) {
+      final k = (itemsCount / maxItems).ceil();
+      step *= k;
+      lo = floorToStep(minValue);
+      hi = ceilToStep(maxValue);
+      itemsCount = ((hi - lo) / step).round() + 1;
+    }
+
+    final List<double> values = List.generate(itemsCount, (i) => lo + step * i);
+    int initialIndex;
+    if (current == null) {
+      initialIndex = (values.length / 2).floor();
+    } else {
+      initialIndex = values.indexWhere((v) => (v - current!).abs() <= step / 2);
+      if (initialIndex < 0) {
+        initialIndex = values.indexWhere((v) => v > current!);
+        if (initialIndex < 0) initialIndex = values.length - 1;
+      }
+    }
+
+    final items = values
+        .map((v) => '${v.toStringAsFixed(fractionDigits)}${suffix.isNotEmpty ? ' $suffix' : ''}')
+        .toList();
+
+    final picked = await _showWheelPicker(
+      title: title,
+      items: items,
+      initialIndex: initialIndex,
+    );
+    if (picked == null) return null;
+    return double.tryParse(values[picked].toStringAsFixed(fractionDigits));
+  }
+
+  // 分・秒ホイール（時間/ペース用）
+  Future<Duration?> _showTimeWheelPicker({
+    required String title,
+    Duration? initial,
+    String suffix = '',
+    int maxMinutes = 600,
+  }) async {
+    final init = initial ?? const Duration(minutes: 30);
+    int selMin = init.inMinutes.clamp(0, maxMinutes);
+    int selSec = ((init.inSeconds) % 60).clamp(0, 59);
+
+    return showModalBottomSheet<Duration>(
+      context: context,
+      isScrollControlled: false,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        final minCtrl = FixedExtentScrollController(initialItem: selMin);
+        final secCtrl = FixedExtentScrollController(initialItem: selSec);
+        return SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 300,
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 48,
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 8),
+                      Text(
+                        '$title ${suffix.isNotEmpty ? '($suffix)' : ''}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(null),
+                        child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.of(ctx).pop(Duration(minutes: selMin, seconds: selSec)),
+                        child: Text(MaterialLocalizations.of(context).okButtonLabel),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: CupertinoPicker(
+                          scrollController: minCtrl,
+                          itemExtent: 36,
+                          onSelectedItemChanged: (i) => selMin = i,
+                          children: List.generate(
+                            maxMinutes + 1,
+                                (i) => Center(child: Text('$i 分',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+                          ),
+                        ),
+                      ),
+                      Container(width: 1, color: Theme.of(context).colorScheme.outlineVariant),
+                      Expanded(
+                        child: CupertinoPicker(
+                          scrollController: secCtrl,
+                          itemExtent: 36,
+                          onSelectedItemChanged: (i) => selSec = i,
+                          children: List.generate(
+                            60,
+                                (i) => Center(child: Text('$i 秒',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // 文脈に応じて目標ピッカーを開く（旗ボタン用）
+  Future<void> _openGoalPicker() async {
     final l10n = AppLocalizations.of(context)!;
 
-    if (_isAerobicContext() && (_aeroMetric == AerobicMetric.time || _aeroMetric == AerobicMetric.pace)) {
-      await _showTimerPicker();
+    // 体重
+    if (_isBodyWeightContext()) {
+      final isKg = SettingsManager.currentUnit == 'kg';
+      final step = isKg ? 0.5 : 1.0;
+      final unit = isKg ? l10n.kg : l10n.lbs;
+
+      double lo = (_minYForChart - 10).floorToDouble();
+      double hi = (_maxYForChart + 10).ceilToDouble();
+      if (hi < lo + 5) hi = lo + 5;
+      if (isKg) {
+        lo = (lo / 0.5).floor() * 0.5;
+        hi = (hi / 0.5).ceil() * 0.5;
+      }
+
+      final v = await _showNumberPicker(
+        title: l10n.bodyWeight,
+        minValue: lo,
+        maxValue: hi,
+        step: step,
+        fractionDigits: isKg ? 1 : 0,
+        current: _goalValue,
+        suffix: unit,
+      );
+      if (v != null) {
+        setState(() { _goalValue = v; _goalController.text = _goalDisplayString(); });
+        _saveGoalForCurrentContext();
+      }
       return;
     }
 
-    final bool isDistance = _isAerobicContext() && _aeroMetric == AerobicMetric.distance;
-    final bool isKg = SettingsManager.currentUnit == 'kg';
+    // 有酸素
+    if (_isAerobicContext()) {
+      switch (_aeroMetric) {
+        case AerobicMetric.distance: {
+          final minV = max(0.0, (_minYForChart - 2).floorToDouble());
+          double maxV = (_maxYForChart + 5).ceilToDouble();
+          if (maxV < 10) maxV = 10;
 
-    final double step  = isDistance ? 0.1 : (isKg ? 0.5 : 1.0);
-    final int fraction = isDistance ? 1   : (isKg ? 1   : 0);
-
-    double minVal = max(0.0, (_minYForChart - 20).floorToDouble());
-    double maxVal = (_maxYForChart + 20).ceilToDouble();
-    if (isDistance) {
-      minVal = 0.0;
-      if (maxVal < 100) maxVal = 100;
+          final v = await _showNumberPicker(
+            title: l10n.distance,
+            minValue: minV,
+            maxValue: maxV,
+            step: 0.1,
+            fractionDigits: 1,
+            current: _goalValue,
+            suffix: l10n.km,
+          );
+          if (v != null) {
+            setState(() { _goalValue = v; _goalController.text = _goalDisplayString(); });
+            _saveGoalForCurrentContext();
+          }
+          return;
+        }
+        case AerobicMetric.time: {
+          final init = Duration(minutes: ((_goalValue ?? 30).clamp(0, 600)).round());
+          final dur = await _showTimeWheelPicker(
+            title: l10n.time,
+            initial: init,
+            suffix: l10n.min,
+          );
+          if (dur != null) {
+            setState(() { _goalValue = dur.inSeconds / 60.0; _goalController.text = _goalDisplayString(); });
+            _saveGoalForCurrentContext();
+          }
+          return;
+        }
+        case AerobicMetric.pace: {
+          final init = Duration(
+            seconds: (((_goalValue ?? 6.0) * 60).clamp(60, 60 * 30)).round(),
+          );
+          final dur = await _showTimeWheelPicker(
+            title: l10n.pace,
+            initial: init,
+            suffix: '${l10n.min}/${l10n.km}',
+          );
+          if (dur != null) {
+            setState(() { _goalValue = dur.inSeconds / 60.0; _goalController.text = _goalDisplayString(); });
+            _saveGoalForCurrentContext();
+          }
+          return;
+        }
+      }
     }
 
-    await _showDecimalPicker(
-      min: minVal,
-      max: maxVal,
-      step: step,
-      fractionDigits: fraction,
-      unit: _unitOverlayText(l10n),
-      initial: _goalValue ?? _minYForChart,
-    );
+    // 筋トレ
+    if (_isStrengthContext()) {
+      final isKg = SettingsManager.currentUnit == 'kg';
+      final step = isKg ? 5.0 : 11.0; // 5kg≒11lbs
+      final unit = isKg ? l10n.kg : l10n.lbs;
+
+      double lo = (_minYForChart - 20).floorToDouble();
+      double hi = (_maxYForChart + 20).ceilToDouble();
+      if (hi < 100) hi = 100;
+
+      final v = await _showNumberPicker(
+        title: _selectedMenu ?? '',
+        minValue: lo,
+        maxValue: hi,
+        step: step,
+        fractionDigits: isKg ? 1 : 0,
+        current: _goalValue,
+        suffix: unit,
+      );
+      if (v != null) {
+        setState(() { _goalValue = v; _goalController.text = _goalDisplayString(); });
+        _saveGoalForCurrentContext();
+      }
+      return;
+    }
   }
 
-  Future<void> _showDecimalPicker({
-    required double min,
-    required double max,
-    required double step,
-    required int fractionDigits,
-    required String unit,
-    required double initial,
-  }) async {
-    final count = ((max - min) / step).floor() + 1;
-    int initialIndex = (((initial - min) / step).round()).clamp(0, count - 1);
-    int selected = initialIndex;
-
-    await showModalBottomSheet(
-      context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      isScrollControlled: false,
-      builder: (ctx) {
-        return SizedBox(
-          height: 300,
-          child: Column(
-            children: [
-              _buildPickerToolbar(
-                title: unit.isEmpty ? '目標' : '目標 ($unit)',
-                onCancel: () => Navigator.of(ctx).pop(),
-                onDone: () {
-                  final double value = min + selected * step;
-                  setState(() {
-                    _goalValue = double.parse(value.toStringAsFixed(fractionDigits));
-                  });
-                  _saveGoalForCurrentContext();
-                  Navigator.of(ctx).pop();
-                },
-              ),
-              Expanded(
-                child: CupertinoPicker(
-                  scrollController: FixedExtentScrollController(initialItem: initialIndex),
-                  itemExtent: 36,
-                  magnification: 1.06,
-                  squeeze: 1.15,
-                  onSelectedItemChanged: (i) => selected = i,
-                  children: List<Widget>.generate(count, (i) {
-                    final v = min + i * step;
-                    final label = v.toStringAsFixed(fractionDigits);
-                    return Center(child: Text(unit.isEmpty ? label : '$label $unit'));
-                  }),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _showTimerPicker() async {
+  String _goalDisplayString() {
     final l10n = AppLocalizations.of(context)!;
-    final seconds = ((_goalValue ?? 0) * 60).round();
-    Duration selected = Duration(minutes: seconds ~/ 60, seconds: seconds % 60);
-
-    await showModalBottomSheet(
-      context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      isScrollControlled: false,
-      builder: (ctx) {
-        return SizedBox(
-          height: 300,
-          child: Column(
-            children: [
-              _buildPickerToolbar(
-                title: _unitOverlayText(l10n), // "min" など
-                onCancel: () => Navigator.of(ctx).pop(),
-                onDone: () {
-                  setState(() {
-                    _goalValue = selected.inSeconds / 60.0; // 内部は分(少数)
-                  });
-                  _saveGoalForCurrentContext();
-                  Navigator.of(ctx).pop();
-                },
-              ),
-              Expanded(
-                child: CupertinoTimerPicker(
-                  mode: CupertinoTimerPickerMode.ms,
-                  initialTimerDuration: selected,
-                  onTimerDurationChanged: (d) => selected = d,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildPickerToolbar({
-    required VoidCallback onCancel,
-    required VoidCallback onDone,
-    String title = '',
-  }) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      height: 48,
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: cs.outlineVariant)),
-      ),
-      child: Row(
-        children: [
-          const SizedBox(width: 4),
-          TextButton(onPressed: onCancel, child: const Text('キャンセル')),
-          Expanded(
-            child: Center(
-              child: Text(
-                title,
-                style: TextStyle(fontWeight: FontWeight.w600, color: cs.onSurface),
-              ),
-            ),
-          ),
-          TextButton(onPressed: onDone, child: const Text('完了')),
-          const SizedBox(width: 4),
-        ],
-      ),
-    );
+    if (_goalValue == null) return '';
+    if (_isAerobicContext()) {
+      switch (_aeroMetric) {
+        case AerobicMetric.distance:
+          return '${_goalValue!.toStringAsFixed(1)} ${l10n.km}';
+        case AerobicMetric.time:
+          return '${_formatMinToMMSS(_goalValue!)} ${l10n.min}';
+        case AerobicMetric.pace:
+          return '${_formatMinToMMSS(_goalValue!)} ${l10n.min}/${l10n.km}';
+      }
+    }
+    final u = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
+    final fd = _isBodyWeightContext() ? 1 : (u == l10n.kg ? 1 : 0);
+    return '${_goalValue!.toStringAsFixed(fd)} $u';
   }
 
   // ====== labels ======
@@ -1087,14 +1342,15 @@ class _GraphScreenState extends State<GraphScreen> {
 
   // X axis
   Widget _bottomTitle(double value, TitleMeta meta) {
-    if (_xDates.isEmpty) return const SizedBox.shrink();
+    final dates = _axisDates;
+    if (dates.isEmpty) return const SizedBox.shrink();
     if ((value - value.round()).abs() > 1e-6) return const SizedBox.shrink();
     final idx = value.round();
-    if (idx < 0 || idx >= _xDates.length) return const SizedBox.shrink();
+    if (idx < 0 || idx >= dates.length) return const SizedBox.shrink();
 
     final text = (_displayMode == DisplayMode.day)
-        ? _formatDayLabel(_xDates[idx])
-        : _formatWeekLabel(_xDates[idx]);
+        ? _formatDayLabel(dates[idx])
+        : _formatWeekLabel(dates[idx]);
 
     return SideTitleWidget(
       axisSide: meta.axisSide,
@@ -1103,7 +1359,7 @@ class _GraphScreenState extends State<GraphScreen> {
         text,
         style: TextStyle(
           color: Theme.of(context).colorScheme.onSurfaceVariant,
-          fontSize: 9, // ★ 少し小さく
+          fontSize: 9,
         ),
       ),
     );
@@ -1134,7 +1390,7 @@ class _GraphScreenState extends State<GraphScreen> {
     );
   }
 
-  // unit overlay text
+  // 単位表示
   String _unitOverlayText(AppLocalizations l10n) {
     final bool isBody =
         (_selectedPart == l10n.bodyWeight) || (_selectedMenu == l10n.bodyWeight);
@@ -1154,7 +1410,7 @@ class _GraphScreenState extends State<GraphScreen> {
     return SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
   }
 
-  // tooltip value
+  // ツールチップ
   String _formatTooltipValue(double y, AppLocalizations l10n) {
     if (_isAerobicContext()) {
       switch (_aeroMetric) {
@@ -1170,6 +1426,45 @@ class _GraphScreenState extends State<GraphScreen> {
     return '${y.toStringAsFixed(1)} $u';
   }
 
+  Future<void> _openPartPicker() async {
+    final l10n = AppLocalizations.of(context)!;
+    final list = _filteredBodyParts;
+    if (list.isEmpty) return;
+    final init = _selectedPart != null ? list.indexOf(_selectedPart!) : 0;
+    final picked = await _showWheelPicker(
+      title: l10n.selectTrainingPart,
+      items: list,
+      initialIndex: init < 0 ? 0 : init,
+    );
+    if (picked == null) return;
+    final value = list[picked];
+    setState(() {
+      _selectedPart = value;
+      _saveGraphPrefs();
+      _loadMenusForPart(value);
+      _checkIfFavorite();
+    });
+  }
+
+  Future<void> _openMenuPicker() async {
+    final l10n = AppLocalizations.of(context)!;
+    if (_menusForPart.isEmpty) return;
+    final init = _selectedMenu != null ? _menusForPart.indexOf(_selectedMenu!) : 0;
+    final picked = await _showWheelPicker(
+      title: l10n.selectExercise,
+      items: _menusForPart,
+      initialIndex: init < 0 ? 0 : init,
+    );
+    if (picked == null) return;
+    final value = _menusForPart[picked];
+    setState(() {
+      _selectedMenu = value;
+      _saveGraphPrefs();
+      _refreshDataForSelection();
+      _checkIfFavorite();
+    });
+  }
+
   // ====== UI ======
   @override
   Widget build(BuildContext context) {
@@ -1183,7 +1478,7 @@ class _GraphScreenState extends State<GraphScreen> {
       _tryShowGraphCoachIfVisible();
     });
 
-    // コントロール群（同サイズに統一）
+    // 上段：日/週トグル
     Widget dayWeekToggle = SizedBox(
       height: _kControlHeight,
       child: ToggleButtons(
@@ -1205,7 +1500,7 @@ class _GraphScreenState extends State<GraphScreen> {
         color: colorScheme.onSurface,
         borderColor: colorScheme.outlineVariant,
         selectedBorderColor: colorScheme.primary,
-        splashColor: colorScheme.primary.withOpacity(0.2),
+        splashColor: colorScheme.primary.withValues(alpha: 0.2),
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
@@ -1219,53 +1514,142 @@ class _GraphScreenState extends State<GraphScreen> {
       ),
     );
 
-    // 目標（タップでピッカー）
+    // ★ 目標：テキスト入力 → 旗アイコン付きボタンでピッカー起動
     Widget goalButton = SizedBox(
       height: _kControlHeight,
-      child: InkWell(
-        onTap: _showGoalPicker,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: colorScheme.outlineVariant),
-          ),
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+          side: BorderSide(color: colorScheme.outlineVariant),
+          backgroundColor: colorScheme.surfaceContainer,
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          alignment: Alignment.centerLeft,
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _displayGoalText(l10n), // 目標値 or 値+単位
-                  style: TextStyle(
-                    color: (_goalValue == null)
-                        ? colorScheme.onSurfaceVariant.withOpacity(0.5) // ★ 薄く
-                        : colorScheme.onSurface,
-                    fontWeight: _goalValue == null ? FontWeight.w400 : FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+        ),
+        onPressed: _openGoalPicker,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.flag_outlined, size: 18),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                _goalController.text.isEmpty ? l10n.enterGoal : _goalController.text,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(width: 4),
-              Icon(Icons.expand_more, size: 18, color: colorScheme.onSurfaceVariant),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
 
-    // お気に入り（同じ高さで表示）
     Widget favButton = (_selectedPart != l10n.favorites)
         ? FavoritePillButton(
       key: _kFav,
       isFavorite: _isFavorite,
       label: l10n.favorites,
       onTap: _toggleFavorite,
-      height: _kControlHeight, // ★ 同サイズ化
+      height: _kControlHeight,
     )
         : const SizedBox.shrink();
+
+    // 部位・種目の表示文字列（ピッカーは後段＝グラフ下）
+    final partDisplay = _selectedPart ?? l10n.selectTrainingPart;
+    final menuDisplay = (_selectedPart == l10n.bodyWeight)
+        ? ''
+        : (_selectedMenu ?? l10n.selectExercise);
+
+    // グラフ下：部位・種目ピッカー（横並び）
+    Widget partMenuRow = Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: _kPickerHeight,
+            child: InkWell(
+              key: _kPart,
+              onTap: _openPartPicker,
+              borderRadius: BorderRadius.circular(12),
+              child: Ink(
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainer,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colorScheme.outlineVariant),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          partDisplay,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Icon(Icons.expand_more, color: colorScheme.onSurfaceVariant),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        if (_selectedPart != l10n.bodyWeight)
+          Expanded(
+            child: SizedBox(
+              height: _kPickerHeight,
+              child: InkWell(
+                onTap: _menusForPart.isNotEmpty ? _openMenuPicker : null,
+                borderRadius: BorderRadius.circular(12),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainer,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _menusForPart.isNotEmpty
+                          ? colorScheme.outlineVariant
+                          : colorScheme.outline,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            menuDisplay.isEmpty ? l10n.selectExercise : menuDisplay,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: _menusForPart.isNotEmpty
+                                  ? colorScheme.onSurface
+                                  : colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Icon(Icons.expand_more,
+                            color: _menusForPart.isNotEmpty
+                                ? colorScheme.onSurfaceVariant
+                                : colorScheme.outline),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+        else
+          const SizedBox.shrink(),
+      ],
+    );
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -1283,26 +1667,27 @@ class _GraphScreenState extends State<GraphScreen> {
         elevation: 0.0,
         iconTheme: IconThemeData(color: colorScheme.onSurface),
       ),
+      // ★ 画面縮小を防止（キーボードは上に被せる）
       resizeToAvoidBottomInset: false,
       body: MediaQuery.removeViewInsets(
         context: context,
         removeBottom: true,
         child: GestureDetector(
           behavior: HitTestBehavior.translucent,
-          onTap: _closeKeyboard, // 念のため
+          onTap: _closeKeyboard,
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
                 const AdBanner(screenName: 'graph'),
-                const SizedBox(height: 16.0),
+                const SizedBox(height: 12.0),
 
-                // ★ コントロール列：日週トグル／目標／お気に入り（同サイズ）
+                // 上段：日/週・目標（旗）・お気に入り（横並び）
                 Row(
                   children: [
                     Expanded(child: dayWeekToggle),
                     const SizedBox(width: 8),
-                    Expanded(child: goalButton),
+                    Expanded(child: goalButton), // ← ピッカー起動ボタン
                     const SizedBox(width: 8),
                     Expanded(child: favButton),
                   ],
@@ -1353,8 +1738,9 @@ class _GraphScreenState extends State<GraphScreen> {
                   ),
                 ],
 
-                const SizedBox(height: 12.0),
+                const SizedBox(height: 8),
 
+                // グラフ（Expandedで大きく確保）
                 Expanded(
                   child: Card(
                     key: _kChart,
@@ -1371,14 +1757,13 @@ class _GraphScreenState extends State<GraphScreen> {
                           final totalW = constraints.maxWidth;
                           final totalH = constraints.maxHeight;
 
-                          _plotHeightPx = totalH; // ★ ビルド毎に最新の高さを保持（setState不要）
-                          final yAxisPanelW = _xDates.isEmpty ? 0.0 : 40.0;
+                          _plotHeightPx = totalH; // 現在の高さを保持（setState不要）
+                          final yAxisPanelW = _axisDates.isEmpty ? 0.0 : 40.0;
                           final plotAvailW = max(60.0, totalW - yAxisPanelW - 4);
-                          final points = max(1, _xDates.length);
-                          final chartW = max(plotAvailW, points * _kXStridePx); // ★ 狭く
+                          final points = max(1, _axisDates.length);
+                          final chartW = max(plotAvailW, points * _kXStridePx);
 
-                          final unitOverlay =
-                          (unitText.isEmpty || _xDates.isEmpty)
+                          final unitOverlay = (unitText.isEmpty || _axisDates.isEmpty)
                               ? const SizedBox.shrink()
                               : Positioned(
                             left: 2,
@@ -1393,11 +1778,11 @@ class _GraphScreenState extends State<GraphScreen> {
                             ),
                           );
 
-                          // Left Y axis (fixed)
+                          // Left Y axis (固定)
                           final yAxisChart = SizedBox(
                             width: yAxisPanelW,
                             height: totalH,
-                            child: _xDates.isEmpty
+                            child: _axisDates.isEmpty
                                 ? const SizedBox.shrink()
                                 : LineChart(
                               LineChartData(
@@ -1447,9 +1832,9 @@ class _GraphScreenState extends State<GraphScreen> {
                             ),
                           );
 
-                          // Right (scrollable plot)
+                          // Right (スクロール可能プロット)
                           final scrollChart = Expanded(
-                            child: _xDates.isEmpty
+                            child: _axisDates.isEmpty
                                 ? Center(
                               child: Text(
                                 AppLocalizations.of(context)!.noGraphData,
@@ -1473,7 +1858,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                   child: LineChart(
                                     LineChartData(
                                       minX: 0,
-                                      maxX: (_xDates.length - 1).toDouble(),
+                                      maxX: (_axisDates.length - 1).toDouble(),
                                       minY: _minYForChart,
                                       maxY: _maxYForChart,
                                       clipData: const FlClipData.all(),
@@ -1512,7 +1897,8 @@ class _GraphScreenState extends State<GraphScreen> {
                                         checkToShowHorizontalLine: (v) => _isLabelTick(v),
                                         drawVerticalLine: true,
                                         verticalInterval: 1,
-                                        checkToShowVerticalLine: (v) => (v - v.round()).abs() < 1e-6,
+                                        checkToShowVerticalLine: (v) =>
+                                        (v - v.round()).abs() < 1e-6,
                                         getDrawingHorizontalLine: (v) => FlLine(
                                           color: colorScheme.outlineVariant,
                                           strokeWidth: 0.5,
@@ -1525,25 +1911,33 @@ class _GraphScreenState extends State<GraphScreen> {
                                       borderData: FlBorderData(
                                         show: true,
                                         border: Border(
-                                          bottom: BorderSide(color: colorScheme.outlineVariant),
-                                          right: BorderSide(color: colorScheme.outlineVariant),
+                                          bottom: BorderSide(
+                                              color: colorScheme.outlineVariant),
+                                          right: BorderSide(
+                                              color: colorScheme.outlineVariant),
                                         ),
                                       ),
                                       lineTouchData: LineTouchData(
                                         touchTooltipData: LineTouchTooltipData(
                                           getTooltipItems: (items) {
-                                            final loc = Localizations.localeOf(context).toString();
+                                            final loc = Localizations.localeOf(context)
+                                                .toString();
                                             return items.map((s) {
                                               final i = s.x.toInt();
-                                              final d = (i >= 0 && i < _xDates.length) ? _xDates[i] : null;
+                                              final d = (i >= 0 && i < _xDates.length)
+                                                  ? _xDates[i]
+                                                  : null;
                                               final dateStr = (_displayMode == DisplayMode.day)
-                                                  ? (d != null ? DateFormat('M/d', loc).format(d) : '')
+                                                  ? (d != null
+                                                  ? DateFormat('M/d', loc).format(d)
+                                                  : '')
                                                   : (d != null ? _formatWeekLabel(d) : '');
                                               final valStr = _formatTooltipValue(s.y, l10n);
                                               return LineTooltipItem(
                                                 '$dateStr\n$valStr',
                                                 TextStyle(
-                                                  color: colorScheme.onPrimaryContainer,
+                                                  color: colorScheme
+                                                      .onPrimaryContainer,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               );
@@ -1559,7 +1953,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                             y: _goalValue!,
                                             color: colorScheme.tertiary,
                                             strokeWidth: 2,
-                                            // dashArray: [6, 4], // fl_chart の版によっては使えます
+                                            dashArray: [6, 4],
                                           ),
                                         ]
                                             : const [],
@@ -1593,114 +1987,11 @@ class _GraphScreenState extends State<GraphScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12.0),
-                Column(
-                  children: [
-                    DropdownButtonFormField<String>(
-                      key: _kPart,
-                      decoration: InputDecoration(
-                        hintText: l10n.selectTrainingPart,
-                        hintStyle: TextStyle(
-                            color: colorScheme.onSurfaceVariant, fontSize: 14.0),
-                        filled: true,
-                        fillColor: colorScheme.surfaceContainer,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(25.0),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      initialValue: _selectedPart,
-                      items: _filteredBodyParts
-                          .map(
-                            (p) => DropdownMenuItem(
-                          value: p,
-                          child: Text(
-                            p,
-                            style: TextStyle(
-                              color: colorScheme.onSurface,
-                              fontSize: 14.0,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            _selectedPart = value;
-                            _saveGraphPrefs();
-                            _loadMenusForPart(value);
-                            _checkIfFavorite();
-                          });
-                        }
-                      },
-                      dropdownColor: colorScheme.surfaceContainer,
-                      style: TextStyle(
-                        color: colorScheme.onSurface,
-                        fontSize: 14.0,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      borderRadius: BorderRadius.circular(15.0),
-                    ),
-                    const SizedBox(height: 8.0),
-                    if (_selectedPart != l10n.bodyWeight)
-                      DropdownButtonFormField<String>(
-                        decoration: InputDecoration(
-                          hintText: l10n.selectExercise,
-                          hintStyle: TextStyle(
-                              color: colorScheme.onSurfaceVariant, fontSize: 14.0),
-                          filled: true,
-                          fillColor: colorScheme.surfaceContainer,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(25.0),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        initialValue: _selectedMenu,
-                        items: _menusForPart
-                            .map(
-                              (menu) => DropdownMenuItem(
-                            value: menu,
-                            child: Text(
-                              menu,
-                              style: TextStyle(
-                                color: colorScheme.onSurface,
-                                fontSize: 14.0,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        )
-                            .toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _selectedMenu = value;
-                              _saveGraphPrefs();
-                              _refreshDataForSelection();
-                              _checkIfFavorite();
-                            });
-                          } else {
-                            setState(() {
-                              _spots = [];
-                              _xDates = [];
-                              _minY = 0;
-                              _maxY = 0;
-                              _checkIfFavorite();
-                            });
-                          }
-                        },
-                        dropdownColor: colorScheme.surfaceContainer,
-                        style: TextStyle(
-                          color: colorScheme.onSurface,
-                          fontSize: 14.0,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        borderRadius: BorderRadius.circular(15.0),
-                      ),
-                  ],
-                ),
+
+                const SizedBox(height: 8),
+
+                // ★ グラフ下：部位・種目ピッカー（下に移動のみ）
+                partMenuRow,
               ],
             ),
           ),
@@ -1719,7 +2010,7 @@ class FavoritePillButton extends StatelessWidget {
   final bool isFavorite;
   final String label;
   final VoidCallback onTap;
-  final double height; // ★ 追加：同サイズ化
+  final double height; // 同サイズ化
 
   const FavoritePillButton({
     super.key,
