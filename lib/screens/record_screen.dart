@@ -16,6 +16,7 @@ import 'calendar_screen.dart';
 import 'graph_screen.dart';
 import '../widgets/coach_bubble.dart';
 import '../widgets/ui_feedback.dart';
+import 'package:flutter/cupertino.dart';
 
 
 // ignore_for_file: library_private_types_in_public_api
@@ -259,8 +260,211 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         curve: Curves.easeOutCubic,
         alignment: 0.15,
       );
+    } else {
+         // フォールバック：セクションカード自体へスクロール
+         final sKey = _sections[secIndex].key;
+         if (sKey is GlobalKey && sKey.currentContext != null) {
+           await Scrollable.ensureVisible(
+             sKey.currentContext!,
+             duration: const Duration(milliseconds: 220),
+             curve: Curves.easeOutCubic,
+             alignment: 0.10,
+           );
+         }
     }
   }
+
+  // 追加：セクションカードへ確実にスクロール
+    Future<void> _scrollSectionCardIntoView(int secIndex) async {
+        final sk = _sections[secIndex].key;
+        if (sk is GlobalKey && sk.currentContext != null) {
+          await Scrollable.ensureVisible(
+            sk.currentContext!,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            alignment: 0.10,
+          );
+        }
+     }
+
+    // 追加：部位選択の適用（Dropdown onChanged の処理を関数化）
+    void _applySelectedPart(int secIndex, String? value) {
+        final section = _sections[secIndex];
+        setState(() {
+          section.selectedPart = value;
+          section.menuKeys.clear();
+          section.menuIds.clear();
+          section.nextMenuId = 0;
+          _clearSectionControllersAndMaps(section);
+
+          if (section.selectedPart != null) {
+            final current = section.selectedPart!;
+            final originalPart = _getOriginalPartName(context, current);
+            final dateKey = _getDateKey(widget.selectedDate);
+            final record = widget.recordsBox.get(dateKey);
+
+            final recList = record?.menus[originalPart] ?? <MenuData>[];
+            final rawLU = widget.lastUsedMenusBox.get(originalPart);
+            final luList = (rawLU is List)
+                ? rawLU.whereType<MenuData>().toList()
+                : <MenuData>[];
+
+            final Map<String, MenuData> recBy = {for (final m in recList) m.name: m};
+            final Map<String, MenuData> luBy  = {for (final m in luList) m.name: m};
+
+            final List<String> names = [
+              ...recList.map((m) => m.name),
+              ...luList.where((m) => !recBy.containsKey(m.name)).map((m) => m.name),
+            ];
+            if (names.isEmpty) names.add('');
+
+            final l10n = AppLocalizations.of(context)!;
+            final isAerobic = current == l10n.aerobicExercise;
+
+            for (final name in names) {
+              final rec = recBy[name];
+              final lu  = luBy[name];
+
+              section.menuControllers.add(TextEditingController(text: name));
+              section.menuKeys.add(GlobalKey());
+              section.menuIds.add(section.nextMenuId++);
+
+              if (isAerobic) {
+                final String dist = (rec?.distance?.trim().isNotEmpty ?? false)
+                    ? rec!.distance!.trim()
+                    : (lu?.distance?.trim() ?? '');
+                final String dura = (rec?.duration?.trim().isNotEmpty ?? false)
+                    ? rec!.duration!.trim()
+                    : (lu?.duration?.trim() ?? '');
+                final bool isSug = !(rec?.distance?.trim().isNotEmpty == true ||
+                                     rec?.duration?.trim().isNotEmpty == true);
+                section.aerobicDistanceCtrls.add(TextEditingController(text: dist));
+                section.aerobicDurationCtrls.add(TextEditingController(text: dura));
+                section.aerobicSuggestFlags.add(isSug);
+                section.setInputDataList.add(<SetInputData>[]);
+              } else {
+                final int recLen = rec == null ? 0 : min(rec.weights.length, rec.reps.length);
+                final int luLen  = lu  == null ? 0 : min(lu.weights.length,  lu.reps.length);
+                final int mergedLen = max(_currentSetCount, max(recLen, luLen));
+
+                final row = <SetInputData>[];
+                for (int i = 0; i < mergedLen; i++) {
+                  String w = '';
+                  String r = '';
+                  bool isSuggestion = true;
+                  if (i < recLen) {
+                    w = rec!.weights[i];
+                    r = rec.reps[i];
+                    if (w.trim().isNotEmpty || r.trim().isNotEmpty) isSuggestion = false;
+                  } else if (i < luLen) {
+                    w = lu!.weights[i];
+                    r = lu.reps[i];
+                    isSuggestion = true;
+                  }
+                  row.add(SetInputData(
+                    weightController: TextEditingController(text: w),
+                    repController: TextEditingController(text: r),
+                    isSuggestion: isSuggestion,
+                  ));
+                }
+                section.setInputDataList.add(row);
+                section.initialSetCount = max(section.initialSetCount ?? 0, mergedLen);
+              }
+            }
+
+            // 先頭の種目カードを選択状態に
+            _currentSectionIndex = secIndex;
+            _currentMenuIndex = 0;
+          } else {
+            section.initialSetCount = _currentSetCount;
+          }
+        });
+
+        // 先頭カードへスクロール & ヒント
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _scrollIntoView(secIndex, 0);
+          }
+        });
+        _scheduleHintsAfterPart();
+      }
+
+    // 追加：iOS風ピッカーで部位を選択
+    Future<void> _showPartPicker(int secIndex) async {
+       final parts = _filteredBodyParts;
+       int initial = 0;
+       final current = _sections[secIndex].selectedPart;
+       if (current != null) {
+         final idx = parts.indexOf(current);
+         if (idx >= 0) initial = idx;
+       }
+       int temp = initial;
+
+       final theme = Theme.of(context);
+       final cs = theme.colorScheme;
+
+       final picked = await showModalBottomSheet<String>(
+         context: context,
+         backgroundColor: cs.surfaceContainerHighest,
+         shape: const RoundedRectangleBorder(
+           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+         ),
+         builder: (ctx) {
+           return SizedBox(
+             height: 260,
+             child: Column(
+               children: [
+                 const SizedBox(height: 8),
+                 Container(
+                   width: 40, height: 4,
+                   decoration: BoxDecoration(
+                     color: cs.onSurfaceVariant.withOpacity(0.4),
+                     borderRadius: BorderRadius.circular(2),
+                   ),
+                 ),
+                 Padding(
+                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                   child: Row(
+                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                     children: [
+                       TextButton(
+                         onPressed: () => Navigator.pop(ctx, null),
+                         child: Text(AppLocalizations.of(context)!.cancel),
+                       ),
+                       TextButton(
+                         onPressed: () => Navigator.pop(ctx, parts[temp]),
+                         child: const Text('OK'),
+                       ),
+                     ],
+                   ),
+                 ),
+                 Expanded(
+                   child: CupertinoPicker(
+                     itemExtent: 36,
+                     scrollController: FixedExtentScrollController(initialItem: initial),
+                     onSelectedItemChanged: (i) => temp = i,
+                     children: parts.map((p) => Center(
+                       child: Text(
+                         p,
+                         style: TextStyle(
+                           color: cs.onSurface,
+                           fontWeight: FontWeight.w600,
+                           fontSize: 16,
+                         ),
+                       ),
+                     )).toList(),
+                   ),
+                 ),
+               ],
+             ),
+           );
+         },
+       );
+
+       if (picked is String) {
+         _applySelectedPart(secIndex, picked);
+       }
+     }
 
   String _getOriginalPartName(BuildContext context, String translatedPart) {
     final l10n = AppLocalizations.of(context)!;
@@ -420,7 +624,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       final section = tempSectionsMap.putIfAbsent(
         translatedPart,
             () => SectionData(
-          key: UniqueKey(),
+          key: GlobalKey(),
           selectedPart: translatedPart,
           menuControllers: [],
           setInputDataList: [],
@@ -762,6 +966,13 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       _currentSectionIndex = _sections.length - 1;
       _currentMenuIndex = 0;
     });
+
+    // 追加直後に新しい「部位カード」へスクロール
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _scrollSectionCardIntoView(_sections.length - 1);
+            }
+          });
   }
 
   void _removeMenuItem(int sectionIndex, int menuIndex) async {
@@ -884,6 +1095,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         child: StopwatchWidget(
           compact: true,
           controller: _swController, // static で保持
+          triangleOnlyStart: true,
         ),
       ),
     );
@@ -1082,196 +1294,35 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 4, vertical: 2),
-                                          child: DropdownButtonFormField<String>(
-                                            key: secIndex == 0 ? _kRecordPart : null,
-                                            decoration: InputDecoration(
-                                              hintText: l10n.selectTrainingPart,
-                                              hintStyle: TextStyle(
-                                                  color: colorScheme.onSurfaceVariant,
-                                                  fontSize: 14.0),
-                                              border: InputBorder.none,
-                                              contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                  vertical: 14, horizontal: 20),
-                                            ),
-                                            isDense: true,
-                                            iconSize: 22,
-                                            dropdownColor:
-                                            colorScheme.surfaceContainer,
-                                            style: TextStyle(
-                                              color: colorScheme.onSurface,
-                                              fontSize: 15.0,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                            borderRadius:
-                                            BorderRadius.circular(14.0),
-                                            initialValue: section.selectedPart,
-                                            items: _filteredBodyParts
-                                                .map(
-                                                  (p) => DropdownMenuItem(
-                                                value: p,
-                                                child: Text(
-                                                  p,
-                                                  style: TextStyle(
-                                                    color: colorScheme.onSurface,
-                                                    fontSize: 15.0,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
+                                            child: GestureDetector(
+                                                                                           key: secIndex == 0 ? _kRecordPart : null,
+                                                                                           behavior: HitTestBehavior.opaque,
+                                                                                           onTap: () => _showPartPicker(secIndex),
+                                                                 child: Padding(
+                                                               padding: const EdgeInsets.symmetric(
+                                                                     vertical: 14, horizontal: 20),
+                                                                 child: Row(
+                                                               children: [
+                                                                 Expanded(
+                                                                   child: Text(
+                                                                     section.selectedPart ?? l10n.selectTrainingPart,
+                                                                         style: TextStyle(
+                                                                       color: (section.selectedPart == null)
+                                                                             ? colorScheme.onSurfaceVariant
+                                                                             : colorScheme.onSurface,
+                                                                         fontSize: 15.0,
+                                                                         fontWeight: FontWeight.bold,
+                                                                       ),
+                                                                     overflow: TextOverflow.ellipsis,
+                                                                   ),
+                                                      ),
+                                                  const Icon(Icons.expand_more, size: 22),
+                                                ],
                                               ),
-                                            )
-                                                .toList(),
-                                            onChanged: (value) {
-                                              setState(() {
-                                                section.selectedPart = value;
-                                                section.menuKeys.clear();
-                                                section.menuIds.clear();
-                                                section.nextMenuId = 0;
-                                                _clearSectionControllersAndMaps(
-                                                    section);
-
-                                                if (section.selectedPart != null) {
-                                                  final current =
-                                                  section.selectedPart!;
-                                                  final originalPart =
-                                                  _getOriginalPartName(
-                                                      context, current);
-                                                  final dateKey = _getDateKey(
-                                                      widget.selectedDate);
-                                                  final record = widget.recordsBox
-                                                      .get(dateKey);
-
-                                                  final recList =
-                                                      record?.menus[originalPart] ??
-                                                          <MenuData>[];
-                                                  final rawLU =
-                                                  widget.lastUsedMenusBox.get(
-                                                      originalPart);
-                                                  final luList = (rawLU is List)
-                                                      ? rawLU
-                                                      .whereType<MenuData>()
-                                                      .toList()
-                                                      : <MenuData>[];
-
-                                                  final Map<String, MenuData> recBy =
-                                                  {for (final m in recList) m.name: m};
-                                                  final Map<String, MenuData> luBy =
-                                                  {for (final m in luList) m.name: m};
-
-                                                  final List<String> names = [
-                                                    ...recList.map((m) => m.name),
-                                                    ...luList
-                                                        .where((m) => !recBy.containsKey(m.name))
-                                                        .map((m) => m.name),
-                                                  ];
-                                                  if (names.isEmpty) names.add('');
-
-                                                  final l10n =
-                                                  AppLocalizations.of(context)!;
-                                                  final isAerobic =
-                                                      current == l10n.aerobicExercise;
-
-                                                  for (final name in names) {
-                                                    final rec = recBy[name];
-                                                    final lu = luBy[name];
-
-                                                    section.menuControllers.add(
-                                                        TextEditingController(
-                                                            text: name));
-                                                    section.menuKeys.add(UniqueKey());
-                                                    section.menuIds
-                                                        .add(section.nextMenuId++);
-
-                                                    if (isAerobic) {
-                                                      final String dist = (rec
-                                                          ?.distance
-                                                          ?.trim()
-                                                          .isNotEmpty ??
-                                                          false)
-                                                          ? rec!.distance!.trim()
-                                                          : (lu?.distance?.trim() ?? '');
-                                                      final String dura = (rec
-                                                          ?.duration
-                                                          ?.trim()
-                                                          .isNotEmpty ??
-                                                          false)
-                                                          ? rec!.duration!.trim()
-                                                          : (lu?.duration?.trim() ?? '');
-                                                      final bool isSug = !(rec
-                                                          ?.distance
-                                                          ?.trim()
-                                                          .isNotEmpty ==
-                                                          true ||
-                                                          rec?.duration?.trim().isNotEmpty ==
-                                                              true);
-
-                                                      section.aerobicDistanceCtrls.add(
-                                                          TextEditingController(text: dist));
-                                                      section.aerobicDurationCtrls.add(
-                                                          TextEditingController(text: dura));
-                                                      section.aerobicSuggestFlags.add(isSug);
-                                                      section.setInputDataList.add(<SetInputData>[]);
-                                                    } else {
-                                                      final int recLen = rec == null
-                                                          ? 0
-                                                          : min(rec.weights.length, rec.reps.length);
-                                                      final int luLen = lu == null
-                                                          ? 0
-                                                          : min(lu.weights.length, lu.reps.length);
-                                                      final int mergedLen =
-                                                      max(_currentSetCount, max(recLen, luLen));
-
-                                                      final row = <SetInputData>[];
-                                                      for (int i = 0; i < mergedLen; i++) {
-                                                        String w = '';
-                                                        String r = '';
-                                                        bool isSuggestion = true;
-
-                                                        if (i < recLen) {
-                                                          w = rec!.weights[i];
-                                                          r = rec.reps[i];
-                                                          if (w.trim().isNotEmpty ||
-                                                              r.trim().isNotEmpty) {
-                                                            isSuggestion = false;
-                                                          }
-                                                        } else if (i < luLen) {
-                                                          w = lu!.weights[i];
-                                                          r = lu.reps[i];
-                                                          isSuggestion = true;
-                                                        }
-                                                        row.add(SetInputData(
-                                                          weightController:
-                                                          TextEditingController(text: w),
-                                                          repController:
-                                                          TextEditingController(text: r),
-                                                          isSuggestion: isSuggestion,
-                                                        ));
-                                                      }
-                                                      section.setInputDataList.add(row);
-                                                      section.initialSetCount = max(
-                                                          section.initialSetCount ?? 0, mergedLen);
-                                                    }
-                                                  }
-
-                                                  // ★ 部位選択直後に先頭の種目カードを自動選択
-                                                  _currentSectionIndex = secIndex;
-                                                  _currentMenuIndex = 0;
-                                                } else {
-                                                  section.initialSetCount = _currentSetCount;
-                                                }
-                                              });
-
-                                              // 先頭カードへスクロール
-                                              WidgetsBinding.instance
-                                                  .addPostFrameCallback((_) {
-                                                if (mounted) {
-                                                  _scrollIntoView(secIndex, 0);
-                                                }
-                                              });
-
-                                              _scheduleHintsAfterPart();
-                                            },
+                                            ),
                                           ),
+
+
                                         ),
                                       ),
                                     ),
@@ -1713,7 +1764,7 @@ class SectionData {
   factory SectionData.createEmpty(int initialSetCount,
       {required bool shouldPopulateDefaults}) {
     return SectionData(
-      key: UniqueKey(),
+      key: GlobalKey(),
       selectedPart: null,
       menuControllers: shouldPopulateDefaults ? [TextEditingController()] : [],
       setInputDataList: shouldPopulateDefaults

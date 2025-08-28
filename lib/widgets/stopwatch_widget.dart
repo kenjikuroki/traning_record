@@ -122,10 +122,12 @@ class StopwatchWidget extends StatefulWidget {
     super.key,
     required this.controller,
     this.compact = false,
+    this.triangleOnlyStart = false, // 追加：開始ボタンを三角アイコンのみで表示
   });
 
   final StopwatchController controller;
   final bool compact;
+  final bool triangleOnlyStart;
 
   @override
   State<StopwatchWidget> createState() => _StopwatchWidgetState();
@@ -291,21 +293,49 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
           iconSize: pillIc,
         );
 
+        // 三角だけ少し大きく
+        final double triIconSize = playIc + 4;   // 例: 16→20, 18→22
+        final double triDiameter = playDia + 6;  // 例: 36→42
+
+        // Start/Pause ボタン（※宣言は1回だけ）
+        final Widget startPauseBtn = isRunning
+        // 一時停止は従来通り 丸ボタン
+            ? _RoundIconButton(
+          icon: Icons.pause_rounded,
+          bg: c.tertiary,
+          fg: c.onPrimary,
+          semantic: '一時停止',
+          onTap: () => ctl.toggle(),
+          diameter: playDia,
+          iconSize: playIc,
+        )
+        // 開始時だけオプションで三角アイコン単体
+            : (widget.triangleOnlyStart
+            ? _PlainIconButton(
+          icon: Icons.play_arrow_rounded,
+          fg: c.primary,
+          semantic: '開始',
+          onTap: () => ctl.toggle(),
+          diameter: triDiameter,
+          iconSize: triIconSize,
+        )
+            : _RoundIconButton(
+          icon: Icons.play_arrow_rounded,
+          bg: c.primary,
+          fg: c.onPrimary,
+          semantic: '開始',
+          onTap: () => ctl.toggle(),
+          diameter: playDia,
+          iconSize: playIc,
+        ));
+
         return Row(
           children: [
             modePill,
             SizedBox(width: gapXS),
 
-            // Start/Pause（小さめ）
-            _RoundIconButton(
-              icon: isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              bg: isRunning ? c.tertiary : c.primary,
-              fg: c.onPrimary,
-              semantic: isRunning ? '一時停止' : '開始',
-              onTap: () => ctl.toggle(),
-              diameter: playDia,
-              iconSize: playIc,
-            ),
+            // Start/Pause（コンパクト）
+            startPauseBtn,
             SizedBox(width: gapM),
 
             // 時刻表示（タイマー時はタップで編集／超狭い時は長押しでリセット）
@@ -362,6 +392,7 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
     );
   }
 
+
   // ===== FULL =====
   Widget _buildFull(BuildContext context) {
     final c = Theme.of(context).colorScheme;
@@ -396,6 +427,43 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
         ctl.pause();
       },
     );
+
+    // 操作ボタン（フル）
+    final Widget startPause = isRunning
+        ? ElevatedButton.icon(
+      onPressed: () => ctl.toggle(),
+      icon: const Icon(Icons.pause_rounded),
+      label: const Text('一時停止'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: c.tertiary,
+        foregroundColor: c.onPrimary,
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+      ),
+    )
+        : (widget.triangleOnlyStart
+        ? IconButton(
+      onPressed: () => ctl.toggle(),
+      icon: const Icon(Icons.play_arrow_rounded),
+      tooltip: '開始',
+      iconSize: 32, // ← 少し大きめ
+    )
+        : ElevatedButton.icon(
+      onPressed: () => ctl.toggle(),
+      icon: const Icon(Icons.play_arrow_rounded),
+      label: const Text('開始'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: c.primary,
+        foregroundColor: c.onPrimary,
+        padding:
+        const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+      ),
+    ));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -470,22 +538,7 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
           children: [
             modePill,
             const Spacer(),
-            ElevatedButton.icon(
-              onPressed: () => ctl.toggle(),
-              icon: Icon(
-                isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              ),
-              label: Text(isRunning ? '一時停止' : '開始'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isRunning ? c.tertiary : c.primary,
-                foregroundColor: c.onPrimary,
-                padding:
-                const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
+            startPause,
             const SizedBox(width: 8),
             IconButton.filledTonal(
               onPressed: ctl.elapsed > Duration.zero ? () => ctl.reset() : null,
@@ -669,6 +722,47 @@ class _RoundIconButton extends StatelessWidget {
             child: Center(
               child: Icon(icon, color: enabled ? fg : Colors.grey, size: iconSize),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 三角アイコンのみ（丸背景なし・タップ領域は確保）
+class _PlainIconButton extends StatelessWidget {
+  const _PlainIconButton({
+    required this.icon,
+    required this.fg,
+    required this.semantic,
+    required this.onTap,
+    this.diameter = 38,
+    this.iconSize = 20,
+  });
+
+  final IconData icon;
+  final Color fg;
+  final String semantic;
+  final VoidCallback onTap;
+  final double diameter;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: semantic,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        child: SizedBox(
+          width: diameter,
+          height: diameter,
+          child: Center(
+            child: Icon(icon, size: iconSize, color: fg),
           ),
         ),
       ),
