@@ -1,4 +1,5 @@
 // lib/screens/home_screen.dart
+import 'dart:ui'; // ← BackdropFilter用
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../models/menu_data.dart';
@@ -55,8 +56,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-        body: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
+      backgroundColor: Colors.transparent, // ← 壁紙を透過表示
+      body: AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
                 transitionBuilder: (child, animation) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -87,27 +89,49 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        selectedItemColor: colorScheme.primary,
-        unselectedItemColor: colorScheme.onSurfaceVariant,
-        backgroundColor: colorScheme.surface,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Calendar',
+        bottomNavigationBar: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.30),
+                    Colors.black.withOpacity(0.10),
+                    Colors.black.withOpacity(0.00),
+                  ],
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: BottomNavigationBar(
+                  currentIndex: _currentIndex,
+                  selectedItemColor: Colors.white,     // 可読性UP
+                  unselectedItemColor: Colors.white70, // 可読性UP
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  onTap: _onItemTapped,
+                  items: const [
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.calendar_today),
+                      label: 'Calendar',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.bar_chart),
+                      label: 'Graph',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.settings),
+                      label: 'Settings',
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: 'Graph',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-      ),
+        ),
     );
   }
 }

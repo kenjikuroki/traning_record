@@ -1,3 +1,4 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -8,7 +9,6 @@ import 'l10n/app_localizations.dart';
 import 'models/menu_data.dart';
 import 'screens/home_screen.dart';
 import 'settings_manager.dart';
-
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,41 +62,99 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
+    // 未定義エラー回避のためここでテーマを定義
+    final ThemeData lightTheme = ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+      useMaterial3: true,
+      fontFamily: 'Inter',
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,   // ← 透過
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.white,         // ← 白字で潰れ防止
+      ),
+    );
+    final ThemeData darkTheme = ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
+      useMaterial3: true,
+      fontFamily: 'Inter',
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.white,
+      ),
+    );
+
+
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: SettingsManager.themeModeNotifier,
-      builder: (context, themeMode, child) {
+      builder: (context, themeMode, _) {
         return MaterialApp(
-          title: 'Training Record',
+          title: 'TrainingRecord',
+          debugShowCheckedModeBanner: false,
+          theme: lightTheme,
+          darkTheme: darkTheme,
           themeMode: themeMode,
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-                seedColor: Colors.blue, brightness: Brightness.light),
-            useMaterial3: true,
-            fontFamily: 'Inter',
-          ),
-          darkTheme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-                seedColor: Colors.blue, brightness: Brightness.dark),
-            useMaterial3: true,
-            fontFamily: 'Inter',
-          ),
+
+          // l10n
           localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: const [Locale('en', ''), Locale('ja', '')],
+          supportedLocales: const [
+            Locale('en', ''),
+            Locale('ja', ''),
+          ],
+
+          // 壁紙の即時反映（背景が変わるたびに再ビルド）
+          builder: (context, child) {
+            return ValueListenableBuilder<String>(
+              valueListenable: SettingsManager.backgroundAssetNotifier,
+              builder: (context, bg, __) {
+                if (bg.isEmpty) {
+                  return child ?? const SizedBox.shrink();
+                }
+                return Container(
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage(bg),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      // ← ここを強化：各所の背景を全面的に透過
+                      scaffoldBackgroundColor: Colors.transparent,
+                      canvasColor: Colors.transparent,
+                      cardColor: Colors.transparent,
+                      dialogBackgroundColor: Colors.transparent,
+                      bottomSheetTheme: const BottomSheetThemeData(
+                        backgroundColor: Colors.transparent,
+                        surfaceTintColor: Colors.transparent,
+                        elevation: 0,
+                      ),
+                    ),
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                );
+              },
+            );
+          },
+
+
+          // ルート画面（戻るで最小化をブロック）
           home: PopScope(
-                        canPop: false, // ルートでの「戻る」= アプリ最小化をブロック+
-             child: HomeScreen(
-               recordsBox: widget.recordsBox,
-               lastUsedMenusBox: widget.lastUsedMenusBox,
-               settingsBox: widget.settingsBox,
-               setCountBox: widget.setCountBox,
-             ),
+            canPop: false,
+            child: HomeScreen(
+              recordsBox: widget.recordsBox,
+              lastUsedMenusBox: widget.lastUsedMenusBox,
+              settingsBox: widget.settingsBox,
+              setCountBox: widget.setCountBox,
+            ),
           ),
-          debugShowCheckedModeBanner: false,
         );
       },
     );

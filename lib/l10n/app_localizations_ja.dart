@@ -278,4 +278,41 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get enterGoal => '目標値';
+
+  @override
+  String get start => '開始';
+
+  @override
+  String get pause => '一時停止';
+
+  @override
+  String get reset => 'リセット';
+
+  @override
+  String get timerTime => 'タイマー時間';
+
+  @override
+  String get tapNumberToEdit => '数字タップで編集';
+
+  @override
+  String targetFmt(Object hint, Object time) {
+    return '目標 $time（$hint）';
+  }
+
+  @override
+  String get statusRunning => '計測中';
+
+  @override
+  String get statusIdle => '待機中';
+
+  @override
+  String get stopwatch => 'ストップウォッチ';
+
+  @override
+  String get timer => 'タイマー';
+
+  @override
+  String hours(Object hours) {
+    return '$hours時間';
+  }
 }

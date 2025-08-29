@@ -5,10 +5,11 @@ import 'package:hive/hive.dart';
 /// アプリ内の設定をまとめて管理するマネージャ。
 /// Hive Box: 'app_settings'
 /// 保存キー:
-///   - unit_of_weight: 'kg' | 'lbs'
-///   - theme_mode    : ThemeMode.index
-///   - show_weight_input: bool
-///   - show_stopwatch   : bool
+///   - unit_of_weight     : 'kg' | 'lbs'
+///   - theme_mode         : ThemeMode.index
+///   - show_weight_input  : bool
+///   - show_stopwatch     : bool
+///   - backgroundAsset    : String（'' = なし）
 class SettingsManager {
   static const String _boxName = 'app_settings';
 
@@ -17,6 +18,7 @@ class SettingsManager {
   static const String _themeModeKey = 'theme_mode';
   static const String _showWeightInputKey = 'show_weight_input';
   static const String _showStopwatchKey = 'show_stopwatch';
+  static const String _backgroundAssetKey = 'backgroundAsset';
 
   static Box<dynamic>? _box;
 
@@ -37,6 +39,10 @@ class SettingsManager {
   static final ValueNotifier<bool> _showStopwatchNotifier =
   ValueNotifier<bool>(true);
 
+  /// 背景アセット（'' = なし）
+  static final ValueNotifier<String> _backgroundAssetNotifier =
+  ValueNotifier<String>('');
+
   // ====== Public getters ======
   static ValueNotifier<String> get unitNotifier => _unitNotifier;
   static ValueNotifier<ThemeMode> get themeModeNotifier => _themeModeNotifier;
@@ -44,11 +50,14 @@ class SettingsManager {
       _showWeightInputNotifier;
   static ValueNotifier<bool> get showStopwatchNotifier =>
       _showStopwatchNotifier;
+  static ValueNotifier<String> get backgroundAssetNotifier =>
+      _backgroundAssetNotifier;
 
   static String get currentUnit => _unitNotifier.value;
   static ThemeMode get currentThemeMode => _themeModeNotifier.value;
   static bool get showWeightInput => _showWeightInputNotifier.value;
   static bool get showStopwatch => _showStopwatchNotifier.value;
+  static String get currentBackgroundAsset => _backgroundAssetNotifier.value;
 
   /// 必ず `Hive.initFlutter()` 後に呼び出すこと（main.dart で実施）
   static Future<void> initialize() async {
@@ -85,6 +94,11 @@ class SettingsManager {
     final savedShowStopwatch =
     box.get(_showStopwatchKey, defaultValue: true) as bool;
     _showStopwatchNotifier.value = savedShowStopwatch;
+
+    // 背景アセット
+    final savedBg =
+    box.get(_backgroundAssetKey, defaultValue: '') as String;
+    _backgroundAssetNotifier.value = savedBg;
   }
 
   // ====== Setters (save & notify) ======
@@ -109,5 +123,10 @@ class SettingsManager {
   static Future<void> setShowStopwatch(bool value) async {
     await _box?.put(_showStopwatchKey, value);
     _showStopwatchNotifier.value = value;
+  }
+
+  static Future<void> setBackgroundAsset(String assetPath) async {
+    await _box?.put(_backgroundAssetKey, assetPath);
+    _backgroundAssetNotifier.value = assetPath;
   }
 }

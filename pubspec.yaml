@@ -8,7 +8,7 @@ flutter_intl:
   main_locale: kl
 
 # バージョン
-version: 1.1.6+18
+version: 1.1.10+22
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -46,21 +46,25 @@ dev_dependencies:
   # ランチャーアイコン生成
   flutter_launcher_icons: ^0.14.4
 
-# ---- ここが launcher_icons の正しい設定（古いブロックは削除！） ----
+# ---- ランチャーアイコン設定 ----
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/images/ic_launcher_foreground.png
-  adaptive_icon_foreground: assets/images/ic_launcher_foreground.png
-  adaptive_icon_background: assets/images/ic_launcher_background.png
-  adaptive_icon_monochrome: assets/images/ic_launcher_monochrome.png
-  image_path_ios: assets/images/icon_1.png
-  remove_alpha_ios: true
 
-# Flutter 本体設定（不要な asset 参照は置かない）
+  # iOS 用（背景白 1024px アイコン）
+  image_path: assets/app_icons/icon_ios_1024.png
+  remove_alpha_ios: true   # 透過は不可なので白で塗りつぶし
+
+  # Android 用（余白ゼロ、背景グレー #B3B8BC）
+  adaptive_icon_foreground: assets/app_icons/icon_foreground.png
+  adaptive_icon_background: assets/app_icons/icon_background.png
+  adaptive_icon_monochrome: assets/app_icons/icon_monochrome.png
+
+
+# Flutter 本体設定
 flutter:
   generate: true
   uses-material-design: true
-  # もしアプリ内でアイコン画像を Asset としても使いたい場合は下を開ける
-  # assets:
-  #   - assets/icons/
+  assets:
+    - assets/backgrounds/
+    - assets/app_icons/

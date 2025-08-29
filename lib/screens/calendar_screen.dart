@@ -1,4 +1,5 @@
 // lib/screens/calendar_screen.dart
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -195,21 +196,44 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
+      backgroundColor: Colors.transparent, // ← 透過
       appBar: AppBar(
         automaticallyImplyLeading: false,
+        elevation: 0,
+        // ← アイコンとタイトルは白で可読性UP
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
           DateFormat('yyyy/MM').format(_focusedDay),
-          style: TextStyle(
-            color: colorScheme.onSurface,
+          style: const TextStyle(
+            color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
-        backgroundColor: colorScheme.surface,
-        elevation: 0,
-        iconTheme: IconThemeData(color: colorScheme.onSurface),
+        // ← 重複原因の個別背景指定は削除（テーマ or flexibleSpaceで演出）
+        // backgroundColor: colorScheme.surface,
+
+        // ← 上部にぼかし＋半透明グラデを敷いて文字が潰れないようにする
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.30),
+                    Colors.black.withOpacity(0.10),
+                    Colors.black.withOpacity(0.00),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         // ★ recordsBox の変更を監視して即時再描画
@@ -536,9 +560,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // 実績カードをスクロール（縞々対策）
     return Expanded(
       child: ListView.separated(
-        padding: const EdgeInsets.only(top: 8.0),
+        padding: const EdgeInsets.only(top: 0.0),
         itemCount: cards.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        separatorBuilder: (_, __) => const SizedBox(height: 2),
         itemBuilder: (_, i) => cards[i],
       ),
     );

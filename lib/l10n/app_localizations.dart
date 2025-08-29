@@ -628,6 +628,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Goal'**
   String get enterGoal;
+
+  /// No description provided for @start.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get start;
+
+  /// No description provided for @pause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get pause;
+
+  /// No description provided for @reset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get reset;
+
+  /// No description provided for @timerTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Timer duration'**
+  String get timerTime;
+
+  /// No description provided for @tapNumberToEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap numbers to edit'**
+  String get tapNumberToEdit;
+
+  /// No description provided for @targetFmt.
+  ///
+  /// In en, this message translates to:
+  /// **'Target {time} ({hint})'**
+  String targetFmt(Object hint, Object time);
+
+  /// No description provided for @statusRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get statusRunning;
+
+  /// No description provided for @statusIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get statusIdle;
+
+  /// No description provided for @stopwatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopwatch'**
+  String get stopwatch;
+
+  /// No description provided for @timer.
+  ///
+  /// In en, this message translates to:
+  /// **'Timer'**
+  String get timer;
+
+  /// No description provided for @hours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h'**
+  String hours(Object hours);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

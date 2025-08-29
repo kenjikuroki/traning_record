@@ -88,5 +88,16 @@
   "themeTitle": "テーマ",
   "unitTitle": "単位",
   "useDarkMode": "ダークモード",
-  "enterGoal": "目標値"
+  "enterGoal": "目標値",
+  "start": "開始",
+  "pause": "一時停止",
+  "reset": "リセット",
+  "timerTime": "タイマー時間",
+  "tapNumberToEdit": "数字タップで編集",
+  "targetFmt": "目標 {time}（{hint}）",
+  "statusRunning": "計測中",
+  "statusIdle": "待機中",
+  "stopwatch": "ストップウォッチ",
+  "timer": "タイマー",
+  "hours": "{hours}時間"
 }

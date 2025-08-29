@@ -32,9 +32,11 @@ class _AdBannerState extends State<AdBanner> {
 
     AnchoredAdaptiveBannerAdSize? size;
     try {
-      final width = MediaQuery.of(context).size.width.truncate();
+      final media = MediaQuery.of(context);
+      final width = media.size.width.truncate();
+      final orientation = media.orientation;
       size = await AdSize.getAnchoredAdaptiveBannerAdSize(
-        Orientation.portrait,
+        orientation,
         width,
       );
     } catch (_) {
@@ -47,6 +49,10 @@ class _AdBannerState extends State<AdBanner> {
     });
 
     final String adUnitId = _resolveAdUnitId();
+
+    // ★実際に使うユニットIDをログ
+    debugPrint('[AdMob] ${Platform.isIOS ? "iOS" : "Android"} '
+        '${widget.screenName} -> $adUnitId  (kReleaseMode=$kReleaseMode)');
 
     final ad = BannerAd(
       adUnitId: adUnitId,
@@ -66,7 +72,7 @@ class _AdBannerState extends State<AdBanner> {
         },
         onAdFailedToLoad: (ad, error) {
           ad.dispose();
-          debugPrint('広告読み込み失敗: $error');
+          debugPrint('広告読み込み失敗: code=${error.code}, message=${error.message}');
           if (mounted) {
             setState(() {
               _isAdLoaded = false;
@@ -82,12 +88,14 @@ class _AdBannerState extends State<AdBanner> {
   }
 
   String _resolveAdUnitId() {
+    // デバッグは常にGoogle公式のテストID
     if (kDebugMode) {
       return Platform.isAndroid
-          ? 'ca-app-pub-3940256099942544/6300978111' // Google公式テストID
-          : 'ca-app-pub-3940256099942544/2934735716'; // Google公式テストID
+          ? 'ca-app-pub-3940256099942544/6300978111' // Android テストID
+          : 'ca-app-pub-3940256099942544/2934735716'; // iOS テストID
     }
 
+    // ここからリリースビルド（本番）
     if (Platform.isAndroid) {
       switch (widget.screenName) {
         case 'calendar':
@@ -97,9 +105,10 @@ class _AdBannerState extends State<AdBanner> {
         case 'settings':
           return 'ca-app-pub-3331079517737737/3704893323';
         case 'graph':
-          return 'ca-app-pub-3331079517737737/2942847126'; // ← Graph用Android本番ID
+          return 'ca-app-pub-3331079517737737/2942847126';
         default:
-          return 'ca-app-pub-3940256099942544/6300978111';
+        // 画面名がズレたときの安全フォールバック（本番ID）
+          return 'ca-app-pub-3331079517737737/2576446816'; // Android カレンダー用など、任意の本番ID
       }
     } else if (Platform.isIOS) {
       switch (widget.screenName) {
@@ -110,11 +119,13 @@ class _AdBannerState extends State<AdBanner> {
         case 'settings':
           return 'ca-app-pub-3331079517737737/8271626623';
         case 'graph':
-          return 'ca-app-pub-3331079517737737/8642020070'; // ← Graph用iOS本番ID
+          return 'ca-app-pub-3331079517737737/8642020070';
         default:
-          return 'ca-app-pub-3940256099942544/2934735716';
+        // 画面名がズレたときの安全フォールバック（本番ID）
+          return 'ca-app-pub-3331079517737737/1430886104'; // iOS カレンダー用など、任意の本番ID
       }
     } else {
+      // ほぼ来ないが、未知プラットフォーム時の無害フォールバック（テストID）
       return 'ca-app-pub-3940256099942544/6300978111';
     }
   }
@@ -128,7 +139,7 @@ class _AdBannerState extends State<AdBanner> {
   @override
   Widget build(BuildContext context) {
     final double reservedHeight =
-        (_anchoredSize?.height ?? AdSize.banner.height).toDouble();
+    (_anchoredSize?.height ?? AdSize.banner.height).toDouble();
 
     return SizedBox(
       width: double.infinity,

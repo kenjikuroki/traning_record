@@ -278,4 +278,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get enterGoal => 'Goal';
+
+  @override
+  String get start => 'Start';
+
+  @override
+  String get pause => 'Pause';
+
+  @override
+  String get reset => 'Reset';
+
+  @override
+  String get timerTime => 'Timer duration';
+
+  @override
+  String get tapNumberToEdit => 'Tap numbers to edit';
+
+  @override
+  String targetFmt(Object hint, Object time) {
+    return 'Target $time ($hint)';
+  }
+
+  @override
+  String get statusRunning => 'Running';
+
+  @override
+  String get statusIdle => 'Idle';
+
+  @override
+  String get stopwatch => 'Stopwatch';
+
+  @override
+  String get timer => 'Timer';
+
+  @override
+  String hours(Object hours) {
+    return '${hours}h';
+  }
 }

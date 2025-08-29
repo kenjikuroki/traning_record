@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../l10n/app_localizations.dart';
 
 /// モード
 enum ClockMode { stopwatch, timer }
@@ -187,6 +188,7 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
       isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx)!;
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.only(bottom: 24),
@@ -194,7 +196,7 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
               mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(height: 6),
-                Text('タイマー時間', style: Theme.of(ctx).textTheme.titleMedium),
+                Text(l10n.timerTime, style: Theme.of(ctx).textTheme.titleMedium),
                 SizedBox(
                   height: 200,
                   child: CupertinoTimerPicker(
@@ -206,7 +208,7 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
                 const SizedBox(height: 8),
                 FilledButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('決定'),
+                  child: Text(MaterialLocalizations.of(context).okButtonLabel),
                 ),
               ],
             ),
@@ -234,7 +236,7 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
     return widget.compact ? _buildCompact(context) : _buildFull(context);
   }
 
-// ===== COMPACT =====
+  // ===== COMPACT =====
   Widget _buildCompact(BuildContext context) {
     final c = Theme.of(context).colorScheme;
     final ctl = widget.controller;
@@ -249,26 +251,36 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
         final w = box.maxWidth;
 
         // 段階的にコンパクト化
-        final ultraTight = w < 310;     // リセットを隠す
-        final veryTight  = w < 340;
-        final tight      = w < 380;
+        final ultraTight = w < 310; // リセットを隠す
+        final veryTight = w < 340;
+        final tight = w < 380;
 
-        final pillW   = ultraTight ? 72.0 : (veryTight ? 80.0 : (tight ? 90.0 : 96.0));
-        final pillH   = ultraTight ? 30.0 : (veryTight ? 32.0 : (tight ? 36.0 : 40.0));
-        final knobW   = ultraTight ? 28.0 : (veryTight ? 30.0 : (tight ? 34.0 : 44.0));
-        final knobH   = ultraTight ? 22.0 : (veryTight ? 24.0 : (tight ? 28.0 : 32.0));
-        final pillIc  = ultraTight ? 14.0 : (veryTight ? 16.0 : (tight ? 18.0 : 20.0));
+        // === モード切替ピルを中くらいサイズに調整 ===
+        final pillW =
+        ultraTight ? 100.0 : (veryTight ? 110.0 : (tight ? 120.0 : 130.0));
+        final pillH =
+        ultraTight ? 34.0  : (veryTight ? 36.0  : (tight ? 38.0  : 42.0));
+        final knobW =
+        ultraTight ? 36.0  : (veryTight ? 40.0  : (tight ? 46.0  : 54.0));
+        final knobH =
+        ultraTight ? 28.0  : (veryTight ? 30.0  : (tight ? 32.0  : 36.0));
+        final pillIc =
+        ultraTight ? 18.0  : (veryTight ? 19.0  : (tight ? 20.0  : 22.0));
 
-        final playDia = ultraTight ? 30.0 : (veryTight ? 32.0 : (tight ? 36.0 : 38.0));
-        final playIc  = ultraTight ? 16.0 : (veryTight ? 16.0 : (tight ? 18.0 : 20.0));
+        final playDia =
+        ultraTight ? 30.0 : (veryTight ? 32.0 : (tight ? 36.0 : 38.0));
+        final playIc =
+        ultraTight ? 16.0 : (veryTight ? 16.0 : (tight ? 18.0 : 20.0));
 
-        final resetDia = ultraTight ? 0.0  : (veryTight ? 30.0 : (tight ? 34.0 : 36.0));
-        final resetIc  = ultraTight ? 0.0  : (veryTight ? 16.0 : (tight ? 17.0 : 18.0));
+        final resetDia =
+        ultraTight ? 0.0 : (veryTight ? 30.0 : (tight ? 34.0 : 36.0));
+        final resetIc =
+        ultraTight ? 0.0 : (veryTight ? 16.0 : (tight ? 17.0 : 18.0));
         final showReset = !ultraTight;
 
         final gapXS = ultraTight ? 4.0 : 6.0;
-        final gapS  = ultraTight ? 6.0 : 8.0;
-        final gapM  = ultraTight ? 8.0 : 10.0;
+        final gapS = ultraTight ? 6.0 : 8.0;
+        final gapM = ultraTight ? 8.0 : 10.0;
 
         final hPad = ultraTight ? 6.0 : (veryTight ? 8.0 : 12.0);
         final vPad = ultraTight ? 4.0 : 6.0;
@@ -294,8 +306,8 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
         );
 
         // 三角だけ少し大きく
-        final double triIconSize = playIc + 4;   // 例: 16→20, 18→22
-        final double triDiameter = playDia + 6;  // 例: 36→42
+        final double triIconSize = playIc + 4; // 例: 16→20, 18→22
+        final double triDiameter = playDia + 6; // 例: 36→42
 
         // Start/Pause ボタン（※宣言は1回だけ）
         final Widget startPauseBtn = isRunning
@@ -304,7 +316,7 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
           icon: Icons.pause_rounded,
           bg: c.tertiary,
           fg: c.onPrimary,
-          semantic: '一時停止',
+          semantic: AppLocalizations.of(context)!.pause,
           onTap: () => ctl.toggle(),
           diameter: playDia,
           iconSize: playIc,
@@ -314,7 +326,7 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
             ? _PlainIconButton(
           icon: Icons.play_arrow_rounded,
           fg: c.primary,
-          semantic: '開始',
+          semantic: AppLocalizations.of(context)!.start,
           onTap: () => ctl.toggle(),
           diameter: triDiameter,
           iconSize: triIconSize,
@@ -323,75 +335,112 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
           icon: Icons.play_arrow_rounded,
           bg: c.primary,
           fg: c.onPrimary,
-          semantic: '開始',
+          semantic: AppLocalizations.of(context)!.start,
           onTap: () => ctl.toggle(),
           diameter: playDia,
           iconSize: playIc,
         ));
 
-        return Row(
-          children: [
-            modePill,
-            SizedBox(width: gapXS),
+// ---- 幅計算（右はみ出し防止） ----
+        final double reservePx = 2.0; // 安全マージン（丸め誤差吸収）
+        bool showResetLocal = showReset;
 
-            // Start/Pause（コンパクト）
-            startPauseBtn,
-            SizedBox(width: gapM),
+// 左固定幅（ピル＋隙間＋再生ボタン＋隙間）
+        final double fixedLeft = pillW + gapXS + playDia + gapM;
+// 右ブロック（隙間＋リセット）※表示時のみ
+        double fixedRight = showResetLocal ? (gapS + resetDia) : 0.0;
 
-            // 時刻表示（タイマー時はタップで編集／超狭い時は長押しでリセット）
-            Expanded(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(10),
-                onTap: isTimer ? () => _pickTimer(context) : null,
-                onLongPress: (!showReset && ctl.elapsed > Duration.zero)
-                    ? () {
-                  HapticFeedback.mediumImpact();
-                  ctl.reset();
-                }
-                    : null,
-                child: Container(
-                  padding: EdgeInsets.symmetric(vertical: vPad, horizontal: hPad),
-                  decoration: BoxDecoration(
-                    color: c.surfaceContainer,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  alignment: Alignment.centerLeft,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
+// 残り幅（初期）
+        double remain = w - fixedLeft - fixedRight - reservePx;
+
+// 残りが不足ならリセットを隠して再計算
+        if (remain < 100.0 && showResetLocal) {
+          showResetLocal = false;
+          fixedRight = 0.0;
+          remain = w - fixedLeft - reservePx;
+        }
+
+// 時間ボックスの最大幅（小さめに抑える）
+        final double timeMax = math.max(140.0, w * 0.45);
+// ★ 残り幅“以内”に必ず収める（下限は 0）
+        final double timeW = remain.clamp(0.0, timeMax);
+
+// ---- レイアウト ----
+        return SizedBox(
+          width: w,
+          child: Row(
+            children: [
+              // 左：ピル
+              modePill,
+              SizedBox(width: gapXS),
+
+              // 再生/一時
+              SizedBox(
+                width: playDia,
+                height: playDia,
+                child: Center(child: startPauseBtn),
+              ),
+              SizedBox(width: gapM),
+
+              // 時間ボックス（残り幅以内の厳密幅）
+              SizedBox(
+                width: timeW,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: isTimer ? () => _pickTimer(context) : null,
+                  onLongPress: (!showResetLocal && ctl.elapsed > Duration.zero)
+                      ? () { HapticFeedback.mediumImpact(); ctl.reset(); }
+                      : null,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: vPad, horizontal: hPad),
+                    decoration: BoxDecoration(
+                      color: c.surfaceContainer,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     alignment: Alignment.centerLeft,
-                    child: Text(
-                      _fmt(display),
-                      maxLines: 1,
-                      softWrap: false,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                        fontWeight: FontWeight.w700,
-                        color: c.onSurface,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        _fmt(display),
+                        maxLines: 1,
+                        softWrap: false,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          fontWeight: FontWeight.w700,
+                          color: c.onSurface,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-            SizedBox(width: gapS),
 
-            // Reset（狭い幅では自動的に隠す）
-            if (showReset)
-              _RoundIconButton(
-                icon: Icons.restart_alt_rounded,
-                bg: c.surfaceContainerHighest,
-                fg: c.onSurfaceVariant,
-                semantic: 'リセット',
-                onTap: ctl.elapsed > Duration.zero ? () => ctl.reset() : null,
-                diameter: resetDia,
-                iconSize: resetIc,
-              ),
-          ],
+              // 右：隙間＋リセット（表示できるときだけ）
+              if (showResetLocal) ...[
+                SizedBox(width: gapS),
+                SizedBox(
+                  width: resetDia,
+                  height: resetDia,
+                  child: _RoundIconButton(
+                    icon: Icons.restart_alt_rounded,
+                    bg: c.surfaceContainerHighest,
+                    fg: c.onSurfaceVariant,
+                    semantic: AppLocalizations.of(context)!.reset,
+                    onTap: ctl.elapsed > Duration.zero ? () => ctl.reset() : null,
+                    diameter: resetDia,
+                    iconSize: resetIc,
+                  ),
+                ),
+              ],
+            ],
+          ),
         );
+
+
       },
     );
   }
-
 
   // ===== FULL =====
   Widget _buildFull(BuildContext context) {
@@ -404,9 +453,8 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
     final target = ctl.timerTarget;
 
     final rawRemain = isTimer ? (target - elapsed) : elapsed;
-    final remain = isTimer
-        ? _clampDuration(rawRemain, Duration.zero, target)
-        : rawRemain;
+    final remain =
+    isTimer ? _clampDuration(rawRemain, Duration.zero, target) : rawRemain;
 
     final progress = isTimer && target.inMilliseconds > 0
         ? (elapsed.inMilliseconds / target.inMilliseconds).clamp(0.0, 1.0)
@@ -428,16 +476,19 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
       },
     );
 
+    final l10n = AppLocalizations.of(context)!;
+
     // 操作ボタン（フル）
     final Widget startPause = isRunning
         ? ElevatedButton.icon(
       onPressed: () => ctl.toggle(),
       icon: const Icon(Icons.pause_rounded),
-      label: const Text('一時停止'),
+      label: Text(l10n.pause),
       style: ElevatedButton.styleFrom(
         backgroundColor: c.tertiary,
         foregroundColor: c.onPrimary,
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        padding:
+        const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
         ),
@@ -447,18 +498,18 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
         ? IconButton(
       onPressed: () => ctl.toggle(),
       icon: const Icon(Icons.play_arrow_rounded),
-      tooltip: '開始',
+      tooltip: l10n.start,
       iconSize: 32, // ← 少し大きめ
     )
         : ElevatedButton.icon(
       onPressed: () => ctl.toggle(),
       icon: const Icon(Icons.play_arrow_rounded),
-      label: const Text('開始'),
+      label: Text(l10n.start),
       style: ElevatedButton.styleFrom(
         backgroundColor: c.primary,
         foregroundColor: c.onPrimary,
-        padding:
-        const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        padding: const EdgeInsets.symmetric(
+            vertical: 14, horizontal: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
         ),
@@ -506,8 +557,10 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
                       child: Text(
                         timeStr,
                         textAlign: TextAlign.center,
-                        style:
-                        Theme.of(context).textTheme.displaySmall?.copyWith(
+                        style: Theme.of(context)
+                            .textTheme
+                            .displaySmall
+                            ?.copyWith(
                           fontWeight: FontWeight.w700,
                           fontFeatures: const [
                             FontFeature.tabularFigures()
@@ -520,8 +573,12 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
                   const SizedBox(height: 8),
                   Text(
                     isTimer
-                        ? '目標 ${_humanize(target)}（数字タップで編集）'
-                        : (isRunning ? '計測中' : '待機中'),
+                    // targetFmt は位置引数2つを要求する生成になっているため、positionalで呼ぶ
+                        ? l10n.targetFmt(
+                      _humanize(context, target),
+                      l10n.tapNumberToEdit,
+                    )
+                        : (isRunning ? l10n.statusRunning : l10n.statusIdle),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: c.onSurfaceVariant,
                     ),
@@ -543,7 +600,7 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
             IconButton.filledTonal(
               onPressed: ctl.elapsed > Duration.zero ? () => ctl.reset() : null,
               icon: const Icon(Icons.restart_alt_rounded),
-              tooltip: 'リセット',
+              tooltip: l10n.reset,
             ),
             // （時間編集ボタンは廃止。数字タップで編集）
           ],
@@ -552,19 +609,26 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
     );
   }
 
-  String _humanize(Duration d) {
+  String _humanize(BuildContext context, Duration d) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context);
+    final isJa = locale.languageCode.toLowerCase() == 'ja';
+
     final h = d.inHours;
     final m = d.inMinutes % 60;
+
+    final hourUnit = isJa ? '時間' : 'h';
+    final minuteUnit = l10n.minutes; // 既存の minutes を単位として使用
+
     if (h > 0) {
-      return '${h}時間${m > 0 ? ' ${m}分' : ''}';
+      return m > 0 ? '$h$hourUnit $m$minuteUnit' : '$h$hourUnit';
     }
-    return '${m}分';
+    return '$m$minuteUnit';
   }
 }
 
 /// タイマー/ストップウォッチ切替の“おしゃれピルスイッチ”
 /// 左：ストップウォッチ（av_timer） 右：タイマー（hourglass）
-/// タイマー/ストップウォッチ切替の“おしゃれピルスイッチ”
 class _ModePill extends StatelessWidget {
   final bool isTimer;
   final VoidCallback onTapStopwatch;
@@ -582,16 +646,18 @@ class _ModePill extends StatelessWidget {
     required this.isTimer,
     required this.onTapStopwatch,
     required this.onTapTimer,
-    this.width = 96,
-    this.height = 40,
-    this.knobWidth = 44,
-    this.knobHeight = 32,
-    this.iconSize = 20,
+    this.width = 120,      // ← 幅を広げる（96→120）
+    this.height = 48,      // ← 高さを少しUP（40→48）
+    this.knobWidth = 70,   // ← ノブ幅を拡大（44→56）
+    this.knobHeight = 40,  // ← ノブ高さを拡大（32→40）
+    this.iconSize = 24,    // ← アイコンも少し大きく（20→24）
   });
+
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       height: height,
@@ -624,21 +690,21 @@ class _ModePill extends StatelessWidget {
             children: [
               _ModeIcon(
                 icon: Icons.av_timer,
-                tooltip: 'ストップウォッチ',
+                tooltip: l10n.stopwatch,
                 boxWidth: knobWidth,
                 boxHeight: knobHeight,
                 iconSize: iconSize,
               ),
               _ModeIcon(
                 icon: Icons.hourglass_bottom_rounded,
-                tooltip: 'タイマー',
+                tooltip: l10n.timer,
                 boxWidth: knobWidth,
                 boxHeight: knobHeight,
                 iconSize: iconSize,
               ),
             ],
           ),
-          // タップ領域（左右に分けてヒットさせる）
+          // タップ領域（左右）
           Row(
             children: [
               Expanded(child: GestureDetector(onTap: onTapStopwatch)),
@@ -648,6 +714,8 @@ class _ModePill extends StatelessWidget {
         ],
       ),
     );
+
+
   }
 }
 
@@ -673,9 +741,12 @@ class _ModeIcon extends StatelessWidget {
       child: SizedBox(
         width: boxWidth,
         height: boxHeight,
-        child: Icon(icon, size: iconSize),
+        child: Center( // ← 中央配置で端のピクセル衝突を回避
+          child: Icon(icon, size: iconSize),
+        ),
       ),
     );
+
   }
 }
 
@@ -720,7 +791,8 @@ class _RoundIconButton extends StatelessWidget {
             width: diameter,
             height: diameter,
             child: Center(
-              child: Icon(icon, color: enabled ? fg : Colors.grey, size: iconSize),
+              child:
+              Icon(icon, color: enabled ? fg : Colors.grey, size: iconSize),
             ),
           ),
         ),
@@ -823,7 +895,8 @@ class _RingPainter extends CustomPainter {
       // ぼかし光彩（鼓動）
       if (glowStrength > 0) {
         final glowPaint = Paint()
-          ..color = (glowColor ?? Colors.blue).withOpacity(0.35 * glowStrength)
+          ..color = (glowColor ?? Colors.blue)
+              .withOpacity(0.35 * glowStrength)
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, 16 * glowStrength)
           ..style = PaintingStyle.stroke
           ..strokeWidth = stroke;

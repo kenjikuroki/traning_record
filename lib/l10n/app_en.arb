@@ -88,5 +88,16 @@
   "themeTitle": "Theme",
   "unitTitle": "Unit",
   "useDarkMode": "dark mode",
-  "enterGoal": "Goal"
+  "enterGoal": "Goal",
+  "start": "Start",
+  "pause": "Pause",
+  "reset": "Reset",
+  "timerTime": "Timer duration",
+  "tapNumberToEdit": "Tap numbers to edit",
+  "targetFmt": "Target {time} ({hint})",
+  "statusRunning": "Running",
+  "statusIdle": "Idle",
+  "stopwatch": "Stopwatch",
+  "timer": "Timer",
+  "hours": "{hours}h"
 }

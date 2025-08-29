@@ -1,4 +1,5 @@
 // lib/screens/graph_screen.dart
+import 'dart:ui';
 import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -1652,21 +1653,44 @@ class _GraphScreenState extends State<GraphScreen> {
     );
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
+      backgroundColor: Colors.transparent, // ← 透過
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Text(
-          l10n.graphScreenTitle,
+        elevation: 0.0,
+        iconTheme: const IconThemeData(color: Colors.white), // 白アイコンで潰れ防止
+        title: const Text(
+          // l10n を使うなら → Text(l10n.graphScreenTitle, style: TextStyle(...))
+          'グラフ',
           style: TextStyle(
-            color: colorScheme.onSurface,
+            color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 20.0,
           ),
         ),
-        backgroundColor: colorScheme.surface,
-        elevation: 0.0,
-        iconTheme: IconThemeData(color: colorScheme.onSurface),
+        // 個別の背景色指定は削除（壁紙＋ぼかしで可読性を担保）
+        // backgroundColor: colorScheme.surface,
+
+        // ぼかし＋半透明グラデでどんな壁紙でも文字が読めるように
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.30),
+                    Colors.black.withOpacity(0.10),
+                    Colors.black.withOpacity(0.00),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
+
       // ★ 画面縮小を防止（キーボードは上に被せる）
       resizeToAvoidBottomInset: false,
       body: MediaQuery.removeViewInsets(
