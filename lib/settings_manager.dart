@@ -20,6 +20,9 @@ class SettingsManager {
   static const String _showStopwatchKey = 'show_stopwatch';
   static const String _backgroundAssetKey = 'backgroundAsset';
 
+  // ★ 初回起動時に使うデフォルト壁紙（存在するアセットにしてください）
+  static const String _defaultBackgroundAsset = 'assets/backgrounds/bg37.png';
+
   static Box<dynamic>? _box;
 
   // ====== Notifiers ======
@@ -95,10 +98,16 @@ class SettingsManager {
     box.get(_showStopwatchKey, defaultValue: true) as bool;
     _showStopwatchNotifier.value = savedShowStopwatch;
 
-    // 背景アセット
-    final savedBg =
-    box.get(_backgroundAssetKey, defaultValue: '') as String;
-    _backgroundAssetNotifier.value = savedBg;
+    // 背景アセット（初回はデフォルトを保存して反映）
+    if (!box.containsKey(_backgroundAssetKey)) {
+      final def = _defaultBackgroundAsset; // 例：'assets/backgrounds/bg01.png'
+      box.put(_backgroundAssetKey, def);
+      _backgroundAssetNotifier.value = def;
+    } else {
+      final savedBg = box.get(_backgroundAssetKey, defaultValue: '') as String;
+      _backgroundAssetNotifier.value = savedBg;
+    }
+
   }
 
   // ====== Setters (save & notify) ======
