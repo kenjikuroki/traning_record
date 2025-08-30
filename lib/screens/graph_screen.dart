@@ -49,25 +49,32 @@ class _GraphScreenState extends State<GraphScreen> {
   final GlobalKey _kPart = GlobalKey();
 
   // 設定キー
-  static const String _prefGraphPart   = 'graph_selected_part';
-  static const String _prefGraphMenu   = 'graph_selected_menu';
-  static const String _prefGraphMode   = 'graph_display_mode';
-  static const String _prefAeroMetric  = 'graph_aero_metric';
+  static const String _prefGraphPart = 'graph_selected_part';
+  static const String _prefGraphMenu = 'graph_selected_menu';
+  static const String _prefGraphMode = 'graph_display_mode';
+  static const String _prefAeroMetric = 'graph_aero_metric';
 
   // UI寸法
   static const double _kControlHeight = 40.0;
   static const double _kControlRadius = 20.0;
-  static const double _kPickerHeight  = 48.0;
+  static const double _kPickerHeight = 48.0;
 
   // X1点あたり幅
   static const double _kXStridePx = 48.0;
 
   // Y目盛の“見た目”間隔：固定 24px（初期余白も 24px）
   static const double _kYTickPx = 24.0;
-  static const double _kYAxisWidth = 45.0;
+  static const double _kYAxisWidth = 48.0;
+
+  // X軸ラベル領域の高さ（左右で統一）
+  static const double _kXAxisReservedPx = 24.0;
+
+  // Y軸スクロール開始を早める上下の“空き目盛”数
+  static const int _kYPadStepsTop = 2;
+  static const int _kYPadStepsBottom = 2;
 
   // X の右余白スクロール
-  static const int _kPadTailDays  = 7;
+  static const int _kPadTailDays = 7;
   static const int _kPadTailWeeks = 4;
 
   // プロット領域高さ（レイアウト時に更新）
@@ -120,18 +127,30 @@ class _GraphScreenState extends State<GraphScreen> {
   String _translatePartToLocale(BuildContext context, String part) {
     final l10n = AppLocalizations.of(context)!;
     switch (part) {
-      case '有酸素運動': return l10n.aerobicExercise;
-      case '腕': return l10n.arm;
-      case '胸': return l10n.chest;
-      case '背中': return l10n.back;
-      case '肩': return l10n.shoulder;
-      case '足': return l10n.leg;
-      case '全身': return l10n.fullBody;
-      case 'その他１': return l10n.other1;
-      case 'その他２': return l10n.other2;
-      case 'その他３': return l10n.other3;
-      case 'お気に入り': return l10n.favorites;
-      default: return part;
+      case '有酸素運動':
+        return l10n.aerobicExercise;
+      case '腕':
+        return l10n.arm;
+      case '胸':
+        return l10n.chest;
+      case '背中':
+        return l10n.back;
+      case '肩':
+        return l10n.shoulder;
+      case '足':
+        return l10n.leg;
+      case '全身':
+        return l10n.fullBody;
+      case 'その他１':
+        return l10n.other1;
+      case 'その他２':
+        return l10n.other2;
+      case 'その他３':
+        return l10n.other3;
+      case 'お気に入り':
+        return l10n.favorites;
+      default:
+        return part;
     }
   }
 
@@ -154,7 +173,10 @@ class _GraphScreenState extends State<GraphScreen> {
   Future<void> _tryShowGraphCoachIfVisible() async {
     if (!mounted || _graphCoachDone) return;
     final seen = (widget.settingsBox.get('hint_seen_graph') as bool?) ?? false;
-    if (seen) { _graphCoachDone = true; return; }
+    if (seen) {
+      _graphCoachDone = true;
+      return;
+    }
     if (!_isActuallyVisible()) return;
 
     final anchorsReady = [
@@ -220,7 +242,16 @@ class _GraphScreenState extends State<GraphScreen> {
     }
 
     final allBodyParts = [
-      '有酸素運動','腕','胸','背中','肩','足','全身','その他１','その他２','その他３',
+      '有酸素運動',
+      '腕',
+      '胸',
+      '背中',
+      '肩',
+      '足',
+      '全身',
+      'その他１',
+      'その他２',
+      'その他３',
     ];
     Map<String, bool>? savedBodyPartsSettings;
     final dynamic rawSettings = widget.settingsBox.get('selectedBodyParts');
@@ -233,19 +264,25 @@ class _GraphScreenState extends State<GraphScreen> {
       });
     }
 
-    _filteredBodyParts = (savedBodyPartsSettings == null || savedBodyPartsSettings.isEmpty)
-        ? allBodyParts.map<String>((p) => _translatePartToLocale(context, p)).toList()
+    _filteredBodyParts =
+    (savedBodyPartsSettings == null || savedBodyPartsSettings.isEmpty)
+        ? allBodyParts
+        .map<String>((p) => _translatePartToLocale(context, p))
+        .toList()
         : allBodyParts
         .where((p) => savedBodyPartsSettings![p] == true)
         .map<String>((p) => _translatePartToLocale(context, p))
         .toList();
 
     // 先頭に「お気に入り」「体重」
-    _filteredBodyParts = [l10n.favorites, l10n.bodyWeight, ..._filteredBodyParts];
+    _filteredBodyParts =
+    [l10n.favorites, l10n.bodyWeight, ..._filteredBodyParts];
 
     final String? savedPart = widget.settingsBox.get(_prefGraphPart) as String?;
-    _selectedPart = (savedPart != null && _filteredBodyParts.contains(savedPart))
-        ? savedPart : null;
+    _selectedPart =
+    (savedPart != null && _filteredBodyParts.contains(savedPart))
+        ? savedPart
+        : null;
 
     if (mounted) {
       setState(() {
@@ -280,7 +317,8 @@ class _GraphScreenState extends State<GraphScreen> {
       final originalPartName = _getOriginalPartName(context, translatedPart);
       final dynamic rawList = widget.lastUsedMenusBox.get(originalPartName);
       if (rawList is List) {
-        final List<MenuData> lastUsedMenus = rawList.whereType<MenuData>().toList();
+        final List<MenuData> lastUsedMenus =
+        rawList.whereType<MenuData>().toList();
         _menusForPart = lastUsedMenus.map((m) => m.name).toList();
       }
     }
@@ -311,7 +349,9 @@ class _GraphScreenState extends State<GraphScreen> {
 
   Future<void> _closeKeyboard() async {
     FocusManager.instance.primaryFocus?.unfocus();
-    try { await SystemChannels.textInput.invokeMethod('TextInput.hide'); } catch (_) {}
+    try {
+      await SystemChannels.textInput.invokeMethod('TextInput.hide');
+    } catch (_) {}
     await Future<void>.delayed(const Duration(milliseconds: 16));
   }
 
@@ -427,7 +467,16 @@ class _GraphScreenState extends State<GraphScreen> {
   // ====== strength ======
   void _loadStrengthData(String menuName) {
     final List<String> allPartsOriginal = [
-      '有酸素運動','腕','胸','背中','肩','足','全身','その他１','その他２','その他３',
+      '有酸素運動',
+      '腕',
+      '胸',
+      '背中',
+      '肩',
+      '足',
+      '全身',
+      'その他１',
+      'その他２',
+      'その他３',
     ];
     final Iterable<DailyRecord> records =
     widget.recordsBox.toMap().values.whereType<DailyRecord>();
@@ -499,9 +548,15 @@ class _GraphScreenState extends State<GraphScreen> {
 
         double? value;
         switch (_aeroMetric) {
-          case AerobicMetric.distance: value = km > 0 ? km : null; break;
-          case AerobicMetric.time:     value = minVal > 0 ? minVal : null; break;
-          case AerobicMetric.pace:     if (km > 0 && minVal > 0) value = minVal / km; break;
+          case AerobicMetric.distance:
+            value = km > 0 ? km : null;
+            break;
+          case AerobicMetric.time:
+            value = minVal > 0 ? minVal : null;
+            break;
+          case AerobicMetric.pace:
+            if (km > 0 && minVal > 0) value = minVal / km;
+            break;
         }
         if (value != null) {
           final d = DateTime(r.date.year, r.date.month, r.date.day);
@@ -524,9 +579,15 @@ class _GraphScreenState extends State<GraphScreen> {
         final key = DateTime(weekStart.year, weekStart.month, weekStart.day);
 
         switch (_aeroMetric) {
-          case AerobicMetric.distance: weeklyList.putIfAbsent(key, () => []).add(km); break;
-          case AerobicMetric.time:     weeklyList.putIfAbsent(key, () => []).add(minVal); break;
-          case AerobicMetric.pace:     if (km > 0 && minVal > 0) weeklyList.putIfAbsent(key, () => []).add(minVal / km); break;
+          case AerobicMetric.distance:
+            weeklyList.putIfAbsent(key, () => []).add(km);
+            break;
+          case AerobicMetric.time:
+            weeklyList.putIfAbsent(key, () => []).add(minVal);
+            break;
+          case AerobicMetric.pace:
+            if (km > 0 && minVal > 0) weeklyList.putIfAbsent(key, () => []).add(minVal / km);
+            break;
         }
       }
 
@@ -535,8 +596,12 @@ class _GraphScreenState extends State<GraphScreen> {
         double value;
         switch (_aeroMetric) {
           case AerobicMetric.distance:
-          case AerobicMetric.time: value = list.reduce((a, b) => a + b); break;
-          case AerobicMetric.pace: value = list.reduce(min); break;
+          case AerobicMetric.time:
+            value = list.reduce((a, b) => a + b);
+            break;
+          case AerobicMetric.pace:
+            value = list.reduce(min);
+            break;
         }
         map[k] = value;
       });
@@ -547,7 +612,7 @@ class _GraphScreenState extends State<GraphScreen> {
   }
 
   // ====== tick helpers ======
-// ラベルとグリッドの起点を「実際にチャートへ渡している minY」にそろえる
+  // ラベルとグリッドの起点を「実際にチャートへ渡している minY」にそろえる
   double get _tickStart {
     final step = _yLabelStep;
     final minY = _baseMinY; // ← 今の実装では両チャートとも minY=_baseMinY を渡しているのでこれでOK
@@ -559,7 +624,6 @@ class _GraphScreenState extends State<GraphScreen> {
     final ratio = (v - _tickStart) / step;
     return (ratio - ratio.round()).abs() < 1e-6;
   }
-
 
   // ====== build series & axis ======
   void _buildSeriesFromMap(Map<DateTime, double> map) {
@@ -617,18 +681,28 @@ class _GraphScreenState extends State<GraphScreen> {
     } else {
       // 有酸素（例の固定値）
       switch (_aeroMetric) {
-        case AerobicMetric.distance: _yLabelStep = 1.0; break;         // 1km
-        case AerobicMetric.time:     _yLabelStep = 10.0; break;        // 10分
-        case AerobicMetric.pace:     _yLabelStep = 0.5; break;         // 0.5 分/ km (=30秒)
+        case AerobicMetric.distance:
+          _yLabelStep = 1.0; // 1km
+          break;
+        case AerobicMetric.time:
+          _yLabelStep = 10.0; // 10分
+          break;
+        case AerobicMetric.pace:
+          _yLabelStep = 0.5; // 0.5 分/ km (=30秒)
+          break;
       }
     }
 
     double floorTo(double v, double step) => (v / step).floorToDouble() * step;
-    double ceilTo (double v, double step) => (v / step).ceilToDouble()  * step;
+    double ceilTo(double v, double step) => (v / step).ceilToDouble() * step;
 
-    // 余白は付けず、データにフィット（見切れOKは縦スクロールで対応）
+    // データにフィットさせたベースを作る
     _baseMinY = floorTo(_minY, _yLabelStep);
     _baseMaxY = ceilTo(_maxY, _yLabelStep);
+
+    // 上下に“空き目盛”を加えて、Y方向にもスクロール余裕を作る（定数を使用）
+    _baseMinY = floorTo(_baseMinY - _kYPadStepsBottom * _yLabelStep, _yLabelStep);
+    _baseMaxY = ceilTo (_baseMaxY + _kYPadStepsTop    * _yLabelStep, _yLabelStep);
 
     // 有酸素は負値なし
     if (_isAerobicContext()) _baseMinY = max(0, _baseMinY);
@@ -649,9 +723,10 @@ class _GraphScreenState extends State<GraphScreen> {
 
   // ラベル
   String _weekSuffix() {
-    final lang = Localizations.localeOf(context).languageCode;
+    final lang = Localizations.localeOf(context).languageCode; // ← これでOK
     return (lang == 'ja') ? '週' : 'wk';
   }
+
 
   String _formatDayLabel(DateTime d) {
     final locale = Localizations.localeOf(context).toString();
@@ -712,9 +787,12 @@ class _GraphScreenState extends State<GraphScreen> {
 
     if (_isAerobicContext()) {
       switch (_aeroMetric) {
-        case AerobicMetric.distance: return l10n.km;
-        case AerobicMetric.time:     return l10n.min;
-        case AerobicMetric.pace:     return '${l10n.min}/${l10n.km}';
+        case AerobicMetric.distance:
+          return l10n.km;
+        case AerobicMetric.time:
+          return l10n.min;
+        case AerobicMetric.pace:
+          return '${l10n.min}/${l10n.km}';
       }
     }
     return SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
@@ -723,9 +801,12 @@ class _GraphScreenState extends State<GraphScreen> {
   String _formatTooltipValue(double y, AppLocalizations l10n) {
     if (_isAerobicContext()) {
       switch (_aeroMetric) {
-        case AerobicMetric.distance: return '${y.toStringAsFixed(2)} ${l10n.km}';
-        case AerobicMetric.time:     return '${_formatMinToMMSS(y)} ${l10n.min}';
-        case AerobicMetric.pace:     return '${_formatMinToMMSS(y)} ${l10n.min}/${l10n.km}';
+        case AerobicMetric.distance:
+          return '${y.toStringAsFixed(2)} ${l10n.km}';
+        case AerobicMetric.time:
+          return '${_formatMinToMMSS(y)} ${l10n.min}';
+        case AerobicMetric.pace:
+          return '${_formatMinToMMSS(y)} ${l10n.min}/${l10n.km}';
       }
     }
     final u = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
@@ -738,7 +819,10 @@ class _GraphScreenState extends State<GraphScreen> {
     (_selectedPart == l10n.bodyWeight || _selectedMenu == l10n.bodyWeight)
         ? l10n.bodyWeight
         : _selectedMenu;
-    if (key == null) { _isFavorite = false; return; }
+    if (key == null) {
+      _isFavorite = false;
+      return;
+    }
     final rawFavorites = widget.settingsBox.get('favorites');
     final favs = (rawFavorites is List)
         ? rawFavorites.whereType<String>().toList()
@@ -760,7 +844,11 @@ class _GraphScreenState extends State<GraphScreen> {
         : <String>[];
 
     final willAdd = !favorites.contains(key);
-    if (willAdd) { favorites.add(key); } else { favorites.remove(key); }
+    if (willAdd) {
+      favorites.add(key);
+    } else {
+      favorites.remove(key);
+    }
     widget.settingsBox.put('favorites', favorites);
 
     setState(() {
@@ -799,7 +887,8 @@ class _GraphScreenState extends State<GraphScreen> {
     final key = _goalStorageKey();
     final v = widget.settingsBox.get(key);
     double? parsed;
-    if (v is num) parsed = v.toDouble();
+    if (v is num)
+      parsed = v.toDouble();
     else if (v is String) parsed = _parseDurationMin(v) ?? double.tryParse(v);
     _goalValue = parsed;
 
@@ -823,7 +912,9 @@ class _GraphScreenState extends State<GraphScreen> {
   void _applyGoalFromText(String raw) {
     final s = raw.trim();
     if (s.isEmpty) {
-      setState(() { _goalValue = null; });
+      setState(() {
+        _goalValue = null;
+      });
       _saveGoalForCurrentContext();
       return;
     }
@@ -925,7 +1016,11 @@ class _GraphScreenState extends State<GraphScreen> {
 
     double lo = minValue;
     double hi = maxValue;
-    if (lo > hi) { final t = lo; lo = hi; hi = t; }
+    if (lo > hi) {
+      final t = lo;
+      lo = hi;
+      hi = t;
+    }
 
     lo = floorToStep(lo);
     hi = ceilToStep(hi);
@@ -1032,8 +1127,9 @@ class _GraphScreenState extends State<GraphScreen> {
                           onSelectedItemChanged: (i) => selMin = i,
                           children: List.generate(
                             maxMinutes + 1,
-                                (i) => Center(child: Text('$i 分',
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+                                (i) => Center(
+                                child: Text('$i 分',
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
                           ),
                         ),
                       ),
@@ -1045,8 +1141,9 @@ class _GraphScreenState extends State<GraphScreen> {
                           onSelectedItemChanged: (i) => selSec = i,
                           children: List.generate(
                             60,
-                                (i) => Center(child: Text('$i 秒',
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+                                (i) => Center(
+                                child: Text('$i 秒',
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
                           ),
                         ),
                       ),
@@ -1087,7 +1184,10 @@ class _GraphScreenState extends State<GraphScreen> {
         suffix: unit,
       );
       if (v != null) {
-        setState(() { _goalValue = v; _goalController.text = _goalDisplayString(); });
+        setState(() {
+          _goalValue = v;
+          _goalController.text = _goalDisplayString();
+        });
         _saveGoalForCurrentContext();
       }
       return;
@@ -1095,48 +1195,61 @@ class _GraphScreenState extends State<GraphScreen> {
 
     if (_isAerobicContext()) {
       switch (_aeroMetric) {
-        case AerobicMetric.distance: {
-          final v = await _showNumberPicker(
-            title: l10n.distance,
-            minValue: max(0.0, _baseMinY - 2),
-            maxValue: _baseMaxY + 5,
-            step: 0.1,
-            fractionDigits: 1,
-            current: _goalValue,
-            suffix: l10n.km,
-          );
-          if (v != null) {
-            setState(() { _goalValue = v; _goalController.text = _goalDisplayString(); });
-            _saveGoalForCurrentContext();
+        case AerobicMetric.distance:
+          {
+            final v = await _showNumberPicker(
+              title: l10n.distance,
+              minValue: max(0.0, _baseMinY - 2),
+              maxValue: _baseMaxY + 5,
+              step: 0.1,
+              fractionDigits: 1,
+              current: _goalValue,
+              suffix: l10n.km,
+            );
+            if (v != null) {
+              setState(() {
+                _goalValue = v;
+                _goalController.text = _goalDisplayString();
+              });
+              _saveGoalForCurrentContext();
+            }
+            return;
           }
-          return;
-        }
-        case AerobicMetric.time: {
-          final init = Duration(minutes: ((_goalValue ?? 30).clamp(0, 600)).round());
-          final dur = await _showTimeWheelPicker(
-            title: l10n.time,
-            initial: init,
-            suffix: l10n.min,
-          );
-          if (dur != null) {
-            setState(() { _goalValue = dur.inSeconds / 60.0; _goalController.text = _goalDisplayString(); });
-            _saveGoalForCurrentContext();
+        case AerobicMetric.time:
+          {
+            final init = Duration(minutes: ((_goalValue ?? 30).clamp(0, 600)).round());
+            final dur = await _showTimeWheelPicker(
+              title: l10n.time,
+              initial: init,
+              suffix: l10n.min,
+            );
+            if (dur != null) {
+              setState(() {
+                _goalValue = dur.inSeconds / 60.0;
+                _goalController.text = _goalDisplayString();
+              });
+              _saveGoalForCurrentContext();
+            }
+            return;
           }
-          return;
-        }
-        case AerobicMetric.pace: {
-          final init = Duration(seconds: (((_goalValue ?? 6.0) * 60).clamp(60, 60 * 30)).round());
-          final dur = await _showTimeWheelPicker(
-            title: l10n.pace,
-            initial: init,
-            suffix: '${l10n.min}/${l10n.km}',
-          );
-          if (dur != null) {
-            setState(() { _goalValue = dur.inSeconds / 60.0; _goalController.text = _goalDisplayString(); });
-            _saveGoalForCurrentContext();
+        case AerobicMetric.pace:
+          {
+            final init =
+            Duration(seconds: (((_goalValue ?? 6.0) * 60).clamp(60, 60 * 30)).round());
+            final dur = await _showTimeWheelPicker(
+              title: l10n.pace,
+              initial: init,
+              suffix: '${l10n.min}/${l10n.km}',
+            );
+            if (dur != null) {
+              setState(() {
+                _goalValue = dur.inSeconds / 60.0;
+                _goalController.text = _goalDisplayString();
+              });
+              _saveGoalForCurrentContext();
+            }
+            return;
           }
-          return;
-        }
       }
     }
 
@@ -1159,7 +1272,10 @@ class _GraphScreenState extends State<GraphScreen> {
         suffix: unit,
       );
       if (v != null) {
-        setState(() { _goalValue = v; _goalController.text = _goalDisplayString(); });
+        setState(() {
+          _goalValue = v;
+          _goalController.text = _goalDisplayString();
+        });
         _saveGoalForCurrentContext();
       }
       return;
@@ -1171,9 +1287,12 @@ class _GraphScreenState extends State<GraphScreen> {
     if (_goalValue == null) return '';
     if (_isAerobicContext()) {
       switch (_aeroMetric) {
-        case AerobicMetric.distance: return '${_goalValue!.toStringAsFixed(1)} ${l10n.km}';
-        case AerobicMetric.time:     return '${_formatMinToMMSS(_goalValue!)} ${l10n.min}';
-        case AerobicMetric.pace:     return '${_formatMinToMMSS(_goalValue!)} ${l10n.min}/${l10n.km}';
+        case AerobicMetric.distance:
+          return '${_goalValue!.toStringAsFixed(1)} ${l10n.km}';
+        case AerobicMetric.time:
+          return '${_formatMinToMMSS(_goalValue!)} ${l10n.min}';
+        case AerobicMetric.pace:
+          return '${_formatMinToMMSS(_goalValue!)} ${l10n.min}/${l10n.km}';
       }
     }
     final u = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
@@ -1309,7 +1428,8 @@ class _GraphScreenState extends State<GraphScreen> {
         : const SizedBox.shrink();
 
     final partDisplay = _selectedPart ?? l10n.selectTrainingPart;
-    final menuDisplay = (_selectedPart == l10n.bodyWeight) ? '' : (_selectedMenu ?? l10n.selectExercise);
+    final menuDisplay =
+    (_selectedPart == l10n.bodyWeight) ? '' : (_selectedMenu ?? l10n.selectExercise);
 
     Widget partMenuRow = Row(
       children: [
@@ -1533,9 +1653,15 @@ class _GraphScreenState extends State<GraphScreen> {
                             ),
                           );
 
-                          // 必要なチャート全高：固定 24px/目盛（上下に 24px 余白）
+                          // 必要なチャート全高：Yピッチ固定（_kYTickPx）で算出。
+// いまは計算値が小さいとカード内に下余白が残るので、totalH を下限にする。
                           final tickCount = ((_baseMaxY - _baseMinY) / _yLabelStep).round() + 1;
-                          final chartH = max(totalH, 24 + (tickCount - 1) * _kYTickPx + 24);
+
+// もともとの計算（上 24px + 下 24px）はそのまま使いつつ…
+                          final double computedChartH = 24 + (tickCount - 1) * _kYTickPx + 24;
+
+// ここを変更：カードの実高 totalH を下限にする
+                          final double chartH = max(totalH, computedChartH);
 
                           // 左Y軸（縦スクロールと同期）
                           final yAxisChart = SizedBox(
@@ -1560,16 +1686,17 @@ class _GraphScreenState extends State<GraphScreen> {
                                       getTitlesWidget: _leftTitle,
                                     ),
                                   ),
-                                  // ★これを追加（右のチャートと同じ 40 に合わせる）
                                   bottomTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
-                                      reservedSize: 40, // ← 右の LineChart と同じ値
+                                      reservedSize: _kXAxisReservedPx, // 右と統一
                                       getTitlesWidget: (v, meta) => const SizedBox.shrink(),
                                     ),
                                   ),
-                                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                  topTitles:
+                                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                  rightTitles:
+                                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                 ),
                                 gridData: FlGridData(
                                   show: true,
@@ -1590,7 +1717,6 @@ class _GraphScreenState extends State<GraphScreen> {
                             ),
                           );
 
-
                           // 右側：縦横スクロール（ズーム無し）
                           final plotArea = _axisDates.isEmpty
                               ? Center(
@@ -1602,117 +1728,113 @@ class _GraphScreenState extends State<GraphScreen> {
                               ),
                             ),
                           )
-                              : SingleChildScrollView(
-                            scrollDirection: Axis.vertical,
-                            physics: const BouncingScrollPhysics(),
-                            child: SizedBox(
-                              height: chartH,
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                physics: const BouncingScrollPhysics(),
-                                child: SizedBox(
-                                  width: chartW,
-                                  height: chartH,
-                                  child: LineChart(
-                                    LineChartData(
-                                      minX: 0,
-                                      maxX: (_axisDates.length - 1).toDouble(),
-                                      minY: _baseMinY,
-                                      maxY: _baseMaxY,
-                                      clipData: const FlClipData.all(),
-                                      lineBarsData: [
-                                        LineChartBarData(
-                                          spots: _spots,
-                                          isCurved: false,
-                                          color: colorScheme.primary,
-                                          barWidth: 3,
-                                          dotData: const FlDotData(show: true),
-                                          belowBarData: BarAreaData(show: false),
-                                        ),
-                                      ],
-                                      titlesData: FlTitlesData(
-                                        leftTitles: const AxisTitles(
-                                          sideTitles: SideTitles(showTitles: false),
-                                        ),
-                                        bottomTitles: AxisTitles(
-                                          sideTitles: SideTitles(
-                                            showTitles: true,
-                                            interval: 1,
-                                            reservedSize: 40,
-                                            getTitlesWidget: _bottomTitle,
-                                          ),
-                                        ),
-                                        topTitles: const AxisTitles(
-                                          sideTitles: SideTitles(showTitles: false),
-                                        ),
-                                        rightTitles: const AxisTitles(
-                                          sideTitles: SideTitles(showTitles: false),
+                              : SizedBox(
+                            height: chartH,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              physics: const BouncingScrollPhysics(),
+                              child: SizedBox(
+                                width: chartW,
+                                height: chartH,
+                                child: LineChart(
+                                  LineChartData(
+                                    minX: 0,
+                                    maxX: (_axisDates.length - 1).toDouble(),
+                                    minY: _baseMinY,
+                                    maxY: _baseMaxY,
+                                    clipData: const FlClipData.all(),
+                                    lineBarsData: [
+                                      LineChartBarData(
+                                        spots: _spots,
+                                        isCurved: false,
+                                        color: colorScheme.primary,
+                                        barWidth: 3,
+                                        dotData: const FlDotData(show: true),
+                                        belowBarData: BarAreaData(show: false),
+                                      ),
+                                    ],
+                                    titlesData: FlTitlesData(
+                                      leftTitles: const AxisTitles(
+                                        sideTitles: SideTitles(showTitles: false),
+                                      ),
+                                      bottomTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: true,
+                                          interval: 1,
+                                          reservedSize: _kXAxisReservedPx, // 左と統一
+                                          getTitlesWidget: _bottomTitle,
                                         ),
                                       ),
-                                      gridData: FlGridData(
-                                        show: true,
-                                        horizontalInterval: _yLabelStep,
-                                        checkToShowHorizontalLine: (v) => _isLabelTick(v),
-                                        drawVerticalLine: true,
-                                        verticalInterval: 1,
-                                        checkToShowVerticalLine: (v) =>
-                                        (v - v.round()).abs() < 1e-6,
-                                        getDrawingHorizontalLine: (v) => FlLine(
-                                          color: colorScheme.outlineVariant,
-                                          strokeWidth: 0.5,
-                                        ),
-                                        getDrawingVerticalLine: (v) => FlLine(
-                                          color: colorScheme.outlineVariant,
-                                          strokeWidth: 0.5,
-                                        ),
+                                      topTitles: const AxisTitles(
+                                        sideTitles: SideTitles(showTitles: false),
                                       ),
-                                      borderData: FlBorderData(
-                                        show: true,
-                                        border: Border(
-                                          bottom: BorderSide(color: colorScheme.outlineVariant),
-                                          right: BorderSide(color: colorScheme.outlineVariant),
+                                      rightTitles: const AxisTitles(
+                                        sideTitles: SideTitles(showTitles: false),
+                                      ),
+                                    ),
+                                    gridData: FlGridData(
+                                      show: true,
+                                      horizontalInterval: _yLabelStep,
+                                      checkToShowHorizontalLine: (v) => _isLabelTick(v),
+                                      drawVerticalLine: true,
+                                      verticalInterval: 1,
+                                      checkToShowVerticalLine: (v) => (v - v.round()).abs() < 1e-6,
+                                      getDrawingHorizontalLine: (v) => FlLine(
+                                        color: colorScheme.outlineVariant,
+                                        strokeWidth: 0.5,
+                                      ),
+                                      getDrawingVerticalLine: (v) => FlLine(
+                                        color: colorScheme.outlineVariant,
+                                        strokeWidth: 0.5,
+                                      ),
+                                    ),
+                                    borderData: FlBorderData(
+                                      show: true,
+                                      border: Border(
+                                        bottom: BorderSide(color: colorScheme.outlineVariant),
+                                        right: BorderSide(color: colorScheme.outlineVariant),
+                                      ),
+                                    ),
+                                    lineTouchData: LineTouchData(
+                                      touchTooltipData: LineTouchTooltipData(
+                                        getTooltipItems: (items) {
+                                          final loc = Localizations.localeOf(context).toString();
+                                          return items.map((s) {
+                                            final i = s.x.toInt();
+                                            final d = (i >= 0 && i < _xDates.length) ? _xDates[i] : null;
+                                            final dateStr = (_displayMode == DisplayMode.day)
+                                                ? (d != null ? DateFormat('M/d', loc).format(d) : '')
+                                                : (d != null ? _formatWeekLabel(d) : '');
+                                            final valStr = _formatTooltipValue(s.y, l10n);
+                                            return LineTooltipItem(
+                                              '$dateStr\n$valStr',
+                                              TextStyle(
+                                                color: colorScheme.onPrimaryContainer,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            );
+                                          }).toList();
+                                        },
+                                      ),
+                                    ),
+                                    extraLinesData: ExtraLinesData(
+                                      horizontalLines: (_goalValue != null)
+                                          ? [
+                                        HorizontalLine(
+                                          y: _goalValue!,
+                                          color: colorScheme.tertiary,
+                                          strokeWidth: 2,
+                                          dashArray: [6, 4],
                                         ),
-                                      ),
-                                      lineTouchData: LineTouchData(
-                                        touchTooltipData: LineTouchTooltipData(
-                                          getTooltipItems: (items) {
-                                            final loc = Localizations.localeOf(context).toString();
-                                            return items.map((s) {
-                                              final i = s.x.toInt();
-                                              final d = (i >= 0 && i < _xDates.length) ? _xDates[i] : null;
-                                              final dateStr = (_displayMode == DisplayMode.day)
-                                                  ? (d != null ? DateFormat('M/d', loc).format(d) : '')
-                                                  : (d != null ? _formatWeekLabel(d) : '');
-                                              final valStr = _formatTooltipValue(s.y, l10n);
-                                              return LineTooltipItem(
-                                                '$dateStr\n$valStr',
-                                                TextStyle(
-                                                  color: colorScheme.onPrimaryContainer,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              );
-                                            }).toList();
-                                          },
-                                        ),
-                                      ),
-                                      extraLinesData: ExtraLinesData(
-                                        horizontalLines: (_goalValue != null)
-                                            ? [
-                                          HorizontalLine(
-                                            y: _goalValue!,
-                                            color: colorScheme.tertiary,
-                                            strokeWidth: 2,
-                                            dashArray: [6, 4],
-                                          ),
-                                        ]
-                                            : const [],
-                                      ),
+                                      ]
+                                          : const [],
                                     ),
                                   ),
                                 ),
                               ),
                             ),
                           );
+
 
                           // 縦スクロールで Y軸とプロットを一緒に動かす
                           return Stack(
