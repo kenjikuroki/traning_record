@@ -4,8 +4,11 @@
 <dict>
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
+
+    <!-- アプリ名は全言語で TrainingRecord 固定 -->
     <key>CFBundleDisplayName</key>
-    <string>Ttraining Record</string>
+    <string>TrainingRecord</string>
+
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -46,22 +49,21 @@
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
 
-    <!-- AdMob App ID（既にOK） -->
+    <!-- AdMob App ID -->
     <key>GADApplicationIdentifier</key>
     <string>ca-app-pub-3331079517737737~7860563083</string>
 
-    <!-- 追加：ATTダイアログ用（パーソナライズド広告を行う場合に推奨） -->
+    <!-- ATT ダイアログ用のキー（文言は InfoPlist.strings で多言語化） -->
     <key>NSUserTrackingUsageDescription</key>
-    <string>この識別子は、より関連性の高い広告を表示するために使用されます。</string>
+    <string>PLACEHOLDER</string>
 
-    <!-- 追加：SKAdNetwork（最低限 Google のIDを入れておく） -->
+    <!-- SKAdNetwork (Google) -->
     <key>SKAdNetworkItems</key>
     <array>
       <dict>
         <key>SKAdNetworkIdentifier</key>
         <string>cstr6suwn9.skadnetwork</string>
       </dict>
-      <!-- メディエーションや他ネットワークを使う場合は、各SKAdNetworkIdentifierをここに追記 -->
     </array>
 </dict>
 </plist>

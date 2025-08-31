@@ -1,0 +1,3 @@
+/* App Tracking Transparency (ATT) */
+"NSUserTrackingUsageDescription" = "広告の最適化のために、他社アプリやWebサイト横断でのあなたのアクティビティ追跡を許可しますか？";
+

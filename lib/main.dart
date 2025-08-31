@@ -1,20 +1,24 @@
 // lib/main.dart
+// lib/main.dart
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
+import 'package:flutter/scheduler.dart' show SchedulerBinding;
 
 import 'l10n/app_localizations.dart';
 import 'models/menu_data.dart';
 import 'screens/home_screen.dart';
 import 'settings_manager.dart';
 
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Hive.initFlutter();
-  await MobileAds.instance.initialize();
 
   if (!Hive.isAdapterRegistered(0)) {
     Hive.registerAdapter(MenuDataAdapter());
@@ -39,7 +43,19 @@ Future<void> main() async {
     settingsBox: settingsBox,
     setCountBox: setCountBox,
   ));
+
+  // 初回フレーム描画後に、ATT → 広告初期化 の順で実行
+  SchedulerBinding.instance.addPostFrameCallback((_) async {
+    final status = await AppTrackingTransparency.trackingAuthorizationStatus;
+    if (status == TrackingStatus.notDetermined) {
+      // スプラッシュからホームへの遷移安定のため、短い待機
+      await Future.delayed(const Duration(milliseconds: 400));
+      await AppTrackingTransparency.requestTrackingAuthorization();
+    }
+    await MobileAds.instance.initialize();
+  });
 }
+
 
 class MyApp extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
