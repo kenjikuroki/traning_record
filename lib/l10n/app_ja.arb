@@ -99,5 +99,6 @@
   "statusIdle": "待機中",
   "stopwatch": "ストップウォッチ",
   "timer": "タイマー",
-  "hours": "{hours}時間"
+  "hours": "{hours}時間",
+  "saved": "保存しました"
 }

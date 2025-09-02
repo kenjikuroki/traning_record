@@ -315,4 +315,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String hours(Object hours) {
     return '${hours}h';
   }
+
+  @override
+  String get saved => 'Saved';
 }

@@ -315,4 +315,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String hours(Object hours) {
     return '$hours時間';
   }
+
+  @override
+  String get saved => '保存しました';
 }

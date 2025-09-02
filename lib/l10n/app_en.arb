@@ -99,5 +99,6 @@
   "statusIdle": "Idle",
   "stopwatch": "Stopwatch",
   "timer": "Timer",
-  "hours": "{hours}h"
+  "hours": "{hours}h",
+  "saved": "Saved"
 }
