@@ -19,6 +19,10 @@ import '../widgets/coach_bubble.dart';
 import '../widgets/ui_feedback.dart';
 import 'package:flutter/cupertino.dart';
 
+// 入力系UIの“最小高さ”（必要ならここだけ数値を変更）
+const double kUnifiedFieldMinHeight = 36.0;
+// ★ 種目入力欄・セット欄専用の最小高さ（低めに）
+const double kInputFieldMinHeight = 32.0;
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -76,15 +80,22 @@ class _RecordScreenState extends State<RecordScreen>
   int? _currentSectionIndex;
   int? _currentMenuIndex;
 
+  // ===== ここから：保存UI用 追加状態 =====
+  DateTime? _lastSavedAt;                 // 直近保存時刻（チップ表示用）
+  bool _showSavedChip = false;            // チップの一時表示フラグ
+  bool _sessionSnackbarShown = false;     // 離脱時スナックを今セッションで出したか
+  Timer? _savedChipTimer;                 // チップの2秒タイマー
+  // =====================================
+
   Future<void> _onBackPressed() async {
     // FABが開いていたらまず閉じるだけ
     if (_fabOpen) {
       setState(() => _fabOpen = false);
       return;
     }
-    // データ保存してから閉じる
+    // データ保存してから閉じる（※スナックは PopScope 側で統一）
     await _dismissKeyboardSafely(context);
-    _saveAllSectionsData();
+    _saveAllSectionsData(); // 成否に関係なく呼ぶ（既存仕様踏襲）
     if (!mounted) return;
     Navigator.of(context).pop();
   }
@@ -116,8 +127,6 @@ class _RecordScreenState extends State<RecordScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     SettingsManager.showStopwatchNotifier.addListener(_onShowStopwatchChanged);
-
-    // 設定「ストップウォッチ表示」変更を監視して即時反映
 
     // 初回ビルド完了フラグ
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -178,8 +187,7 @@ class _RecordScreenState extends State<RecordScreen>
       if (running && _resumedAt != null) {
         final runFor = DateTime.now().difference(_resumedAt!);
         if (runFor >= _kHardCap) {
-          _pauseWithSnack(
-              '5時間を超えたため一時停止しました', withResume: true);
+          _pauseWithSnack('5時間を超えたため一時停止しました', withResume: true);
           _resumedAt = null;
         }
       }
@@ -207,6 +215,7 @@ class _RecordScreenState extends State<RecordScreen>
     WidgetsBinding.instance.removeObserver(this);
     _inactivityTimer?.cancel();
     _capTimer?.cancel();
+    _savedChipTimer?.cancel();
     _scrollCtrl.dispose();
     for (var section in _sections) {
       section.dispose();
@@ -226,8 +235,7 @@ class _RecordScreenState extends State<RecordScreen>
       if (_backgroundedAt != null) {
         final away = DateTime.now().difference(_backgroundedAt!);
         if (away.inMinutes >= 30 && _swController.isRunning) {
-          _pauseWithSnack(
-              'アプリが30分以上バックグラウンドのため一時停止しました',
+          _pauseWithSnack('アプリが30分以上バックグラウンドのため一時停止しました',
               withResume: true);
         }
       }
@@ -259,6 +267,16 @@ class _RecordScreenState extends State<RecordScreen>
     );
   }
 
+  // --- 追加：保存直後のチップを2秒表示 ---
+  void _showSavedChipFor2s() {
+    _savedChipTimer?.cancel();
+    setState(() => _showSavedChip = true);
+    _savedChipTimer = Timer(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      setState(() => _showSavedChip = false);
+    });
+  }
+
   // --- 追加：戻る直前にキーボードを確実に閉じる ---
   Future<void> _dismissKeyboardSafely(BuildContext ctx) async {
     // フォーカス解除 & キーボード閉
@@ -267,10 +285,7 @@ class _RecordScreenState extends State<RecordScreen>
     // 実際に viewInsets が 0 になるまで待つ（最大 ~500ms）
     final deadline = DateTime.now().add(const Duration(milliseconds: 500));
     while (mounted &&
-        MediaQuery
-            .of(ctx)
-            .viewInsets
-            .bottom > 0 &&
+        MediaQuery.of(ctx).viewInsets.bottom > 0 &&
         DateTime.now().isBefore(deadline)) {
       // 1フレーム待ち（約16ms）
       await Future<void>.delayed(const Duration(milliseconds: 16));
@@ -361,22 +376,16 @@ class _RecordScreenState extends State<RecordScreen>
           section.menuIds.add(section.nextMenuId++);
 
           if (isAerobic) {
-            final String dist = (rec?.distance
-                ?.trim()
-                .isNotEmpty ?? false)
+            final String dist =
+            (rec?.distance?.trim().isNotEmpty ?? false)
                 ? rec!.distance!.trim()
                 : (lu?.distance?.trim() ?? '');
-            final String dura = (rec?.duration
-                ?.trim()
-                .isNotEmpty ?? false)
+            final String dura =
+            (rec?.duration?.trim().isNotEmpty ?? false)
                 ? rec!.duration!.trim()
                 : (lu?.duration?.trim() ?? '');
-            final bool isSug = !(rec?.distance
-                ?.trim()
-                .isNotEmpty == true ||
-                rec?.duration
-                    ?.trim()
-                    .isNotEmpty == true);
+            final bool isSug = !(rec?.distance?.trim().isNotEmpty == true ||
+                rec?.duration?.trim().isNotEmpty == true);
             section.aerobicDistanceCtrls.add(TextEditingController(text: dist));
             section.aerobicDurationCtrls.add(TextEditingController(text: dura));
             section.aerobicSuggestFlags.add(isSug);
@@ -396,11 +405,7 @@ class _RecordScreenState extends State<RecordScreen>
               if (i < recLen) {
                 w = rec!.weights[i];
                 r = rec.reps[i];
-                if (w
-                    .trim()
-                    .isNotEmpty || r
-                    .trim()
-                    .isNotEmpty) {
+                if (w.trim().isNotEmpty || r.trim().isNotEmpty) {
                   isSuggestion = false;
                 }
               } else if (i < luLen) {
@@ -462,7 +467,7 @@ class _RecordScreenState extends State<RecordScreen>
           height: 260,
           child: Column(
             children: [
-              const SizedBox(height: 8),
+              const SizedBox(height: 2),
               Container(
                 width: 40, height: 4,
                 decoration: BoxDecoration(
@@ -479,23 +484,16 @@ class _RecordScreenState extends State<RecordScreen>
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: Theme
-                              .of(context)
-                              .colorScheme
-                              .onSurface,
+                          color: Theme.of(context).colorScheme.onSurface,
                         )),
                     const Spacer(),
                     TextButton(
                       onPressed: () => Navigator.pop(ctx, null),
-                      child: Text(MaterialLocalizations
-                          .of(context)
-                          .cancelButtonLabel),
+                      child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(ctx, parts[temp]),
-                      child: Text(MaterialLocalizations
-                          .of(context)
-                          .okButtonLabel),
+                      child: Text(MaterialLocalizations.of(context).okButtonLabel),
                     ),
                   ],
                 ),
@@ -504,21 +502,19 @@ class _RecordScreenState extends State<RecordScreen>
               Expanded(
                 child: CupertinoPicker(
                   itemExtent: 36,
-                  scrollController: FixedExtentScrollController(
-                      initialItem: initial),
+                  scrollController: FixedExtentScrollController(initialItem: initial),
                   onSelectedItemChanged: (i) => temp = i,
                   children: parts
-                      .map((p) =>
-                      Center(
-                        child: Text(
-                          p,
-                          style: TextStyle(
-                            color: cs.onSurface,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ))
+                      .map((p) => Center(
+                    child: Text(
+                      p,
+                      style: TextStyle(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ))
                       .toList(),
                 ),
               ),
@@ -690,19 +686,18 @@ class _RecordScreenState extends State<RecordScreen>
 
       final section = tempSectionsMap.putIfAbsent(
         translatedPart,
-            () =>
-            SectionData(
-              key: GlobalKey(),
-              selectedPart: translatedPart,
-              menuControllers: [],
-              setInputDataList: [],
-              initialSetCount: _currentSetCount,
-              menuKeys: [],
-              // 有酸素用 per menu
-              aerobicDistanceCtrls: [],
-              aerobicDurationCtrls: [],
-              aerobicSuggestFlags: [],
-            ),
+            () => SectionData(
+          key: GlobalKey(),
+          selectedPart: translatedPart,
+          menuControllers: [],
+          setInputDataList: [],
+          initialSetCount: _currentSetCount,
+          menuKeys: [],
+          // 有酸素用 per menu
+          aerobicDistanceCtrls: [],
+          aerobicDurationCtrls: [],
+          aerobicSuggestFlags: [],
+        ),
       );
 
       final recList = record.menus[originalPart] ?? <MenuData>[];
@@ -731,23 +726,17 @@ class _RecordScreenState extends State<RecordScreen>
         section.menuIds.add(section.nextMenuId++);
 
         if (isAerobic) {
-          final String dist = (rec?.distance
-              ?.trim()
-              .isNotEmpty ?? false)
+          final String dist =
+          (rec?.distance?.trim().isNotEmpty ?? false)
               ? rec!.distance!.trim()
               : (lu?.distance?.trim() ?? '');
-          final String dura = (rec?.duration
-              ?.trim()
-              .isNotEmpty ?? false)
+          final String dura =
+          (rec?.duration?.trim().isNotEmpty ?? false)
               ? rec!.duration!.trim()
               : (lu?.duration?.trim() ?? '');
 
-          final bool isSug = !(rec?.distance
-              ?.trim()
-              .isNotEmpty == true ||
-              rec?.duration
-                  ?.trim()
-                  .isNotEmpty == true);
+          final bool isSug = !(rec?.distance?.trim().isNotEmpty == true ||
+              rec?.duration?.trim().isNotEmpty == true);
 
           section.aerobicDistanceCtrls.add(TextEditingController(text: dist));
           section.aerobicDurationCtrls.add(TextEditingController(text: dura));
@@ -769,11 +758,7 @@ class _RecordScreenState extends State<RecordScreen>
             if (i < recLen) {
               w = rec!.weights[i];
               r = rec.reps[i];
-              if (w
-                  .trim()
-                  .isNotEmpty || r
-                  .trim()
-                  .isNotEmpty) {
+              if (w.trim().isNotEmpty || r.trim().isNotEmpty) {
                 isSuggestion = false;
               }
             } else if (i < luLen) {
@@ -823,8 +808,7 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   String _getDateKey(DateTime date) =>
-      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day
-          .toString().padLeft(2, '0')}';
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
   void _clearSectionControllersAndMaps(SectionData section) {
     for (var c in section.menuControllers) {
@@ -848,7 +832,9 @@ class _RecordScreenState extends State<RecordScreen>
     section.aerobicSuggestFlags.clear();
   }
 
-  void _saveAllSectionsData() {
+  /// 変更点：戻り値を bool にして、
+  /// 今回「何かを保存（put）した／既存を削除した」なら true を返す。
+  bool _saveAllSectionsData() {
     final dateKey = _getDateKey(widget.selectedDate);
     final Map<String, List<MenuData>> allMenusForRecord = {};
     String? lastModifiedPart;
@@ -889,12 +875,8 @@ class _RecordScreenState extends State<RecordScreen>
           ));
 
           if (!isSug &&
-              ((distance
-                  .trim()
-                  .isNotEmpty) ||
-                  (duration
-                      .trim()
-                      .isNotEmpty))) {
+              ((distance.trim().isNotEmpty) ||
+                  (duration.trim().isNotEmpty))) {
             listForRecord.add(MenuData(
               name: name,
               weights: const <String>[],
@@ -922,11 +904,7 @@ class _RecordScreenState extends State<RecordScreen>
             final set = section.setInputDataList[i][s];
             final w = set.weightController.text;
             final r = set.repController.text;
-            final hasValue = w
-                .trim()
-                .isNotEmpty || r
-                .trim()
-                .isNotEmpty;
+            final hasValue = w.trim().isNotEmpty || r.trim().isNotEmpty;
             if (!set.isSuggestion && hasValue) {
               weightsConfirmed.add(w);
               repsConfirmed.add(r);
@@ -957,6 +935,7 @@ class _RecordScreenState extends State<RecordScreen>
       if (bodyWeight != null) hasAnyRecordData = true;
     }
 
+    bool didChangeStorage = false;
     if (hasAnyRecordData) {
       final newRecord = DailyRecord(
         date: widget.selectedDate,
@@ -965,9 +944,13 @@ class _RecordScreenState extends State<RecordScreen>
         weight: bodyWeight,
       );
       widget.recordsBox.put(dateKey, newRecord);
+      didChangeStorage = true;
     } else {
+      final had = widget.recordsBox.containsKey(dateKey);
       widget.recordsBox.delete(dateKey);
+      didChangeStorage = had; // 既存があって削除したなら “変更” とみなす
     }
+    return didChangeStorage;
   }
 
   // 追加ユーティリティ
@@ -999,12 +982,11 @@ class _RecordScreenState extends State<RecordScreen>
         final sets = _currentSetCount;
         final row = List<SetInputData>.generate(
           min(10, sets),
-              (_) =>
-              SetInputData(
-                weightController: TextEditingController(),
-                repController: TextEditingController(),
-                isSuggestion: true,
-              ),
+              (_) => SetInputData(
+            weightController: TextEditingController(),
+            repController: TextEditingController(),
+            isSuggestion: true,
+          ),
         );
         while (section.setInputDataList.length <
             section.menuControllers.length) {
@@ -1017,8 +999,7 @@ class _RecordScreenState extends State<RecordScreen>
     });
 
     // 追加直後にそのカードを選択状態に
-    _touchCard(
-        sectionIndex, _sections[sectionIndex].menuControllers.length - 1);
+    _touchCard(sectionIndex, _sections[sectionIndex].menuControllers.length - 1);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _scrollIntoView(
@@ -1053,8 +1034,8 @@ class _RecordScreenState extends State<RecordScreen>
     }
 
     setState(() {
-      final newSection = SectionData.createEmpty(_currentSetCount,
-          shouldPopulateDefaults: true);
+      final newSection =
+      SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: true);
       _sections.add(newSection);
       _currentSectionIndex = _sections.length - 1;
       _currentMenuIndex = 0;
@@ -1072,19 +1053,17 @@ class _RecordScreenState extends State<RecordScreen>
     final l10n = AppLocalizations.of(context)!;
     final bool? ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) =>
-          AlertDialog(
-            title: Text(l10n.deleteMenuConfirmationTitle),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: Text(l10n.cancel)),
-              TextButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: Text(
-                      l10n.delete, style: const TextStyle(color: Colors.red))),
-            ],
-          ),
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deleteMenuConfirmationTitle),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.cancel)),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.delete, style: const TextStyle(color: Colors.red))),
+        ],
+      ),
     );
 
     if (ok == true) {
@@ -1178,9 +1157,7 @@ class _RecordScreenState extends State<RecordScreen>
 
   // ストップウォッチカード（コンパクト）
   Widget _buildStopwatchCard() {
-    final cs = Theme
-        .of(context)
-        .colorScheme;
+    final cs = Theme.of(context).colorScheme;
     return Card(
       color: cs.surfaceContainerHighest,
       shape: RoundedRectangleBorder(
@@ -1198,14 +1175,45 @@ class _RecordScreenState extends State<RecordScreen>
     );
   }
 
+  // 追加：保存済みチップ
+  Widget _buildSavedPill(ColorScheme cs) {
+    final hhmm = _lastSavedAt == null
+        ? ''
+        : DateFormat('HH:mm').format(_lastSavedAt!);
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 160),
+      opacity: _showSavedChip ? 1.0 : 0.0,
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainer,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: cs.onSurfaceVariant.withOpacity(0.15)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check_rounded, size: 14, color: cs.primary),
+            const SizedBox(width: 6),
+            Text(
+              '保存済み $hhmm',
+              style: TextStyle(
+                color: cs.onSurface,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme
-        .of(context)
-        .colorScheme;
-    final isLight = Theme
-        .of(context)
-        .brightness == Brightness.light;
+    final colorScheme = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
     final l10n = AppLocalizations.of(context)!;
     final formattedDate = DateFormat('yyyy/MM/dd').format(widget.selectedDate);
 
@@ -1261,8 +1269,7 @@ class _RecordScreenState extends State<RecordScreen>
               child: ListView.builder(
                 controller: _scrollCtrl,
                 primary: false,
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior
-                    .manual,
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
                 physics: const AlwaysScrollableScrollPhysics(),
                 itemCount:
                 headerCount + _sections.length + (isInitialEmptyState ? 0 : 1),
@@ -1283,10 +1290,7 @@ class _RecordScreenState extends State<RecordScreen>
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                // ▼ 修正：locale の取得方法
-                                '${l10n.enterYourWeight}${Localizations
-                                    .localeOf(context)
-                                    .languageCode == "ja" ? "：" : ":"}',
+                                '${l10n.enterYourWeight}${Localizations.localeOf(context).languageCode == "ja" ? "：" : ":"}',
                                 style: TextStyle(
                                   color: colorScheme.onSurface,
                                   fontWeight: FontWeight.bold,
@@ -1307,28 +1311,33 @@ class _RecordScreenState extends State<RecordScreen>
                                           });
                                           _lastInteractionAt = DateTime.now();
                                         },
-                                        child: StylishInput(
-                                          controller: _weightController,
-                                          hint: '',
-                                          keyboardType:
-                                          const TextInputType.numberWithOptions(
-                                              decimal: true),
-                                          inputFormatters: [
-                                            FilteringTextInputFormatter.allow(
-                                              RegExp(r'^\d*\.?\d*'),
-                                            ),
-                                          ],
-                                          normalTextColor: colorScheme
-                                              .onSurface,
-                                          suggestionTextColor: colorScheme
-                                              .onSurfaceVariant
-                                              .withValues(alpha: 0.5),
-                                          fillColor:
-                                          colorScheme.surfaceContainer,
-                                          contentPadding:
-                                          const EdgeInsets.symmetric(
-                                              vertical: 8, horizontal: 10),
-                                          textAlign: TextAlign.right,
+                                        child: ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                            minHeight: kUnifiedFieldMinHeight,
+                                          ),
+                                          child: StylishInput(
+                                            controller: _weightController,
+                                            hint: '',
+                                            keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                                decimal: true),
+                                            inputFormatters: [
+                                              FilteringTextInputFormatter.allow(
+                                                RegExp(r'^\d*\.?\d*'),
+                                              ),
+                                            ],
+                                            normalTextColor:
+                                            colorScheme.onSurface,
+                                            suggestionTextColor: colorScheme
+                                                .onSurfaceVariant
+                                                .withValues(alpha: 0.5),
+                                            fillColor:
+                                            colorScheme.surfaceContainer,
+                                            contentPadding:
+                                            const EdgeInsets.symmetric(
+                                                vertical: 8, horizontal: 10),
+                                            textAlign: TextAlign.right,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1384,17 +1393,20 @@ class _RecordScreenState extends State<RecordScreen>
                               children: [
                                 Row(
                                   children: [
-                                    // 部位選択：角丸背景（アニメーションOFF）
+                                    // 部位選択：角丸背景
                                     Expanded(
                                       child: Container(
+                                        constraints: const BoxConstraints(
+                                          minHeight: kUnifiedFieldMinHeight,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: colorScheme.surfaceContainer,
                                           borderRadius:
                                           BorderRadius.circular(22.0),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withOpacity(
-                                                  0.06),
+                                              color:
+                                              Colors.black.withOpacity(0.06),
                                               blurRadius: 8,
                                               offset: const Offset(0, 2),
                                             ),
@@ -1411,9 +1423,10 @@ class _RecordScreenState extends State<RecordScreen>
                                             onTap: () =>
                                                 _showPartPicker(secIndex),
                                             child: Padding(
-                                              padding: const EdgeInsets
-                                                  .symmetric(
-                                                  vertical: 14, horizontal: 20),
+                                              // 14 → 8 にして低めに
+                                              padding:
+                                              const EdgeInsets.symmetric(
+                                                  vertical: 8, horizontal: 20),
                                               child: Row(
                                                 children: [
                                                   Expanded(
@@ -1430,11 +1443,11 @@ class _RecordScreenState extends State<RecordScreen>
                                                             : colorScheme
                                                             .onSurface,
                                                         fontSize: 15.0,
-                                                        fontWeight: FontWeight
-                                                            .bold,
+                                                        fontWeight:
+                                                        FontWeight.bold,
                                                       ),
-                                                      overflow: TextOverflow
-                                                          .ellipsis,
+                                                      overflow:
+                                                      TextOverflow.ellipsis,
                                                     ),
                                                   ),
                                                   const Icon(Icons.expand_more,
@@ -1448,7 +1461,7 @@ class _RecordScreenState extends State<RecordScreen>
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 16.0), // 間隔を戻す
+                                const SizedBox(height: 4.0), // 間隔を詰める
                                 if (section.selectedPart != null)
                                   Column(
                                     children: [
@@ -1472,7 +1485,8 @@ class _RecordScreenState extends State<RecordScreen>
                                           final glowColor = isSelected
                                               ? (isLight
                                               ? kBrandBlue.withOpacity(0.45)
-                                              : Colors.white.withOpacity(0.70))
+                                              : Colors.white
+                                              .withOpacity(0.70))
                                               : Colors.black.withOpacity(0.20);
 
                                           return AnimatedSwitcher(
@@ -1498,12 +1512,10 @@ class _RecordScreenState extends State<RecordScreen>
                                             },
                                             child: GestureDetector(
                                               behavior: HitTestBehavior.opaque,
-                                              onTap: () =>
-                                                  _touchCard(
-                                                      secIndex, menuIndex),
+                                              onTap: () => _touchCard(
+                                                  secIndex, menuIndex),
                                               child: Card(
-                                                key: section
-                                                    .menuKeys[menuIndex],
+                                                key: section.menuKeys[menuIndex],
                                                 color: colorScheme.surface,
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius:
@@ -1515,7 +1527,8 @@ class _RecordScreenState extends State<RecordScreen>
                                                 ),
                                                 elevation: isSelected ? 10 : 2,
                                                 shadowColor: glowColor,
-                                                margin: const EdgeInsets.symmetric(vertical: 8.0),
+                                                margin: const EdgeInsets.symmetric(
+                                                    vertical: 8.0),
                                                 child: Padding(
                                                   padding:
                                                   const EdgeInsets.all(10.0),
@@ -1525,16 +1538,18 @@ class _RecordScreenState extends State<RecordScreen>
                                                         ? _kExerciseField
                                                         : null,
                                                     menuController: section
-                                                        .menuControllers[menuIndex],
+                                                        .menuControllers[
+                                                    menuIndex],
                                                     removeMenuCallback: () =>
                                                         _removeMenuItem(
-                                                            secIndex,
-                                                            menuIndex),
+                                                            secIndex, menuIndex),
                                                     setCount: section
-                                                        .setInputDataList[menuIndex]
+                                                        .setInputDataList[
+                                                    menuIndex]
                                                         .length,
                                                     setInputDataList: section
-                                                        .setInputDataList[menuIndex],
+                                                        .setInputDataList[
+                                                    menuIndex],
                                                     isAerobic: section
                                                         .selectedPart ==
                                                         l10n.aerobicExercise,
@@ -1568,9 +1583,9 @@ class _RecordScreenState extends State<RecordScreen>
                                                             section
                                                                 .aerobicSuggestFlags
                                                                 .length) {
-                                                          section
-                                                              .aerobicSuggestFlags[
-                                                          menuIndex] = false;
+                                                          section.aerobicSuggestFlags[
+                                                          menuIndex] =
+                                                          false;
                                                         }
                                                       });
                                                     },
@@ -1591,7 +1606,13 @@ class _RecordScreenState extends State<RecordScreen>
                                                         (prevEmpty, nowEmpty) {
                                                       if (prevEmpty &&
                                                           !nowEmpty) {
+                                                        final did =
                                                         _saveAllSectionsData();
+                                                        if (did) {
+                                                          _lastSavedAt =
+                                                              DateTime.now();
+                                                          _showSavedChipFor2s();
+                                                        }
                                                       }
                                                     },
                                                   ),
@@ -1725,12 +1746,12 @@ class _RecordScreenState extends State<RecordScreen>
           ? Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          chipAction(
-              l10n.addSet, () => _handleAddSet(l10n), enabled: canAddSet()),
-          const SizedBox(height: 8),
+          chipAction(l10n.addSet, () => _handleAddSet(l10n),
+              enabled: canAddSet()),
+          const SizedBox(height: 2),
           chipAction(l10n.addExercise, _handleAddExercise,
               enabled: _canAddExercise()),
-          const SizedBox(height: 8),
+          const SizedBox(height: 2),
           chipAction(l10n.addPart, _handleAddPart),
         ],
       )
@@ -1749,29 +1770,36 @@ class _RecordScreenState extends State<RecordScreen>
           }
           if (!context.mounted) return;
           await _dismissKeyboardSafely(context);
-          _saveAllSectionsData();
+
+          final didSave = _saveAllSectionsData();
+          if (didSave && !_sessionSnackbarShown) {
+            _sessionSnackbarShown = true;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('保存しました'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+            // ほんの少しだけ見せてから戻る（速すぎて見えない問題の緩和）
+            await Future<void>.delayed(const Duration(milliseconds: 350));
+          }
+          if (!mounted) return;
           Navigator.of(context).pop();
         },
         child: Scaffold(
           extendBody: true,
           resizeToAvoidBottomInset: false,
           backgroundColor: Colors.transparent,
-          // ← 透過
           appBar: AppBar(
             automaticallyImplyLeading: false,
             elevation: 0.0,
-
-            // ← アイコンは白で可読性UP
             iconTheme: const IconThemeData(color: Colors.white),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
               onPressed: () => _onBackPressed(),
               tooltip: '戻る',
             ),
-
-            // ← タイトルも白字
             title: const Text(
-              // formattedDate を使うなら → Text(formattedDate, style: TextStyle(...)) に戻してください
               '記録',
               style: TextStyle(
                 color: Colors.white,
@@ -1779,11 +1807,6 @@ class _RecordScreenState extends State<RecordScreen>
                 fontSize: 19.0,
               ),
             ),
-
-            // ← 壁紙を活かすため、個別の背景色指定は削除
-            // backgroundColor: colorScheme.surface,
-
-            // ← 上部にぼかし＋半透明グラデを敷いてどんな壁紙でも文字が読めるように
             flexibleSpace: ClipRect(
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
@@ -1802,10 +1825,10 @@ class _RecordScreenState extends State<RecordScreen>
                 ),
               ),
             ),
-
-            actions: const [],
+            actions: [
+              if (_showSavedChip) _buildSavedPill(colorScheme),
+            ],
           ),
-
           body: Stack(
             children: [
               body,
@@ -1906,8 +1929,7 @@ class SectionData {
     List<TextEditingController>? aerobicDistanceCtrls,
     List<TextEditingController>? aerobicDurationCtrls,
     List<bool>? aerobicSuggestFlags,
-  })
-      : menuIds = menuIds ?? <int>[],
+  })  : menuIds = menuIds ?? <int>[],
         nextMenuId = nextMenuId ?? 0,
         aerobicDistanceCtrls =
             aerobicDistanceCtrls ?? <TextEditingController>[],
@@ -1925,12 +1947,11 @@ class SectionData {
           ? [
         List.generate(
           initialSetCount,
-              (_) =>
-              SetInputData(
-                weightController: TextEditingController(),
-                repController: TextEditingController(),
-                isSuggestion: true,
-              ),
+              (_) => SetInputData(
+            weightController: TextEditingController(),
+            repController: TextEditingController(),
+            isSuggestion: true,
+          ),
         )
       ]
           : [],
@@ -2030,9 +2051,7 @@ class _MenuListState extends State<MenuList> {
     _minController.addListener(_updateDurationController);
     _secController.addListener(_updateDurationController);
 
-    _prevNameEmpty = widget.menuController.text
-        .trim()
-        .isEmpty;
+    _prevNameEmpty = widget.menuController.text.trim().isEmpty;
     widget.menuController.addListener(_handleNameChanged);
   }
 
@@ -2047,9 +2066,7 @@ class _MenuListState extends State<MenuList> {
   }
 
   void _handleNameChanged() {
-    final nowEmpty = widget.menuController.text
-        .trim()
-        .isEmpty;
+    final nowEmpty = widget.menuController.text.trim().isEmpty;
     if (nowEmpty != _prevNameEmpty) {
       widget.onNameChanged?.call(_prevNameEmpty, nowEmpty);
       setState(() {}); // フィールド活性/不活性の見た目更新
@@ -2112,7 +2129,7 @@ class _MenuListState extends State<MenuList> {
             height: 260,
             child: Column(
               children: [
-                const SizedBox(height: 8),
+                const SizedBox(height: 2),
                 Container(
                   width: 40,
                   height: 4,
@@ -2138,9 +2155,7 @@ class _MenuListState extends State<MenuList> {
                       TextButton(
                         onPressed: () => Navigator.pop(ctx),
                         child:
-                        Text(MaterialLocalizations
-                            .of(context)
-                            .okButtonLabel),
+                        Text(MaterialLocalizations.of(context).okButtonLabel),
                       ),
                       const SizedBox(width: 8),
                     ],
@@ -2174,9 +2189,7 @@ class _MenuListState extends State<MenuList> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme
-        .of(context)
-        .colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final String currentUnit = SettingsManager.currentUnit;
 
@@ -2184,9 +2197,7 @@ class _MenuListState extends State<MenuList> {
       if (has) widget.onAnyFieldFocused?.call();
     }
 
-    final bool nameFilled = widget.menuController.text
-        .trim()
-        .isNotEmpty;
+    final bool nameFilled = widget.menuController.text.trim().isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),
@@ -2199,18 +2210,45 @@ class _MenuListState extends State<MenuList> {
               Expanded(
                 child: Focus(
                   onFocusChange: notifyFocus,
-                  child: StylishInput(
-                    controller: widget.menuController,
-                    hint: l10n.addExercisePlaceholder,
-                    keyboardType: TextInputType.text,
-                    inputFormatters: [LengthLimitingTextInputFormatter(25)],
-                    normalTextColor: colorScheme.onSurface,
-                    suggestionTextColor:
-                    colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                    fillColor: colorScheme.surfaceContainer,
-                    contentPadding:
-                    const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                    textAlign: TextAlign.left,
+                  child: Padding( // 左側に少し余白
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: ConstrainedBox(
+                      constraints:
+                      const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                      // 下線のみのTextField
+                      child: TextField(
+                        controller: widget.menuController,
+                        keyboardType: TextInputType.text,
+                        inputFormatters: [LengthLimitingTextInputFormatter(25)],
+                        textAlign: TextAlign.left,
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                        ),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: l10n.addExercisePlaceholder,
+                          hintStyle: TextStyle(
+                            color: colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.5),
+                          ),
+                          filled: false,
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(
+                              color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                              width: 1,
+                            ),
+                          ),
+                          focusedBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(
+                              color: colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding:
+                          const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -2230,7 +2268,7 @@ class _MenuListState extends State<MenuList> {
               ),
             ],
           ),
-          const SizedBox(height: 12.0), // ゆとりを戻す（種目⇔セット）
+          const SizedBox(height: 2.0), // ゆとりを戻す（種目⇔セット）
 
           // 入力群
           Padding(
@@ -2259,23 +2297,45 @@ class _MenuListState extends State<MenuList> {
                             widget.onConfirmAerobic?.call();
                           }
                         },
-                        child: StylishInput(
-                          controller: _kmController,
-                          hint: '',
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly
-                          ],
-                          normalTextColor: widget.aerobicIsSuggestion
-                              ? colorScheme.onSurfaceVariant
-                              .withValues(alpha: 0.5)
-                              : colorScheme.onSurface,
-                          suggestionTextColor: colorScheme.onSurfaceVariant
-                              .withValues(alpha: 0.5),
-                          fillColor: colorScheme.surfaceContainer,
-                          contentPadding: const EdgeInsets.symmetric(
-                              vertical: 10, horizontal: 12),
-                          textAlign: TextAlign.right,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            minHeight: kUnifiedFieldMinHeight,
+                          ),
+                          // km を下線TextFieldに
+                          child: TextField(
+                            controller: _kmController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              color: widget.aerobicIsSuggestion
+                                  ? colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.5)
+                                  : colorScheme.onSurface,
+                            ),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              filled: false,
+                              enabledBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: colorScheme.onSurfaceVariant
+                                      .withOpacity(0.4),
+                                  width: 1,
+                                ),
+                              ),
+                              focusedBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: colorScheme.primary,
+                                  width: 2,
+                                ),
+                              ),
+                              contentPadding:
+                              const EdgeInsets.symmetric(
+                                  vertical: 6, horizontal: 0),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -2296,23 +2356,45 @@ class _MenuListState extends State<MenuList> {
                             widget.onConfirmAerobic?.call();
                           }
                         },
-                        child: StylishInput(
-                          controller: _mController,
-                          hint: '',
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly
-                          ],
-                          normalTextColor: widget.aerobicIsSuggestion
-                              ? colorScheme.onSurfaceVariant
-                              .withValues(alpha: 0.5)
-                              : colorScheme.onSurface,
-                          suggestionTextColor: colorScheme.onSurfaceVariant
-                              .withValues(alpha: 0.5),
-                          fillColor: colorScheme.surfaceContainer,
-                          contentPadding: const EdgeInsets.symmetric(
-                              vertical: 10, horizontal: 12),
-                          textAlign: TextAlign.right,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            minHeight: kUnifiedFieldMinHeight,
+                          ),
+                          // m を下線TextFieldに
+                          child: TextField(
+                            controller: _mController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              color: widget.aerobicIsSuggestion
+                                  ? colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.5)
+                                  : colorScheme.onSurface,
+                            ),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              filled: false,
+                              enabledBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: colorScheme.onSurfaceVariant
+                                      .withOpacity(0.4),
+                                  width: 1,
+                                ),
+                              ),
+                              focusedBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: colorScheme.primary,
+                                  width: 2,
+                                ),
+                              ),
+                              contentPadding:
+                              const EdgeInsets.symmetric(
+                                  vertical: 6, horizontal: 0),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -2326,8 +2408,8 @@ class _MenuListState extends State<MenuList> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8), // ゆとりを戻す
-                // 時間（min/sec はタップで picker。StylishInput は AbsorbPointer で非編集）
+                const SizedBox(height: 2), // ゆとりを戻す
+                // 時間（min/sec はタップで picker。TextField は AbsorbPointer で非編集）
                 Row(
                   children: [
                     Text(
@@ -2359,25 +2441,45 @@ class _MenuListState extends State<MenuList> {
                             onFocusChange: (has) {
                               notifyFocus(has);
                             },
-                            child: StylishInput(
-                              controller: _minController,
-                              hint: '',
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly
-                              ],
-                              normalTextColor: widget.aerobicIsSuggestion
-                                  ? colorScheme.onSurfaceVariant
-                                  .withValues(alpha: 0.5)
-                                  : colorScheme.onSurface,
-                              suggestionTextColor:
-                              colorScheme.onSurfaceVariant
-                                  .withValues(alpha: 0.5),
-                              fillColor: colorScheme.surfaceContainer,
-                              contentPadding:
-                              const EdgeInsets.symmetric(
-                                  vertical: 10, horizontal: 12),
-                              textAlign: TextAlign.right,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                minHeight: kUnifiedFieldMinHeight,
+                              ),
+                              // 分 を下線TextFieldに
+                              child: TextField(
+                                controller: _minController,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly
+                                ],
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  color: widget.aerobicIsSuggestion
+                                      ? colorScheme.onSurfaceVariant
+                                      .withValues(alpha: 0.5)
+                                      : colorScheme.onSurface,
+                                ),
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  filled: false,
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: colorScheme.onSurfaceVariant
+                                          .withOpacity(0.4),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: colorScheme.primary,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  contentPadding:
+                                  const EdgeInsets.symmetric(
+                                      vertical: 6, horizontal: 0),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -2410,25 +2512,45 @@ class _MenuListState extends State<MenuList> {
                             onFocusChange: (has) {
                               notifyFocus(has);
                             },
-                            child: StylishInput(
-                              controller: _secController,
-                              hint: '',
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly
-                              ],
-                              normalTextColor: widget.aerobicIsSuggestion
-                                  ? colorScheme.onSurfaceVariant
-                                  .withValues(alpha: 0.5)
-                                  : colorScheme.onSurface,
-                              suggestionTextColor:
-                              colorScheme.onSurfaceVariant
-                                  .withValues(alpha: 0.5),
-                              fillColor: colorScheme.surfaceContainer,
-                              contentPadding:
-                              const EdgeInsets.symmetric(
-                                  vertical: 10, horizontal: 12),
-                              textAlign: TextAlign.right,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                minHeight: kUnifiedFieldMinHeight,
+                              ),
+                              // 秒 を下線TextFieldに
+                              child: TextField(
+                                controller: _secController,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly
+                                ],
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  color: widget.aerobicIsSuggestion
+                                      ? colorScheme.onSurfaceVariant
+                                      .withValues(alpha: 0.5)
+                                      : colorScheme.onSurface,
+                                ),
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  filled: false,
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: colorScheme.onSurfaceVariant
+                                          .withOpacity(0.4),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: colorScheme.primary,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  contentPadding:
+                                  const EdgeInsets.symmetric(
+                                      vertical: 6, horizontal: 0),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -2456,8 +2578,8 @@ class _MenuListState extends State<MenuList> {
                         (setIndex) {
                       final set = widget.setInputDataList[setIndex];
                       return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 6.0), // ゆとりを戻す
+                        padding:
+                        const EdgeInsets.symmetric(vertical: 6.0),
                         child: Row(
                           children: [
                             Text(
@@ -2473,56 +2595,81 @@ class _MenuListState extends State<MenuList> {
                                 onFocusChange: (has) {
                                   notifyFocus(has);
                                   if (has && set.isSuggestion) {
-                                    setState(() => set.isSuggestion = false);
+                                    setState(
+                                            () => set.isSuggestion = false);
                                   }
                                 },
-                                child: StylishInput(
-                                  controller: set.weightController,
-                                  hint: '',
-                                  keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                      decimal: true),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(
-                                      RegExp(r'^\d*\.?\d*'),
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    minHeight: kUnifiedFieldMinHeight,
+                                  ),
+                                  // ★★★ 重量：下線のみTextField ★★★
+                                  child: TextField(
+                                    controller: set.weightController,
+                                    keyboardType: const TextInputType
+                                        .numberWithOptions(decimal: true),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(
+                                        RegExp(r'^\d*\.?\d*'),
+                                      ),
+                                    ],
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      color: set.isSuggestion
+                                          ? colorScheme.onSurfaceVariant
+                                          .withValues(alpha: 0.5)
+                                          : colorScheme.onSurface,
                                     ),
-                                  ],
-                                  normalTextColor: set.isSuggestion
-                                      ? colorScheme.onSurfaceVariant
-                                      .withValues(alpha: 0.5)
-                                      : colorScheme.onSurface,
-                                  suggestionTextColor: colorScheme
-                                      .onSurfaceVariant
-                                      .withValues(alpha: 0.5),
-                                  fillColor: colorScheme.surfaceContainer,
-                                  contentPadding:
-                                  const EdgeInsets.symmetric(
-                                      vertical: 10, horizontal: 12),
-                                  textAlign: TextAlign.right,
-                                  onChanged: (text) {
-                                    setState(() {
-                                      if (text.isNotEmpty &&
-                                          set.isSuggestion) {
-                                        set.isSuggestion = false;
-                                      } else if (text.isEmpty &&
-                                          !set.isSuggestion &&
-                                          set.repController.text.isEmpty) {
-                                        final anyOther = widget
-                                            .setInputDataList
-                                            .any(
-                                              (s) =>
-                                          s != set &&
-                                              (s.weightController.text
-                                                  .isNotEmpty ||
-                                                  s.repController.text
-                                                      .isNotEmpty),
-                                        );
-                                        if (!anyOther) {
-                                          set.isSuggestion = true;
+                                    decoration: InputDecoration(
+                                      isDense: true,
+                                      filled: false,
+                                      enabledBorder:
+                                      UnderlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: colorScheme
+                                              .onSurfaceVariant
+                                              .withOpacity(0.4),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      focusedBorder:
+                                      UnderlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: colorScheme.primary,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      contentPadding:
+                                      const EdgeInsets.symmetric(
+                                          vertical: 6,
+                                          horizontal: 0),
+                                    ),
+                                    onChanged: (text) {
+                                      setState(() {
+                                        if (text.isNotEmpty &&
+                                            set.isSuggestion) {
+                                          set.isSuggestion = false;
+                                        } else if (text.isEmpty &&
+                                            !set.isSuggestion &&
+                                            set.repController.text
+                                                .isEmpty) {
+                                          final anyOther = widget
+                                              .setInputDataList
+                                              .any(
+                                                (s) =>
+                                            s != set &&
+                                                (s.weightController.text
+                                                    .isNotEmpty ||
+                                                    s.repController.text
+                                                        .isNotEmpty),
+                                          );
+                                          if (!anyOther) {
+                                            set.isSuggestion = true;
+                                          }
                                         }
-                                      }
-                                    });
-                                  },
+                                      });
+                                    },
+                                  ),
                                 ),
                               ),
                             ),
@@ -2539,52 +2686,79 @@ class _MenuListState extends State<MenuList> {
                                 onFocusChange: (has) {
                                   notifyFocus(has);
                                   if (has && set.isSuggestion) {
-                                    setState(() => set.isSuggestion = false);
+                                    setState(
+                                            () => set.isSuggestion = false);
                                   }
                                 },
-                                child: StylishInput(
-                                  controller: set.repController,
-                                  hint: '',
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly
-                                  ],
-                                  normalTextColor: set.isSuggestion
-                                      ? colorScheme.onSurfaceVariant
-                                      .withValues(alpha: 0.5)
-                                      : colorScheme.onSurface,
-                                  suggestionTextColor: colorScheme
-                                      .onSurfaceVariant
-                                      .withValues(alpha: 0.5),
-                                  fillColor: colorScheme.surfaceContainer,
-                                  contentPadding:
-                                  const EdgeInsets.symmetric(
-                                      vertical: 10, horizontal: 12),
-                                  textAlign: TextAlign.right,
-                                  onChanged: (text) {
-                                    setState(() {
-                                      if (text.isNotEmpty &&
-                                          set.isSuggestion) {
-                                        set.isSuggestion = false;
-                                      } else if (text.isEmpty &&
-                                          !set.isSuggestion &&
-                                          set.weightController.text.isEmpty) {
-                                        final anyOther = widget
-                                            .setInputDataList
-                                            .any(
-                                              (s) =>
-                                          s != set &&
-                                              (s.weightController.text
-                                                  .isNotEmpty ||
-                                                  s.repController.text
-                                                      .isNotEmpty),
-                                        );
-                                        if (!anyOther) {
-                                          set.isSuggestion = true;
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    minHeight: kUnifiedFieldMinHeight,
+                                  ),
+                                  // ★★★ 回数：下線のみTextField ★★★
+                                  child: TextField(
+                                    controller: set.repController,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter
+                                          .digitsOnly
+                                    ],
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      color: set.isSuggestion
+                                          ? colorScheme.onSurfaceVariant
+                                          .withValues(alpha: 0.5)
+                                          : colorScheme.onSurface,
+                                    ),
+                                    decoration: InputDecoration(
+                                      isDense: true,
+                                      filled: false,
+                                      enabledBorder:
+                                      UnderlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: colorScheme
+                                              .onSurfaceVariant
+                                              .withOpacity(0.4),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      focusedBorder:
+                                      UnderlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: colorScheme.primary,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      contentPadding:
+                                      const EdgeInsets.symmetric(
+                                          vertical: 6,
+                                          horizontal: 0),
+                                    ),
+                                    onChanged: (text) {
+                                      setState(() {
+                                        if (text.isNotEmpty &&
+                                            set.isSuggestion) {
+                                          set.isSuggestion = false;
+                                        } else if (text.isEmpty &&
+                                            !set.isSuggestion &&
+                                            set.weightController.text
+                                                .isEmpty) {
+                                          final anyOther = widget
+                                              .setInputDataList
+                                              .any(
+                                                (s) =>
+                                            s != set &&
+                                                (s.weightController.text
+                                                    .isNotEmpty ||
+                                                    s.repController.text
+                                                        .isNotEmpty),
+                                          );
+                                          if (!anyOther) {
+                                            set.isSuggestion = true;
+                                          }
                                         }
-                                      }
-                                    });
-                                  },
+                                      });
+                                    },
+                                  ),
                                 ),
                               ),
                             ),
