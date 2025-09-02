@@ -1354,37 +1354,47 @@ class _GraphScreenState extends State<GraphScreen> {
     // 日/週トグル
     Widget dayWeekToggle = SizedBox(
       height: _kControlHeight,
-      child: ToggleButtons(
-        isSelected: [
-          _displayMode == DisplayMode.day,
-          _displayMode == DisplayMode.week
-        ],
-        onPressed: (index) {
-          setState(() {
-            _displayMode = index == 0 ? DisplayMode.day : DisplayMode.week;
-            _saveGraphPrefs();
-            _refreshDataForSelection();
-          });
-        },
-        constraints: const BoxConstraints(minHeight: _kControlHeight),
-        borderRadius: BorderRadius.circular(_kControlRadius),
-        selectedColor: colorScheme.onPrimary,
-        fillColor: colorScheme.primary,
-        color: colorScheme.onSurface,
-        borderColor: colorScheme.outlineVariant,
-        selectedBorderColor: colorScheme.primary,
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: Text(l10n.dayDisplay),
+      child: Align(
+        alignment: Alignment.centerLeft, // ← Expanded内でも横一杯に広がらない
+        child: Material(
+          color: Theme.of(context).colorScheme.surfaceContainer,               // 背景色
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_kControlRadius)),
+          clipBehavior: Clip.antiAlias,                                        // ← 角丸外へのはみ出し防止
+          child: ToggleButtons(
+            isSelected: [
+              _displayMode == DisplayMode.day,
+              _displayMode == DisplayMode.week
+            ],
+            onPressed: (index) {
+              setState(() {
+                _displayMode = index == 0 ? DisplayMode.day : DisplayMode.week;
+                _saveGraphPrefs();
+                _refreshDataForSelection();
+              });
+            },
+            constraints: const BoxConstraints(minHeight: _kControlHeight),
+            borderRadius: BorderRadius.circular(_kControlRadius),
+            selectedColor: colorScheme.onPrimary,
+            fillColor: colorScheme.primary,
+            color: colorScheme.onSurface,
+            borderColor: colorScheme.outlineVariant,
+            selectedBorderColor: colorScheme.primary,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                child: Text(l10n.dayDisplay),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                child: Text(l10n.weekDisplay),
+              ),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: Text(l10n.weekDisplay),
-          ),
-        ],
+        ),
       ),
     );
+
+
 
     // 目標ボタン
     Widget goalButton = SizedBox(
