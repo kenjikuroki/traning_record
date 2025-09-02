@@ -1663,17 +1663,27 @@ class _GraphScreenState extends State<GraphScreen> {
                             ),
                           );
 
-                          // 必要なチャート全高：Yピッチ固定（_kYTickPx）で算出。
-// いまは計算値が小さいとカード内に下余白が残るので、totalH を下限にする。
-                          final tickCount = ((_baseMaxY - _baseMinY) / _yLabelStep).round() + 1;
+                          // ---- ここから追加：目標ライン込みの表示レンジを計算 ----
+                          double viewMinY = _baseMinY;
+                          double viewMaxY = _baseMaxY;
+                          if (_goalValue != null) {
+                            viewMinY = min(viewMinY, _goalValue!);
+                            viewMaxY = max(viewMaxY, _goalValue!);
+                            // 余白（“空き目盛”）を確保
+                            viewMinY = (viewMinY / _yLabelStep).floor() * _yLabelStep - _kYPadStepsBottom * _yLabelStep;
+                            viewMaxY = (viewMaxY / _yLabelStep).ceil()  * _yLabelStep + _kYPadStepsTop    * _yLabelStep;
+                            if (_isAerobicContext()) {
+                              viewMinY = max(0, viewMinY); // 有酸素は負値なし
+                            }
+                          }
+                          // ---- 追加ここまで ----
 
-// もともとの計算（上 24px + 下 24px）はそのまま使いつつ…
+                          // 必要なチャート全高（ビュー用 min/max で再計算）
+                          final tickCount = ((viewMaxY - viewMinY) / _yLabelStep).round() + 1;
                           final double computedChartH = 24 + (tickCount - 1) * _kYTickPx + 24;
-
-// ここを変更：カードの実高 totalH を下限にする
                           final double chartH = max(totalH, computedChartH);
 
-                          // 左Y軸（縦スクロールと同期）
+                          // 左Y軸（ビュー用 min/max を採用）
                           final yAxisChart = SizedBox(
                             width: yAxisPanelW,
                             height: chartH,
@@ -1683,8 +1693,8 @@ class _GraphScreenState extends State<GraphScreen> {
                               LineChartData(
                                 minX: 0,
                                 maxX: 1,
-                                minY: _baseMinY,
-                                maxY: _baseMaxY,
+                                minY: viewMinY,
+                                maxY: viewMaxY,
                                 clipData: const FlClipData.all(),
                                 lineBarsData: const [],
                                 titlesData: FlTitlesData(
@@ -1699,14 +1709,12 @@ class _GraphScreenState extends State<GraphScreen> {
                                   bottomTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
-                                      reservedSize: _kXAxisReservedPx, // 右と統一
+                                      reservedSize: _kXAxisReservedPx,
                                       getTitlesWidget: (v, meta) => const SizedBox.shrink(),
                                     ),
                                   ),
-                                  topTitles:
-                                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                  rightTitles:
-                                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                 ),
                                 gridData: FlGridData(
                                   show: true,
@@ -1727,7 +1735,7 @@ class _GraphScreenState extends State<GraphScreen> {
                             ),
                           );
 
-                          // 右側：縦横スクロール（ズーム無し）
+                          // 右側プロット（ビュー用 min/max を採用）
                           final plotArea = _axisDates.isEmpty
                               ? Center(
                             child: Text(
@@ -1750,8 +1758,8 @@ class _GraphScreenState extends State<GraphScreen> {
                                   LineChartData(
                                     minX: 0,
                                     maxX: (_axisDates.length - 1).toDouble(),
-                                    minY: _baseMinY,
-                                    maxY: _baseMaxY,
+                                    minY: viewMinY,
+                                    maxY: viewMaxY,
                                     clipData: const FlClipData.all(),
                                     lineBarsData: [
                                       LineChartBarData(
@@ -1771,7 +1779,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                         sideTitles: SideTitles(
                                           showTitles: true,
                                           interval: 1,
-                                          reservedSize: _kXAxisReservedPx, // 左と統一
+                                          reservedSize: _kXAxisReservedPx,
                                           getTitlesWidget: _bottomTitle,
                                         ),
                                       ),
@@ -1845,8 +1853,7 @@ class _GraphScreenState extends State<GraphScreen> {
                             ),
                           );
 
-
-                          // 縦スクロールで Y軸とプロットを一緒に動かす
+                          // 縦スクロールで同期
                           return Stack(
                             children: [
                               SizedBox(
@@ -1873,6 +1880,7 @@ class _GraphScreenState extends State<GraphScreen> {
                           );
                         },
                       ),
+
                     ),
                   ),
                 ),
