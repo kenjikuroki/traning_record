@@ -1,3 +1,2 @@
 /* App Tracking Transparency (ATT) */
-"NSUserTrackingUsageDescription" = "広告の最適化のために、他社アプリやWebサイト横断でのあなたのアクティビティ追跡を許可しますか？";
-
+"NSUserTrackingUsageDescription" = "無料提供のため広告を表示・最適化する目的で、デバイス識別子等を利用します。許可しない場合も広告は表示されますが、追跡は行われません。iOSの設定でいつでも変更できます。";
