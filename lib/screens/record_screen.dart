@@ -1110,10 +1110,10 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       elevation: 4,
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(8.0), // ← これを足す！
         child: StopwatchWidget(
-          compact: true,
           controller: _swController,
+          compact: true,
           triangleOnlyStart: true,
         ),
       ),

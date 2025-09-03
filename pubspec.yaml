@@ -16,6 +16,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  just_audio: ^0.9.46
+  audio_session: ^0.1.25
   # UI / グラフ
   fl_chart: ^0.68.0
   # 広告
@@ -69,3 +71,4 @@ flutter:
   assets:
     - assets/backgrounds/
     - assets/app_icons/
+    - assets/sounds/pipi4_880_fast.m4a

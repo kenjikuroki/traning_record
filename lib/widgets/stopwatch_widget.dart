@@ -2,13 +2,24 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart' show HapticFeedback, rootBundle;
+
+import 'package:just_audio/just_audio.dart';
+import 'package:audio_session/audio_session.dart';
+
 import '../l10n/app_localizations.dart';
+import 'dart:io' show Platform;
 
 /// モード
 enum ClockMode { stopwatch, timer }
+
+/// ビープの方針
+/// mixed: 他アプリ音楽と“混在”（可能なら duck）
+/// exclusive: 一時的に独占（他アプリは一時停止）
+enum BeepPolicy { mixed, exclusive }
 
 /// 外部から制御するためのコントローラ
 class StopwatchController extends ChangeNotifier {
@@ -19,19 +30,20 @@ class StopwatchController extends ChangeNotifier {
   static const _hardCap = Duration(hours: 5); // 5時間上限
 
   Timer? _ticker;
-  Duration _elapsed = Duration.zero; // ストップウォッチの経過、またはタイマーの経過
-  Duration _timerTarget = const Duration(minutes: 30); // タイマーの設定値
+  Duration _elapsed = Duration.zero; // ストップウォッチ/タイマーの経過
+  Duration _timerTarget = const Duration(minutes: 5); // タイマー設定値(デフォ5分)
   bool _isRunning = false;
   ClockMode _mode;
 
-  /// API（RecordScreen が使っているもの）
+  /// API（RecordScreen などが使っているもの）
   bool get isRunning => _isRunning;
-  void start() => _start(); // 互換
+  void start() => _start();
   void pause() => _pause();
   void reset() => _reset();
 
   /// 追加API
   Duration get elapsed => _elapsed;
+
   ClockMode get mode => _mode;
   set mode(ClockMode m) {
     if (_mode == m) return;
@@ -76,7 +88,13 @@ class StopwatchController extends ChangeNotifier {
       final next = _elapsed + _tick;
       if (next >= _timerTarget) {
         _elapsed = _timerTarget;
-        _pause(); // 停止
+        _pause(); // いったん停止（リスナ通知：ここでビープが走る）
+        // ★完了後は“表示”を元の設定時間に戻す（次の開始を待つ）
+        // すぐ戻すとビープ検知に影響するので次フレームで実施
+        scheduleMicrotask(() {
+          _elapsed = Duration.zero;
+          notifyListeners();
+        });
       } else {
         _elapsed = next;
         notifyListeners();
@@ -123,12 +141,14 @@ class StopwatchWidget extends StatefulWidget {
     super.key,
     required this.controller,
     this.compact = false,
-    this.triangleOnlyStart = false, // 追加：開始ボタンを三角アイコンのみで表示
+    this.triangleOnlyStart = false,
+    this.beepPolicy = BeepPolicy.mixed, // デフォは混在
   });
 
   final StopwatchController controller;
   final bool compact;
   final bool triangleOnlyStart;
+  final BeepPolicy beepPolicy;
 
   @override
   State<StopwatchWidget> createState() => _StopwatchWidgetState();
@@ -138,14 +158,45 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulseCtrl;
 
+  // ===== ピピピ用オーディオ（just_audioのみ）=====
+  final AudioPlayer _beepPlayer = AudioPlayer();
+  bool _beepPrepared = false;
+  bool _alarmPlaying = false;
+  int _lastRemainSec = 999999;
+
+  Timer? _rampTimer; // 自前フェード用
+
+  // 再生リスト設定（1回だけ鳴らす + 余韻無音で外部音楽の復帰を少し遅らせる）
+  static const _beepAsset = 'assets/sounds/pipi4_880_fast.m4a';
+  static const _tailGap = Duration(milliseconds: 260); // ← 復帰遅延（被り防止）
+
   @override
   void initState() {
     super.initState();
     widget.controller.addListener(_onChanged);
+
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
+
+    // セッション構成（現在の方針で）
+    _configureSessionFor(widget.beepPolicy);
+
+    // mixed の場合は起動中ずっとアクティブ（setActiveの出し入れによる他アプリの不具合を避ける）
+    _ensureActiveIfMixed();
+
+    // ビープ準備（awaitしない）
+    _prepareAudio();
+
+    // アセット存在チェック（ログ用途）
+    _debugCheckBeepAsset();
+
+    _beepPlayer.playbackEventStream.listen((e) {
+      debugPrint('[beep] state=${e.processingState} pos=${e.updatePosition} dur=${e.duration}');
+    }, onError: (Object err, StackTrace st) {
+      debugPrint('[beep] ERROR: $err\n$st');
+    });
   }
 
   @override
@@ -155,17 +206,198 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
       oldWidget.controller.removeListener(_onChanged);
       widget.controller.addListener(_onChanged);
     }
+    if (oldWidget.beepPolicy != widget.beepPolicy) {
+      _configureSessionFor(widget.beepPolicy);
+      _ensureActiveIfMixed();
+    }
   }
 
   @override
   void dispose() {
     widget.controller.removeListener(_onChanged);
+    _stopAlarm(); // 念のため停止
+    _beepPlayer.dispose();
+    _rampTimer?.cancel();
     _pulseCtrl.dispose();
     super.dispose();
   }
 
+  // ===== AudioSession 構成（iOSのサイレントでも鳴るよう playback を採用）=====
+  Future<void> _configureSessionFor(BeepPolicy policy) async {
+    final session = await AudioSession.instance;
+
+    if (policy == BeepPolicy.mixed) {
+      await session.configure(
+        AudioSessionConfiguration(
+          // iOS: 無音スイッチを無視して鳴らしつつ、他アプリは混在＋ダック
+          avAudioSessionCategory: AVAudioSessionCategory.playback,
+          avAudioSessionCategoryOptions:
+          AVAudioSessionCategoryOptions.mixWithOthers |
+          AVAudioSessionCategoryOptions.duckOthers,
+
+          // Android: 通知/サウンド用の属性でフォーカスは「MayDuck」
+          androidAudioAttributes: const AndroidAudioAttributes(
+            contentType: AndroidAudioContentType.sonification,
+            usage: AndroidAudioUsage.assistanceSonification,
+          ),
+          androidAudioFocusGainType:
+          AndroidAudioFocusGainType.gainTransientMayDuck,
+          androidWillPauseWhenDucked: false,
+        ),
+      );
+    } else {
+      // exclusive は本当に止めたい時専用（通常は使わない）
+      await session.configure(
+        const AudioSessionConfiguration(
+          avAudioSessionCategory: AVAudioSessionCategory.playback,
+          androidAudioAttributes: AndroidAudioAttributes(
+            contentType: AndroidAudioContentType.sonification,
+            usage: AndroidAudioUsage.assistanceSonification,
+          ),
+          androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransient,
+          androidWillPauseWhenDucked: false,
+        ),
+      );
+    }
+  }
+
+  Future<void> _ensureActiveIfMixed() async {
+    final session = await AudioSession.instance;
+    if (widget.beepPolicy == BeepPolicy.mixed) {
+      try {
+        await session.setActive(true); // 混在時は常時アクティブ化
+      } catch (_) {}
+    } else {
+      try {
+        await session.setActive(false); // 独占モードは必要時のみ有効化する
+      } catch (_) {}
+    }
+  }
+
+  // ===== アセット存在チェック（ログ用）=====
+  Future<void> _debugCheckBeepAsset() async {
+    try {
+      final data = await rootBundle.load(_beepAsset);
+      debugPrint('[beep] asset OK: $_beepAsset (${data.lengthInBytes} bytes)');
+    } catch (e) {
+      debugPrint('[beep] asset NOT FOUND: $_beepAsset  error=$e');
+    }
+  }
+
+  // ==== Audio 準備 ====
+  Future<void> _prepareAudio() async {
+    if (_beepPrepared) return;
+
+    try {
+      // ビープ1回 + 余韻無音（音楽の復帰を遅らせて被りを防ぐ）
+      final src = ConcatenatingAudioSource(children: [
+        AudioSource.asset(_beepAsset),                // ← 1回だけ鳴らす
+        SilenceAudioSource(duration: _tailGap),       // ← 無音
+      ]);
+
+      await _beepPlayer.setAudioSource(src, preload: true);
+      await _beepPlayer.setLoopMode(LoopMode.off);
+      await _beepPlayer.setShuffleModeEnabled(false);
+      await _beepPlayer.setVolume(0.0);               // 初期は0
+
+      final dur = await _beepPlayer.load();
+      debugPrint('[beep] prepared (1x) duration=$dur');
+
+      _beepPrepared = true;
+    } catch (e, st) {
+      debugPrint('beep setAudioSource error: $e\n$st');
+    }
+  }
+
+  // ==== フェード（自前ラダー）====
+  Future<void> _rampVolume(double from, double to, Duration dur) async {
+    _rampTimer?.cancel();
+    final steps = (dur.inMilliseconds / 16).clamp(1, 120).round();
+    var tick = 0;
+    _rampTimer = Timer.periodic(const Duration(milliseconds: 16), (t) async {
+      tick++;
+      final ratio = (tick / steps).clamp(0.0, 1.0);
+      final v = from + (to - from) * ratio;
+      try {
+        await _beepPlayer.setVolume(v);
+      } catch (_) {}
+      if (ratio >= 1.0) t.cancel();
+    });
+  }
+
+  // ==== 再生 ====
+  Future<void> _playAlarm() async {
+    await _prepareAudio();
+    _alarmPlaying = true;
+    final session = await AudioSession.instance;
+
+    try {
+      await _configureSessionFor(widget.beepPolicy);
+      await session.setActive(true); // ← 再生直前だけアクティブ化
+
+      await _beepPlayer.setLoopMode(LoopMode.off);
+      await _beepPlayer.setShuffleModeEnabled(false);
+      if (_beepPlayer.processingState == ProcessingState.idle) {
+        await _beepPlayer.load();
+      }
+
+      await _beepPlayer.seek(Duration.zero, index: 0);
+      await _beepPlayer.setVolume(1.0);
+      await _beepPlayer.play();
+
+      // 再生完了まで待機
+      await _beepPlayer.playerStateStream
+          .firstWhere((s) => s.processingState == ProcessingState.completed);
+    } catch (e, st) {
+      debugPrint('playAlarm error: $e\n$st');
+    } finally {
+      _alarmPlaying = false;
+
+      // ★ 被り防止：外部音楽が即復帰しないように、ほんの少し待つ
+      await Future.delayed(const Duration(milliseconds: 350));
+
+      // ★ iOS に「他アプリさん復帰どうぞ」の合図を出してからフォーカス解放
+      try {
+        await session.setActive(
+          false,
+          avAudioSessionSetActiveOptions:
+          AVAudioSessionSetActiveOptions.notifyOthersOnDeactivation,
+        );
+      } catch (_) {}
+
+      // 次回のために頭出し
+      try { await _beepPlayer.seek(Duration.zero, index: 0); } catch (_) {}
+    }
+  }
+
+
+  Future<void> _stopAlarm() async {
+    _rampTimer?.cancel();
+    _rampTimer = null;
+
+    try {
+      await _beepPlayer.stop();
+      await _beepPlayer.seek(Duration.zero, index: 0);
+      await _beepPlayer.setVolume(1.0);
+    } catch (_) {}
+    _alarmPlaying = false;
+  }
+
+  // ==== コントローラの変化を監視（完了時にビープ） ====
   void _onChanged() {
     if (!mounted) return;
+
+    final ctl = widget.controller;
+    final bool isTimer = ctl.mode == ClockMode.timer;
+    final int remainSec =
+    isTimer ? (ctl.timerTarget - ctl.elapsed).inSeconds : 0;
+
+    // 0 到達瞬間で鳴らす（1回のみ）
+    if (isTimer && !_alarmPlaying && _lastRemainSec > 0 && remainSec <= 0) {
+      _playAlarm();
+    }
+    _lastRemainSec = remainSec;
+
     setState(() {});
   }
 
@@ -196,11 +428,12 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
               mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(height: 6),
-                Text(l10n.timerTime, style: Theme.of(ctx).textTheme.titleMedium),
+                Text(l10n.timerTime,
+                    style: Theme.of(ctx).textTheme.titleMedium),
                 SizedBox(
                   height: 200,
                   child: CupertinoTimerPicker(
-                    mode: CupertinoTimerPickerMode.hm, // 時・分（秒は非表示）
+                    mode: CupertinoTimerPickerMode.hms, // 秒まで設定可
                     initialTimerDuration: initial,
                     onTimerDurationChanged: (d) => picked = d,
                   ),
@@ -208,7 +441,8 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
                 const SizedBox(height: 8),
                 FilledButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: Text(MaterialLocalizations.of(context).okButtonLabel),
+                  child:
+                  Text(MaterialLocalizations.of(context).okButtonLabel),
                 ),
               ],
             ),
@@ -219,6 +453,7 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
     if (picked != null) {
       setState(() {
         widget.controller.timerTarget = picked!;
+        _stopAlarm();
         widget.controller.reset();
       });
     }
@@ -243,6 +478,7 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
     final isRunning = ctl.isRunning;
     final isTimer = ctl.mode == ClockMode.timer;
 
+    // 表示は：タイマー時＝残り、SW時＝経過
     final time = isTimer ? (ctl.timerTarget - ctl.elapsed) : ctl.elapsed;
     final display = time.isNegative ? Duration.zero : time;
 
@@ -255,17 +491,17 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
         final veryTight = w < 340;
         final tight = w < 380;
 
-        // === モード切替ピルを中くらいサイズに調整 ===
+        // === モード切替ピルのサイズ ===
         final pillW =
         ultraTight ? 100.0 : (veryTight ? 110.0 : (tight ? 120.0 : 130.0));
         final pillH =
-        ultraTight ? 34.0  : (veryTight ? 36.0  : (tight ? 38.0  : 42.0));
+        ultraTight ? 34.0 : (veryTight ? 36.0 : (tight ? 38.0 : 42.0));
         final knobW =
-        ultraTight ? 36.0  : (veryTight ? 40.0  : (tight ? 46.0  : 54.0));
+        ultraTight ? 36.0 : (veryTight ? 40.0 : (tight ? 46.0 : 54.0));
         final knobH =
-        ultraTight ? 28.0  : (veryTight ? 30.0  : (tight ? 32.0  : 36.0));
+        ultraTight ? 28.0 : (veryTight ? 30.0 : (tight ? 32.0 : 36.0));
         final pillIc =
-        ultraTight ? 18.0  : (veryTight ? 19.0  : (tight ? 20.0  : 22.0));
+        ultraTight ? 18.0 : (veryTight ? 19.0 : (tight ? 20.0 : 22.0));
 
         final playDia =
         ultraTight ? 30.0 : (veryTight ? 32.0 : (tight ? 36.0 : 38.0));
@@ -290,11 +526,13 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
           isTimer: isTimer,
           onTapStopwatch: () {
             HapticFeedback.selectionClick();
+            _stopAlarm();
             ctl.mode = ClockMode.stopwatch;
             ctl.pause();
           },
           onTapTimer: () {
             HapticFeedback.selectionClick();
+            _stopAlarm();
             ctl.mode = ClockMode.timer;
             ctl.pause();
           },
@@ -305,29 +543,31 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
           iconSize: pillIc,
         );
 
-        // 三角だけ少し大きく
-        final double triIconSize = playIc + 4; // 例: 16→20, 18→22
-        final double triDiameter = playDia + 6; // 例: 36→42
+        final double triIconSize = playIc + 4;
+        final double triDiameter = playDia + 6;
 
-        // Start/Pause ボタン（※宣言は1回だけ）
         final Widget startPauseBtn = isRunning
-        // 一時停止は従来通り 丸ボタン
             ? _RoundIconButton(
           icon: Icons.pause_rounded,
           bg: c.tertiary,
           fg: c.onPrimary,
           semantic: AppLocalizations.of(context)!.pause,
-          onTap: () => ctl.toggle(),
+          onTap: () {
+            _stopAlarm();
+            ctl.toggle();
+          },
           diameter: playDia,
           iconSize: playIc,
         )
-        // 開始時だけオプションで三角アイコン単体
             : (widget.triangleOnlyStart
             ? _PlainIconButton(
           icon: Icons.play_arrow_rounded,
           fg: c.primary,
           semantic: AppLocalizations.of(context)!.start,
-          onTap: () => ctl.toggle(),
+          onTap: () {
+            _stopAlarm();
+            ctl.toggle();
+          },
           diameter: triDiameter,
           iconSize: triIconSize,
         )
@@ -336,63 +576,59 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
           bg: c.primary,
           fg: c.onPrimary,
           semantic: AppLocalizations.of(context)!.start,
-          onTap: () => ctl.toggle(),
+          onTap: () {
+            _stopAlarm();
+            ctl.toggle();
+          },
           diameter: playDia,
           iconSize: playIc,
         ));
 
-// ---- 幅計算（右はみ出し防止） ----
-        final double reservePx = 2.0; // 安全マージン（丸め誤差吸収）
+        // ---- 幅計算（右はみ出し防止） ----
+        const double reservePx = 2.0;
         bool showResetLocal = showReset;
 
-// 左固定幅（ピル＋隙間＋再生ボタン＋隙間）
         final double fixedLeft = pillW + gapXS + playDia + gapM;
-// 右ブロック（隙間＋リセット）※表示時のみ
         double fixedRight = showResetLocal ? (gapS + resetDia) : 0.0;
 
-// 残り幅（初期）
         double remain = w - fixedLeft - fixedRight - reservePx;
 
-// 残りが不足ならリセットを隠して再計算
         if (remain < 100.0 && showResetLocal) {
           showResetLocal = false;
           fixedRight = 0.0;
           remain = w - fixedLeft - reservePx;
         }
 
-// 時間ボックスの最大幅（小さめに抑える）
         final double timeMax = math.max(140.0, w * 0.45);
-// ★ 残り幅“以内”に必ず収める（下限は 0）
         final double timeW = remain.clamp(0.0, timeMax);
 
-// ---- レイアウト ----
         return SizedBox(
           width: w,
           child: Row(
             children: [
-              // 左：ピル
               modePill,
               SizedBox(width: gapXS),
-
-              // 再生/一時
               SizedBox(
                 width: playDia,
                 height: playDia,
                 child: Center(child: startPauseBtn),
               ),
               SizedBox(width: gapM),
-
-              // 時間ボックス（残り幅以内の厳密幅）
               SizedBox(
                 width: timeW,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(10),
                   onTap: isTimer ? () => _pickTimer(context) : null,
                   onLongPress: (!showResetLocal && ctl.elapsed > Duration.zero)
-                      ? () { HapticFeedback.mediumImpact(); ctl.reset(); }
+                      ? () {
+                    HapticFeedback.mediumImpact();
+                    _stopAlarm();
+                    ctl.reset();
+                  }
                       : null,
                   child: Container(
-                    padding: EdgeInsets.symmetric(vertical: vPad, horizontal: hPad),
+                    padding:
+                    EdgeInsets.symmetric(vertical: vPad, horizontal: hPad),
                     decoration: BoxDecoration(
                       color: c.surfaceContainer,
                       borderRadius: BorderRadius.circular(10),
@@ -405,8 +641,12 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
                         _fmt(display),
                         maxLines: 1,
                         softWrap: false,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontFeatures: const [FontFeature.tabularFigures()],
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(
+                          fontFeatures:
+                          const [FontFeature.tabularFigures()],
                           fontWeight: FontWeight.w700,
                           color: c.onSurface,
                         ),
@@ -415,8 +655,6 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
                   ),
                 ),
               ),
-
-              // 右：隙間＋リセット（表示できるときだけ）
               if (showResetLocal) ...[
                 SizedBox(width: gapS),
                 SizedBox(
@@ -427,7 +665,12 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
                     bg: c.surfaceContainerHighest,
                     fg: c.onSurfaceVariant,
                     semantic: AppLocalizations.of(context)!.reset,
-                    onTap: ctl.elapsed > Duration.zero ? () => ctl.reset() : null,
+                    onTap: ctl.elapsed > Duration.zero
+                        ? () {
+                      _stopAlarm();
+                      ctl.reset();
+                    }
+                        : null,
                     diameter: resetDia,
                     iconSize: resetIc,
                   ),
@@ -436,8 +679,6 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
             ],
           ),
         );
-
-
       },
     );
   }
@@ -457,7 +698,8 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
     isTimer ? _clampDuration(rawRemain, Duration.zero, target) : rawRemain;
 
     final progress = isTimer && target.inMilliseconds > 0
-        ? (elapsed.inMilliseconds / target.inMilliseconds).clamp(0.0, 1.0)
+        ? (elapsed.inMilliseconds / target.inMilliseconds)
+        .clamp(0.0, 1.0)
         : 0.0;
 
     final timeStr = isTimer ? _fmt(remain) : _fmt(elapsed);
@@ -466,11 +708,13 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
       isTimer: isTimer,
       onTapStopwatch: () {
         HapticFeedback.selectionClick();
+        _stopAlarm();
         ctl.mode = ClockMode.stopwatch;
         ctl.pause();
       },
       onTapTimer: () {
         HapticFeedback.selectionClick();
+        _stopAlarm();
         ctl.mode = ClockMode.timer;
         ctl.pause();
       },
@@ -478,10 +722,12 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
 
     final l10n = AppLocalizations.of(context)!;
 
-    // 操作ボタン（フル）
     final Widget startPause = isRunning
         ? ElevatedButton.icon(
-      onPressed: () => ctl.toggle(),
+      onPressed: () {
+        _stopAlarm();
+        ctl.toggle();
+      },
       icon: const Icon(Icons.pause_rounded),
       label: Text(l10n.pause),
       style: ElevatedButton.styleFrom(
@@ -496,13 +742,19 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
     )
         : (widget.triangleOnlyStart
         ? IconButton(
-      onPressed: () => ctl.toggle(),
+      onPressed: () {
+        _stopAlarm();
+        ctl.toggle();
+      },
       icon: const Icon(Icons.play_arrow_rounded),
       tooltip: l10n.start,
-      iconSize: 32, // ← 少し大きめ
+      iconSize: 32,
     )
         : ElevatedButton.icon(
-      onPressed: () => ctl.toggle(),
+      onPressed: () {
+        _stopAlarm();
+        ctl.toggle();
+      },
       icon: const Icon(Icons.play_arrow_rounded),
       label: Text(l10n.start),
       style: ElevatedButton.styleFrom(
@@ -573,12 +825,13 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
                   const SizedBox(height: 8),
                   Text(
                     isTimer
-                    // targetFmt は位置引数2つを要求する生成になっているため、positionalで呼ぶ
                         ? l10n.targetFmt(
                       _humanize(context, target),
                       l10n.tapNumberToEdit,
                     )
-                        : (isRunning ? l10n.statusRunning : l10n.statusIdle),
+                        : (isRunning
+                        ? l10n.statusRunning
+                        : l10n.statusIdle),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: c.onSurfaceVariant,
                     ),
@@ -598,11 +851,15 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
             startPause,
             const SizedBox(width: 8),
             IconButton.filledTonal(
-              onPressed: ctl.elapsed > Duration.zero ? () => ctl.reset() : null,
+              onPressed: ctl.elapsed > Duration.zero
+                  ? () {
+                _stopAlarm();
+                ctl.reset();
+              }
+                  : null,
               icon: const Icon(Icons.restart_alt_rounded),
               tooltip: l10n.reset,
             ),
-            // （時間編集ボタンは廃止。数字タップで編集）
           ],
         ),
       ],
@@ -628,7 +885,6 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
 }
 
 /// タイマー/ストップウォッチ切替の“おしゃれピルスイッチ”
-/// 左：ストップウォッチ（av_timer） 右：タイマー（hourglass）
 class _ModePill extends StatelessWidget {
   final bool isTimer;
   final VoidCallback onTapStopwatch;
@@ -646,13 +902,12 @@ class _ModePill extends StatelessWidget {
     required this.isTimer,
     required this.onTapStopwatch,
     required this.onTapTimer,
-    this.width = 120,      // ← 幅を広げる（96→120）
-    this.height = 48,      // ← 高さを少しUP（40→48）
-    this.knobWidth = 70,   // ← ノブ幅を拡大（44→56）
-    this.knobHeight = 40,  // ← ノブ高さを拡大（32→40）
-    this.iconSize = 24,    // ← アイコンも少し大きく（20→24）
+    this.width = 120,
+    this.height = 48,
+    this.knobWidth = 70,
+    this.knobHeight = 40,
+    this.iconSize = 24,
   });
-
 
   @override
   Widget build(BuildContext context) {
@@ -686,7 +941,7 @@ class _ModePill extends StatelessWidget {
           ),
           // アイコン2つ
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween, // ← 正しくはキャメルケース
             children: [
               _ModeIcon(
                 icon: Icons.av_timer,
@@ -714,8 +969,6 @@ class _ModePill extends StatelessWidget {
         ],
       ),
     );
-
-
   }
 }
 
@@ -741,12 +994,11 @@ class _ModeIcon extends StatelessWidget {
       child: SizedBox(
         width: boxWidth,
         height: boxHeight,
-        child: Center( // ← 中央配置で端のピクセル衝突を回避
+        child: Center(
           child: Icon(icon, size: iconSize),
         ),
       ),
     );
-
   }
 }
 
@@ -791,8 +1043,8 @@ class _RoundIconButton extends StatelessWidget {
             width: diameter,
             height: diameter,
             child: Center(
-              child:
-              Icon(icon, color: enabled ? fg : Colors.grey, size: iconSize),
+              child: Icon(icon,
+                  color: enabled ? fg : Colors.grey, size: iconSize),
             ),
           ),
         ),
@@ -895,9 +1147,9 @@ class _RingPainter extends CustomPainter {
       // ぼかし光彩（鼓動）
       if (glowStrength > 0) {
         final glowPaint = Paint()
-          ..color = (glowColor ?? Colors.blue)
-              .withOpacity(0.35 * glowStrength)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 16 * glowStrength)
+          ..color =
+          (glowColor ?? Colors.blue).withOpacity(0.35 * glowStrength)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16)
           ..style = PaintingStyle.stroke
           ..strokeWidth = stroke;
         canvas.drawArc(
