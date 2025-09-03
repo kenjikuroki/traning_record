@@ -21,7 +21,7 @@ class SettingsManager {
   static const String _backgroundAssetKey = 'backgroundAsset';
 
   // ★ 初回起動時に使うデフォルト壁紙（存在するアセットにしてください）
-  static const String _defaultBackgroundAsset = 'assets/backgrounds/bg37.png';
+  static const String _defaultBackgroundAsset = 'assets/backgrounds/bg11.png';
 
   static Box<dynamic>? _box;
 
