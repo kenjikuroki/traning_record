@@ -1,2 +1,2 @@
 /* App Tracking Transparency (ATT) */
-"NSUserTrackingUsageDescription" = "By allowing tracking, we may also use data from other companies to reduce repetitive ads and show more relevant ads. All features still work even if you choose 'Ask App Not to Track.'";
+"NSUserTrackingUsageDescription" = "To keep the app free, we use identifiers to show and optimize ads. If you choose Not to Track, ads will still appear but tracking won’t occur. You can change this anytime in iOS Settings.";
