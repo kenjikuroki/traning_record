@@ -16,7 +16,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  just_audio: ^0.9.46
+  just_audio: 0.9.46
   audio_session: ^0.1.25
   # UI / グラフ
   fl_chart: ^0.68.0
