@@ -83,6 +83,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   final GlobalKey _kExerciseField = GlobalKey();
   final GlobalKey _kFabKey = GlobalKey();
 
+  // ★ 追加：ストップウォッチカード領域
+  final GlobalKey _kStopwatchArea = GlobalKey();
+
   bool _firstBuildDone = false;
 
   List<String> _filteredBodyParts = [];
@@ -353,6 +356,153 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     });
   }
 
+  // ★ 新規追加：リストの最下部まで“しゅっ”とスクロール
+  Future<void> _scrollToBottom() async {
+    // レイアウト確定を待つ（extent 反映）
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted || !_scrollCtrl.hasClients) return;
+    // 1フレームだけ余裕を見てからスクロール
+    await Future<void>.delayed(const Duration(milliseconds: 16));
+    if (!_scrollCtrl.hasClients) return;
+
+    final target = _scrollCtrl.position.maxScrollExtent;
+    await _scrollCtrl.animateTo(
+      target,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+
+  // pivot: 0.0=快適ゾーン上端寄せ（＝タイマー直下寄せ）, 0.5=中央, 1.0=下端寄せ
+// topExtra: タイマー直下に足す余白(pixels) — 「すぐ下」感の微調整に使用
+  Future<void> _scrollIntoComfortZone(
+      GlobalKey key, {
+        double pivot = 0.5,
+        double topExtra = 28, // ← デフォは“ちょうど良い”程度のオフセット
+      }) async {
+    _pendingScrollKey = key;
+    _scrollDebounce?.cancel();
+
+    _scrollDebounce = Timer(const Duration(milliseconds: 120), () async {
+      if (!mounted) return;
+
+      final ctx = _pendingScrollKey?.currentContext;
+      if (ctx == null) return;
+
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+
+      final targetCtx = _pendingScrollKey?.currentContext;
+      if (targetCtx == null) return;
+
+      final media = MediaQuery.of(context);
+      final double vh = media.size.height;
+      final double kb = media.viewInsets.bottom;
+      final double sb = media.padding.bottom;
+
+      double swH = 0;
+      if (SettingsManager.showStopwatch) {
+        final swCtx = _kStopwatchArea.currentContext;
+        if (swCtx != null) {
+          final rb = swCtx.findRenderObject() as RenderBox?;
+          if (rb != null) swH = rb.size.height;
+        }
+      }
+
+      // ★ タイマー直下の“上側確保”に topExtra を加算して、より「すぐ下」に寄せる
+      final double topReserve = swH + topExtra;
+      final double bottomReserve = kb + sb + 16;
+
+      final double topFrac = (topReserve / vh).clamp(0.0, 0.7);
+      final double bottomFrac = (bottomReserve / vh).clamp(0.0, 0.8);
+      final double visibleFrac = (1.0 - topFrac - bottomFrac).clamp(0.15, 0.85);
+      final double p = pivot.clamp(0.0, 1.0);
+      final double align = (topFrac + visibleFrac * p).clamp(0.02, 0.98);
+
+      await Scrollable.ensureVisible(
+        targetCtx,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        alignment: align,
+      );
+    });
+  }
+
+// ★ 新規：キーボード高さが安定するまで待機
+  Future<void> _waitForKeyboardStable({int timeoutMs = 700}) async {
+    final deadline = DateTime.now().add(Duration(milliseconds: timeoutMs));
+    double? last;
+    int stableTick = 0;
+    while (mounted && DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(const Duration(milliseconds: 32));
+      final kb = MediaQuery.of(context).viewInsets.bottom;
+      if (last != null && (kb - last!).abs() < 1.0) {
+        stableTick++;
+        if (stableTick >= 3) break; // 連続3回ほぼ同じなら安定とみなす
+      } else {
+        stableTick = 0;
+        last = kb;
+      }
+    }
+  }
+
+// ★ 新規：キーボード安定後に“快適ゾーン”スクロール
+  Future<void> _scrollIntoComfortZoneAfterKeyboard(
+      GlobalKey key, {
+        double pivot = 0.0,   // ← タイマー直下寄せ
+        double topExtra = 28, // ← タイマーの下に少し余白
+      }) async {
+    await _waitForKeyboardStable();
+    await _scrollIntoComfortZone(key, pivot: pivot, topExtra: topExtra);
+  }
+
+  // ★ 新規追加：指定の “種目名” TextField にフォーカスを当てる
+  void _focusMenuNameField(int secIndex, int menuIndex) {
+    if (!mounted) return;
+    if (secIndex < 0 || secIndex >= _sections.length) return;
+
+    final keys = _sections[secIndex].nameFieldKeys;
+    if (menuIndex < 0 || menuIndex >= keys.length) return;
+
+    final ctx = keys[menuIndex].currentContext;
+    if (ctx == null) return;
+
+    // レイアウト確定後にフォーカス要求
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
+      final targetCtx = keys[menuIndex].currentContext;
+      if (targetCtx == null) return;
+
+      // Key の直下ツリーから EditableText（TextField の内部）を探して、その FocusNode に requestFocus
+      EditableTextState? editable;
+      void findEditable(Element e) {
+        if (editable != null) return;
+        if (e is StatefulElement && e.state is EditableTextState) {
+          editable = e.state as EditableTextState;
+        }
+        e.visitChildren(findEditable);
+      }
+
+      final rootElem = targetCtx as Element;
+      rootElem.visitChildren(findEditable);
+
+      if (editable?.widget.focusNode != null) {
+        editable!.widget.focusNode!.requestFocus();
+        await SystemChannels.textInput.invokeMethod('TextInput.show');
+      } else {
+        // フォールバック（最低限 IME を開く）
+        FocusScope.of(targetCtx).requestFocus(FocusNode());
+        await SystemChannels.textInput.invokeMethod('TextInput.show');
+      }
+
+      // キャレットを末尾へ
+      final ctrl = _sections[secIndex].menuControllers[menuIndex];
+      ctrl.selection = TextSelection.collapsed(offset: ctrl.text.length);
+    });
+  }
+
   // 部位選択の適用
   void _applySelectedPart(int secIndex, String? value) {
     final section = _sections[secIndex];
@@ -438,9 +588,19 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       }
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _scrollIntoView(secIndex, 0);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
+      final keys = _sections[secIndex].nameFieldKeys;
+      // ① まずフォーカス（→ キーボードが開く）
+      _focusMenuNameField(secIndex, 0);
+
+      // ② キーボード高さが安定したら、その高さで“タイマー直下”へ上寄せスクロール
+      if (keys.isNotEmpty) {
+        await _scrollIntoComfortZoneAfterKeyboard(keys[0], pivot: 0.0, topExtra: 28);
+      }
     });
+
     _scheduleHintsAfterPart();
   }
 
@@ -1032,8 +1192,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       _currentMenuIndex = 0;
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _scrollSectionCardIntoView(_sections.length - 1);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _scrollToBottom(); // ★ 一番下まで“しゅっ”と移動
     });
   }
 
@@ -1135,6 +1296,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   Widget _buildStopwatchCard() {
     final cs = Theme.of(context).colorScheme;
     return Card(
+      key: _kStopwatchArea, // ★ 追加：実寸取得のため
       color: cs.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       elevation: 1.0,
@@ -1441,7 +1603,12 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
                                         return GestureDetector(
                                           behavior: HitTestBehavior.opaque,
-                                          onTap: () => _touchCard(secIndex, menuIndex),
+                                          onTap: () {
+                                            _touchCard(secIndex, menuIndex);
+                                            final k = section.nameFieldKeys[menuIndex];
+                                            // ★ タイマー直下寄せ：pivot は 0.0（上端寄せ）、topExtra を 28〜36 で微調整
+                                            _scrollIntoComfortZone(k, pivot: 0.0, topExtra: 28);
+                                          },
                                           child: Card(
                                             key: section.menuKeys[menuIndex], // ← Key は Card 側にのみ付与
                                             color: colorScheme.surface,
@@ -1478,11 +1645,12 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                     }
                                                   });
                                                 },
-                                                onAnyFieldFocused: () {
-                                                  _touchCard(secIndex, menuIndex);
-                                                  final k = section.nameFieldKeys[menuIndex];
-                                                  _scrollIntoViewKey(k, alignment: 0.22);
-                                                },
+                                                  onAnyFieldFocused: () {
+                                                    _touchCard(secIndex, menuIndex);
+                                                    final k = section.nameFieldKeys[menuIndex];
+                                                    // フォーカス → キーボード安定待ち → タイマー直下へ
+                                                    _scrollIntoComfortZoneAfterKeyboard(k, pivot: 0.0, topExtra: 28);
+                                                  },
                                                 onNameChanged: (prevEmpty, nowEmpty) {},
                                               ),
                                             ),
