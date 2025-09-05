@@ -107,13 +107,18 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
   // ==== ストップウォッチ ====
   static final StopwatchController _swController = StopwatchController();
-  DateTime _lastInteractionAt = DateTime.now();
-  Timer? _inactivityTimer;
+  DateTime _lastInteractionAt = DateTime.now();  Timer? _inactivityTimer;
   Timer? _capTimer;
   DateTime? _backgroundedAt;
   bool _wasRunning = false;
   DateTime? _resumedAt;
+
+  // --- ensureVisible デバウンス用 ---
+  Timer? _scrollDebounce;
+  GlobalKey? _pendingScrollKey;
+  double _pendingScrollAlignment = 0.22;
   // =========================
+
 
   void _onShowStopwatchChanged() {
     if (!mounted) return;
@@ -213,6 +218,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     _capTimer?.cancel();
     _savedChipTimer?.cancel();
     _setCountSub?.cancel();
+    _scrollDebounce?.cancel(); // ★ 追加：デバウンスTimerを破棄
     _scrollCtrl.dispose();
     for (var section in _sections) {
       section.dispose();
@@ -221,7 +227,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     _weightController.dispose();
     super.dispose();
   }
-
   // Appライフサイクル
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -318,25 +323,34 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     }
   }
 
-  // ★ 任意の GlobalKey に対して“見やすい位置”へスクロール
+// ★ 任意の GlobalKey へ“単発”スクロール（デバウンス）
   Future<void> _scrollIntoViewKey(GlobalKey key, {double alignment = 0.22}) async {
-    final ctx = key.currentContext;
-    if (ctx == null) return;
-    await Scrollable.ensureVisible(
-      ctx,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      alignment: alignment,
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 120));
-    if (key.currentContext != null) {
+    _pendingScrollKey = key;
+    _pendingScrollAlignment = alignment;
+
+    // 直近呼び出しがあれば打ち消し
+    _scrollDebounce?.cancel();
+
+    // 140ms デバウンス後に1回だけスクロール
+    _scrollDebounce = Timer(const Duration(milliseconds: 140), () async {
+      if (!mounted) return;
+      final ctx = _pendingScrollKey?.currentContext;
+      if (ctx == null) return;
+
+      // レイアウト確定を待ってからスクロール
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+
+      final targetCtx = _pendingScrollKey?.currentContext;
+      if (targetCtx == null) return;
+
       await Scrollable.ensureVisible(
-        key.currentContext!,
-        duration: const Duration(milliseconds: 200),
+        targetCtx,
+        duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        alignment: alignment,
+        alignment: _pendingScrollAlignment,
       );
-    }
+    });
   }
 
   // 部位選択の適用
@@ -1123,7 +1137,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     return Card(
       color: cs.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-      elevation: 4,
+      elevation: 1.0,
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: StopwatchWidget(
@@ -1257,7 +1271,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                       child: Card(
                         color: colorScheme.surfaceContainerHighest,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-                        elevation: 4,
+                        elevation: 1.0,
                         child: Padding(
                           padding: const EdgeInsets.all(12.0),
                           child: Row(
@@ -1355,7 +1369,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                         child: Card(
                           color: colorScheme.surfaceContainerHighest,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-                          elevation: 4,
+                          elevation: 1.0,
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
                             child: Column(
@@ -1372,9 +1386,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                           borderRadius: BorderRadius.circular(22.0),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withOpacity(0.06),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 2),
+                                              color: Colors.black.withOpacity(0.04),
+                                              blurRadius: 3.0,
+                                              offset: const Offset(0, 1),
                                             ),
                                           ],
                                         ),
@@ -1415,99 +1429,72 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                 if (section.selectedPart != null)
                                   Column(
                                     children: [
-                                      ListView.builder(
-                                        shrinkWrap: true,
-                                        physics: const NeverScrollableScrollPhysics(),
-                                        itemCount: section.menuControllers.length,
-                                        itemBuilder: (context, menuIndex) {
-                                          final bool isSelected =
-                                          (_currentSectionIndex == secIndex && _currentMenuIndex == menuIndex);
+                                      ...List.generate(section.menuControllers.length, (menuIndex) {
+                                        final bool isSelected =
+                                        (_currentSectionIndex == secIndex && _currentMenuIndex == menuIndex);
 
-                                          final borderColor =
-                                          isSelected ? (isLight ? kBrandBlue : Colors.white) : Colors.transparent;
-                                          final glowColor = isSelected
-                                              ? (isLight
-                                              ? kBrandBlue.withOpacity(0.45)
-                                              : Colors.white.withOpacity(0.70))
-                                              : Colors.black.withOpacity(0.20);
+                                        final borderColor =
+                                        isSelected ? (isLight ? kBrandBlue : Colors.white) : Colors.transparent;
+                                        final glowColor = isSelected
+                                            ? (isLight ? kBrandBlue.withOpacity(0.45) : Colors.white.withOpacity(0.70))
+                                            : Colors.black.withOpacity(0.20);
 
-                                          return AnimatedSwitcher(
-                                            duration: const Duration(milliseconds: 220),
-                                            switchInCurve: Curves.easeOut,
-                                            switchOutCurve: Curves.easeIn,
-                                            transitionBuilder: (child, animation) {
-                                              if (!_firstBuildDone) return child;
-                                              final offset =
-                                              Tween<Offset>(begin: const Offset(0, -0.10), end: Offset.zero)
-                                                  .animate(animation);
-                                              return FadeTransition(
-                                                opacity: animation,
-                                                child: SlideTransition(position: offset, child: child),
-                                              );
-                                            },
-                                            child: GestureDetector(
-                                              behavior: HitTestBehavior.opaque,
-                                              onTap: () => _touchCard(secIndex, menuIndex),
-                                              child: Card(
-                                                key: section.menuKeys[menuIndex],
-                                                color: colorScheme.surface,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(12.0),
-                                                  side: BorderSide(color: borderColor, width: isSelected ? 1.5 : 0),
-                                                ),
-                                                elevation: isSelected ? 10 : 2,
-                                                shadowColor: glowColor,
-                                                margin: const EdgeInsets.symmetric(vertical: 8.0),
-                                                child: Padding(
-                                                  padding: const EdgeInsets.all(10.0),
-                                                  child: MenuList(
-                                                    key: (secIndex == 0 && menuIndex == 0) ? _kExerciseField : null,
-                                                    nameFieldKey: section.nameFieldKeys[menuIndex],
-                                                    menuController: section.menuControllers[menuIndex],
-                                                    removeMenuCallback: () => _removeMenuItem(secIndex, menuIndex),
-                                                    setCount: section.setInputDataList[menuIndex].length,
-                                                    setInputDataList: section.setInputDataList[menuIndex],
-                                                    isAerobic: section.selectedPart == l10n.aerobicExercise,
-                                                    distanceController: (menuIndex < section.aerobicDistanceCtrls.length)
-                                                        ? section.aerobicDistanceCtrls[menuIndex]
-                                                        : TextEditingController(),
-                                                    durationController: (menuIndex < section.aerobicDurationCtrls.length)
-                                                        ? section.aerobicDurationCtrls[menuIndex]
-                                                        : TextEditingController(),
-                                                    aerobicIsSuggestion: (menuIndex <
-                                                        section.aerobicSuggestFlags.length)
-                                                        ? section.aerobicSuggestFlags[menuIndex]
-                                                        : true,
-                                                    onConfirmAerobic: () {
-                                                      setState(() {
-                                                        if (menuIndex < section.aerobicSuggestFlags.length) {
-                                                          section.aerobicSuggestFlags[menuIndex] = false;
-                                                        }
-                                                      });
-                                                    },
-                                                    onAnyFieldFocused: () {
-                                                      _touchCard(secIndex, menuIndex);
-                                                      final k = section.nameFieldKeys[menuIndex];
-                                                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                                                        if (mounted) {
-                                                          _scrollIntoViewKey(k, alignment: 0.22);
-                                                        }
-                                                      });
-                                                    },
-                                                    onNameChanged: (prevEmpty, nowEmpty) {
-                                                      // ここでは保存UIは出さない（退避時のみ）
-                                                    },
-                                                  ),
-                                                ),
+                                        return GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTap: () => _touchCard(secIndex, menuIndex),
+                                          child: Card(
+                                            key: section.menuKeys[menuIndex], // ← Key は Card 側にのみ付与
+                                            color: colorScheme.surface,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(12.0),
+                                              side: BorderSide(color: borderColor, width: isSelected ? 1.5 : 0),
+                                            ),
+                                            elevation: isSelected ? 3.0 : 0.0,
+                                            shadowColor: glowColor,
+                                            margin: const EdgeInsets.symmetric(vertical: 8.0),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(10.0),
+                                              child: MenuList(
+                                                key: (secIndex == 0 && menuIndex == 0) ? _kExerciseField : null,
+                                                nameFieldKey: section.nameFieldKeys[menuIndex],
+                                                menuController: section.menuControllers[menuIndex],
+                                                removeMenuCallback: () => _removeMenuItem(secIndex, menuIndex),
+                                                setCount: section.setInputDataList[menuIndex].length,
+                                                setInputDataList: section.setInputDataList[menuIndex],
+                                                isAerobic: section.selectedPart == l10n.aerobicExercise,
+                                                distanceController: (menuIndex < section.aerobicDistanceCtrls.length)
+                                                    ? section.aerobicDistanceCtrls[menuIndex]
+                                                    : TextEditingController(),
+                                                durationController: (menuIndex < section.aerobicDurationCtrls.length)
+                                                    ? section.aerobicDurationCtrls[menuIndex]
+                                                    : TextEditingController(),
+                                                aerobicIsSuggestion: (menuIndex < section.aerobicSuggestFlags.length)
+                                                    ? section.aerobicSuggestFlags[menuIndex]
+                                                    : true,
+                                                onConfirmAerobic: () {
+                                                  setState(() {
+                                                    if (menuIndex < section.aerobicSuggestFlags.length) {
+                                                      section.aerobicSuggestFlags[menuIndex] = false;
+                                                    }
+                                                  });
+                                                },
+                                                onAnyFieldFocused: () {
+                                                  _touchCard(secIndex, menuIndex);
+                                                  final k = section.nameFieldKeys[menuIndex];
+                                                  _scrollIntoViewKey(k, alignment: 0.22);
+                                                },
+                                                onNameChanged: (prevEmpty, nowEmpty) {},
                                               ),
                                             ),
-                                          );
-                                        },
-                                      ),
+                                          ),
+                                        );
+
+                                      }),
                                       const SizedBox(height: 10.0),
                                       const SizedBox.shrink(),
                                     ],
                                   ),
+
                               ],
                             ),
                           ),
@@ -1572,9 +1559,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                 borderRadius: radius,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.12),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 2.0,
+                    offset: const Offset(0, 1),
                   ),
                 ],
               ),
@@ -1676,21 +1663,18 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
               recordTitleText,
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 19.0),
             ),
-            flexibleSpace: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withOpacity(0.30),
-                        Colors.black.withOpacity(0.10),
-                        Colors.black.withOpacity(0.00),
-                      ],
-                    ),
-                  ),
+            // （AppBar定義の中）
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                // ブラーをやめ、同じ見た目のグラデだけ適用（軽量）
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.30),
+                    Colors.black.withOpacity(0.10),
+                    Colors.black.withOpacity(0.00),
+                  ],
                 ),
               ),
             ),
