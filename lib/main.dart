@@ -12,6 +12,13 @@ import 'l10n/app_localizations.dart';
 import 'models/menu_data.dart';
 import 'screens/home_screen.dart';
 import 'settings_manager.dart';
+import 'package:audio_session/audio_session.dart';
+
+Future<void> _initAudioSession() async {
+  final session = await AudioSession.instance;
+  await session.configure(const AudioSessionConfiguration.music()); // 再生専用
+}
+// 例えば main() の最初で await _initAudioSession(); を呼ぶ
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
