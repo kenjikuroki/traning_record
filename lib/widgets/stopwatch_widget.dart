@@ -183,11 +183,9 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
     // セッション構成（現在の方針で）
     _configureSessionFor(widget.beepPolicy);
 
-    // mixed の場合は起動中ずっとアクティブ（setActiveの出し入れによる他アプリの不具合を避ける）
-    _ensureActiveIfMixed();
-
-    // ビープ準備（awaitしない）
+// ビープ準備（awaitしない）
     _prepareAudio();
+
 
     // アセット存在チェック（ログ用途）
     _debugCheckBeepAsset();
@@ -208,7 +206,6 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
     }
     if (oldWidget.beepPolicy != widget.beepPolicy) {
       _configureSessionFor(widget.beepPolicy);
-      _ensureActiveIfMixed();
     }
   }
 
