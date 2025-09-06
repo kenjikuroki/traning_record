@@ -46,6 +46,9 @@ class SettingsManager {
   static final ValueNotifier<String> _backgroundAssetNotifier =
   ValueNotifier<String>('');
 
+  static const String _dailyPhotoCapKey = 'dailyPhotoCap';
+
+
   // ====== Public getters ======
   static ValueNotifier<String> get unitNotifier => _unitNotifier;
   static ValueNotifier<ThemeMode> get themeModeNotifier => _themeModeNotifier;
@@ -138,4 +141,15 @@ class SettingsManager {
     await _box?.put(_backgroundAssetKey, assetPath);
     _backgroundAssetNotifier.value = assetPath;
   }
+// === 写真の1日上限（0 = 上限なし） ===
+  static int get dailyPhotoCap {
+    final v = _box?.get(_dailyPhotoCapKey);
+    if (v is int) return v;
+    return 0; // 既定：上限なし
+  }
+
+  static Future<void> setDailyPhotoCap(int value) async {
+    await _box?.put(_dailyPhotoCapKey, value);
+  }
+
 }

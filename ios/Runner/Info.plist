@@ -65,7 +65,9 @@
         <string>cstr6suwn9.skadnetwork</string>
       </dict>
     </array>
-    <key>NSMicrophoneUsageDescription</key>
+      <key>NSMicrophoneUsageDescription</key>
       <string>一部の音声機能でマイクを利用する可能性があるためアクセスが必要です。</string>
+      <key>NSCameraUsageDescription</key>
+      <string>トレーニングの写真を記録するためにカメラを使用します。</string>
 </dict>
 </plist>

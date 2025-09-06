@@ -1,5 +1,5 @@
 // lib/screens/settings_screen.dart
-import 'dart:ui'; // ← BackdropFilter用
+import 'dart:ui'; // BackdropFilter 用
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../widgets/ad_square.dart';
@@ -7,7 +7,7 @@ import '../widgets/ad_banner.dart';
 import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../settings_manager.dart';
-import '../constants/backgrounds.dart'; // ← 30枚リスト allBackgrounds を使用
+import '../constants/backgrounds.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
@@ -29,12 +29,12 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   // 見た目の統一
-  static const double _kGap = 0.0;                 // カード間
-  static const double _kGapAd = 12.0;              // 広告前後
+  static const double _kGap = 0.0;                 // 連結カードの間隔（連結なので 0）
+  static const double _kGapAd = 12.0;              // 広告前後の余白
   static const EdgeInsets _kCardMargin = EdgeInsets.symmetric(vertical: 2.0);
   static const double _kTileHeight = 56.0;         // 見出し行の高さ
   static const double _kIconGap = 12.0;            // アイコンと文字の距離
-  static const EdgeInsets _kOuterPad = EdgeInsets.symmetric(horizontal: 16, vertical: 12); // 初期セット数カード基準の外側Padding
+  static const EdgeInsets _kOuterPad = EdgeInsets.symmetric(horizontal: 16, vertical: 12);
 
   // 状態
   late bool _showStopwatch;
@@ -52,9 +52,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // 背景選択
   String _selectedBgAsset = '';
-
-  // 壁紙カードの展開状態（普段は畳む）
   bool _isBgExpanded = false;
+
+  // 写真上限（0 = 上限なし）
+  late int _dailyPhotoCap;
 
   @override
   void initState() {
@@ -73,8 +74,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _themeMode    = SettingsManager.currentThemeMode;
     _selectedUnit = SettingsManager.currentUnit;
 
-    // 背景
     _selectedBgAsset = SettingsManager.currentBackgroundAsset;
+
+    _dailyPhotoCap = SettingsManager.dailyPhotoCap; // 0=上限なし
   }
 
   void _onThemeChanged(ThemeMode? m) {
@@ -95,7 +97,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     SettingsManager.setBackgroundAsset(assetPath);
   }
 
-  String _translatePart(BuildContext context, String part) => part;
+  // 日本語オリジナル保存名 → 表示言語
+  String _translatePart(BuildContext context, String part) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (part) {
+      case '有酸素運動': return l10n.aerobicExercise;
+      case '腕':       return l10n.arm;
+      case '胸':       return l10n.chest;
+      case '背中':     return l10n.back;
+      case '肩':       return l10n.shoulder;
+      case '足':       return l10n.leg;
+      case '全身':     return l10n.fullBody;
+      case 'その他１':   return l10n.other1;
+      case 'その他２':   return l10n.other2;
+      case 'その他３':   return l10n.other3;
+      default:         return part;
+    }
+  }
 
   bool _darkSwitchValue(BuildContext context) {
     final mode = SettingsManager.currentThemeMode;
@@ -142,20 +160,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(
         automaticallyImplyLeading: true,
         elevation: 0.0,
-        iconTheme: const IconThemeData(color: Colors.white), // ← 白アイコン
-        title: const Text(
-          // l10n.settings を使う場合は Text(l10n.settings, ...) に戻してください
-          '設定',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 19),
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          l10n.settings, // l10n対応（constを付けない）
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 19),
         ),
-        flexibleSpace: ClipRect( // ← 上部にぼかし＋半透明スクラム
+        flexibleSpace: ClipRect(
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
                   colors: [
                     Colors.black.withOpacity(0.30),
                     Colors.black.withOpacity(0.10),
@@ -175,7 +191,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const AdBanner(screenName: 'settings_top'),
           const SizedBox(height: 6),
 
-          // ====== ストップウォッチ/タイマー表示 ======
+          // ─────────────────────────────────
+          // ひとまとまり（上→下）:
+          // ①ストップウォッチ → ②体重 → ③表示部位 → ④セット数 → ⑤写真上限
+          // ─────────────────────────────────
+
+          // ① ストップウォッチ/タイマー表示（グループ先頭：上だけ角丸）
           Card(
             color: colorScheme.surfaceContainerHighest,
             shape: const RoundedRectangleBorder(
@@ -202,7 +223,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: _kGap),
 
-          // ====== 体重管理 ======
+          // ② 体重管理（中間カード：角丸なし）
           Card(
             color: colorScheme.surfaceContainerHighest,
             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
@@ -227,7 +248,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: _kGap),
 
-          // ====== 表示する部位を選択 ======
+          // ③ 表示する部位（中間カード：角丸なし）
           Card(
             color: colorScheme.surfaceContainerHighest,
             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
@@ -256,9 +277,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15.0),
                     ),
                   ),
-                  children: _bodyPartsOriginal.map((p) {
-                    final translated = _translatePart(context, p);
-                    final current = _selectedBodyParts[p] ?? true;
+                  children: _bodyPartsOriginal.map((original) {
+                    final translated = _translatePart(context, original);
+                    final current = _selectedBodyParts[original] ?? true;
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 0),
                       child: SwitchListTile(
@@ -270,7 +291,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         value: current,
                         onChanged: (bool value) async {
-                          setState(() => _selectedBodyParts[p] = value);
+                          setState(() => _selectedBodyParts[original] = value);
                           await widget.settingsBox.put('selectedBodyParts', _selectedBodyParts);
                         },
                         activeThumbColor: colorScheme.primary,
@@ -284,12 +305,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: _kGap),
 
-          // ====== セット数の変更（基準カード） ======
+          // ④ セット数（中間カード：角丸なし）
           Card(
             color: colorScheme.surfaceContainerHighest,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
-            ),
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             margin: _kCardMargin,
             child: Padding(
               padding: _kOuterPad,
@@ -328,7 +347,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: _kGap),
 
-          // ====== 広告 ======
+          // ⑤ 1日の写真上限（グループ末尾：下だけ角丸）
+          Card(
+            color: colorScheme.surfaceContainerHighest,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+            ),
+            margin: _kCardMargin,
+            child: Padding(
+              padding: _kOuterPad,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _headerRow(
+                    icon: Icons.photo_library_outlined,
+                    title: l10n.settingsDailyMediaCap, // 「1日の写真上限」
+                    trailing: Text(
+                      _dailyPhotoCap == 0
+                          ? l10n.limitOff
+                          : '$_dailyPhotoCap${l10n.perDayUnit}', // 例: "24枚/日"
+                      style: const TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.settingsDailyMediaCapDesc, // 説明
+                    style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 3,
+                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+                    ),
+                    child: Slider(
+                      value: _dailyPhotoCap.toDouble(),
+                      min: 0,
+                      max: 50,
+                      divisions: 50,
+                      label: _dailyPhotoCap == 0 ? l10n.limitOff : '$_dailyPhotoCap',
+                      onChanged: (double v) => setState(() => _dailyPhotoCap = v.round()),
+                      onChangeEnd: (double v) => SettingsManager.setDailyPhotoCap(v.round()),
+                      activeColor: colorScheme.primary,
+                      inactiveColor: colorScheme.onSurfaceVariant.withOpacity(0.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ─────────────────────────────────
+          // ここから下はその他の設定カード群（別ブロック）
+          // ─────────────────────────────────
+
           const SizedBox(height: _kGapAd),
           SizedBox(
             height: 100,
@@ -342,7 +417,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: _kGapAd),
 
-          // ====== ダークモード ======
+          // ダークモード（新ブロック先頭）
           Card(
             color: colorScheme.surfaceContainerHighest,
             shape: const RoundedRectangleBorder(
@@ -369,7 +444,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: _kGap),
 
-          // ====== 壁紙の選択（角なしカード＋ExpansionTileで普段は畳む） ======
+          // 背景（中間カード）
           Card(
             color: colorScheme.surfaceContainerHighest,
             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
@@ -394,7 +469,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      '背景', // l10n.background があれば差し替え可
+                      l10n.background,
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15.0),
                     ),
                   ),
@@ -430,7 +505,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             alignment: Alignment.center,
                             child: asset.isEmpty
                                 ? Text(
-                              'なし',
+                              l10n.none,
                               style: TextStyle(
                                 color: colorScheme.onSurfaceVariant,
                                 fontWeight: FontWeight.w600,
@@ -447,10 +522,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-
           const SizedBox(height: _kGap),
 
-          // ====== 単位 ======
+          // 単位（新ブロック末尾）
           Card(
             color: colorScheme.surfaceContainerHighest,
             shape: const RoundedRectangleBorder(
@@ -473,7 +547,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     const SizedBox(width: 8),
-                    const Text('kg', style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600)),
+                    Text('${l10n.kg}', style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600)),
                     const SizedBox(width: 24),
                     Radio<String>(
                       value: 'lbs',
@@ -483,7 +557,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     const SizedBox(width: 8),
-                    const Text('lbs', style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600)),
+                    Text('${l10n.lbs}', style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),

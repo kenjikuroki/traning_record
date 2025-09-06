@@ -7,6 +7,7 @@ import '../settings_manager.dart';
 import 'calendar_screen.dart';
 import 'graph_screen.dart';
 import 'settings_screen.dart';
+import 'album_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
@@ -66,28 +67,33 @@ class _HomeScreenState extends State<HomeScreen> {
           key: ValueKey<int>(_currentIndex),
           index: _currentIndex,
           children: [
+            // 0: カレンダー
             CalendarScreen(
               recordsBox: widget.recordsBox,
               lastUsedMenusBox: widget.lastUsedMenusBox,
-                  settingsBox: widget.settingsBox,
-                  setCountBox: widget.setCountBox,
-                  selectedDate: DateTime.now(),
-                ),
-                GraphScreen(
-                  recordsBox: widget.recordsBox,
-                  lastUsedMenusBox: widget.lastUsedMenusBox,
-                  settingsBox: widget.settingsBox,
-                  setCountBox: widget.setCountBox,
-                  isActive: _currentIndex == 1,
-                ),
-                SettingsScreen(
-                  recordsBox: widget.recordsBox,
-                  lastUsedMenusBox: widget.lastUsedMenusBox,
-                  settingsBox: widget.settingsBox,
-                  setCountBox: widget.setCountBox,
-                ),
-              ],
+              settingsBox: widget.settingsBox,
+              setCountBox: widget.setCountBox,
+              selectedDate: DateTime.now(),
             ),
+            // 1: アルバム
+            const AlbumScreen(),
+            // 2: グラフ（isActive のインデックスも 2 に変更）
+            GraphScreen(
+              recordsBox: widget.recordsBox,
+              lastUsedMenusBox: widget.lastUsedMenusBox,
+              settingsBox: widget.settingsBox,
+              setCountBox: widget.setCountBox,
+              isActive: _currentIndex == 2,
+            ),
+            // 3: 設定
+            SettingsScreen(
+              recordsBox: widget.recordsBox,
+              lastUsedMenusBox: widget.lastUsedMenusBox,
+              settingsBox: widget.settingsBox,
+              setCountBox: widget.setCountBox,
+            ),
+          ],
+        ),
           ),
         bottomNavigationBar: ClipRect(
           child: BackdropFilter(
@@ -108,15 +114,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 top: false,
                 child: BottomNavigationBar(
                   currentIndex: _currentIndex,
-                  selectedItemColor: Colors.white,     // 可読性UP
-                  unselectedItemColor: Colors.white70, // 可読性UP
+                  selectedItemColor: Colors.white,
+                  unselectedItemColor: Colors.white70,
                   backgroundColor: Colors.transparent,
                   elevation: 0,
+                  showSelectedLabels: false,   // ← ラベル非表示（選択時）
+                  showUnselectedLabels: false, // ← ラベル非表示（非選択時）
                   onTap: _onItemTapped,
                   items: const [
                     BottomNavigationBarItem(
                       icon: Icon(Icons.calendar_today),
                       label: 'Calendar',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.photo_library_outlined), // ← 追加：アルバム
+                      label: 'Album',
                     ),
                     BottomNavigationBarItem(
                       icon: Icon(Icons.bar_chart),

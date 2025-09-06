@@ -14,6 +14,31 @@ import '../widgets/ad_banner.dart';
 import '../widgets/stopwatch_widget.dart';
 import '../widgets/coach_bubble.dart';
 import 'package:flutter/cupertino.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+import 'package:permission_handler/permission_handler.dart';
+
+Future<bool> _ensureCameraPermission(BuildContext context) async {
+  var status = await Permission.camera.status;
+  if (status.isGranted) return true;
+
+  status = await Permission.camera.request();
+  if (status.isGranted) return true;
+
+  // 「今後表示しない」等で永久拒否
+  if (status.isPermanentlyDenied) {
+    final l10n = AppLocalizations.of(context)!;
+    showAppSnack(
+      context,
+      l10n.actionTakePhoto, // 「カメラ権限を有効にしてください」等に差し替え可
+      actionLabel: 'Open Settings',
+      onAction: () => openAppSettings(),
+    );
+  }
+  return false;
+}
 
 // シンプルなスナック表示（既存の showAppSnack 代替）
 void showAppSnack(
@@ -61,11 +86,20 @@ class RecordScreen extends StatefulWidget {
   State<RecordScreen> createState() => _RecordScreenState();
 }
 
+// プレビュー結果（保存 or 破棄）
+enum _QuickReview { save, discard }
+
 class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver {
   // ====== 自動一時停止の基準 ======
   static const Duration _kIdleAutoPause = Duration(hours: 5);
   static const Duration _kHardCap = Duration(hours: 5);
   // =================================
+
+  // ★ 写真カード表示位置（末尾セル）に付けるキー
+  final GlobalKey _kPhotoCardsKey = GlobalKey();
+
+  // 1日の写真上限（UIは出さず、Snackだけで通知）
+  static const int _kDailyPhotoCap = 24;
 
   final ScrollController _scrollCtrl = ScrollController();
   bool _initialized = false;
@@ -108,9 +142,14 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
   final TextEditingController _weightController = TextEditingController();
 
+  // --- 写真（メディア）関連 ---
+  final ImagePicker _imagePicker = ImagePicker();
+  List<String> _mediaPaths = []; // 当日分のフルパス（左＝新しい）
+
   // ==== ストップウォッチ ====
   static final StopwatchController _swController = StopwatchController();
-  DateTime _lastInteractionAt = DateTime.now();  Timer? _inactivityTimer;
+  DateTime _lastInteractionAt = DateTime.now();
+  Timer? _inactivityTimer;
   Timer? _capTimer;
   DateTime? _backgroundedAt;
   bool _wasRunning = false;
@@ -121,7 +160,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   GlobalKey? _pendingScrollKey;
   double _pendingScrollAlignment = 0.22;
   // =========================
-
 
   void _onShowStopwatchChanged() {
     if (!mounted) return;
@@ -140,6 +178,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       _currentSetCount = newCount;
       final changed = _trimTrailingEmptySetsForAllMenus(newCount);
       if (changed && mounted) setState(() {});
+      _loadMediaForSelectedDate();
     });
 
     // 初回後フレーム
@@ -179,7 +218,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     _inactivityTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       final idle = DateTime.now().difference(_lastInteractionAt);
       if (idle >= _kIdleAutoPause && _swController.isRunning) {
-        _pauseWithSnack('無操作が5時間続いたため一時停止しました');
+        final l10n = AppLocalizations.of(context)!;
+        _pauseWithSnack(l10n.autoPausedIdle5h);
       }
     });
 
@@ -194,7 +234,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       if (running && _resumedAt != null) {
         final runFor = DateTime.now().difference(_resumedAt!);
         if (runFor >= _kHardCap) {
-          _pauseWithSnack('5時間を超えたため一時停止しました', withResume: true);
+          final l10n = AppLocalizations.of(context)!;
+          _pauseWithSnack(l10n.autoPausedOver5h, withResume: true);
           _resumedAt = null;
         }
       }
@@ -202,6 +243,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     });
 
     _scrollCtrl.addListener(() => _lastInteractionAt = DateTime.now());
+    _loadMediaForSelectedDate(); // ★ 初期ロード
   }
 
   @override
@@ -221,7 +263,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     _capTimer?.cancel();
     _savedChipTimer?.cancel();
     _setCountSub?.cancel();
-    _scrollDebounce?.cancel(); // ★ 追加：デバウンスTimerを破棄
+    _scrollDebounce?.cancel();
     _scrollCtrl.dispose();
     for (var section in _sections) {
       section.dispose();
@@ -230,6 +272,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     _weightController.dispose();
     super.dispose();
   }
+
   // Appライフサイクル
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -239,20 +282,27 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       if (_backgroundedAt != null) {
         final away = DateTime.now().difference(_backgroundedAt!);
         if (away.inMinutes >= 30 && _swController.isRunning) {
-          _pauseWithSnack('アプリが30分以上バックグラウンドのため一時停止しました', withResume: true);
+          final l10n = AppLocalizations.of(context)!;
+          _pauseWithSnack(l10n.autoPausedBackground30m, withResume: true);
         }
       }
       _backgroundedAt = null;
       _lastInteractionAt = DateTime.now();
+
+      // ★ 復帰時：LostData保険回収＋一覧再読込
+      unawaited(_recoverLostImageIfAny());
+      _loadMediaForSelectedDate();
     }
   }
 
   void _pauseWithSnack(String message, {bool withResume = false}) {
     _swController.pause();
     if (!mounted || !_isTopMostRoute(context)) return;
+
+    final l10n = AppLocalizations.of(context)!;
     final action = withResume
         ? SnackBarAction(
-      label: '再開',
+      label: l10n.resume,
       onPressed: () {
         _swController.start();
         _lastInteractionAt = DateTime.now();
@@ -261,6 +311,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       },
     )
         : null;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -326,24 +377,18 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     }
   }
 
-// ★ 任意の GlobalKey へ“単発”スクロール（デバウンス）
+  // ★ 任意の GlobalKey へ“単発”スクロール（デバウンス）
   Future<void> _scrollIntoViewKey(GlobalKey key, {double alignment = 0.22}) async {
     _pendingScrollKey = key;
     _pendingScrollAlignment = alignment;
 
-    // 直近呼び出しがあれば打ち消し
     _scrollDebounce?.cancel();
-
-    // 140ms デバウンス後に1回だけスクロール
     _scrollDebounce = Timer(const Duration(milliseconds: 140), () async {
       if (!mounted) return;
       final ctx = _pendingScrollKey?.currentContext;
       if (ctx == null) return;
-
-      // レイアウト確定を待ってからスクロール
       await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return;
-
       final targetCtx = _pendingScrollKey?.currentContext;
       if (targetCtx == null) return;
 
@@ -358,10 +403,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
   // ★ 新規追加：リストの最下部まで“しゅっ”とスクロール
   Future<void> _scrollToBottom() async {
-    // レイアウト確定を待つ（extent 反映）
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted || !_scrollCtrl.hasClients) return;
-    // 1フレームだけ余裕を見てからスクロール
     await Future<void>.delayed(const Duration(milliseconds: 16));
     if (!_scrollCtrl.hasClients) return;
 
@@ -373,13 +416,12 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     );
   }
 
-
   // pivot: 0.0=快適ゾーン上端寄せ（＝タイマー直下寄せ）, 0.5=中央, 1.0=下端寄せ
-// topExtra: タイマー直下に足す余白(pixels) — 「すぐ下」感の微調整に使用
+  // topExtra: タイマー直下に足す余白(pixels)
   Future<void> _scrollIntoComfortZone(
       GlobalKey key, {
         double pivot = 0.5,
-        double topExtra = 28, // ← デフォは“ちょうど良い”程度のオフセット
+        double topExtra = 28,
       }) async {
     _pendingScrollKey = key;
     _scrollDebounce?.cancel();
@@ -410,7 +452,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         }
       }
 
-      // ★ タイマー直下の“上側確保”に topExtra を加算して、より「すぐ下」に寄せる
       final double topReserve = swH + topExtra;
       final double bottomReserve = kb + sb + 16;
 
@@ -429,7 +470,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     });
   }
 
-// ★ 新規：キーボード高さが安定するまで待機
+  // ★ 新規：キーボード高さが安定するまで待機
   Future<void> _waitForKeyboardStable({int timeoutMs = 700}) async {
     final deadline = DateTime.now().add(Duration(milliseconds: timeoutMs));
     double? last;
@@ -439,7 +480,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       final kb = MediaQuery.of(context).viewInsets.bottom;
       if (last != null && (kb - last!).abs() < 1.0) {
         stableTick++;
-        if (stableTick >= 3) break; // 連続3回ほぼ同じなら安定とみなす
+        if (stableTick >= 3) break;
       } else {
         stableTick = 0;
         last = kb;
@@ -447,11 +488,11 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     }
   }
 
-// ★ 新規：キーボード安定後に“快適ゾーン”スクロール
+  // ★ 新規：キーボード安定後に“快適ゾーン”スクロール
   Future<void> _scrollIntoComfortZoneAfterKeyboard(
       GlobalKey key, {
-        double pivot = 0.0,   // ← タイマー直下寄せ
-        double topExtra = 28, // ← タイマーの下に少し余白
+        double pivot = 0.0, // タイマー直下寄せ
+        double topExtra = 28,
       }) async {
     await _waitForKeyboardStable();
     await _scrollIntoComfortZone(key, pivot: pivot, topExtra: topExtra);
@@ -468,14 +509,12 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     final ctx = keys[menuIndex].currentContext;
     if (ctx == null) return;
 
-    // レイアウト確定後にフォーカス要求
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
 
       final targetCtx = keys[menuIndex].currentContext;
       if (targetCtx == null) return;
 
-      // Key の直下ツリーから EditableText（TextField の内部）を探して、その FocusNode に requestFocus
       EditableTextState? editable;
       void findEditable(Element e) {
         if (editable != null) return;
@@ -492,12 +531,10 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         editable!.widget.focusNode!.requestFocus();
         await SystemChannels.textInput.invokeMethod('TextInput.show');
       } else {
-        // フォールバック（最低限 IME を開く）
         FocusScope.of(targetCtx).requestFocus(FocusNode());
         await SystemChannels.textInput.invokeMethod('TextInput.show');
       }
 
-      // キャレットを末尾へ
       final ctrl = _sections[secIndex].menuControllers[menuIndex];
       ctrl.selection = TextSelection.collapsed(offset: ctrl.text.length);
     });
@@ -592,10 +629,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       if (!mounted) return;
 
       final keys = _sections[secIndex].nameFieldKeys;
-      // ① まずフォーカス（→ キーボードが開く）
       _focusMenuNameField(secIndex, 0);
-
-      // ② キーボード高さが安定したら、その高さで“タイマー直下”へ上寄せスクロール
       if (keys.isNotEmpty) {
         await _scrollIntoComfortZoneAfterKeyboard(keys[0], pivot: 0.0, topExtra: 28);
       }
@@ -1239,7 +1273,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           _sections[sectionIndex].nameFieldKeys.removeAt(menuIndex);
         }
       });
-      // 削除はここではUI表示なし（保存は退避時にまとめて）
     }
   }
 
@@ -1285,6 +1318,390 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     _addTargetSection();
   }
 
+  // 「＋写真」タップ時：撮影→プレビュー（保存/破棄のみ）→どちらでもカメラに戻る
+  void _handleAddPhoto() {
+    _startCaptureLoop();
+  }
+
+  // yyyy-MM-dd 形式のキー
+  String _dateKey(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
+
+  // 当日メディアの保存先ディレクトリ
+  Future<Directory> _mediaDirFor(DateTime date) async {
+    final base = await getApplicationDocumentsDirectory();
+    return Directory(p.join(base.path, 'media', _dateKey(date)));
+  }
+
+  Future<void> _ensureDir(Directory dir) async {
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+  }
+
+  // 当日分の写真を読み込み（左＝新しい）
+  Future<void> _loadMediaForSelectedDate() async {
+    try {
+      final dir = await _mediaDirFor(widget.selectedDate);
+      if (!await dir.exists()) {
+        if (mounted) setState(() => _mediaPaths = []);
+        return;
+      }
+      final files = dir
+          .listSync()
+          .whereType<File>()
+          .where((f) {
+        final pth = f.path.toLowerCase();
+        // ★ HEIC も拾う
+        return pth.endsWith('.jpg') || pth.endsWith('.jpeg') || pth.endsWith('.png') || pth.endsWith('.heic');
+      })
+          .toList();
+
+      // ★ ログ
+      debugPrint('[PHOTO] load dir=${dir.path} files=${files.length}');
+      for (final f in files) {
+        debugPrint('  - ${f.path}  mtime=${f.lastModifiedSync()}');
+      }
+
+      // 古→新（下が新しいカード）
+      files.sort((a, b) => a.lastModifiedSync().compareTo(b.lastModifiedSync()));
+
+      if (mounted) {
+        setState(() => _mediaPaths = files.map((f) => f.path).toList());
+      }
+    } catch (_) {
+      if (mounted) setState(() => _mediaPaths = []);
+    }
+  }
+
+  bool _recoveringLost = false;
+
+  Future<void> _recoverLostImageIfAny() async {
+    if (!Platform.isAndroid) return; // iOS では不要
+    if (_recoveringLost) return;
+    _recoveringLost = true;
+    try {
+      final LostDataResponse resp = await _imagePicker.retrieveLostData();
+      if (resp.isEmpty) {
+        debugPrint('[PHOTO] no lost data');
+        return;
+      }
+      if (resp.file != null) {
+        debugPrint('[PHOTO] recovered one file from lost data: ${resp.file!.path}');
+        await _saveAndAppendXFile(resp.file!);
+      } else if (resp.files != null && resp.files!.isNotEmpty) {
+        debugPrint('[PHOTO] recovered ${resp.files!.length} files from lost data');
+        for (final f in resp.files!) {
+          await _saveAndAppendXFile(f);
+        }
+      } else if (resp.exception != null) {
+        debugPrint('[PHOTO] retrieveLostData error: ${resp.exception}');
+      }
+    } catch (e, st) {
+      debugPrint('[PHOTO] retrieveLostData threw: $e\n$st');
+    } finally {
+      _recoveringLost = false;
+    }
+  }
+
+  // 追加：pickImage が null を返した直後に LostData を数回ポーリングして回収
+  Future<bool> _awaitMaybeLostData({int tries = 6}) async {
+    for (int i = 0; i < tries; i++) {
+      try {
+        final resp = await _imagePicker.retrieveLostData();
+        if (!resp.isEmpty) {
+          if (resp.file != null) {
+            debugPrint('[PHOTO] recovered (try=$i) ${resp.file!.path}');
+            await _saveAndAppendXFile(resp.file!);
+            return true;
+          }
+          if (resp.files != null && resp.files!.isNotEmpty) {
+            debugPrint('[PHOTO] recovered ${resp.files!.length} files (try=$i)');
+            for (final f in resp.files!) {
+              await _saveAndAppendXFile(f);
+            }
+            return true;
+          }
+          if (resp.exception != null) {
+            debugPrint('[PHOTO] retrieveLostData exception: ${resp.exception}');
+            return false;
+          }
+        } else {
+          debugPrint('[PHOTO] no lost data yet (try=$i)');
+        }
+      } catch (e, st) {
+        debugPrint('[PHOTO] retrieveLostData threw: $e\n$st');
+      }
+      await Future<void>.delayed(Duration(milliseconds: i < 3 ? 200 : 500));
+    }
+    return false;
+  }
+
+  Future<void> _saveAndAppendXFile(XFile shot) async {
+    final dir = await _mediaDirFor(widget.selectedDate);
+    await _ensureDir(dir);
+
+    // 元の拡張子を尊重（.heic など）— なければ .jpg
+    final ext = p.extension(shot.path).toLowerCase();
+    final ts = DateTime.now();
+    final fileName = '${DateFormat('HHmmss_SSS').format(ts)}${ext.isNotEmpty ? ext : '.jpg'}';
+    final savePath = p.join(dir.path, fileName);
+
+    await shot.saveTo(savePath);
+
+    final exists = await File(savePath).exists();
+    final len = exists ? await File(savePath).length() : -1;
+    debugPrint('[PHOTO] saved to: $savePath  exists=$exists length=$len');
+
+    await _loadMediaForSelectedDate();
+    await _scrollIntoViewKey(_kPhotoCardsKey, alignment: 0.98);
+  }
+
+  // ====== ★ 撮影ループ：撮影 → プレビュー（保存/破棄のみ） → どちらでもカメラに戻る ======
+  Future<void> _startCaptureLoop() async {
+    if (!await _ensureCameraPermission(context)) return;
+
+    while (mounted) {
+      // 上限チェック
+      if (_mediaPaths.length >= _kDailyPhotoCap) {
+        final l10n = AppLocalizations.of(context)!;
+        showAppSnack(context, l10n.mediaReachedDailyCap);
+        break;
+      }
+
+      XFile? shot;
+      try {
+        shot = await _imagePicker.pickImage(
+          source: ImageSource.camera,
+          preferredCameraDevice: CameraDevice.rear,
+        );
+      } catch (e, st) {
+        debugPrint('[PHOTO] pickImage threw: $e\n$st');
+      }
+
+      // カメラをキャンセル → ループ終了（記録画面へ戻る）
+      if (shot == null) {
+        final recovered = await _awaitMaybeLostData();
+        if (!recovered) {
+          debugPrint('[PHOTO] user canceled camera.');
+        }
+        break;
+      }
+
+      // プレビュー（保存／破棄 の二択のみ／破棄は確認出す）
+      final res = await Navigator.of(context).push<_QuickReview>(
+        PageRouteBuilder(
+          opaque: true,
+          fullscreenDialog: true,
+          pageBuilder: (_, __, ___) => _PhotoPreviewPage(imagePath: shot!.path),
+          transitionsBuilder: (_, anim, __, child) =>
+              FadeTransition(opacity: CurvedAnimation(parent: anim, curve: Curves.easeOutCubic), child: child),
+        ),
+      );
+
+      if (!mounted) break;
+
+      if (res == _QuickReview.save) {
+        await _saveAndAppendXFile(shot);
+        // → 続けて自動でカメラへ（ループ継続）
+        continue;
+      } else if (res == _QuickReview.discard) {
+        // 一時ファイル削除（失敗は無視）
+        try {
+          await File(shot.path).delete();
+        } catch (_) {}
+        // → 続けて自動でカメラへ（ループ継続）
+        continue;
+      } else {
+        // 何も選ばれず戻った（基本想定外だが安全側で抜ける）
+        break;
+      }
+    }
+  }
+
+  void _openImageViewer(String path) {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (ctx) {
+        return GestureDetector(
+          onTap: () => Navigator.of(ctx).pop(),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: InteractiveViewer(
+                  maxScale: 4.0,
+                  child: Image.file(File(path), fit: BoxFit.contain),
+                ),
+              ),
+              Positioned(
+                right: 8,
+                top: 8,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDelete(String path) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.mediaDelete), // 「削除」
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.mediaCancel),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await File(path).delete();
+              } catch (_) {}
+              if (!mounted) return;
+              setState(() {
+                _mediaPaths.remove(path);
+              });
+            },
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+  }
+
+// ★ 写真カード群（タイトル付き／1=中央, 2=中央寄せ2枚, 3+=3列グリッド）
+  Widget _buildMediaCards() {
+    if (_mediaPaths.isEmpty) return const SizedBox.shrink();
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    // 表示順：新しい→古い
+    final paths = List<String>.from(_mediaPaths.reversed);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Card(
+        color: cs.surfaceContainerHighest,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 1.0,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // タイトル（l10n 進捗スナップ）
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  l10n.progressSnaps, // ← 新規l10nキー
+                  style: TextStyle(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+
+              // サムネ領域
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  const double gap = 6;
+                  // 3列時の1セル幅を基準に、1枚/2枚の中央寄せサイズも統一
+                  final double cell =
+                  ((constraints.maxWidth - gap * 2) / 3).clamp(0, constraints.maxWidth);
+
+                  Widget buildThumb(String path) {
+                    return InkWell(
+                      onTap: () => _openImageViewer(path),
+                      onLongPress: () => _confirmDelete(path),
+                      borderRadius: BorderRadius.circular(12),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: SizedBox.square(
+                          dimension: cell,
+                          child: Image.file(
+                            File(path),
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, err, st) => Center(
+                              child: Icon(
+                                Icons.broken_image_outlined,
+                                color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (paths.length == 1) {
+                    // 1枚：中央にドン
+                    return Center(child: buildThumb(paths[0]));
+                  } else if (paths.length == 2) {
+                    // 2枚：中央寄せで2枚
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        buildThumb(paths[0]),
+                        const SizedBox(width: gap),
+                        buildThumb(paths[1]),
+                      ],
+                    );
+                  } else {
+                    // 3枚以上：3列グリッド
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: paths.length,
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        mainAxisSpacing: gap,
+                        crossAxisSpacing: gap,
+                      ),
+                      itemBuilder: (context, i) {
+                        final path = paths[i];
+                        return InkWell(
+                          onTap: () => _openImageViewer(path),
+                          onLongPress: () => _confirmDelete(path),
+                          borderRadius: BorderRadius.circular(12),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: AspectRatio(
+                              aspectRatio: 1,
+                              child: Image.file(
+                                File(path),
+                                fit: BoxFit.cover,
+                                errorBuilder: (ctx, err, st) => Center(
+                                  child: Icon(
+                                    Icons.broken_image_outlined,
+                                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 「＋種目」を押せる条件：セクションが選ばれていて、部位が選択済み
   bool _canAddExercise() {
     if (_sections.isEmpty) return false;
     final si = _currentSectionIndex;
@@ -1296,7 +1713,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   Widget _buildStopwatchCard() {
     final cs = Theme.of(context).colorScheme;
     return Card(
-      key: _kStopwatchArea, // ★ 追加：実寸取得のため
+      key: _kStopwatchArea,
       color: cs.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       elevation: 1.0,
@@ -1329,7 +1746,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           Icon(Icons.check_rounded, size: 14, color: cs.primary),
           const SizedBox(width: 6),
           Text(
-            l10n.saved, // l10n を使用
+            l10n.saved,
             style: TextStyle(
               color: cs.onSurface,
               fontSize: 12,
@@ -1369,7 +1786,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     final colorScheme = Theme.of(context).colorScheme;
     final isLight = Theme.of(context).brightness == Brightness.light;
     final l10n = AppLocalizations.of(context)!;
-    final formattedDate = DateFormat('yyyy/MM/dd').format(widget.selectedDate);
 
     final media = MediaQuery.of(context);
     final kbInset = media.viewInsets.bottom;
@@ -1388,8 +1804,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     );
 
     const Color kBrandBlue = Color(0xFF2563EB);
-
-    final bool isInitialEmptyState = _sections.length == 1 && _sections[0].selectedPart == null;
 
     final bool showWeight = SettingsManager.showWeightInput;
     final int headerCount = (showWeight ? 1 : 0);
@@ -1424,7 +1838,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                 primary: false,
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
                 physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: headerCount + _sections.length + (isInitialEmptyState ? 0 : 1),
+                itemCount: headerCount + _sections.length + 1,
                 itemBuilder: (context, index) {
                   // ① 体重カード（下線TextField）
                   if (showWeight && index == 0) {
@@ -1514,8 +1928,15 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
                   final secIndex = index - headerCount;
 
-                  if (!isInitialEmptyState && secIndex == _sections.length) {
-                    return const SizedBox.shrink();
+                  // 末尾スロット：写真カードを表示（常にこの分岐が最後に来る）
+                  if (secIndex == _sections.length) {
+                    return KeyedSubtree(
+                      key: _kPhotoCardsKey, // ★ ensureVisible 用
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
+                        child: _buildMediaCards(),
+                      ),
+                    );
                   }
 
                   final section = _sections[secIndex];
@@ -1598,7 +2019,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                         final borderColor =
                                         isSelected ? (isLight ? kBrandBlue : Colors.white) : Colors.transparent;
                                         final glowColor = isSelected
-                                            ? (isLight ? kBrandBlue.withOpacity(0.45) : Colors.white.withOpacity(0.70))
+                                            ? (isLight
+                                            ? kBrandBlue.withOpacity(0.45)
+                                            : Colors.white.withOpacity(0.70))
                                             : Colors.black.withOpacity(0.20);
 
                                         return GestureDetector(
@@ -1606,11 +2029,10 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                           onTap: () {
                                             _touchCard(secIndex, menuIndex);
                                             final k = section.nameFieldKeys[menuIndex];
-                                            // ★ タイマー直下寄せ：pivot は 0.0（上端寄せ）、topExtra を 28〜36 で微調整
                                             _scrollIntoComfortZone(k, pivot: 0.0, topExtra: 28);
                                           },
                                           child: Card(
-                                            key: section.menuKeys[menuIndex], // ← Key は Card 側にのみ付与
+                                            key: section.menuKeys[menuIndex],
                                             color: colorScheme.surface,
                                             shape: RoundedRectangleBorder(
                                               borderRadius: BorderRadius.circular(12.0),
@@ -1645,24 +2067,21 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                     }
                                                   });
                                                 },
-                                                  onAnyFieldFocused: () {
-                                                    _touchCard(secIndex, menuIndex);
-                                                    final k = section.nameFieldKeys[menuIndex];
-                                                    // フォーカス → キーボード安定待ち → タイマー直下へ
-                                                    _scrollIntoComfortZoneAfterKeyboard(k, pivot: 0.0, topExtra: 28);
-                                                  },
+                                                onAnyFieldFocused: () {
+                                                  _touchCard(secIndex, menuIndex);
+                                                  final k = section.nameFieldKeys[menuIndex];
+                                                  _scrollIntoComfortZoneAfterKeyboard(k, pivot: 0.0, topExtra: 28);
+                                                },
                                                 onNameChanged: (prevEmpty, nowEmpty) {},
                                               ),
                                             ),
                                           ),
                                         );
-
                                       }),
                                       const SizedBox(height: 10.0),
                                       const SizedBox.shrink(),
                                     ],
                                   ),
-
                               ],
                             ),
                           ),
@@ -1773,10 +2192,13 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           chipAction(l10n.addSet, () => _handleAddSet(l10n), enabled: canAddSet()),
-          const SizedBox(height: 2),
+          const SizedBox(height: 8),
           chipAction(l10n.addExercise, _handleAddExercise, enabled: _canAddExercise()),
-          const SizedBox(height: 2),
+          const SizedBox(height: 8),
           chipAction(l10n.addPart, _handleAddPart),
+          const SizedBox(height: 8),
+          chipAction(l10n.addPhoto, _handleAddPhoto),
+          const SizedBox(height: 8),
         ],
       )
           : const SizedBox.shrink(),
@@ -1797,10 +2219,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       child: _showSavedChip ? _buildSavedPill(colorScheme) : const SizedBox(key: ValueKey('empty')),
     );
 
-    // タイトル（l10n.record が無い場合のフォールバック）
-    final lang = Localizations.localeOf(context).languageCode;
-    final recordTitleText = (lang == 'ja') ? '記録' : 'Record';
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
       child: PopScope(
@@ -1820,21 +2238,18 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
               onPressed: () async {
-                // 戻るボタンも PopScope に委譲（maybePopで onPopInvoked が呼ばれる）
                 await _dismissKeyboardSafely(context);
                 if (!mounted) return;
                 Navigator.of(context).maybePop();
               },
-              tooltip: '戻る',
+              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
             ),
             title: Text(
-              recordTitleText,
+              AppLocalizations.of(context)!.recordScreenTitle,
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 19.0),
             ),
-            // （AppBar定義の中）
             flexibleSpace: Container(
               decoration: BoxDecoration(
-                // ブラーをやめ、同じ見た目のグラデだけ適用（軽量）
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -2299,8 +2714,8 @@ class _MenuListState extends State<MenuList> {
                               isDense: true,
                               filled: false,
                               enabledBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
+                                borderSide:
+                                BorderSide(color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
                               ),
                               focusedBorder: UnderlineInputBorder(
                                 borderSide: BorderSide(color: colorScheme.primary, width: 2),
@@ -2314,9 +2729,7 @@ class _MenuListState extends State<MenuList> {
                     ),
                     Text(' ${l10n.km} ',
                         style: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.bold)),
+                            color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
                     Expanded(
                       flex: 2,
                       child: Focus(
@@ -2342,8 +2755,8 @@ class _MenuListState extends State<MenuList> {
                               isDense: true,
                               filled: false,
                               enabledBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
+                                borderSide:
+                                BorderSide(color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
                               ),
                               focusedBorder: UnderlineInputBorder(
                                 borderSide: BorderSide(color: colorScheme.primary, width: 2),
@@ -2357,9 +2770,7 @@ class _MenuListState extends State<MenuList> {
                     ),
                     Text(' ${l10n.m}',
                         style: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.bold)),
+                            color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -2387,8 +2798,7 @@ class _MenuListState extends State<MenuList> {
                           child: Focus(
                             onFocusChange: notifyFocus,
                             child: ConstrainedBox(
-                              constraints:
-                              const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                              constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                               child: TextField(
                                 controller: _minController,
                                 keyboardType: TextInputType.number,
@@ -2404,16 +2814,13 @@ class _MenuListState extends State<MenuList> {
                                   filled: false,
                                   enabledBorder: UnderlineInputBorder(
                                     borderSide: BorderSide(
-                                        color:
-                                        colorScheme.onSurfaceVariant.withOpacity(0.4),
-                                        width: 1),
+                                        color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
                                   ),
                                   focusedBorder: UnderlineInputBorder(
-                                    borderSide:
-                                    BorderSide(color: colorScheme.primary, width: 2),
+                                    borderSide: BorderSide(color: colorScheme.primary, width: 2),
                                   ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 6, horizontal: 0),
+                                  contentPadding:
+                                  const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                                 ),
                               ),
                             ),
@@ -2423,9 +2830,7 @@ class _MenuListState extends State<MenuList> {
                     ),
                     Text(' ${l10n.min} ',
                         style: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.bold)),
+                            color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
                     // 秒
                     Expanded(
                       flex: 2,
@@ -2441,8 +2846,7 @@ class _MenuListState extends State<MenuList> {
                           child: Focus(
                             onFocusChange: notifyFocus,
                             child: ConstrainedBox(
-                              constraints:
-                              const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                              constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                               child: TextField(
                                 controller: _secController,
                                 keyboardType: TextInputType.number,
@@ -2458,16 +2862,13 @@ class _MenuListState extends State<MenuList> {
                                   filled: false,
                                   enabledBorder: UnderlineInputBorder(
                                     borderSide: BorderSide(
-                                        color:
-                                        colorScheme.onSurfaceVariant.withOpacity(0.4),
-                                        width: 1),
+                                        color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
                                   ),
                                   focusedBorder: UnderlineInputBorder(
-                                    borderSide:
-                                    BorderSide(color: colorScheme.primary, width: 2),
+                                    borderSide: BorderSide(color: colorScheme.primary, width: 2),
                                   ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 6, horizontal: 0),
+                                  contentPadding:
+                                  const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                                 ),
                               ),
                             ),
@@ -2476,10 +2877,8 @@ class _MenuListState extends State<MenuList> {
                       ),
                     ),
                     Text(' ${l10n.sec}',
-                        style: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.bold)),
+                        style:
+                        TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ],
@@ -2499,8 +2898,7 @@ class _MenuListState extends State<MenuList> {
                           children: [
                             Text(
                               '${setIndex + 1}${l10n.sets}：',
-                              style: TextStyle(
-                                  color: colorScheme.onSurfaceVariant, fontSize: 13.0),
+                              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13.0),
                             ),
                             const SizedBox(width: 6),
                             Expanded(
@@ -2512,15 +2910,13 @@ class _MenuListState extends State<MenuList> {
                                   }
                                 },
                                 child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                      minHeight: kUnifiedFieldMinHeight),
+                                  constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                                   child: TextField(
                                     controller: set.weightController,
-                                    keyboardType: const TextInputType.numberWithOptions(
-                                        decimal: true),
+                                    keyboardType:
+                                    const TextInputType.numberWithOptions(decimal: true),
                                     inputFormatters: [
-                                      FilteringTextInputFormatter.allow(
-                                          RegExp(r'^\d*\.?\d*'))
+                                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))
                                     ],
                                     textAlign: TextAlign.right,
                                     style: TextStyle(
@@ -2533,13 +2929,11 @@ class _MenuListState extends State<MenuList> {
                                       filled: false,
                                       enabledBorder: UnderlineInputBorder(
                                         borderSide: BorderSide(
-                                            color: colorScheme.onSurfaceVariant
-                                                .withOpacity(0.4),
-                                            width: 1),
+                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
                                       ),
                                       focusedBorder: UnderlineInputBorder(
-                                        borderSide: BorderSide(
-                                            color: colorScheme.primary, width: 2),
+                                        borderSide:
+                                        BorderSide(color: colorScheme.primary, width: 2),
                                       ),
                                       contentPadding: const EdgeInsets.symmetric(
                                           vertical: 6, horizontal: 0),
@@ -2564,8 +2958,7 @@ class _MenuListState extends State<MenuList> {
                                   }
                                 },
                                 child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                      minHeight: kUnifiedFieldMinHeight),
+                                  constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                                   child: TextField(
                                     controller: set.repController,
                                     keyboardType: TextInputType.number,
@@ -2581,13 +2974,11 @@ class _MenuListState extends State<MenuList> {
                                       filled: false,
                                       enabledBorder: UnderlineInputBorder(
                                         borderSide: BorderSide(
-                                            color: colorScheme.onSurfaceVariant
-                                                .withOpacity(0.4),
-                                            width: 1),
+                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
                                       ),
                                       focusedBorder: UnderlineInputBorder(
-                                        borderSide: BorderSide(
-                                            color: colorScheme.primary, width: 2),
+                                        borderSide:
+                                        BorderSide(color: colorScheme.primary, width: 2),
                                       ),
                                       contentPadding: const EdgeInsets.symmetric(
                                           vertical: 6, horizontal: 0),
@@ -2598,8 +2989,8 @@ class _MenuListState extends State<MenuList> {
                             ),
                             Text(
                               ' ${l10n.reps}',
-                              style: TextStyle(
-                                  color: colorScheme.onSurfaceVariant, fontSize: 13.0),
+                              style:
+                              TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13.0),
                             ),
                           ],
                         ),
@@ -2611,6 +3002,73 @@ class _MenuListState extends State<MenuList> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ====== ★ ここに「プレビュー画面（保存／破棄のみ）」を同一ファイル内に実装 ======
+class _PhotoPreviewPage extends StatelessWidget {
+  final String imagePath;
+  const _PhotoPreviewPage({required this.imagePath});
+
+  Future<void> _confirmDiscard(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('写真を破棄しますか？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('いいえ')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('はい')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      Navigator.of(context).pop(_QuickReview.discard);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final file = File(imagePath);
+    final bottom = MediaQuery.of(context).padding.bottom;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Center(
+                child: file.existsSync()
+                    ? Image.file(file, fit: BoxFit.contain)
+                    : const Text('画像を読み込めませんでした', style: TextStyle(color: Colors.white)),
+              ),
+            ),
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 16 + bottom,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => _confirmDiscard(context),
+                      child: const Text('破棄'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(_QuickReview.save),
+                      child: const Text('保存'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

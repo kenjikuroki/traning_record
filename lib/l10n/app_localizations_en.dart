@@ -318,4 +318,70 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get saved => 'Saved';
+
+  @override
+  String get addPhoto => '＋Photo';
+
+  @override
+  String get dialogAddPhotoTitle => 'Add photo';
+
+  @override
+  String get actionTakePhoto => 'Take photo';
+
+  @override
+  String get mediaReachedDailyCap => 'You\'ve reached today\'s save limit.';
+
+  @override
+  String get mediaGoToAlbum => 'Go to Album';
+
+  @override
+  String get mediaGoToSettings => 'Go to Settings';
+
+  @override
+  String get mediaDelete => 'Delete';
+
+  @override
+  String get mediaCancel => 'Cancel';
+
+  @override
+  String get albumTitle => 'Album';
+
+  @override
+  String get mediaUndo => 'Undo';
+
+  @override
+  String get settingsDailyMediaCap => 'Daily photo limit';
+
+  @override
+  String get settingsDailyMediaCapDesc => 'Max photos you can save per day';
+
+  @override
+  String get settingsDailyMediaCapShort => 'Photo limit';
+
+  @override
+  String get background => 'Background';
+
+  @override
+  String get none => 'None';
+
+  @override
+  String get limitOff => 'No limit';
+
+  @override
+  String get perDayUnit => 'photos/day';
+
+  @override
+  String get autoPausedIdle5h => 'Paused after 5 hours of inactivity';
+
+  @override
+  String get autoPausedOver5h => 'Paused after running over 5 hours';
+
+  @override
+  String get autoPausedBackground30m => 'Paused after 30+ minutes in background';
+
+  @override
+  String get resume => 'Resume';
+
+  @override
+  String get progressSnaps => 'Progress snaps';
 }

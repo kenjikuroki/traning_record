@@ -318,4 +318,70 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get saved => '保存しました';
+
+  @override
+  String get addPhoto => '＋写真';
+
+  @override
+  String get dialogAddPhotoTitle => '写真を追加';
+
+  @override
+  String get actionTakePhoto => '写真を撮影';
+
+  @override
+  String get mediaReachedDailyCap => '今日の保存上限に達しました';
+
+  @override
+  String get mediaGoToAlbum => 'アルバムへ';
+
+  @override
+  String get mediaGoToSettings => '設定へ';
+
+  @override
+  String get mediaDelete => '削除';
+
+  @override
+  String get mediaCancel => 'キャンセル';
+
+  @override
+  String get albumTitle => 'アルバム';
+
+  @override
+  String get mediaUndo => '元に戻す';
+
+  @override
+  String get settingsDailyMediaCap => '1日の写真上限';
+
+  @override
+  String get settingsDailyMediaCapDesc => '1日に保存できる写真の上限枚数';
+
+  @override
+  String get settingsDailyMediaCapShort => '写真上限';
+
+  @override
+  String get background => '背景';
+
+  @override
+  String get none => 'なし';
+
+  @override
+  String get limitOff => '上限なし';
+
+  @override
+  String get perDayUnit => '枚/日';
+
+  @override
+  String get autoPausedIdle5h => '無操作が5時間続いたため一時停止しました';
+
+  @override
+  String get autoPausedOver5h => '5時間を超えたため一時停止しました';
+
+  @override
+  String get autoPausedBackground30m => 'アプリが30分以上バックグラウンドのため一時停止しました';
+
+  @override
+  String get resume => '再開';
+
+  @override
+  String get progressSnaps => '進捗スナップ';
 }

@@ -700,6 +700,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Saved'**
   String get saved;
+
+  /// No description provided for @addPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'＋Photo'**
+  String get addPhoto;
+
+  /// No description provided for @dialogAddPhotoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add photo'**
+  String get dialogAddPhotoTitle;
+
+  /// No description provided for @actionTakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take photo'**
+  String get actionTakePhoto;
+
+  /// No description provided for @mediaReachedDailyCap.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve reached today\'s save limit.'**
+  String get mediaReachedDailyCap;
+
+  /// No description provided for @mediaGoToAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Album'**
+  String get mediaGoToAlbum;
+
+  /// No description provided for @mediaGoToSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Settings'**
+  String get mediaGoToSettings;
+
+  /// No description provided for @mediaDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get mediaDelete;
+
+  /// No description provided for @mediaCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get mediaCancel;
+
+  /// No description provided for @albumTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Album'**
+  String get albumTitle;
+
+  /// No description provided for @mediaUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get mediaUndo;
+
+  /// No description provided for @settingsDailyMediaCap.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily photo limit'**
+  String get settingsDailyMediaCap;
+
+  /// No description provided for @settingsDailyMediaCapDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Max photos you can save per day'**
+  String get settingsDailyMediaCapDesc;
+
+  /// No description provided for @settingsDailyMediaCapShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo limit'**
+  String get settingsDailyMediaCapShort;
+
+  /// No description provided for @background.
+  ///
+  /// In en, this message translates to:
+  /// **'Background'**
+  String get background;
+
+  /// No description provided for @none.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get none;
+
+  /// No description provided for @limitOff.
+  ///
+  /// In en, this message translates to:
+  /// **'No limit'**
+  String get limitOff;
+
+  /// No description provided for @perDayUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'photos/day'**
+  String get perDayUnit;
+
+  /// No description provided for @autoPausedIdle5h.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused after 5 hours of inactivity'**
+  String get autoPausedIdle5h;
+
+  /// No description provided for @autoPausedOver5h.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused after running over 5 hours'**
+  String get autoPausedOver5h;
+
+  /// No description provided for @autoPausedBackground30m.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused after 30+ minutes in background'**
+  String get autoPausedBackground30m;
+
+  /// No description provided for @resume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get resume;
+
+  /// No description provided for @progressSnaps.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress snaps'**
+  String get progressSnaps;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
