@@ -427,6 +427,9 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get results => '実績';
+
+  @override
   String deleteSelectedConfirmTitle(Object count) {
     return '選択した$count件を削除しますか？';
   }

@@ -911,6 +911,12 @@ abstract class AppLocalizations {
   /// **'{count} selected'**
   String selectedCount(Object count);
 
+  /// No description provided for @results.
+  ///
+  /// In en, this message translates to:
+  /// **'Results'**
+  String get results;
+
   /// No description provided for @deleteSelectedConfirmTitle.
   ///
   /// In en, this message translates to:

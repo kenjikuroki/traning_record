@@ -137,5 +137,6 @@
   "clear": "解除",
   "selectedCount": "{count}件選択中",
   "deleteSelectedConfirmTitle": "選択した{count}件を削除しますか？",
-  "albumEmptyMessage": "記録画面で写真を撮影するとアルバムに表示されます。トレーニングの進捗をアルバムに残そう。"
+  "albumEmptyMessage": "記録画面で写真を撮影するとアルバムに表示されます。トレーニングの進捗をアルバムに残そう。",
+  "results": "実績"
 }

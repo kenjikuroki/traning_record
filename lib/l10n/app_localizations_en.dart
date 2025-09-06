@@ -427,6 +427,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get results => 'Results';
+
+  @override
   String deleteSelectedConfirmTitle(Object count) {
     return 'Delete $count item(s)?';
   }

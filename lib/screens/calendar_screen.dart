@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:hive_flutter/hive_flutter.dart'; // ★ 追加
+import 'package:hive_flutter/hive_flutter.dart';
 import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../widgets/ad_banner.dart';
@@ -13,10 +13,7 @@ import 'graph_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/ad_square.dart';
 import '../widgets/coach_bubble.dart';
-import '../routes/slide_up_route.dart'; // ← 追加
-
-
-
+import '../routes/slide_up_route.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -45,14 +42,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
   late DateTime _focusedDay;
   DateTime? _selectedDay;
 
+  // --- 部位→色マップ ---
+  static const Map<String, Color> _partColors = {
+    '有酸素運動': Colors.purple,
+    '腕': Colors.blue,
+    '胸': Colors.red,
+    '背中': Colors.teal,
+    '肩': Colors.amber,
+    '足': Colors.green,
+    '全身': Colors.orange,
+    'その他１': Colors.grey,
+    'その他２': Colors.grey,
+    'その他３': Colors.grey,
+  };
+
+  Color _colorForPart(String part, ColorScheme cs) {
+    final c = _partColors[part];
+    return (c ?? cs.primary).withOpacity(0.9);
+  }
+
   @override
   void initState() {
     super.initState();
 
-    _focusedDay =
-        DateTime(widget.selectedDate.year, widget.selectedDate.month, 1);
-    _selectedDay = DateTime(widget.selectedDate.year, widget.selectedDate.month,
-        widget.selectedDate.day);
+    _focusedDay = DateTime(widget.selectedDate.year, widget.selectedDate.month, 1);
+    _selectedDay = DateTime(
+      widget.selectedDate.year,
+      widget.selectedDate.month,
+      widget.selectedDate.day,
+    );
+
+    // CoachBubble（「日付をタップ」のみ）
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final seen = widget.settingsBox.get('hint_seen_calendar') as bool? ?? false;
       if (seen) return;
@@ -60,7 +80,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final l10n = AppLocalizations.of(context)!;
       await CoachBubbleController.showSequence(
         context: context,
-        anchors: [_kCalendarCard], // ← カレンダーカードに付けた GlobalKey
+        anchors: [_kCalendarCard],
         messages: [l10n.hintCalendarTapDate],
         semanticsPrefix: l10n.coachBubbleSemantic,
       );
@@ -69,25 +89,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
-
-
   // ---------- Helpers ----------
   String _dateKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+  bool _sameDate(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
   bool _hasAnyTrainingData(DailyRecord r) {
     for (final entry in r.menus.entries) {
       for (final m in entry.value) {
-        final len = (m.weights.length < m.reps.length)
-            ? m.weights.length
-            : m.reps.length;
+        final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
         for (var i = 0; i < len; i++) {
           final w = m.weights[i].toString().trim();
           final p = m.reps[i].toString().trim();
           if (w.isNotEmpty || p.isNotEmpty) return true;
         }
-        if ((m.distance?.trim().isNotEmpty ?? false) ||
-            (m.duration?.trim().isNotEmpty ?? false)) {
+        if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
           return true;
         }
       }
@@ -149,58 +167,244 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return '$min${l10n.min}$sec${l10n.sec}';
   }
 
-  Future<void> _onDayTapped(DateTime day) async {
-    // 先に選択状態を更新してから開く（ハイライトや下部の記録一覧が正しく出るように）
-    setState(() {
-      _selectedDay = DateTime(day.year, day.month, day.day);
-      _focusedDay  = DateTime(day.year, day.month, 1);
+  // その日に実績のある「部位」一覧を返す（表示用）
+  List<String> _partsWithDataForDay(DailyRecord r) {
+    final List<String> parts = [];
+    r.menus.forEach((part, menuList) {
+      bool has = false;
+      for (final m in menuList) {
+        final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        for (int i = 0; i < len; i++) {
+          final w = m.weights[i].toString().trim();
+          final p = m.reps[i].toString().trim();
+          if (w.isNotEmpty || p.isNotEmpty) {
+            has = true;
+            break;
+          }
+        }
+        if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
+          has = true;
+        }
+        if (has) break; // returnしない
+      }
+      if (has) parts.add(part);
     });
+    return parts;
+  }
 
+  // TableCalendar：その日の「部位一覧」を返す
+  // ※体重のみ記録日＝部位なしの場合は '_w' を1件返す（UIでは非表示）
+  List<Object> _eventLoader(DateTime day) {
+    final r = widget.recordsBox.get(_dateKey(day));
+    if (r == null) return const [];
+    final parts = _partsWithDataForDay(r);
+    if (parts.isEmpty && r.weight != null) return const ['_w'];
+    return parts;
+  }
+
+  // 日付数字を「上寄せ固定」で描く（※ 今日リングは出さない）
+  Widget _dayLabelTop(BuildContext context, DateTime day,
+      {required Color textColor, bool selected = false}) {
+    final label = Text(
+      '${day.day}',
+      style: TextStyle(
+        color: textColor,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: label,
+      ),
+    );
+  }
+
+  // 最大3ボックス（日付下：体重+部位の合計）の行高を算出
+  double _rowHeightFor3(BuildContext context) {
+    const double topPad = 6.0;
+    final double dayFont = Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14.0;
+    final double dayLine = dayFont * 1.2;
+
+    const double chipFont = 10.0;
+    const double chipLine = chipFont * 1.1;
+    const double chipVPad = 2.0;
+    const double chipH = chipLine + chipVPad * 2;
+
+    const double gaps = 2.0 + 2.0 + 2.0;
+
+    // ▼ 安全マージン(+4px)を加算してオーバーフロー回避
+    const double safety = 4.0;
+    return (topPad + dayLine + chipH * 3 + gaps + safety).ceilToDouble();
+  }
+
+  // セル描画（数字は上固定 / 直下に体重+部位ボックスを“上→下”に積む・合計最大3つ）
+  Widget _buildDayCell(
+      BuildContext context,
+      DateTime day, {
+        required Color textColor,
+        bool selected = false,
+        bool showEventsForOutOfMonth = false,
+      }) {
+    final cs = Theme.of(context).colorScheme;
+
+    // その日の部位イベント（'_w'＝体重のみは除外）
+    final parts = _eventLoader(day)
+        .map((e) => e.toString())
+        .where((p) => p != '_w')
+        .toList();
+
+    // 体重の有無
+    final record = widget.recordsBox.get(_dateKey(day));
+    final hasWeight = record?.weight != null;
+
+    // 合計最大3つ（体重があれば1スロット使用）
+    final bool canShowParts = (showEventsForOutOfMonth || day.month == _focusedDay.month);
+    final int maxSlots = 3;
+    final int partSlots = canShowParts ? (maxSlots - (hasWeight ? 1 : 0)) : 0;
+    final List<String> showParts =
+    (partSlots > 0 ? parts.take(partSlots).toList() : const []);
+
+    // 体重ボックス
+    Widget? weightBox;
+    if (hasWeight) {
+      final l10n = AppLocalizations.of(context)!;
+      weightBox = Container(
+        margin: EdgeInsets.only(bottom: showParts.isNotEmpty ? 2 : 0),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: cs.secondaryContainer,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          l10n.bodyWeight, // 数値は表示しない
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 10,
+            height: 1.1,
+            color: cs.onSecondaryContainer,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
+
+    return SizedBox.expand(
+      child: Container(
+        decoration: BoxDecoration(
+          color: selected ? cs.primary.withOpacity(0.10) : null,
+          borderRadius: selected ? BorderRadius.circular(8) : null,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch, // 横幅いっぱい
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 上に日付
+            _dayLabelTop(context, day, textColor: textColor, selected: selected),
+
+            // 日付と最初のボックスの間は常に 2px（体重 or 部位があれば）
+            if (hasWeight || showParts.isNotEmpty) const SizedBox(height: 2),
+
+            // 体重ボックス（あれば）
+            if (hasWeight) weightBox!,
+
+            // 部位ボックス（上→下）
+            for (int i = 0; i < showParts.length; i++)
+              Builder(
+                builder: (_) {
+                  final p = showParts[i];
+                  final label = _translatePartToLocale(context, p);
+                  final boxColor = _colorForPart(p, cs);
+                  final textOnBox =
+                  ThemeData.estimateBrightnessForColor(boxColor) == Brightness.dark
+                      ? Colors.white
+                      : Colors.black87;
+                  return Container(
+                    // 最後のボックスだけ下マージン0
+                    margin: EdgeInsets.only(bottom: i == showParts.length - 1 ? 0 : 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: boxColor,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 10,
+                        height: 1.1,
+                        color: textOnBox,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 記録画面（不透明ボトムシート）
+  Future<void> _openRecordSheet(DateTime day) async {
     await showModalBottomSheet(
       context: context,
       useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
-      enableDrag: true,
+      // ▼ 下スワイプ/ドラッグで閉じない
+      enableDrag: false,
+      // ▼ 外側タップやAndroid戻るキーで閉じない
+      isDismissible: false,
       backgroundColor: Colors.transparent,
-      builder: (_) {
-        return SizedBox.expand( // ← const 付けない
-            child: RecordScreen(
-              selectedDate: day,
-              recordsBox: widget.recordsBox,
-              lastUsedMenusBox: widget.lastUsedMenusBox,
-              settingsBox: widget.settingsBox,
-              setCountBox: widget.setCountBox,
+      barrierColor: Colors.black54,
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        return WillPopScope(                     // ← 戻る（ボタン/スワイプ）は許可
+          onWillPop: () async => true,
+          child: SizedBox.expand(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: RecordScreen(
+                    selectedDate: day,
+                    recordsBox: widget.recordsBox,
+                    lastUsedMenusBox: widget.lastUsedMenusBox,
+                    settingsBox: widget.settingsBox,
+                    setCountBox: widget.setCountBox,
+                  ),
+                ),
+              ),
             ),
-            );
+          ),
+        );
       },
     );
-
-    // 閉じた直後、●マーカーや一覧を即反映
     if (mounted) setState(() {});
   }
-
-  // TableCalendar：その日に何か（体重 or トレ）あれば 1 件返す → ● マーカー
-  List<Object> _eventLoader(DateTime day) {
-    final r = widget.recordsBox.get(_dateKey(day));
-    if (_hasAnyData(r)) {
-      return const [1]; // ダミー
-    }
-    return const [];
-  }
-
   // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
-    //  final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.transparent, // ← 透過
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         elevation: 0,
-        // ← アイコンとタイトルは白で可読性UP
         iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
           DateFormat('yyyy/MM').format(_focusedDay),
@@ -210,10 +414,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             fontSize: 20,
           ),
         ),
-        // ← 重複原因の個別背景指定は削除（テーマ or flexibleSpaceで演出）
-        // backgroundColor: colorScheme.surface,
-
-        // ← 上部にぼかし＋半透明グラデを敷いて文字が潰れないようにする
         flexibleSpace: ClipRect(
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
@@ -235,19 +435,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
 
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        // ★ recordsBox の変更を監視して即時再描画
+        // 上だけ 8px にして AppBar と広告の間を詰める
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
         child: ValueListenableBuilder<Box<DailyRecord>>(
           valueListenable: widget.recordsBox.listenable(),
           builder: (context, box, _) {
-            final selectedRecord =
-                box.get(_dateKey(_selectedDay ?? DateTime.now()));
+            final selectedRecord = box.get(_dateKey(_selectedDay ?? DateTime.now()));
             return Column(
               children: [
                 const AdBanner(screenName: 'calendar'),
-                const SizedBox(height: 12),
+                const SizedBox(height: 2),
                 _buildCalendar(context),
-                const SizedBox(height: 12),
+                const SizedBox(height: 2),
                 _buildResultsArea(context, selectedRecord),
               ],
             );
@@ -271,12 +470,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
           firstDay: DateTime.utc(2015, 1, 1),
           lastDay: DateTime.utc(2100, 12, 31),
           focusedDay: _focusedDay,
-          selectedDayPredicate: (day) =>
-              _selectedDay != null &&
-              day.year == _selectedDay!.year &&
-              day.month == _selectedDay!.month &&
-              day.day == _selectedDay!.day,
+
+          // 行の高さ＝「日付＋最大3ボックス」ぴったり
+          rowHeight: _rowHeightFor3(context),
+
+          selectedDayPredicate: (day) => _selectedDay != null && _sameDate(day, _selectedDay!),
           startingDayOfWeek: StartingDayOfWeek.monday,
+
           headerStyle: HeaderStyle(
             titleCentered: true,
             formatButtonVisible: false,
@@ -285,59 +485,75 @@ class _CalendarScreenState extends State<CalendarScreen> {
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
-            leftChevronIcon:
-                Icon(Icons.chevron_left, color: colorScheme.onSurface),
-            rightChevronIcon:
-                Icon(Icons.chevron_right, color: colorScheme.onSurface),
+            leftChevronIcon: Icon(Icons.chevron_left, color: colorScheme.onSurface),
+            rightChevronIcon: Icon(Icons.chevron_right, color: colorScheme.onSurface),
           ),
+
           calendarStyle: CalendarStyle(
             defaultTextStyle: TextStyle(color: colorScheme.onSurface),
             weekendTextStyle: TextStyle(color: colorScheme.onSurface),
             outsideTextStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-            todayDecoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            selectedDecoration: BoxDecoration(
-              color: colorScheme.primary,
-              shape: BoxShape.circle,
-            ),
-            selectedTextStyle: TextStyle(color: colorScheme.onPrimary),
-            markersMaxCount: 1,
-            markerDecoration: BoxDecoration(
-              color: colorScheme.primary, // ●
-              shape: BoxShape.circle,
-            ),
+            todayDecoration: const BoxDecoration(),     // 今日リングなし
+            selectedDecoration: const BoxDecoration(),  // 選択の円もなし
+            selectedTextStyle: TextStyle(color: colorScheme.onSurface),
+            markersMaxCount: 0, // 標準の●マーカーを無効化
           ),
-          eventLoader: _eventLoader,
-          onDaySelected: (selectedDay, focusedDay) async {
-            // 同じ日をもう一度タップ → 記録画面へ
-            if (_selectedDay != null &&
-                selectedDay.year == _selectedDay!.year &&
-                selectedDay.month == _selectedDay!.month &&
-                selectedDay.day == _selectedDay!.day) {
-              await Navigator.push(
+
+          // ▼ セル一体描画（markerBuilderは使わない）
+          calendarBuilders: CalendarBuilders<Object>(
+            defaultBuilder: (context, day, focusedDay) {
+              final cs = Theme.of(context).colorScheme;
+              return _buildDayCell(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => RecordScreen(
-                    selectedDate: selectedDay,
-                    recordsBox: widget.recordsBox,
-                    lastUsedMenusBox: widget.lastUsedMenusBox,
-                    settingsBox: widget.settingsBox,
-                    setCountBox: widget.setCountBox,
-                  ),
-                ),
+                day,
+                textColor: cs.onSurface,
+                selected: false,
               );
-              // ★ 戻り直後に再描画（●と実績を即反映）
-              setState(() {});
+            },
+            outsideBuilder: (context, day, focusedDay) {
+              final cs = Theme.of(context).colorScheme;
+              return _buildDayCell(
+                context,
+                day,
+                textColor: cs.onSurfaceVariant,
+                selected: false,
+                showEventsForOutOfMonth: false,
+              );
+            },
+            todayBuilder: (context, day, focusedDay) {
+              final cs = Theme.of(context).colorScheme;
+              return _buildDayCell(
+                context,
+                day,
+                textColor: cs.onSurface,
+                selected: false,
+              );
+            },
+            selectedBuilder: (context, day, focusedDay) {
+              final cs = Theme.of(context).colorScheme;
+              return _buildDayCell(
+                context,
+                day,
+                textColor: cs.onSurface,
+                selected: true,
+              );
+            },
+          ),
+
+          eventLoader: _eventLoader,
+
+          // 1回目のタップ：選択だけ、同じ日をもう一度タップ：記録画面
+          onDaySelected: (selectedDay, focusedDay) async {
+            if (_selectedDay != null && _sameDate(selectedDay, _selectedDay!)) {
+              await _openRecordSheet(selectedDay);
               return;
             }
             setState(() {
-              _selectedDay = DateTime(
-                  selectedDay.year, selectedDay.month, selectedDay.day);
+              _selectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
               _focusedDay = focusedDay;
             });
           },
+
           onPageChanged: (focusedDay) {
             setState(() => _focusedDay = focusedDay);
           },
@@ -359,9 +575,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
           children: const [
             Center(
               child: AdSquare(
-                adSize: AdBoxSize.largeBanner, // 320x100
-                showPlaceholder: false, // ★本番広告にするのでfalse
-                screenName: 'calendar', // ★カレンダー画面用IDを使う
+                adSize: AdBoxSize.largeBanner,
+                showPlaceholder: false,
+                screenName: 'calendar',
               ),
             ),
           ],
@@ -369,70 +585,40 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
     }
 
-    // 実績あり：体重カード／部位カード
+    // ▼ 実績あり：カードは「実績」1枚のみ。タップで簡易一覧を展開
     final unit = SettingsManager.currentUnit;
-    final List<Widget> cards = [];
 
-    // 体重カード（体重実績がある場合のみ表示）
-    if (record.weight != null) {
-      cards.add(
-        Theme(
-          data: Theme.of(context).copyWith(
-            splashColor: Colors.transparent,
-            highlightColor: Colors.transparent,
-            hoverColor: Colors.transparent,
-            dividerColor: Colors.transparent,
-          ),
-          child: Card(
-            color: colorScheme.surfaceContainerHighest,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.0)),
-            elevation: 4,
-            clipBehavior: Clip.none,
-            child: ExpansionTile(
-              tilePadding:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              expandedAlignment: Alignment.centerLeft,
-              maintainState: true,
-              title: Text(
-                l10n.bodyWeight,
-                style: TextStyle(
-                    color: colorScheme.onSurface, fontWeight: FontWeight.bold),
-              ),
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '${record.weight?.toStringAsFixed(1) ?? '-'} $unit',
-                    textAlign: TextAlign.left,
-                    style:
-                        TextStyle(color: colorScheme.onSurface, fontSize: 14),
-                  ),
-                ),
-              ],
+    // 1) 体重があれば最上部に簡易表示
+    final List<Widget> summaryChildren = [];
+    if (record!.weight != null) {
+      summaryChildren.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6.0),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(1)} $unit',
+              style: TextStyle(color: colorScheme.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
+              textAlign: TextAlign.left,
             ),
           ),
         ),
       );
     }
 
-    // 部位カード（タイトル＝部位名）。トレ実績がある部位だけ表示
+    // 2) 各部位の簡易表示（これまでのカード中身を“1枚の中”にまとめる）
     record.menus.forEach((originalPart, menuList) {
+      // その部位に表示すべきデータがあるか
       bool partHasData = false;
       for (final m in menuList) {
-        final len = (m.weights.length < m.reps.length)
-            ? m.weights.length
-            : m.reps.length;
+        final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
         for (int i = 0; i < len; i++) {
-          if (m.weights[i].toString().trim().isNotEmpty ||
-              m.reps[i].toString().trim().isNotEmpty) {
+          if (m.weights[i].toString().trim().isNotEmpty || m.reps[i].toString().trim().isNotEmpty) {
             partHasData = true;
             break;
           }
         }
-        if ((m.distance?.trim().isNotEmpty ?? false) ||
-            (m.duration?.trim().isNotEmpty ?? false)) {
+        if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
           partHasData = true;
         }
         if (partHasData) break;
@@ -441,12 +627,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       final partTitle = _translatePartToLocale(context, originalPart);
 
-      final List<Widget> lines = [];
+      // 見出し（部位名）
+      summaryChildren.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
+          child: Text(
+            partTitle,
+            style: TextStyle(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
+        ),
+      );
+
+      // 中身（種目名・セット、距離・時間）
       for (final m in menuList) {
-        // 種目名（左寄せ）
-        lines.add(
+        // 種目名
+        summaryChildren.add(
           Padding(
-            padding: const EdgeInsets.only(bottom: 4.0),
+            padding: const EdgeInsets.only(bottom: 2.0),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -462,109 +663,102 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         );
 
-        // セット（左寄せ）
-        final setCount = (m.weights.length < m.reps.length)
-            ? m.weights.length
-            : m.reps.length;
+        // セット
+        final setCount = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
         for (int i = 0; i < setCount; i++) {
           final w = m.weights[i].toString().trim();
           final r = m.reps[i].toString().trim();
           if (w.isEmpty && r.isEmpty) continue;
-          lines.add(
+          summaryChildren.add(
             Padding(
-              padding: const EdgeInsets.only(left: 8.0, bottom: 2.0),
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   '${i + 1}${l10n.sets}：${w.isNotEmpty ? '$w${unit == 'kg' ? l10n.kg : l10n.lbs}' : '-'} × ${r.isNotEmpty ? r : '-'}${l10n.reps}',
                   textAlign: TextAlign.left,
-                  style: TextStyle(color: colorScheme.onSurface, fontSize: 14),
+                  style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
                 ),
               ),
             ),
           );
         }
 
-        // 有酸素の距離・時間（ある場合のみ、km/m・分/秒で表示）
+        // 有酸素の距離・時間
         if ((m.distance?.trim().isNotEmpty ?? false)) {
-          lines.add(
+          summaryChildren.add(
             Padding(
-              padding: const EdgeInsets.only(left: 8.0, bottom: 2.0),
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
                   textAlign: TextAlign.left,
-                  style: TextStyle(color: colorScheme.onSurface, fontSize: 14),
+                  style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
                 ),
               ),
             ),
           );
         }
         if ((m.duration?.trim().isNotEmpty ?? false)) {
-          lines.add(
+          summaryChildren.add(
             Padding(
-              padding: const EdgeInsets.only(left: 8.0, bottom: 2.0),
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   '${l10n.time}: ${_formatDuration(m.duration, l10n)}',
                   textAlign: TextAlign.left,
-                  style: TextStyle(color: colorScheme.onSurface, fontSize: 14),
+                  style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
                 ),
               ),
             ),
           );
         }
       }
-
-      if (lines.isEmpty) return;
-
-      cards.add(
-        Theme(
-          data: Theme.of(context).copyWith(
-            splashColor: Colors.transparent,
-            highlightColor: Colors.transparent,
-            hoverColor: Colors.transparent,
-            dividerColor: Colors.transparent,
-          ),
-          child: Card(
-            color: colorScheme.surfaceContainerHighest,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.0)),
-            elevation: 4,
-            clipBehavior: Clip.none,
-            child: ExpansionTile(
-              tilePadding:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              expandedAlignment: Alignment.centerLeft,
-              maintainState: true,
-              title: Text(
-                partTitle,
-                style: TextStyle(
-                    color: colorScheme.onSurface, fontWeight: FontWeight.bold),
-              ),
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: lines,
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
     });
 
-    // 実績カードをスクロール（縞々対策）
     return Expanded(
-      child: ListView.separated(
+      child: ListView(
         padding: const EdgeInsets.only(top: 0.0),
-        itemCount: cards.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 2),
-        itemBuilder: (_, i) => cards[i],
+        children: [
+          Theme(
+            data: Theme.of(context).copyWith(
+              splashColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              hoverColor: Colors.transparent,
+              dividerColor: Colors.transparent,
+            ),
+            child: Card(
+              color: colorScheme.surfaceContainerHighest,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.0),
+              ),
+              elevation: 4,
+              clipBehavior: Clip.none,
+              child: ExpansionTile(
+                tilePadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                expandedAlignment: Alignment.centerLeft,
+                maintainState: true,
+                title: Text(
+                  l10n.results, // ← l10n を使用（"実績"）
+                  style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold),
+                ),
+                children: [
+                  // まとめて簡易表示
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: summaryChildren,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
+
+

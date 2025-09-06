@@ -136,6 +136,7 @@
   "share": "Share",
   "clear": "Clear",
   "selectedCount": "{count} selected",
+  "results": "Results",
   "deleteSelectedConfirmTitle": "Delete {count} item(s)?",
   "albumEmptyMessage": "Take photos from the Record screen and they will appear here. Keep your training progress in the album."
 }
