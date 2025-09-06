@@ -628,8 +628,11 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
 
+      // フォーカスは当てずにカードだけ選択状態にする
+      _touchCard(secIndex, 0);
+
+      // キーボードは出さず、快適位置へ通常スクロールのみ
       final keys = _sections[secIndex].nameFieldKeys;
-      _focusMenuNameField(secIndex, 0);
       if (keys.isNotEmpty) {
         await _scrollIntoComfortZoneAfterKeyboard(keys[0], pivot: 0.0, topExtra: 28);
       }
