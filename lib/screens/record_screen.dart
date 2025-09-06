@@ -1648,9 +1648,13 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                   }
 
                   if (paths.length == 1) {
-                    // 1枚：中央にドン
-                    return Center(child: buildThumb(paths[0]));
-                  } else if (paths.length == 2) {
+                    // 1枚：やや左寄せ（左すぎない）
+                    return Align(
+                      alignment: Alignment(-0.8, 0), // 左に35%だけ寄せる（-1.0が最左、0が中央）
+                      child: buildThumb(paths[0]),
+                    );
+                  }
+                  else if (paths.length == 2) {
                     // 2枚：中央寄せで2枚
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.center,
