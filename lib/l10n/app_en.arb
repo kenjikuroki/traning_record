@@ -131,5 +131,11 @@
   "time": "Time",
   "enterGoal": "Goal",
   "deleteMenuConfirmationTitle": "Delete Exercise?",
-  "addPart": "+ Part"
+  "addPart": "+ Part",
+  "ok": "OK",
+  "share": "Share",
+  "clear": "Clear",
+  "selectedCount": "{count} selected",
+  "deleteSelectedConfirmTitle": "Delete {count} item(s)?",
+  "albumEmptyMessage": "Take photos from the Record screen and they will appear here. Keep your training progress in the album."
 }

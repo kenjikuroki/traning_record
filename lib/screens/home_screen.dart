@@ -28,28 +28,20 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late final PageController _pageController;
   int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: _currentIndex);
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
     super.dispose();
   }
 
   void _onItemTapped(int index) {
     setState(() => _currentIndex = index);
-      _pageController.animateToPage(
-            index,
-            duration: const Duration(milliseconds: 260),
-        curve: Curves.easeOutCubic,
-      );
   }
 
   @override

@@ -3023,9 +3023,13 @@ class _MenuListState extends State<MenuList> {
 }
 
 // ====== ★ ここに「プレビュー画面（保存／破棄のみ）」を同一ファイル内に実装 ======
+// ====== ★ プレビュー画面（保存／破棄ボタンを＋部位チップ風に統一） ======
 class _PhotoPreviewPage extends StatelessWidget {
   final String imagePath;
   const _PhotoPreviewPage({required this.imagePath});
+
+  // ＋部位と同じブランドカラー
+  static const Color kBrandBlue = Color(0xFF2563EB);
 
   Future<void> _confirmDiscard(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
@@ -3042,6 +3046,51 @@ class _PhotoPreviewPage extends StatelessWidget {
     if (ok == true) {
       Navigator.of(context).pop(_QuickReview.discard);
     }
+  }
+
+  Widget _pillButton({
+    required String label,
+    required VoidCallback onTap,
+    required bool filled,
+  }) {
+    final radius = BorderRadius.circular(22);
+    return Material(
+      color: Colors.transparent,
+      borderRadius: radius,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        borderRadius: radius,
+        splashFactory: NoSplash.splashFactory,
+        highlightColor: Colors.white.withOpacity(0.06),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        child: Ink(
+          decoration: BoxDecoration(
+            color: filled ? kBrandBlue : Colors.transparent,
+            borderRadius: radius,
+            border: filled ? null : Border.all(color: Colors.white.withOpacity(0.35)),
+            boxShadow: filled
+                ? [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 2, offset: const Offset(0, 1))]
+                : null,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: filled ? Colors.white : Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -3069,16 +3118,18 @@ class _PhotoPreviewPage extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _confirmDiscard(context),
-                      child: Text(l10n.discard),
+                    child: _pillButton(
+                      label: l10n.discard,
+                      onTap: () => _confirmDiscard(context),
+                      filled: false,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(_QuickReview.save),
-                      child: Text(l10n.save),
+                    child: _pillButton(
+                      label: l10n.save,
+                      onTap: () => Navigator.of(context).pop(_QuickReview.save),
+                      filled: true,
                     ),
                   ),
                 ],
@@ -3090,3 +3141,4 @@ class _PhotoPreviewPage extends StatelessWidget {
     );
   }
 }
+

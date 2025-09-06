@@ -54,9 +54,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _selectedBgAsset = '';
   bool _isBgExpanded = false;
 
-  // 写真上限（0 = 上限なし）
-  late int _dailyPhotoCap;
-
   @override
   void initState() {
     super.initState();
@@ -76,7 +73,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     _selectedBgAsset = SettingsManager.currentBackgroundAsset;
 
-    _dailyPhotoCap = SettingsManager.dailyPhotoCap; // 0=上限なし
   }
 
   void _onThemeChanged(ThemeMode? m) {
@@ -305,51 +301,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: _kGap),
 
-          // ④ セット数（中間カード：角丸なし）
+        // ④ セット数（グループ末尾：下だけ角丸）
+          // ④ セット数（グループ末尾：下だけ角丸）
           Card(
-            color: colorScheme.surfaceContainerHighest,
-            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-            margin: _kCardMargin,
-            child: Padding(
-              padding: _kOuterPad,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _headerRow(
-                    icon: Icons.format_list_numbered_outlined,
-                    title: l10n.defaultSets,
-                    trailing: Text(
-                      '$_setCount${l10n.sets}',
-                      style: const TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      trackHeight: 3,
-                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-                    ),
-                    child: Slider(
-                      value: _setCount.toDouble(),
-                      min: 1,
-                      max: 10,
-                      divisions: 9,
-                      label: _setCount.toString(),
-                      onChanged: (double newValue) => setState(() => _setCount = newValue.round()),
-                      onChangeEnd: (v) => widget.setCountBox.put('setCount', v.round()),
-                      activeColor: colorScheme.primary,
-                      inactiveColor: colorScheme.onSurfaceVariant.withOpacity(0.3),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: _kGap),
-
-          // ⑤ 1日の写真上限（グループ末尾：下だけ角丸）
-          Card(
-            color: colorScheme.surfaceContainerHighest,
+            color: colorScheme.surfaceContainerHighest, // 他と同じ
             shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(16),
@@ -363,34 +318,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _headerRow(
-                    icon: Icons.photo_library_outlined,
-                    title: l10n.settingsDailyMediaCap, // 「1日の写真上限」
+                    icon: Icons.format_list_numbered_outlined,
+                    title: l10n.defaultSets,
                     trailing: Text(
-                      _dailyPhotoCap == 0
-                          ? l10n.limitOff
-                          : '$_dailyPhotoCap${l10n.perDayUnit}', // 例: "24枚/日"
-                      style: const TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold),
+                      '$_setCount${l10n.sets}',
+                      style: TextStyle( // ← 他カードのトーンに合わせる
+                        color: colorScheme.onSurface,
+                        fontSize: 14.0,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.settingsDailyMediaCapDesc, // 説明
-                    style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
-                  ),
-                  const SizedBox(height: 8),
                   SliderTheme(
                     data: SliderTheme.of(context).copyWith(
                       trackHeight: 3,
                       thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
                     ),
                     child: Slider(
-                      value: _dailyPhotoCap.toDouble(),
-                      min: 0,
-                      max: 50,
-                      divisions: 50,
-                      label: _dailyPhotoCap == 0 ? l10n.limitOff : '$_dailyPhotoCap',
-                      onChanged: (double v) => setState(() => _dailyPhotoCap = v.round()),
-                      onChangeEnd: (double v) => SettingsManager.setDailyPhotoCap(v.round()),
+                      value: _setCount.toDouble(),
+                      min: 1,
+                      max: 10,
+                      divisions: 9,
+                      label: _setCount.toString(),
+                      onChanged: (double newValue) =>
+                          setState(() => _setCount = newValue.round()),
+                      onChangeEnd: (v) => widget.setCountBox.put('setCount', v.round()),
                       activeColor: colorScheme.primary,
                       inactiveColor: colorScheme.onSurfaceVariant.withOpacity(0.3),
                     ),
@@ -399,6 +351,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
+
+
+          const SizedBox(height: _kGap),
 
           // ─────────────────────────────────
           // ここから下はその他の設定カード群（別ブロック）

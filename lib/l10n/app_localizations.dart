@@ -886,6 +886,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'+ Part'**
   String get addPart;
+
+  /// No description provided for @ok.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
+
+  /// No description provided for @share.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get share;
+
+  /// No description provided for @clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clear;
+
+  /// No description provided for @selectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String selectedCount(Object count);
+
+  /// No description provided for @deleteSelectedConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {count} item(s)?'**
+  String deleteSelectedConfirmTitle(Object count);
+
+  /// No description provided for @albumEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Take photos from the Record screen and they will appear here. Keep your training progress in the album.'**
+  String get albumEmptyMessage;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

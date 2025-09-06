@@ -411,4 +411,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addPart => '+ Part';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get share => 'Share';
+
+  @override
+  String get clear => 'Clear';
+
+  @override
+  String selectedCount(Object count) {
+    return '$count selected';
+  }
+
+  @override
+  String deleteSelectedConfirmTitle(Object count) {
+    return 'Delete $count item(s)?';
+  }
+
+  @override
+  String get albumEmptyMessage => 'Take photos from the Record screen and they will appear here. Keep your training progress in the album.';
 }

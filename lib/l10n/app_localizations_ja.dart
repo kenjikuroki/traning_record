@@ -411,4 +411,26 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get addPart => '＋部位';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get share => '共有';
+
+  @override
+  String get clear => '解除';
+
+  @override
+  String selectedCount(Object count) {
+    return '$count件選択中';
+  }
+
+  @override
+  String deleteSelectedConfirmTitle(Object count) {
+    return '選択した$count件を削除しますか？';
+  }
+
+  @override
+  String get albumEmptyMessage => '記録画面で写真を撮影するとアルバムに表示されます。トレーニングの進捗をアルバムに残そう。';
 }
