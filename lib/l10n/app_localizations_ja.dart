@@ -12,40 +12,155 @@ class AppLocalizationsJa extends AppLocalizations {
   String get appTitle => 'T-トレーニング記録';
 
   @override
-  String get selectTrainingPart => 'トレーニング部位を選択';
+  String get calendar => 'カレンダー';
 
   @override
-  String get addPart => '＋部位';
+  String get graph => 'グラフ';
 
   @override
-  String get addExercise => '＋種目';
+  String get favorites => 'お気に入り';
 
   @override
-  String get partLimitReached => '部位は10個までしか追加できません。';
+  String get recordScreenTitle => '記録';
 
   @override
-  String get exerciseLimitReached => '種目は15個までしか追加できません。';
+  String get calendarScreenTitle => 'カレンダー';
 
   @override
-  String get settings => '設定';
+  String get settingsScreenTitle => '設定';
+
+  @override
+  String get graphScreenTitle => 'グラフ';
+
+  @override
+  String get albumTitle => 'アルバム';
+
+  @override
+  String get start => '開始';
+
+  @override
+  String get pause => '一時停止';
+
+  @override
+  String get reset => 'リセット';
+
+  @override
+  String get saved => '保存しました';
+
+  @override
+  String get save => '保存';
+
+  @override
+  String get discard => '破棄';
+
+  @override
+  String get cancel => 'キャンセル';
+
+  @override
+  String get delete => '削除';
+
+  @override
+  String get yes => 'はい';
+
+  @override
+  String get no => 'いいえ';
+
+  @override
+  String get resume => '再開';
+
+  @override
+  String get openSettings => '設定を開く';
+
+  @override
+  String get cameraPermissionRequired => 'カメラ権限を有効にしてください';
+
+  @override
+  String get stopwatch => 'ストップウォッチ';
+
+  @override
+  String get timer => 'タイマー';
+
+  @override
+  String get timerTime => 'タイマー時間';
+
+  @override
+  String get tapNumberToEdit => '数字タップで編集';
+
+  @override
+  String targetFmt(Object hint, Object time) {
+    return '目標 $time（$hint）';
+  }
+
+  @override
+  String get statusRunning => '計測中';
+
+  @override
+  String get statusIdle => '待機中';
+
+  @override
+  String hours(Object hours) {
+    return '$hours時間';
+  }
+
+  @override
+  String get kg => 'kg';
+
+  @override
+  String get lbs => 'lbs';
+
+  @override
+  String get unit => '単位';
+
+  @override
+  String get unitTitle => '単位';
+
+  @override
+  String get weightUnit => '重量単位';
+
+  @override
+  String get min => '分';
+
+  @override
+  String get sec => '秒';
+
+  @override
+  String get minutes => '分';
+
+  @override
+  String get minutesHint => '分';
+
+  @override
+  String get secondsHint => '秒';
+
+  @override
+  String get sets => 'セット';
+
+  @override
+  String get reps => '回';
+
+  @override
+  String get distance => '距離';
+
+  @override
+  String get km => 'km';
+
+  @override
+  String get m => 'm';
+
+  @override
+  String get pace => 'ペース';
+
+  @override
+  String get perDayUnit => '枚/日';
 
   @override
   String get trainingParts => 'トレーニング部位';
 
   @override
-  String get setCount => 'セット数';
+  String get selectTrainingPart => 'トレーニング部位を選択';
 
   @override
-  String get themeMode => 'テーマ';
-
-  @override
-  String get light => 'ライト';
-
-  @override
-  String get dark => 'ダーク';
-
-  @override
-  String get systemDefault => 'システムデフォルト';
+  String get selectPartPlaceholder => '部位を選択';
 
   @override
   String get aerobicExercise => '有酸素運動';
@@ -78,149 +193,79 @@ class AppLocalizationsJa extends AppLocalizations {
   String get other3 => 'その他３';
 
   @override
-  String get kg => 'kg';
-
-  @override
-  String get reps => '回';
-
-  @override
-  String get min => '分';
-
-  @override
-  String get sec => '秒';
-
-  @override
-  String get sets => 'セット';
-
-  @override
-  String get menuName => '種目名を記入';
-
-  @override
-  String get calendar => 'カレンダー';
-
-  @override
-  String get noRecordMessage => '選択された日付には記録がありません。';
-
-  @override
-  String get weightUnit => '重量単位';
-
-  @override
-  String get lbs => 'lbs';
-
-  @override
-  String get deleteMenuConfirmationTitle => '種目を削除しますか？';
-
-  @override
-  String get cancel => 'キャンセル';
-
-  @override
-  String get delete => '削除';
-
-  @override
-  String get addExercisePlaceholder => '種目を追加';
-
-  @override
-  String get time => '時間';
-
-  @override
-  String get minutesHint => '分';
-
-  @override
-  String get secondsHint => '秒';
-
-  @override
-  String get graph => 'グラフ';
-
-  @override
-  String get favorites => 'お気に入り';
+  String get exercise => '種目';
 
   @override
   String get selectExercise => '種目を選択';
 
   @override
-  String get noGraphData => '記録がありません';
-
-  @override
-  String get graphScreenTitle => 'グラフ';
-
-  @override
-  String favorited(Object menuName) {
-    return '$menuNameをお気に入りに登録しました';
-  }
-
-  @override
-  String unfavorited(Object menuName) {
-    return '$menuNameのお気に入りを解除しました';
-  }
-
-  @override
-  String get dayDisplay => '日';
-
-  @override
-  String get weekDisplay => '週';
-
-  @override
-  String get distance => '距離';
-
-  @override
-  String get km => 'km';
-
-  @override
-  String get m => 'm';
-
-  @override
-  String get bodyWeight => '体重';
-
-  @override
-  String get enterYourWeight => '体重を入力';
-
-  @override
-  String get bodyWeightTracking => '体重管理';
-
-  @override
-  String get selectBodyParts => '表示する部位を選択';
-
-  @override
-  String get unit => '単位';
-
-  @override
-  String get defaultSets => '初期セット数';
+  String get menuName => '種目名を記入';
 
   @override
   String get menuNameHint => '種目名を入力';
 
   @override
-  String get durationHint => '時間:分';
+  String get addExercisePlaceholder => '種目を追加';
 
   @override
-  String get minutes => '分';
-
-  @override
-  String get recordScreenTitle => '記録';
-
-  @override
-  String get calendarScreenTitle => 'カレンダー';
-
-  @override
-  String get settingsScreenTitle => '設定';
+  String get addExercise => '＋種目';
 
   @override
   String get addMenu => '種目を追加';
 
   @override
-  String get exercise => '種目';
+  String get addSet => '＋セット';
+
+  @override
+  String get openAddMenu => '追加メニューを開く';
 
   @override
   String get partAlreadySelected => 'この部位はすでに選択されています。';
 
   @override
+  String get setCount => 'セット数';
+
+  @override
+  String get defaultSets => '初期セット数';
+
+  @override
+  String get enterYourWeight => '体重を入力';
+
+  @override
+  String get bodyWeight => '体重';
+
+  @override
+  String get bodyWeightTracking => '体重管理';
+
+  @override
+  String get durationHint => '時間:分';
+
+  @override
   String get distanceHint => '距離を入力';
 
   @override
-  String get pace => 'ペース';
+  String get noRecordMessage => '選択された日付には記録がありません。';
 
   @override
-  String get selectPartPlaceholder => '部位を選択';
+  String get coachBubbleSemantic => 'ヒント';
+
+  @override
+  String get hintRecordSelectPart => 'トレーニングする部位を選択してください。';
+
+  @override
+  String get hintRecordExerciseField => 'ここに種目名を入力します。';
+
+  @override
+  String get hintRecordAddExercise => 'ここをタップして種目を追加します。';
+
+  @override
+  String get hintRecordChangePart => 'ここから部位を追加できます。';
+
+  @override
+  String get hintRecordOpenSettings => 'セット数の初期値は設定から変更できます。';
+
+  @override
+  String get hintRecordFab => 'ここからセット・種目・部位を追加できます';
 
   @override
   String get hintCalendarTapDate => '記録する日付を選択';
@@ -235,89 +280,26 @@ class AppLocalizationsJa extends AppLocalizations {
   String get hintGraphSelectPart => '部位・種目を選択';
 
   @override
-  String get hintRecordSelectPart => 'トレーニングする部位を選択してください。';
+  String get discardLongPressLabel => '破棄（長押し）';
 
   @override
-  String get coachBubbleSemantic => 'ヒント';
+  String get dayDisplay => '日';
 
   @override
-  String get hintRecordOpenSettings => 'セット数の初期値は設定から変更できます。';
+  String get weekDisplay => '週';
 
   @override
-  String get hintRecordExerciseField => 'ここに種目名を入力します。';
+  String get noGraphData => '記録がありません';
 
   @override
-  String get hintRecordAddExercise => 'ここをタップして種目を追加します。';
-
-  @override
-  String get hintRecordChangePart => 'ここから部位を追加できます。';
-
-  @override
-  String get addSet => '＋セット';
-
-  @override
-  String get openAddMenu => '追加メニューを開く';
-
-  @override
-  String get hintRecordFab => 'ここからセット・種目・部位を追加できます';
-
-  @override
-  String get settingsStopwatchTimerVisibility => 'ストップウォッチ/タイマー表示';
-
-  @override
-  String get changeSetCount => 'セット数の変更';
-
-  @override
-  String get themeTitle => 'テーマ';
-
-  @override
-  String get unitTitle => '単位';
-
-  @override
-  String get useDarkMode => 'ダークモード';
-
-  @override
-  String get enterGoal => '目標値';
-
-  @override
-  String get start => '開始';
-
-  @override
-  String get pause => '一時停止';
-
-  @override
-  String get reset => 'リセット';
-
-  @override
-  String get timerTime => 'タイマー時間';
-
-  @override
-  String get tapNumberToEdit => '数字タップで編集';
-
-  @override
-  String targetFmt(Object hint, Object time) {
-    return '目標 $time（$hint）';
+  String favorited(Object menuName) {
+    return '$menuNameをお気に入りに登録しました';
   }
 
   @override
-  String get statusRunning => '計測中';
-
-  @override
-  String get statusIdle => '待機中';
-
-  @override
-  String get stopwatch => 'ストップウォッチ';
-
-  @override
-  String get timer => 'タイマー';
-
-  @override
-  String hours(Object hours) {
-    return '$hours時間';
+  String unfavorited(Object menuName) {
+    return '$menuNameのお気に入りを解除しました';
   }
-
-  @override
-  String get saved => '保存しました';
 
   @override
   String get addPhoto => '＋写真';
@@ -327,6 +309,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get actionTakePhoto => '写真を撮影';
+
+  @override
+  String get progressSnaps => '進捗スナップ';
 
   @override
   String get mediaReachedDailyCap => '今日の保存上限に達しました';
@@ -344,10 +329,43 @@ class AppLocalizationsJa extends AppLocalizations {
   String get mediaCancel => 'キャンセル';
 
   @override
-  String get albumTitle => 'アルバム';
+  String get mediaUndo => '元に戻す';
 
   @override
-  String get mediaUndo => '元に戻す';
+  String get photoLoadFailed => '画像を読み込めませんでした';
+
+  @override
+  String get discardPhotoConfirmTitle => 'この写真を破棄しますか？';
+
+  @override
+  String get settings => '設定';
+
+  @override
+  String get themeMode => 'テーマ';
+
+  @override
+  String get themeTitle => 'テーマ';
+
+  @override
+  String get light => 'ライト';
+
+  @override
+  String get dark => 'ダーク';
+
+  @override
+  String get systemDefault => 'システムデフォルト';
+
+  @override
+  String get useDarkMode => 'ダークモード';
+
+  @override
+  String get selectBodyParts => '表示する部位を選択';
+
+  @override
+  String get changeSetCount => 'セット数の変更';
+
+  @override
+  String get settingsStopwatchTimerVisibility => 'ストップウォッチ/タイマー表示';
 
   @override
   String get settingsDailyMediaCap => '1日の写真上限';
@@ -368,9 +386,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get limitOff => '上限なし';
 
   @override
-  String get perDayUnit => '枚/日';
-
-  @override
   String get autoPausedIdle5h => '無操作が5時間続いたため一時停止しました';
 
   @override
@@ -380,8 +395,20 @@ class AppLocalizationsJa extends AppLocalizations {
   String get autoPausedBackground30m => 'アプリが30分以上バックグラウンドのため一時停止しました';
 
   @override
-  String get resume => '再開';
+  String get partLimitReached => '部位は10個までしか追加できません。';
 
   @override
-  String get progressSnaps => '進捗スナップ';
+  String get exerciseLimitReached => '種目は15個までしか追加できません。';
+
+  @override
+  String get time => '時間';
+
+  @override
+  String get enterGoal => '目標値';
+
+  @override
+  String get deleteMenuConfirmationTitle => '種目を削除しますか？';
+
+  @override
+  String get addPart => '＋部位';
 }

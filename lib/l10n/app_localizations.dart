@@ -101,41 +101,281 @@ abstract class AppLocalizations {
   /// **'T-Training Record'**
   String get appTitle;
 
-  /// No description provided for @selectTrainingPart.
+  /// No description provided for @calendar.
   ///
   /// In en, this message translates to:
-  /// **'Select Training Part'**
-  String get selectTrainingPart;
+  /// **'calendar'**
+  String get calendar;
 
-  /// No description provided for @addPart.
+  /// No description provided for @graph.
   ///
   /// In en, this message translates to:
-  /// **'+ Part'**
-  String get addPart;
+  /// **'graph'**
+  String get graph;
 
-  /// No description provided for @addExercise.
+  /// No description provided for @favorites.
   ///
   /// In en, this message translates to:
-  /// **'+ Exercise'**
-  String get addExercise;
+  /// **'favorites'**
+  String get favorites;
 
-  /// No description provided for @partLimitReached.
+  /// No description provided for @recordScreenTitle.
   ///
   /// In en, this message translates to:
-  /// **'You can add up to 10 parts.'**
-  String get partLimitReached;
+  /// **'Record'**
+  String get recordScreenTitle;
 
-  /// No description provided for @exerciseLimitReached.
+  /// No description provided for @calendarScreenTitle.
   ///
   /// In en, this message translates to:
-  /// **'You can add up to 15 exercises.'**
-  String get exerciseLimitReached;
+  /// **'Calendar'**
+  String get calendarScreenTitle;
 
-  /// No description provided for @settings.
+  /// No description provided for @settingsScreenTitle.
   ///
   /// In en, this message translates to:
   /// **'Settings'**
-  String get settings;
+  String get settingsScreenTitle;
+
+  /// No description provided for @graphScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Graph'**
+  String get graphScreenTitle;
+
+  /// No description provided for @albumTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Album'**
+  String get albumTitle;
+
+  /// No description provided for @start.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get start;
+
+  /// No description provided for @pause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get pause;
+
+  /// No description provided for @reset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get reset;
+
+  /// No description provided for @saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get saved;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @discard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get discard;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @yes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get yes;
+
+  /// No description provided for @no.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get no;
+
+  /// No description provided for @resume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get resume;
+
+  /// No description provided for @openSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get openSettings;
+
+  /// No description provided for @cameraPermissionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enable camera permission'**
+  String get cameraPermissionRequired;
+
+  /// No description provided for @stopwatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopwatch'**
+  String get stopwatch;
+
+  /// No description provided for @timer.
+  ///
+  /// In en, this message translates to:
+  /// **'Timer'**
+  String get timer;
+
+  /// No description provided for @timerTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Timer duration'**
+  String get timerTime;
+
+  /// No description provided for @tapNumberToEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap numbers to edit'**
+  String get tapNumberToEdit;
+
+  /// No description provided for @targetFmt.
+  ///
+  /// In en, this message translates to:
+  /// **'Target {time} ({hint})'**
+  String targetFmt(Object hint, Object time);
+
+  /// No description provided for @statusRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get statusRunning;
+
+  /// No description provided for @statusIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get statusIdle;
+
+  /// No description provided for @hours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h'**
+  String hours(Object hours);
+
+  /// No description provided for @kg.
+  ///
+  /// In en, this message translates to:
+  /// **'kg'**
+  String get kg;
+
+  /// No description provided for @lbs.
+  ///
+  /// In en, this message translates to:
+  /// **'lbs'**
+  String get lbs;
+
+  /// No description provided for @unit.
+  ///
+  /// In en, this message translates to:
+  /// **'unit'**
+  String get unit;
+
+  /// No description provided for @unitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get unitTitle;
+
+  /// No description provided for @weightUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight Unit'**
+  String get weightUnit;
+
+  /// No description provided for @min.
+  ///
+  /// In en, this message translates to:
+  /// **'min'**
+  String get min;
+
+  /// No description provided for @sec.
+  ///
+  /// In en, this message translates to:
+  /// **'sec'**
+  String get sec;
+
+  /// No description provided for @minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'min'**
+  String get minutes;
+
+  /// No description provided for @minutesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Min'**
+  String get minutesHint;
+
+  /// No description provided for @secondsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sec'**
+  String get secondsHint;
+
+  /// No description provided for @sets.
+  ///
+  /// In en, this message translates to:
+  /// **'sets'**
+  String get sets;
+
+  /// No description provided for @reps.
+  ///
+  /// In en, this message translates to:
+  /// **'reps'**
+  String get reps;
+
+  /// No description provided for @distance.
+  ///
+  /// In en, this message translates to:
+  /// **'distance'**
+  String get distance;
+
+  /// No description provided for @km.
+  ///
+  /// In en, this message translates to:
+  /// **'km'**
+  String get km;
+
+  /// No description provided for @m.
+  ///
+  /// In en, this message translates to:
+  /// **'m'**
+  String get m;
+
+  /// No description provided for @pace.
+  ///
+  /// In en, this message translates to:
+  /// **'Pace'**
+  String get pace;
+
+  /// No description provided for @perDayUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'photos/day'**
+  String get perDayUnit;
 
   /// No description provided for @trainingParts.
   ///
@@ -143,35 +383,17 @@ abstract class AppLocalizations {
   /// **'Training Parts'**
   String get trainingParts;
 
-  /// No description provided for @setCount.
+  /// No description provided for @selectTrainingPart.
   ///
   /// In en, this message translates to:
-  /// **'Set Count'**
-  String get setCount;
+  /// **'Select Training Part'**
+  String get selectTrainingPart;
 
-  /// No description provided for @themeMode.
+  /// No description provided for @selectPartPlaceholder.
   ///
   /// In en, this message translates to:
-  /// **'Theme Mode'**
-  String get themeMode;
-
-  /// No description provided for @light.
-  ///
-  /// In en, this message translates to:
-  /// **'Light'**
-  String get light;
-
-  /// No description provided for @dark.
-  ///
-  /// In en, this message translates to:
-  /// **'Dark'**
-  String get dark;
-
-  /// No description provided for @systemDefault.
-  ///
-  /// In en, this message translates to:
-  /// **'System Default'**
-  String get systemDefault;
+  /// **'Select part'**
+  String get selectPartPlaceholder;
 
   /// No description provided for @aerobicExercise.
   ///
@@ -233,119 +455,11 @@ abstract class AppLocalizations {
   /// **'Other 3'**
   String get other3;
 
-  /// No description provided for @kg.
+  /// No description provided for @exercise.
   ///
   /// In en, this message translates to:
-  /// **'kg'**
-  String get kg;
-
-  /// No description provided for @reps.
-  ///
-  /// In en, this message translates to:
-  /// **'reps'**
-  String get reps;
-
-  /// No description provided for @min.
-  ///
-  /// In en, this message translates to:
-  /// **'min'**
-  String get min;
-
-  /// No description provided for @sec.
-  ///
-  /// In en, this message translates to:
-  /// **'sec'**
-  String get sec;
-
-  /// No description provided for @sets.
-  ///
-  /// In en, this message translates to:
-  /// **'sets'**
-  String get sets;
-
-  /// No description provided for @menuName.
-  ///
-  /// In en, this message translates to:
-  /// **'Menu Name'**
-  String get menuName;
-
-  /// No description provided for @calendar.
-  ///
-  /// In en, this message translates to:
-  /// **'calendar'**
-  String get calendar;
-
-  /// No description provided for @noRecordMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'No records found for the selected date.'**
-  String get noRecordMessage;
-
-  /// No description provided for @weightUnit.
-  ///
-  /// In en, this message translates to:
-  /// **'Weight Unit'**
-  String get weightUnit;
-
-  /// No description provided for @lbs.
-  ///
-  /// In en, this message translates to:
-  /// **'lbs'**
-  String get lbs;
-
-  /// No description provided for @deleteMenuConfirmationTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete Exercise?'**
-  String get deleteMenuConfirmationTitle;
-
-  /// No description provided for @cancel.
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get cancel;
-
-  /// No description provided for @delete.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete'**
-  String get delete;
-
-  /// No description provided for @addExercisePlaceholder.
-  ///
-  /// In en, this message translates to:
-  /// **'Add exercise'**
-  String get addExercisePlaceholder;
-
-  /// No description provided for @time.
-  ///
-  /// In en, this message translates to:
-  /// **'Time'**
-  String get time;
-
-  /// No description provided for @minutesHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Min'**
-  String get minutesHint;
-
-  /// No description provided for @secondsHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Sec'**
-  String get secondsHint;
-
-  /// No description provided for @graph.
-  ///
-  /// In en, this message translates to:
-  /// **'graph'**
-  String get graph;
-
-  /// No description provided for @favorites.
-  ///
-  /// In en, this message translates to:
-  /// **'favorites'**
-  String get favorites;
+  /// **'Exercise'**
+  String get exercise;
 
   /// No description provided for @selectExercise.
   ///
@@ -353,95 +467,11 @@ abstract class AppLocalizations {
   /// **'Select Exercise'**
   String get selectExercise;
 
-  /// No description provided for @noGraphData.
+  /// No description provided for @menuName.
   ///
   /// In en, this message translates to:
-  /// **'No records found'**
-  String get noGraphData;
-
-  /// No description provided for @graphScreenTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Graph'**
-  String get graphScreenTitle;
-
-  /// No description provided for @favorited.
-  ///
-  /// In en, this message translates to:
-  /// **'{menuName} added to favorites'**
-  String favorited(Object menuName);
-
-  /// No description provided for @unfavorited.
-  ///
-  /// In en, this message translates to:
-  /// **'{menuName} removed from favorites'**
-  String unfavorited(Object menuName);
-
-  /// No description provided for @dayDisplay.
-  ///
-  /// In en, this message translates to:
-  /// **'Day'**
-  String get dayDisplay;
-
-  /// No description provided for @weekDisplay.
-  ///
-  /// In en, this message translates to:
-  /// **'Week'**
-  String get weekDisplay;
-
-  /// No description provided for @distance.
-  ///
-  /// In en, this message translates to:
-  /// **'distance'**
-  String get distance;
-
-  /// No description provided for @km.
-  ///
-  /// In en, this message translates to:
-  /// **'km'**
-  String get km;
-
-  /// No description provided for @m.
-  ///
-  /// In en, this message translates to:
-  /// **'m'**
-  String get m;
-
-  /// No description provided for @bodyWeight.
-  ///
-  /// In en, this message translates to:
-  /// **'Body weight'**
-  String get bodyWeight;
-
-  /// No description provided for @enterYourWeight.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter your weight'**
-  String get enterYourWeight;
-
-  /// No description provided for @bodyWeightTracking.
-  ///
-  /// In en, this message translates to:
-  /// **'Body Weight Tracking'**
-  String get bodyWeightTracking;
-
-  /// No description provided for @selectBodyParts.
-  ///
-  /// In en, this message translates to:
-  /// **'Select body parts to display'**
-  String get selectBodyParts;
-
-  /// No description provided for @unit.
-  ///
-  /// In en, this message translates to:
-  /// **'unit'**
-  String get unit;
-
-  /// No description provided for @defaultSets.
-  ///
-  /// In en, this message translates to:
-  /// **'Default Sets'**
-  String get defaultSets;
+  /// **'Menu Name'**
+  String get menuName;
 
   /// No description provided for @menuNameHint.
   ///
@@ -449,35 +479,17 @@ abstract class AppLocalizations {
   /// **'Enter menu name'**
   String get menuNameHint;
 
-  /// No description provided for @durationHint.
+  /// No description provided for @addExercisePlaceholder.
   ///
   /// In en, this message translates to:
-  /// **'min:sec'**
-  String get durationHint;
+  /// **'Add exercise'**
+  String get addExercisePlaceholder;
 
-  /// No description provided for @minutes.
+  /// No description provided for @addExercise.
   ///
   /// In en, this message translates to:
-  /// **'min'**
-  String get minutes;
-
-  /// No description provided for @recordScreenTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Record'**
-  String get recordScreenTitle;
-
-  /// No description provided for @calendarScreenTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Calendar'**
-  String get calendarScreenTitle;
-
-  /// No description provided for @settingsScreenTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Settings'**
-  String get settingsScreenTitle;
+  /// **'+ Exercise'**
+  String get addExercise;
 
   /// No description provided for @addMenu.
   ///
@@ -485,11 +497,17 @@ abstract class AppLocalizations {
   /// **'Add Menu'**
   String get addMenu;
 
-  /// No description provided for @exercise.
+  /// No description provided for @addSet.
   ///
   /// In en, this message translates to:
-  /// **'Exercise'**
-  String get exercise;
+  /// **'+ Set'**
+  String get addSet;
+
+  /// No description provided for @openAddMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Open add menu'**
+  String get openAddMenu;
 
   /// No description provided for @partAlreadySelected.
   ///
@@ -497,23 +515,95 @@ abstract class AppLocalizations {
   /// **'This part is already selected.'**
   String get partAlreadySelected;
 
+  /// No description provided for @setCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Count'**
+  String get setCount;
+
+  /// No description provided for @defaultSets.
+  ///
+  /// In en, this message translates to:
+  /// **'Default Sets'**
+  String get defaultSets;
+
+  /// No description provided for @enterYourWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your weight'**
+  String get enterYourWeight;
+
+  /// No description provided for @bodyWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Body weight'**
+  String get bodyWeight;
+
+  /// No description provided for @bodyWeightTracking.
+  ///
+  /// In en, this message translates to:
+  /// **'Body Weight Tracking'**
+  String get bodyWeightTracking;
+
+  /// No description provided for @durationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'min:sec'**
+  String get durationHint;
+
   /// No description provided for @distanceHint.
   ///
   /// In en, this message translates to:
   /// **'Enter distance'**
   String get distanceHint;
 
-  /// No description provided for @pace.
+  /// No description provided for @noRecordMessage.
   ///
   /// In en, this message translates to:
-  /// **'Pace'**
-  String get pace;
+  /// **'No records found for the selected date.'**
+  String get noRecordMessage;
 
-  /// No description provided for @selectPartPlaceholder.
+  /// No description provided for @coachBubbleSemantic.
   ///
   /// In en, this message translates to:
-  /// **'Select part'**
-  String get selectPartPlaceholder;
+  /// **'Hint'**
+  String get coachBubbleSemantic;
+
+  /// No description provided for @hintRecordSelectPart.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select the body part you will train.'**
+  String get hintRecordSelectPart;
+
+  /// No description provided for @hintRecordExerciseField.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter exercise name here.'**
+  String get hintRecordExerciseField;
+
+  /// No description provided for @hintRecordAddExercise.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap here to add the exercise.'**
+  String get hintRecordAddExercise;
+
+  /// No description provided for @hintRecordChangePart.
+  ///
+  /// In en, this message translates to:
+  /// **'You can add another body part here.'**
+  String get hintRecordChangePart;
+
+  /// No description provided for @hintRecordOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'You can change default sets in Settings.'**
+  String get hintRecordOpenSettings;
+
+  /// No description provided for @hintRecordFab.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a set, exercise, or body part from here'**
+  String get hintRecordFab;
 
   /// No description provided for @hintCalendarTapDate.
   ///
@@ -539,167 +629,41 @@ abstract class AppLocalizations {
   /// **'Select body part and exercise.'**
   String get hintGraphSelectPart;
 
-  /// No description provided for @hintRecordSelectPart.
+  /// No description provided for @discardLongPressLabel.
   ///
   /// In en, this message translates to:
-  /// **'Please select the body part you will train.'**
-  String get hintRecordSelectPart;
+  /// **'Discard (long press)'**
+  String get discardLongPressLabel;
 
-  /// No description provided for @coachBubbleSemantic.
+  /// No description provided for @dayDisplay.
   ///
   /// In en, this message translates to:
-  /// **'Hint'**
-  String get coachBubbleSemantic;
+  /// **'Day'**
+  String get dayDisplay;
 
-  /// No description provided for @hintRecordOpenSettings.
+  /// No description provided for @weekDisplay.
   ///
   /// In en, this message translates to:
-  /// **'You can change default sets in Settings.'**
-  String get hintRecordOpenSettings;
+  /// **'Week'**
+  String get weekDisplay;
 
-  /// No description provided for @hintRecordExerciseField.
+  /// No description provided for @noGraphData.
   ///
   /// In en, this message translates to:
-  /// **'Enter exercise name here.'**
-  String get hintRecordExerciseField;
+  /// **'No records found'**
+  String get noGraphData;
 
-  /// No description provided for @hintRecordAddExercise.
+  /// No description provided for @favorited.
   ///
   /// In en, this message translates to:
-  /// **'Tap here to add the exercise.'**
-  String get hintRecordAddExercise;
+  /// **'{menuName} added to favorites'**
+  String favorited(Object menuName);
 
-  /// No description provided for @hintRecordChangePart.
+  /// No description provided for @unfavorited.
   ///
   /// In en, this message translates to:
-  /// **'You can add another body part here.'**
-  String get hintRecordChangePart;
-
-  /// No description provided for @addSet.
-  ///
-  /// In en, this message translates to:
-  /// **'+ Set'**
-  String get addSet;
-
-  /// No description provided for @openAddMenu.
-  ///
-  /// In en, this message translates to:
-  /// **'Open add menu'**
-  String get openAddMenu;
-
-  /// No description provided for @hintRecordFab.
-  ///
-  /// In en, this message translates to:
-  /// **'Add a set, exercise, or body part from here'**
-  String get hintRecordFab;
-
-  /// No description provided for @settingsStopwatchTimerVisibility.
-  ///
-  /// In en, this message translates to:
-  /// **'Show Stopwatch/Timer'**
-  String get settingsStopwatchTimerVisibility;
-
-  /// No description provided for @changeSetCount.
-  ///
-  /// In en, this message translates to:
-  /// **'Change Set Count'**
-  String get changeSetCount;
-
-  /// No description provided for @themeTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Theme'**
-  String get themeTitle;
-
-  /// No description provided for @unitTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Unit'**
-  String get unitTitle;
-
-  /// No description provided for @useDarkMode.
-  ///
-  /// In en, this message translates to:
-  /// **'dark mode'**
-  String get useDarkMode;
-
-  /// No description provided for @enterGoal.
-  ///
-  /// In en, this message translates to:
-  /// **'Goal'**
-  String get enterGoal;
-
-  /// No description provided for @start.
-  ///
-  /// In en, this message translates to:
-  /// **'Start'**
-  String get start;
-
-  /// No description provided for @pause.
-  ///
-  /// In en, this message translates to:
-  /// **'Pause'**
-  String get pause;
-
-  /// No description provided for @reset.
-  ///
-  /// In en, this message translates to:
-  /// **'Reset'**
-  String get reset;
-
-  /// No description provided for @timerTime.
-  ///
-  /// In en, this message translates to:
-  /// **'Timer duration'**
-  String get timerTime;
-
-  /// No description provided for @tapNumberToEdit.
-  ///
-  /// In en, this message translates to:
-  /// **'Tap numbers to edit'**
-  String get tapNumberToEdit;
-
-  /// No description provided for @targetFmt.
-  ///
-  /// In en, this message translates to:
-  /// **'Target {time} ({hint})'**
-  String targetFmt(Object hint, Object time);
-
-  /// No description provided for @statusRunning.
-  ///
-  /// In en, this message translates to:
-  /// **'Running'**
-  String get statusRunning;
-
-  /// No description provided for @statusIdle.
-  ///
-  /// In en, this message translates to:
-  /// **'Idle'**
-  String get statusIdle;
-
-  /// No description provided for @stopwatch.
-  ///
-  /// In en, this message translates to:
-  /// **'Stopwatch'**
-  String get stopwatch;
-
-  /// No description provided for @timer.
-  ///
-  /// In en, this message translates to:
-  /// **'Timer'**
-  String get timer;
-
-  /// No description provided for @hours.
-  ///
-  /// In en, this message translates to:
-  /// **'{hours}h'**
-  String hours(Object hours);
-
-  /// No description provided for @saved.
-  ///
-  /// In en, this message translates to:
-  /// **'Saved'**
-  String get saved;
+  /// **'{menuName} removed from favorites'**
+  String unfavorited(Object menuName);
 
   /// No description provided for @addPhoto.
   ///
@@ -718,6 +682,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Take photo'**
   String get actionTakePhoto;
+
+  /// No description provided for @progressSnaps.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress snaps'**
+  String get progressSnaps;
 
   /// No description provided for @mediaReachedDailyCap.
   ///
@@ -749,17 +719,83 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get mediaCancel;
 
-  /// No description provided for @albumTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Album'**
-  String get albumTitle;
-
   /// No description provided for @mediaUndo.
   ///
   /// In en, this message translates to:
   /// **'Undo'**
   String get mediaUndo;
+
+  /// No description provided for @photoLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the image'**
+  String get photoLoadFailed;
+
+  /// No description provided for @discardPhotoConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard this photo?'**
+  String get discardPhotoConfirmTitle;
+
+  /// No description provided for @settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settings;
+
+  /// No description provided for @themeMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme Mode'**
+  String get themeMode;
+
+  /// No description provided for @themeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get themeTitle;
+
+  /// No description provided for @light.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get light;
+
+  /// No description provided for @dark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get dark;
+
+  /// No description provided for @systemDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'System Default'**
+  String get systemDefault;
+
+  /// No description provided for @useDarkMode.
+  ///
+  /// In en, this message translates to:
+  /// **'dark mode'**
+  String get useDarkMode;
+
+  /// No description provided for @selectBodyParts.
+  ///
+  /// In en, this message translates to:
+  /// **'Select body parts to display'**
+  String get selectBodyParts;
+
+  /// No description provided for @changeSetCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Set Count'**
+  String get changeSetCount;
+
+  /// No description provided for @settingsStopwatchTimerVisibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Stopwatch/Timer'**
+  String get settingsStopwatchTimerVisibility;
 
   /// No description provided for @settingsDailyMediaCap.
   ///
@@ -797,12 +833,6 @@ abstract class AppLocalizations {
   /// **'No limit'**
   String get limitOff;
 
-  /// No description provided for @perDayUnit.
-  ///
-  /// In en, this message translates to:
-  /// **'photos/day'**
-  String get perDayUnit;
-
   /// No description provided for @autoPausedIdle5h.
   ///
   /// In en, this message translates to:
@@ -821,17 +851,41 @@ abstract class AppLocalizations {
   /// **'Paused after 30+ minutes in background'**
   String get autoPausedBackground30m;
 
-  /// No description provided for @resume.
+  /// No description provided for @partLimitReached.
   ///
   /// In en, this message translates to:
-  /// **'Resume'**
-  String get resume;
+  /// **'You can add up to 10 parts.'**
+  String get partLimitReached;
 
-  /// No description provided for @progressSnaps.
+  /// No description provided for @exerciseLimitReached.
   ///
   /// In en, this message translates to:
-  /// **'Progress snaps'**
-  String get progressSnaps;
+  /// **'You can add up to 15 exercises.'**
+  String get exerciseLimitReached;
+
+  /// No description provided for @time.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get time;
+
+  /// No description provided for @enterGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal'**
+  String get enterGoal;
+
+  /// No description provided for @deleteMenuConfirmationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Exercise?'**
+  String get deleteMenuConfirmationTitle;
+
+  /// No description provided for @addPart.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Part'**
+  String get addPart;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

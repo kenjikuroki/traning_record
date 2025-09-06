@@ -32,8 +32,8 @@ Future<bool> _ensureCameraPermission(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
     showAppSnack(
       context,
-      l10n.actionTakePhoto, // 「カメラ権限を有効にしてください」等に差し替え可
-      actionLabel: 'Open Settings',
+      l10n.cameraPermissionRequired, // ローカライズ
+      actionLabel: l10n.openSettings, // ローカライズ
       onAction: () => openAppSettings(),
     );
   }
@@ -1240,7 +1240,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         title: Text(l10n.deleteMenuConfirmationTitle),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel)),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.delete, style: const TextStyle(color: Colors.red))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.delete, style: const TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -1410,7 +1412,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         final resp = await _imagePicker.retrieveLostData();
         if (!resp.isEmpty) {
           if (resp.file != null) {
-            debugPrint('[PHOTO] recovered (try=$i) ${resp.file!.path}');
+            debugPrint('[PHOTO] recovered (try=${i}) ${resp.file!.path}');
             await _saveAndAppendXFile(resp.file!);
             return true;
           }
@@ -1717,7 +1719,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       color: cs.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       elevation: 1.0,
-      child: Padding(
+      child: Padding( // ← ここを const じゃなくす
         padding: const EdgeInsets.all(8.0),
         child: StopwatchWidget(
           controller: _swController,
@@ -1878,7 +1880,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                           constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                                           child: TextField(
                                             controller: _weightController,
-                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                            keyboardType:
+                                            const TextInputType.numberWithOptions(decimal: true),
                                             inputFormatters: [
                                               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                                             ],
@@ -1887,7 +1890,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                             decoration: InputDecoration(
                                               isDense: true,
                                               hintText: '',
-                                              hintStyle: TextStyle(color: colorScheme.onSurfaceVariant.withOpacity(0.5)),
+                                              hintStyle: TextStyle(
+                                                  color: colorScheme.onSurfaceVariant.withOpacity(0.5)),
                                               filled: false,
                                               enabledBorder: UnderlineInputBorder(
                                                 borderSide: BorderSide(
@@ -1901,7 +1905,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                   width: 2,
                                                 ),
                                               ),
-                                              contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                                              contentPadding:
+                                              const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                                             ),
                                           ),
                                         ),
@@ -2051,13 +2056,16 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                 setCount: section.setInputDataList[menuIndex].length,
                                                 setInputDataList: section.setInputDataList[menuIndex],
                                                 isAerobic: section.selectedPart == l10n.aerobicExercise,
-                                                distanceController: (menuIndex < section.aerobicDistanceCtrls.length)
+                                                distanceController:
+                                                (menuIndex < section.aerobicDistanceCtrls.length)
                                                     ? section.aerobicDistanceCtrls[menuIndex]
                                                     : TextEditingController(),
-                                                durationController: (menuIndex < section.aerobicDurationCtrls.length)
+                                                durationController:
+                                                (menuIndex < section.aerobicDurationCtrls.length)
                                                     ? section.aerobicDurationCtrls[menuIndex]
                                                     : TextEditingController(),
-                                                aerobicIsSuggestion: (menuIndex < section.aerobicSuggestFlags.length)
+                                                aerobicIsSuggestion:
+                                                (menuIndex < section.aerobicSuggestFlags.length)
                                                     ? section.aerobicSuggestFlags[menuIndex]
                                                     : true,
                                                 onConfirmAerobic: () {
@@ -2070,7 +2078,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                                 onAnyFieldFocused: () {
                                                   _touchCard(secIndex, menuIndex);
                                                   final k = section.nameFieldKeys[menuIndex];
-                                                  _scrollIntoComfortZoneAfterKeyboard(k, pivot: 0.0, topExtra: 28);
+                                                  _scrollIntoComfortZoneAfterKeyboard(k,
+                                                      pivot: 0.0, topExtra: 28);
                                                 },
                                                 onNameChanged: (prevEmpty, nowEmpty) {},
                                               ),
@@ -2714,8 +2723,8 @@ class _MenuListState extends State<MenuList> {
                               isDense: true,
                               filled: false,
                               enabledBorder: UnderlineInputBorder(
-                                borderSide:
-                                BorderSide(color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
+                                borderSide: BorderSide(
+                                    color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
                               ),
                               focusedBorder: UnderlineInputBorder(
                                 borderSide: BorderSide(color: colorScheme.primary, width: 2),
@@ -2729,7 +2738,9 @@ class _MenuListState extends State<MenuList> {
                     ),
                     Text(' ${l10n.km} ',
                         style: TextStyle(
-                            color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold)),
                     Expanded(
                       flex: 2,
                       child: Focus(
@@ -2755,8 +2766,8 @@ class _MenuListState extends State<MenuList> {
                               isDense: true,
                               filled: false,
                               enabledBorder: UnderlineInputBorder(
-                                borderSide:
-                                BorderSide(color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
+                                borderSide: BorderSide(
+                                    color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
                               ),
                               focusedBorder: UnderlineInputBorder(
                                 borderSide: BorderSide(color: colorScheme.primary, width: 2),
@@ -2770,7 +2781,9 @@ class _MenuListState extends State<MenuList> {
                     ),
                     Text(' ${l10n.m}',
                         style: TextStyle(
-                            color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold)),
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -2830,7 +2843,9 @@ class _MenuListState extends State<MenuList> {
                     ),
                     Text(' ${l10n.min} ',
                         style: TextStyle(
-                            color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold)),
                     // 秒
                     Expanded(
                       flex: 2,
@@ -2877,8 +2892,8 @@ class _MenuListState extends State<MenuList> {
                       ),
                     ),
                     Text(' ${l10n.sec}',
-                        style:
-                        TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
+                        style: TextStyle(
+                            color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ],
@@ -3013,13 +3028,14 @@ class _PhotoPreviewPage extends StatelessWidget {
   const _PhotoPreviewPage({required this.imagePath});
 
   Future<void> _confirmDiscard(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('写真を破棄しますか？'),
+        title: Text(l10n.discardPhotoConfirmTitle),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('いいえ')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('はい')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.no)),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.yes)),
         ],
       ),
     );
@@ -3030,6 +3046,7 @@ class _PhotoPreviewPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final file = File(imagePath);
     final bottom = MediaQuery.of(context).padding.bottom;
 
@@ -3042,7 +3059,7 @@ class _PhotoPreviewPage extends StatelessWidget {
               child: Center(
                 child: file.existsSync()
                     ? Image.file(file, fit: BoxFit.contain)
-                    : const Text('画像を読み込めませんでした', style: TextStyle(color: Colors.white)),
+                    : Text(l10n.photoLoadFailed, style: const TextStyle(color: Colors.white)),
               ),
             ),
             Positioned(
@@ -3054,14 +3071,14 @@ class _PhotoPreviewPage extends StatelessWidget {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => _confirmDiscard(context),
-                      child: const Text('破棄'),
+                      child: Text(l10n.discard),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => Navigator.of(context).pop(_QuickReview.save),
-                      child: const Text('保存'),
+                      child: Text(l10n.save),
                     ),
                   ),
                 ],
