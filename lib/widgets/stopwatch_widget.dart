@@ -865,19 +865,18 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
 
   String _humanize(BuildContext context, Duration d) {
     final l10n = AppLocalizations.of(context)!;
-    final locale = Localizations.localeOf(context);
-    final isJa = locale.languageCode.toLowerCase() == 'ja';
 
     final h = d.inHours;
     final m = d.inMinutes % 60;
 
-    final hourUnit = isJa ? '時間' : 'h';
-    final minuteUnit = l10n.minutes; // 既存の minutes を単位として使用
+    // h 部分は l10n.hours(...) を使用（ja: "X時間", en: "Xh"）
+    final String? hPart = h > 0 ? l10n.hours(h) : null;
+    // m 部分は "分/min" をローカライズ文字列で連結
+    final String? mPart = m > 0 ? '${m}${l10n.minutes}' : null;
 
-    if (h > 0) {
-      return m > 0 ? '$h$hourUnit $m$minuteUnit' : '$h$hourUnit';
-    }
-    return '$m$minuteUnit';
+    if (hPart != null && mPart != null) return '$hPart $mPart';
+    if (hPart != null) return hPart;
+    return mPart ?? '0${l10n.minutes}';
   }
 }
 

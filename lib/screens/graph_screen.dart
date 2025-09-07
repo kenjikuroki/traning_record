@@ -1128,9 +1128,9 @@ class _GraphScreenState extends State<GraphScreen> {
                           children: List.generate(
                             maxMinutes + 1,
                                 (i) => Center(
-                                child: Text('$i 分',
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
-                          ),
+                                  child: Text('$i ${AppLocalizations.of(context)!.min}',
+                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+                                ),
                         ),
                       ),
                       Container(width: 1, color: Theme.of(context).colorScheme.outlineVariant),
@@ -1142,9 +1142,9 @@ class _GraphScreenState extends State<GraphScreen> {
                           children: List.generate(
                             60,
                                 (i) => Center(
-                                child: Text('$i 秒',
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
-                          ),
+                                  child: Text('$i ${AppLocalizations.of(context)!.sec}',
+                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+                                ),
                         ),
                       ),
                     ],
@@ -1536,9 +1536,9 @@ class _GraphScreenState extends State<GraphScreen> {
         automaticallyImplyLeading: false,
         elevation: 0.0,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          'グラフ',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+        title: Text(
+          AppLocalizations.of(context)!.graphScreenTitle,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
         ),
         flexibleSpace: ClipRect(
           child: BackdropFilter(

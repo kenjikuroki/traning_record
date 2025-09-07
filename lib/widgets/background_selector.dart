@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../constants/backgrounds.dart';
 import '../settings_manager.dart';
+import '../l10n/app_localizations.dart';
 
 class BackgroundSelector extends StatelessWidget {
   final String selectedAsset;
@@ -48,7 +49,7 @@ class BackgroundSelector extends StatelessWidget {
             alignment: Alignment.center,
             child: asset.isEmpty
                 ? Text(
-              'なし',
+              AppLocalizations.of(context)!.none,
               style: TextStyle(
                 color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
