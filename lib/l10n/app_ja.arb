@@ -84,7 +84,7 @@
   "hintRecordAddExercise": "ここをタップして種目を追加します。",
   "hintRecordChangePart": "ここから部位を追加できます。",
   "hintRecordOpenSettings": "セット数の初期値は設定から変更できます。",
-  "hintRecordFab": "ここからセット・種目・部位を追加できます",
+  "hintRecordFab": "ここから部位・種目・写真・メモを追加できます",
   "hintCalendarTapDate": "記録する日付を選択",
   "hintGraphFavorite": "よく見るデータはお気に入りに登録しよう。",
   "hintGraphChartArea": "記録したデータのグラフが出力されます。",

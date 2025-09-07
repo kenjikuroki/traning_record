@@ -94,6 +94,14 @@ class _RecordScreenState extends State<RecordScreen>
   bool _memoOverlayOpening = false; // キーボード待ち中か
   bool _memoSlideIn = false; // 上からのスライド演出
 
+  // ===== 種目・オーバーレイ（フローティング） =====
+  bool _menuOverlayVisible = false;
+  bool _menuOverlayOpening = false;
+  bool _menuSlideIn = false;
+  final FocusNode _menuOverlayFocus = FocusNode();
+  int? _menuSecIndex;
+  int? _menuMenuIndex;
+
   final GlobalKey _kPhotoCardsKey = GlobalKey();
   final GlobalKey _kMemoCardKey = GlobalKey();
 
@@ -137,7 +145,7 @@ class _RecordScreenState extends State<RecordScreen>
   bool _showMemo = false;
   final TextEditingController _memoController = TextEditingController();
 
-  // メモ・オーバーレイ
+  // メモ・オーバーレイ（後方互換フラグ）
   bool _memoOverlayOpen = false; // 旧：インライン編集モードのフラグ（互換のため残す）
   final FocusNode _memoOverlayFocus = FocusNode();
 
@@ -265,6 +273,7 @@ class _RecordScreenState extends State<RecordScreen>
     _weightController.dispose();
     _memoController.dispose();
     _memoOverlayFocus.dispose();
+    _menuOverlayFocus.dispose();
     super.dispose();
   }
 
@@ -1189,61 +1198,59 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   void _removeMenuItem(int sectionIndex, int menuIndex) async {
-    final l10n = AppLocalizations.of(context)!;
-    final bool? ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deleteMenuConfirmationTitle),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel)),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+    // ここでは確認ダイアログを出さない（×ボタン側で既に確認済み）
 
-    if (ok == true) {
+    // このメニューをオーバーレイで編集中なら先に閉じる（RangeError対策）
+    if (_menuOverlayVisible &&
+        _menuSecIndex == sectionIndex &&
+        _menuMenuIndex == menuIndex) {
       setState(() {
-        _sections[sectionIndex].menuControllers[menuIndex].dispose();
-        for (var s in _sections[sectionIndex].setInputDataList[menuIndex]) {
+        _menuOverlayVisible = false;
+        _menuSlideIn = false;
+        _menuSecIndex = null;
+        _menuMenuIndex = null;
+      });
+      await SystemChannels.textInput.invokeMethod('TextInput.hide');
+    }
+
+    // 実際の削除処理
+    setState(() {
+      final section = _sections[sectionIndex];
+
+      // controllers / sets
+      section.menuControllers[menuIndex].dispose();
+      if (menuIndex < section.setInputDataList.length) {
+        for (final s in section.setInputDataList[menuIndex]) {
           s.dispose();
         }
-        _sections[sectionIndex].menuControllers.removeAt(menuIndex);
-        _sections[sectionIndex].setInputDataList.removeAt(menuIndex);
-        if (_sections[sectionIndex].menuKeys.length > menuIndex) {
-          _sections[sectionIndex].menuKeys.removeAt(menuIndex);
-        }
-
-        if (_sections[sectionIndex].aerobicDistanceCtrls.length > menuIndex) {
-          _sections[sectionIndex].aerobicDistanceCtrls[menuIndex].dispose();
-          _sections[sectionIndex].aerobicDistanceCtrls.removeAt(menuIndex);
-        }
-        if (_sections[sectionIndex].aerobicDurationCtrls.length > menuIndex) {
-          _sections[sectionIndex].aerobicDurationCtrls[menuIndex].dispose();
-          _sections[sectionIndex].aerobicDurationCtrls.removeAt(menuIndex);
-        }
-        if (_sections[sectionIndex].aerobicSuggestFlags.length > menuIndex) {
-          _sections[sectionIndex].aerobicSuggestFlags.removeAt(menuIndex);
-        }
-
-        if (_sections[sectionIndex].nameFieldKeys.length > menuIndex) {
-          _sections[sectionIndex].nameFieldKeys.removeAt(menuIndex);
-        }
-      });
-    }
-  }
-
-  void _removeSection(int sectionIndex) {
-    setState(() {
-      _sections[sectionIndex].dispose();
-      _sections.removeAt(sectionIndex);
-      if (_sections.isEmpty) {
-        _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
+        section.setInputDataList.removeAt(menuIndex);
       }
-      _currentSectionIndex = null;
-      _currentMenuIndex = null;
+      section.menuControllers.removeAt(menuIndex);
+
+      // 補助配列
+      if (section.menuKeys.length > menuIndex) section.menuKeys.removeAt(menuIndex);
+      if (section.aerobicDistanceCtrls.length > menuIndex) {
+        section.aerobicDistanceCtrls[menuIndex].dispose();
+        section.aerobicDistanceCtrls.removeAt(menuIndex);
+      }
+      if (section.aerobicDurationCtrls.length > menuIndex) {
+        section.aerobicDurationCtrls[menuIndex].dispose();
+        section.aerobicDurationCtrls.removeAt(menuIndex);
+      }
+      if (section.aerobicSuggestFlags.length > menuIndex) {
+        section.aerobicSuggestFlags.removeAt(menuIndex);
+      }
+      if (section.nameFieldKeys.length > menuIndex) {
+        section.nameFieldKeys.removeAt(menuIndex);
+      }
+
+      // カレント選択の整合性
+      if (section.menuControllers.isEmpty) {
+        _currentMenuIndex = null;
+      } else {
+        _currentMenuIndex =
+            menuIndex.clamp(0, section.menuControllers.length - 1);
+      }
     });
   }
 
@@ -1348,6 +1355,46 @@ class _RecordScreenState extends State<RecordScreen>
     });
     final didSave = _saveAllSectionsData();
     if (didSave) _showSavedChipFor(const Duration(milliseconds: 900));
+  }
+
+  // === ここから 種目・フローティングエディタ ===
+
+  Future<void> _openMenuOverlaySmooth(int secIndex, int menuIndex) async {
+    if (_menuOverlayVisible || _menuOverlayOpening) return;
+    _menuOverlayOpening = true;
+
+    _menuSecIndex = secIndex;
+    _menuMenuIndex = menuIndex;
+
+    // 先にキーボード表示（固定高さなので押し上げない）
+    _menuOverlayFocus.requestFocus();
+    await SystemChannels.textInput.invokeMethod('TextInput.show');
+
+    if (!mounted) return;
+    setState(() {
+      _menuOverlayVisible = true;
+      _menuOverlayOpening = false;
+      _fabOpen = false;
+      _menuSlideIn = false;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _menuSlideIn = true);
+    });
+  }
+
+  Future<void> _saveMenuAndClose() async {
+    final didSave = _saveAllSectionsData();
+    if (didSave) _showSavedChipFor(const Duration(milliseconds: 900));
+    await _dismissKeyboardSafely(context);
+    if (!mounted) return;
+    setState(() {
+      _menuOverlayVisible = false;
+      _menuSlideIn = false;
+      _menuSecIndex = null;
+      _menuMenuIndex = null;
+    });
   }
 
   String _dateKey(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
@@ -1800,6 +1847,10 @@ class _RecordScreenState extends State<RecordScreen>
       _closeMemoOverlayAndSave();
       return;
     }
+    if (_menuOverlayVisible) {
+      await _saveMenuAndClose();
+      return;
+    }
     if (_memoOverlayVisible) {
       await _saveMemoAndClose();
       return;
@@ -1820,7 +1871,7 @@ class _RecordScreenState extends State<RecordScreen>
     Navigator.of(context).pop();
   }
 
-  // ===== 記入オーバーレイ（画面内フローティングシート：上半分、上からスッ） =====
+  // ===== 記入オーバーレイ（画面内フローティングシート：上からスッ） =====
   Widget _buildMemoEditorOverlay() {
     if (!_memoOverlayVisible) return const SizedBox.shrink();
 
@@ -1830,7 +1881,7 @@ class _RecordScreenState extends State<RecordScreen>
 
     // AppBar 直下に固定
     final double topGap = media.padding.top + kToolbarHeight + 8;
-    // 高さは画面のちょうど半分（キーボードが出ても縮まない）
+    // 高さは 0.4（ユーザー指定）
     final double overlayHeight = media.size.height * 0.4;
 
     return Stack(
@@ -1871,7 +1922,7 @@ class _RecordScreenState extends State<RecordScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ヘッダー（カード風）右上は「保存」
+                    // ヘッダー（右上は「保存」）
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
                       child: Row(
@@ -1925,9 +1976,156 @@ class _RecordScreenState extends State<RecordScreen>
                             contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
                           ),
                           onChanged: (_) {
-                            // 入力中は FAB を閉じておく
                             if (_fabOpen) setState(() => _fabOpen = false);
                           },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 種目編集用オーバーレイ（メモと同様：上から／高さ0.4／背景薄暗）
+  // 種目編集用オーバーレイ（上から／高さ0.4／背景薄暗）
+  Widget _buildMenuEditorOverlay() {
+    // オーバーレイ未表示 or 未選択時は描画しない
+    if (!_menuOverlayVisible || _menuSecIndex == null || _menuMenuIndex == null) {
+      return const SizedBox.shrink();
+    }
+
+    final media = MediaQuery.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    final secIndex = _menuSecIndex!;
+    final menuIndex = _menuMenuIndex!;
+
+    // ===== インデックス安全ガード =====
+    if (secIndex < 0 || secIndex >= _sections.length) return const SizedBox.shrink();
+    final section = _sections[secIndex];
+    if (menuIndex < 0 || menuIndex >= section.menuControllers.length) return const SizedBox.shrink();
+    if (menuIndex >= section.setInputDataList.length) return const SizedBox.shrink();
+
+    final bool isAerobic = section.selectedPart == l10n.aerobicExercise;
+
+    final double topGap = media.padding.top + kToolbarHeight + 8;
+    final double overlayHeight = media.size.height * 0.4; // メモと同じ高さ
+
+    return Stack(
+      children: [
+        // 背景：タップで保存して閉じる
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: _saveMenuAndClose,
+            child: Container(color: Colors.black.withOpacity(0.25)),
+          ),
+        ),
+
+        Positioned(
+          left: 12,
+          right: 12,
+          top: topGap,
+          height: overlayHeight,
+          child: AnimatedSlide(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            offset: _menuSlideIn ? Offset.zero : const Offset(0, -0.08),
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    // ヘッダー：左=部位、右=＋セット＆保存
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
+                      child: Row(
+                        children: [
+                          Text(
+                            section.selectedPart ?? '',
+                            style: TextStyle(
+                              color: cs.onSurface,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const Spacer(),
+                          // ＋セット（有酸素は無効）※テキストのみ表示
+                          TextButton(
+                            onPressed: (!isAerobic &&
+                                menuIndex < section.setInputDataList.length &&
+                                section.setInputDataList[menuIndex].length < 10)
+                                ? () {
+                              HapticFeedback.selectionClick();
+                              _addOneSetAt(secIndex, menuIndex);
+                            }
+                                : null,
+                            child: Text(l10n.addSet), // 「+セット」のみ
+                          ),
+                          const SizedBox(width: 4),
+                          TextButton.icon(
+                            onPressed: _saveMenuAndClose,
+                            icon: const Icon(Icons.check_rounded),
+                            label: Text(l10n.save),
+                            style: TextButton.styleFrom(foregroundColor: cs.primary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+
+                    // 内容：MenuList を再利用（下のカード側はダブルバインド回避のためプレースホルダ）
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                        child: Scrollbar(
+                          child: SingleChildScrollView(
+                            child: Focus(
+                              focusNode: _menuOverlayFocus,
+                              child: MenuList(
+                                nameFieldKey: section.nameFieldKeys[menuIndex],
+                                menuController: section.menuControllers[menuIndex],
+                                removeMenuCallback: () => _removeMenuItem(secIndex, menuIndex),
+                                setCount: section.setInputDataList[menuIndex].length,
+                                setInputDataList: section.setInputDataList[menuIndex],
+                                isAerobic: isAerobic,
+                                distanceController: (menuIndex < section.aerobicDistanceCtrls.length)
+                                    ? section.aerobicDistanceCtrls[menuIndex]
+                                    : TextEditingController(), // 念のための安全策
+                                durationController: (menuIndex < section.aerobicDurationCtrls.length)
+                                    ? section.aerobicDurationCtrls[menuIndex]
+                                    : TextEditingController(),
+                                aerobicIsSuggestion: (menuIndex < section.aerobicSuggestFlags.length)
+                                    ? section.aerobicSuggestFlags[menuIndex]
+                                    : true,
+                                onConfirmAerobic: () {
+                                  setState(() {
+                                    if (menuIndex < section.aerobicSuggestFlags.length) {
+                                      section.aerobicSuggestFlags[menuIndex] = false;
+                                    }
+                                  });
+                                },
+                                onAnyFieldFocused: () {}, // すでにオーバーレイ中
+                                onNameChanged: (prevEmpty, nowEmpty) {},
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -2180,12 +2378,15 @@ class _RecordScreenState extends State<RecordScreen>
                                                 : Colors.white.withOpacity(0.70))
                                                 : Colors.black.withOpacity(0.20);
 
+                                            final bool isEditingThisOne = _menuOverlayVisible &&
+                                                _menuSecIndex == secIndex &&
+                                                _menuMenuIndex == menuIndex;
+
                                             return GestureDetector(
                                               behavior: HitTestBehavior.opaque,
                                               onTap: () {
                                                 _touchCard(secIndex, menuIndex);
-                                                final k = section.nameFieldKeys[menuIndex];
-                                                _scrollIntoComfortZone(k, pivot: 0.0, topExtra: 28);
+                                                _openMenuOverlaySmooth(secIndex, menuIndex);
                                               },
                                               child: Card(
                                                 key: section.menuKeys[menuIndex],
@@ -2199,7 +2400,10 @@ class _RecordScreenState extends State<RecordScreen>
                                                 margin: const EdgeInsets.symmetric(vertical: 8.0),
                                                 child: Padding(
                                                   padding: const EdgeInsets.all(10.0),
-                                                  child: MenuList(
+                                                  child: isEditingThisOne
+                                                  // ダブルバインド防止のプレースホルダ
+                                                      ? const SizedBox(height: 12)
+                                                      : MenuList(
                                                     key: (secIndex == 0 && menuIndex == 0) ? _kExerciseField : null,
                                                     nameFieldKey: section.nameFieldKeys[menuIndex],
                                                     menuController: section.menuControllers[menuIndex],
@@ -2228,8 +2432,7 @@ class _RecordScreenState extends State<RecordScreen>
                                                     },
                                                     onAnyFieldFocused: () {
                                                       _touchCard(secIndex, menuIndex);
-                                                      final k = section.nameFieldKeys[menuIndex];
-                                                      _scrollIntoComfortZoneAfterKeyboard(k, pivot: 0.0, topExtra: 28);
+                                                      _openMenuOverlaySmooth(secIndex, menuIndex);
                                                     },
                                                     onNameChanged: (prevEmpty, nowEmpty) {},
                                                   ),
@@ -2289,6 +2492,7 @@ class _RecordScreenState extends State<RecordScreen>
       tooltip: l10n.openAddMenu,
     );
 
+    // （もう使わないが参照があっても安全のため残置）
     bool canAddSet() {
       if (_sections.isEmpty) return false;
       final sec = _sections[_currentSectionIndex ?? 0];
@@ -2347,7 +2551,7 @@ class _RecordScreenState extends State<RecordScreen>
       );
     }
 
-    final overlay = (_fabOpen && !keyboardVisible && !_memoOverlayVisible && !_memoOverlayOpen)
+    final overlay = (_fabOpen && !keyboardVisible && !_memoOverlayVisible && !_memoOverlayOpen && !_menuOverlayVisible)
         ? Positioned.fill(
       child: GestureDetector(
         onTap: () => setState(() => _fabOpen = false),
@@ -2362,15 +2566,14 @@ class _RecordScreenState extends State<RecordScreen>
     final double dialBottom =
         (safeBottom > 0 ? safeBottom : fabMargin) + kbInset + fabSize + fabMargin + gapAboveFab;
 
+    // ＋セットはダイヤルから削除（オーバーレイのヘッダーへ移動）
     final dial = Positioned(
       right: 16,
       bottom: dialBottom,
-      child: (_fabOpen && !keyboardVisible && !_memoOverlayVisible && !_memoOverlayOpen)
+      child: (_fabOpen && !keyboardVisible && !_memoOverlayVisible && !_memoOverlayOpen && !_menuOverlayVisible)
           ? Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          chipAction(l10n.addSet, () => _handleAddSet(l10n), enabled: canAddSet()),
-          const SizedBox(height: 8),
           chipAction(l10n.addExercise, _handleAddExercise, enabled: _canAddExercise()),
           const SizedBox(height: 8),
           chipAction(l10n.addPart, _handleAddPart),
@@ -2444,13 +2647,14 @@ class _RecordScreenState extends State<RecordScreen>
           body: Stack(
             children: [
               body,
-              overlay,                  // FABダイヤルのオーバーレイ
-              dial,                     // FABダイヤル
-              _buildMemoEditorOverlay(),// ← メモのフローティング編集シート（上半分・上から）
-              doneOverlay,              // キーボード上「完了」（ダミー）
+              overlay,                   // FABダイヤルのオーバーレイ
+              dial,                      // FABダイヤル
+              _buildMenuEditorOverlay(), // ← 種目のフローティング編集
+              _buildMemoEditorOverlay(), // ← メモのフローティング編集
+              doneOverlay,               // キーボード上「完了」（ダミー）
             ],
           ),
-          floatingActionButton: (!keyboardVisible && !_memoOverlayVisible && !_memoOverlayOpen)
+          floatingActionButton: (!keyboardVisible && !_memoOverlayVisible && !_memoOverlayOpen && !_menuOverlayVisible)
               ? AnimatedPadding(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
@@ -2894,8 +3098,32 @@ class _MenuListState extends State<MenuList> {
                     ),
                   ),
                 ),
+                // × ボタン（削除確認ダイアログを出す）
                 TextButton(
-                  onPressed: widget.removeMenuCallback,
+                  onPressed: () async {
+                    final l10n = AppLocalizations.of(context)!;
+                    final bool? ok = await showDialog<bool>(
+                      context: context, // ← 必須
+                      builder: (ctx) => AlertDialog(
+                        title: Text(l10n.deleteMenuConfirmationTitle), // 「種目を削除しますか？」
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: Text(l10n.no),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: Text(l10n.yes), // 「はい」
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (ok == true) {
+                      // 親に削除を依頼
+                      widget.removeMenuCallback();
+                    }
+                  },
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
                     minimumSize: const Size(40, 20),
@@ -2903,7 +3131,7 @@ class _MenuListState extends State<MenuList> {
                     alignment: Alignment.center,
                   ),
                   child: Icon(Icons.close, color: colorScheme.onSurfaceVariant, size: 16),
-                ),
+                )
               ],
             ),
           ),
