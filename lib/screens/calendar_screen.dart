@@ -528,16 +528,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         flexibleSpace: ClipRect(
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.30),
-                    Colors.black.withOpacity(0.10),
-                    Colors.black.withOpacity(0.00),
+                    Colors.black.withOpacity(0.58),
+                    Colors.black.withOpacity(0.38),
+                    Colors.black.withOpacity(0.16),
                   ],
                 ),
               ),

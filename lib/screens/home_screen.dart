@@ -87,55 +87,51 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
           ),
-        bottomNavigationBar: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.30),
-                    Colors.black.withOpacity(0.10),
-                    Colors.black.withOpacity(0.00),
-                  ],
-                ),
+      bottomNavigationBar: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.22),
+                  Colors.black.withOpacity(0.45),
+                ],
               ),
-              child: SafeArea(
-                top: false,
-                child: BottomNavigationBar(
-                  currentIndex: _currentIndex,
-                  selectedItemColor: Colors.white,
-                  unselectedItemColor: Colors.white70,
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  showSelectedLabels: false,   // ← ラベル非表示（選択時）
-                  showUnselectedLabels: false, // ← ラベル非表示（非選択時）
-                  onTap: _onItemTapped,
-                  items: const [
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.calendar_today),
-                      label: 'Calendar',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.photo_library_outlined), // ← 追加：アルバム
-                      label: 'Album',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.bar_chart),
-                      label: 'Graph',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.settings),
-                      label: 'Settings',
-                    ),
-                  ],
+            ),
+            child: BottomNavigationBar(
+              currentIndex: _currentIndex,
+              selectedItemColor: Colors.white,
+              unselectedItemColor: Colors.white70,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              showSelectedLabels: false,
+              showUnselectedLabels: false,
+              onTap: _onItemTapped,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.calendar_today),
+                  label: 'Calendar',
                 ),
-              ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.photo_library_outlined),
+                  label: 'Album',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.bar_chart),
+                  label: 'Graph',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.settings),
+                  label: 'Settings',
+                ),
+              ],
             ),
           ),
         ),
+      ),
     );
   }
 }

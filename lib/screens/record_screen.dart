@@ -2629,16 +2629,21 @@ class _RecordScreenState extends State<RecordScreen>
               AppLocalizations.of(context)!.recordScreenTitle,
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 19.0),
             ),
-            flexibleSpace: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.30),
-                    Colors.black.withOpacity(0.10),
-                    Colors.black.withOpacity(0.00),
-                  ],
+            flexibleSpace: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.55),
+                        Colors.black.withOpacity(0.35),
+                        Colors.black.withOpacity(0.15),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
