@@ -23,24 +23,21 @@ import 'package:permission_handler/permission_handler.dart';
 Future<bool> _ensureCameraPermission(BuildContext context) async {
   var status = await Permission.camera.status;
   if (status.isGranted) return true;
-
   status = await Permission.camera.request();
   if (status.isGranted) return true;
 
-  // 「今後表示しない」等で永久拒否
   if (status.isPermanentlyDenied) {
     final l10n = AppLocalizations.of(context)!;
     showAppSnack(
       context,
-      l10n.cameraPermissionRequired, // ローカライズ
-      actionLabel: l10n.openSettings, // ローカライズ
+      l10n.cameraPermissionRequired,
+      actionLabel: l10n.openSettings,
       onAction: () => openAppSettings(),
     );
   }
   return false;
 }
 
-// シンプルなスナック表示（既存の showAppSnack 代替）
 void showAppSnack(
     BuildContext context,
     String message, {
@@ -63,7 +60,6 @@ void showAppSnack(
   );
 }
 
-// 入力系UIの“最小高さ”
 const double kUnifiedFieldMinHeight = 36.0;
 
 class RecordScreen extends StatefulWidget {
@@ -86,28 +82,26 @@ class RecordScreen extends StatefulWidget {
   State<RecordScreen> createState() => _RecordScreenState();
 }
 
-// プレビュー結果（保存 or 破棄）
 enum _QuickReview { save, discard }
 
-class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver {
-  // ====== 自動一時停止の基準 ======
+class _RecordScreenState extends State<RecordScreen>
+    with WidgetsBindingObserver {
   static const Duration _kIdleAutoPause = Duration(hours: 5);
   static const Duration _kHardCap = Duration(hours: 5);
-  // =================================
 
-  // ★ 写真カード表示位置（末尾セル）に付けるキー
+  // ===== メモ・オーバーレイ（フローティング） =====
+  bool _memoOverlayVisible = false; // 表示中か
+  bool _memoOverlayOpening = false; // キーボード待ち中か
+  bool _memoSlideIn = false; // 上からのスライド演出
+
   final GlobalKey _kPhotoCardsKey = GlobalKey();
-
-  // ★ メモカード位置
   final GlobalKey _kMemoCardKey = GlobalKey();
 
-  // 1日の写真上限（UIは出さず、Snackだけで通知）
   static const int _kDailyPhotoCap = 24;
 
   final ScrollController _scrollCtrl = ScrollController();
   bool _initialized = false;
 
-  // 体重入力にフォーカス中（＋FABを無効化）
   bool _weightFocused = false;
 
   bool _isTopMostRoute(BuildContext context) {
@@ -115,12 +109,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     return route?.isCurrent ?? true;
   }
 
-  // CoachBubble anchors
   final GlobalKey _kRecordPart = GlobalKey();
   final GlobalKey _kExerciseField = GlobalKey();
   final GlobalKey _kFabKey = GlobalKey();
-
-  // ★ 追加：ストップウォッチカード領域
   final GlobalKey _kStopwatchArea = GlobalKey();
 
   bool _firstBuildDone = false;
@@ -130,31 +121,31 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   List<SectionData> _sections = [];
   int _currentSetCount = 3;
 
-  // FAB 対象
   int? _currentSectionIndex;
   int? _currentMenuIndex;
 
-  // ===== 保存UI（AppBar右側ピル） =====
   bool _showSavedChip = false;
   Timer? _savedChipTimer;
 
-  // 設定のセット数変更を監視
   StreamSubscription<BoxEvent>? _setCountSub;
 
   bool _fabOpen = false;
 
   final TextEditingController _weightController = TextEditingController();
 
-  // --- メモ（題名なし、本文のみ 400字） ---
-  bool _showMemo = false; // メモカード表示有無
+  // Memo（プレビュー用コントローラ）
+  bool _showMemo = false;
   final TextEditingController _memoController = TextEditingController();
-  final FocusNode _memoFocus = FocusNode();
 
-  // --- 写真（メディア）関連 ---
+  // メモ・オーバーレイ
+  bool _memoOverlayOpen = false; // 旧：インライン編集モードのフラグ（互換のため残す）
+  final FocusNode _memoOverlayFocus = FocusNode();
+
+  // Photos
   final ImagePicker _imagePicker = ImagePicker();
-  List<String> _mediaPaths = []; // 当日分のフルパス（左＝新しい）
+  List<String> _mediaPaths = [];
 
-  // ==== ストップウォッチ ====
+  // Stopwatch
   static final StopwatchController _swController = StopwatchController();
   DateTime _lastInteractionAt = DateTime.now();
   Timer? _inactivityTimer;
@@ -163,11 +154,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   bool _wasRunning = false;
   DateTime? _resumedAt;
 
-  // --- ensureVisible デバウンス用 ---
   Timer? _scrollDebounce;
   GlobalKey? _pendingScrollKey;
   double _pendingScrollAlignment = 0.22;
-  // =========================
 
   void _onShowStopwatchChanged() {
     if (!mounted) return;
@@ -180,7 +169,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     SettingsManager.showStopwatchNotifier.addListener(_onShowStopwatchChanged);
 
-    // 設定のセット数 Hive 監視
     _setCountSub = widget.setCountBox.watch(key: 'setCount').listen((event) {
       final int newCount = (event.value as int?) ?? 3;
       _currentSetCount = newCount;
@@ -189,17 +177,15 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       _loadMediaForSelectedDate();
     });
 
-    // 初回後フレーム
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _firstBuildDone = true);
     });
 
-    // 初回ヒント：部位だけ
+    // First hint
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final route = ModalRoute.of(context);
       if (route?.isCurrent != true) return;
-
       final box = widget.settingsBox;
       final seen = box.get('hint_seen_record') as bool? ?? false;
       if (seen) return;
@@ -222,16 +208,15 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       await box.put('hint_seen_record', true);
     });
 
-    // 無操作監視
-    _inactivityTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      final idle = DateTime.now().difference(_lastInteractionAt);
-      if (idle >= _kIdleAutoPause && _swController.isRunning) {
-        final l10n = AppLocalizations.of(context)!;
-        _pauseWithSnack(l10n.autoPausedIdle5h);
-      }
-    });
+    _inactivityTimer =
+        Timer.periodic(const Duration(minutes: 1), (_) {
+          final idle = DateTime.now().difference(_lastInteractionAt);
+          if (idle >= _kIdleAutoPause && _swController.isRunning) {
+            final l10n = AppLocalizations.of(context)!;
+            _pauseWithSnack(l10n.autoPausedIdle5h);
+          }
+        });
 
-    // 連続稼働上限
     _capTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       final running = _swController.isRunning;
       if (running && !_wasRunning) {
@@ -251,7 +236,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     });
 
     _scrollCtrl.addListener(() => _lastInteractionAt = DateTime.now());
-    _loadMediaForSelectedDate(); // ★ 初期ロード
+    _loadMediaForSelectedDate();
   }
 
   @override
@@ -278,14 +263,11 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     }
     _sections.clear();
     _weightController.dispose();
-
     _memoController.dispose();
-    _memoFocus.dispose();
-
+    _memoOverlayFocus.dispose();
     super.dispose();
   }
 
-  // Appライフサイクル
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
@@ -300,8 +282,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       }
       _backgroundedAt = null;
       _lastInteractionAt = DateTime.now();
-
-      // ★ 復帰時：LostData保険回収＋一覧再読込
       unawaited(_recoverLostImageIfAny());
       _loadMediaForSelectedDate();
     }
@@ -333,7 +313,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     );
   }
 
-  // ===== 保存ピル（AppBar右側） =====
   void _showSavedChipFor(Duration duration) {
     _savedChipTimer?.cancel();
     setState(() => _showSavedChip = true);
@@ -343,7 +322,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     });
   }
 
-  // --- キーボードを確実に閉じる ---
   Future<void> _dismissKeyboardSafely(BuildContext ctx) async {
     FocusManager.instance.primaryFocus?.unfocus();
     await SystemChannels.textInput.invokeMethod('TextInput.hide');
@@ -354,7 +332,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     await WidgetsBinding.instance.endOfFrame;
   }
 
-  // 指定カードを可視位置へ
   Future<void> _scrollIntoView(int secIndex, int menuIndex) async {
     final key = _sections[secIndex].menuKeys[menuIndex];
     if (key is GlobalKey && key.currentContext != null) {
@@ -389,11 +366,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     }
   }
 
-  // ★ 任意の GlobalKey へ“単発”スクロール（デバウンス）
   Future<void> _scrollIntoViewKey(GlobalKey key, {double alignment = 0.22}) async {
     _pendingScrollKey = key;
     _pendingScrollAlignment = alignment;
-
     _scrollDebounce?.cancel();
     _scrollDebounce = Timer(const Duration(milliseconds: 140), () async {
       if (!mounted) return;
@@ -403,7 +378,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       if (!mounted) return;
       final targetCtx = _pendingScrollKey?.currentContext;
       if (targetCtx == null) return;
-
       await Scrollable.ensureVisible(
         targetCtx,
         duration: const Duration(milliseconds: 220),
@@ -413,13 +387,11 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     });
   }
 
-  // ★ 新規追加：リストの最下部まで“しゅっ”とスクロール
   Future<void> _scrollToBottom() async {
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted || !_scrollCtrl.hasClients) return;
     await Future<void>.delayed(const Duration(milliseconds: 16));
     if (!_scrollCtrl.hasClients) return;
-
     final target = _scrollCtrl.position.maxScrollExtent;
     await _scrollCtrl.animateTo(
       target,
@@ -428,61 +400,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     );
   }
 
-  // pivot: 0.0=快適ゾーン上端寄せ（＝タイマー直下寄せ）, 0.5=中央, 1.0=下端寄せ
-  // topExtra: タイマー直下に足す余白(pixels)
-  Future<void> _scrollIntoComfortZone(
-      GlobalKey key, {
-        double pivot = 0.5,
-        double topExtra = 28,
-      }) async {
-    _pendingScrollKey = key;
-    _scrollDebounce?.cancel();
-
-    _scrollDebounce = Timer(const Duration(milliseconds: 120), () async {
-      if (!mounted) return;
-
-      final ctx = _pendingScrollKey?.currentContext;
-      if (ctx == null) return;
-
-      await WidgetsBinding.instance.endOfFrame;
-      if (!mounted) return;
-
-      final targetCtx = _pendingScrollKey?.currentContext;
-      if (targetCtx == null) return;
-
-      final media = MediaQuery.of(context);
-      final double vh = media.size.height;
-      final double kb = media.viewInsets.bottom;
-      final double sb = media.padding.bottom;
-
-      double swH = 0;
-      if (SettingsManager.showStopwatch) {
-        final swCtx = _kStopwatchArea.currentContext;
-        if (swCtx != null) {
-          final rb = swCtx.findRenderObject() as RenderBox?;
-          if (rb != null) swH = rb.size.height;
-        }
-      }
-
-      final double topReserve = swH + topExtra;
-      final double bottomReserve = kb + sb + 16;
-
-      final double topFrac = (topReserve / vh).clamp(0.0, 0.7);
-      final double bottomFrac = (bottomReserve / vh).clamp(0.0, 0.8);
-      final double visibleFrac = (1.0 - topFrac - bottomFrac).clamp(0.15, 0.85);
-      final double p = pivot.clamp(0.0, 1.0);
-      final double align = (topFrac + visibleFrac * p).clamp(0.02, 0.98);
-
-      await Scrollable.ensureVisible(
-        targetCtx,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        alignment: align,
-      );
-    });
-  }
-
-  // ★ 新規：キーボード高さが安定するまで待機
   Future<void> _waitForKeyboardStable({int timeoutMs = 700}) async {
     final deadline = DateTime.now().add(Duration(milliseconds: timeoutMs));
     double? last;
@@ -500,17 +417,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     }
   }
 
-  // ★ 新規：キーボード安定後に“快適ゾーン”スクロール
-  Future<void> _scrollIntoComfortZoneAfterKeyboard(
-      GlobalKey key, {
-        double pivot = 0.0, // タイマー直下寄せ
-        double topExtra = 28,
-      }) async {
-    await _waitForKeyboardStable();
-    await _scrollIntoComfortZone(key, pivot: pivot, topExtra: topExtra);
-  }
-
-  // ★ 新規追加：指定の “種目名” TextField にフォーカスを当てる
+  // ===== 種目パート選択・初期化など（元のまま） =====
   void _focusMenuNameField(int secIndex, int menuIndex) {
     if (!mounted) return;
     if (secIndex < 0 || secIndex >= _sections.length) return;
@@ -552,7 +459,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     });
   }
 
-  // 部位選択の適用
   void _applySelectedPart(int secIndex, String? value) {
     final section = _sections[secIndex];
     setState(() {
@@ -569,7 +475,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
         final recList = record?.menus[originalPart] ?? <MenuData>[];
         final rawLU = widget.lastUsedMenusBox.get(originalPart);
-        final luList = (rawLU is List) ? rawLU.whereType<MenuData>().toList() : <MenuData>[];
+        final luList =
+        (rawLU is List) ? rawLU.whereType<MenuData>().toList() : <MenuData>[];
 
         final Map<String, MenuData> recBy = {for (final m in recList) m.name: m};
         final Map<String, MenuData> luBy = {for (final m in luList) m.name: m};
@@ -593,17 +500,25 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
           if (isAerobic) {
             final String dist =
-            (rec?.distance?.trim().isNotEmpty ?? false) ? rec!.distance!.trim() : (lu?.distance?.trim() ?? '');
+            (rec?.distance?.trim().isNotEmpty ?? false)
+                ? rec!.distance!.trim()
+                : (lu?.distance?.trim() ?? '');
             final String dura =
-            (rec?.duration?.trim().isNotEmpty ?? false) ? rec!.duration!.trim() : (lu?.duration?.trim() ?? '');
-            final bool isSug = !(rec?.distance?.trim().isNotEmpty == true || rec?.duration?.trim().isNotEmpty == true);
+            (rec?.duration?.trim().isNotEmpty ?? false)
+                ? rec!.duration!.trim()
+                : (lu?.duration?.trim() ?? '');
+            final bool isSug =
+            !(rec?.distance?.trim().isNotEmpty == true ||
+                rec?.duration?.trim().isNotEmpty == true);
             section.aerobicDistanceCtrls.add(TextEditingController(text: dist));
             section.aerobicDurationCtrls.add(TextEditingController(text: dura));
             section.aerobicSuggestFlags.add(isSug);
             section.setInputDataList.add(<SetInputData>[]);
           } else {
-            final int recLen = rec == null ? 0 : min(rec.weights.length, rec.reps.length);
-            final int luLen = lu == null ? 0 : min(lu.weights.length, lu.reps.length);
+            final int recLen =
+            rec == null ? 0 : min(rec.weights.length, rec.reps.length);
+            final int luLen =
+            lu == null ? 0 : min(lu.weights.length, lu.reps.length);
             final int mergedLen = max(_currentSetCount, max(recLen, luLen));
 
             final row = <SetInputData>[];
@@ -639,11 +554,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-
-      // フォーカスは当てずにカードだけ選択状態にする
       _touchCard(secIndex, 0);
-
-      // キーボードは出さず、快適位置へ通常スクロールのみ
       final keys = _sections[secIndex].nameFieldKeys;
       if (keys.isNotEmpty) {
         await _scrollIntoComfortZoneAfterKeyboard(keys[0], pivot: 0.0, topExtra: 28);
@@ -653,7 +564,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     _scheduleHintsAfterPart();
   }
 
-  // iOS風部位ピッカー
   Future<void> _showPartPicker(int secIndex) async {
     final parts = _filteredBodyParts;
     int initial = 0;
@@ -856,27 +766,22 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     final dateKey = _getDateKey(widget.selectedDate);
     final record = widget.recordsBox.get(dateKey);
 
-    // 既存セクション破棄
     for (var s in _sections) {
       s.dispose();
     }
     _sections.clear();
 
-    // 体重復元
     if (record?.weight != null) {
       _weightController.text = record!.weight.toString();
     } else {
       _weightController.clear();
     }
 
-    // === メモ復元（DailyRecord に note があれば使用。なければ settingsBox の body を使う／互換で title 単体も拾う） ===
     String? recoveredNote;
     try {
       final dyn = record as dynamic;
       recoveredNote = dyn?.note as String?;
-    } catch (_) {
-      // ignore
-    }
+    } catch (_) {}
     if (recoveredNote == null) {
       final m = widget.settingsBox.get('memo-$dateKey');
       if (m is Map) {
@@ -888,7 +793,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     _memoController.text = (recoveredNote ?? '');
     _showMemo = _memoController.text.trim().isNotEmpty;
 
-    // 記録なし
     if (record == null || record.menus.isEmpty) {
       _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
       _currentSectionIndex = null;
@@ -897,7 +801,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       return;
     }
 
-    // 記録あり
     final Map<String, SectionData> tempSectionsMap = {};
     final partsFromRecords = record.menus.keys.toList();
 
@@ -923,7 +826,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
       final recList = record.menus[originalPart] ?? <MenuData>[];
       final dynamic rawLU = widget.lastUsedMenusBox.get(originalPart);
-      final luList = (rawLU is List) ? rawLU.whereType<MenuData>().toList() : <MenuData>[];
+      final luList =
+      (rawLU is List) ? rawLU.whereType<MenuData>().toList() : <MenuData>[];
 
       final Map<String, MenuData> recBy = {for (final m in recList) m.name: m};
       final Map<String, MenuData> luBy = {for (final m in luList) m.name: m};
@@ -945,18 +849,26 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
         if (isAerobic) {
           final String dist =
-          (rec?.distance?.trim().isNotEmpty ?? false) ? rec!.distance!.trim() : (lu?.distance?.trim() ?? '');
+          (rec?.distance?.trim().isNotEmpty ?? false)
+              ? rec!.distance!.trim()
+              : (lu?.distance?.trim() ?? '');
           final String dura =
-          (rec?.duration?.trim().isNotEmpty ?? false) ? rec!.duration!.trim() : (lu?.duration?.trim() ?? '');
-          final bool isSug = !(rec?.distance?.trim().isNotEmpty == true || rec?.duration?.trim().isNotEmpty == true);
+          (rec?.duration?.trim().isNotEmpty ?? false)
+              ? rec!.duration!.trim()
+              : (lu?.duration?.trim() ?? '');
+          final bool isSug =
+          !(rec?.distance?.trim().isNotEmpty == true ||
+              rec?.duration?.trim().isNotEmpty == true);
 
           section.aerobicDistanceCtrls.add(TextEditingController(text: dist));
           section.aerobicDurationCtrls.add(TextEditingController(text: dura));
           section.aerobicSuggestFlags.add(isSug);
           section.setInputDataList.add(<SetInputData>[]);
         } else {
-          final int recLen = rec == null ? 0 : min(rec.weights.length, rec.reps.length);
-          final int luLen = lu == null ? 0 : min(lu.weights.length, lu.reps.length);
+          final int recLen =
+          rec == null ? 0 : min(rec.weights.length, rec.reps.length);
+          final int luLen =
+          lu == null ? 0 : min(lu.weights.length, lu.reps.length);
           final int mergedLen = max(_currentSetCount, max(recLen, luLen));
 
           final row = <SetInputData>[];
@@ -987,7 +899,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       }
     }
 
-    // 並び替え
     _sections = tempSectionsMap.values.toList();
     _sections.sort((a, b) {
       if (a.selectedPart == null && b.selectedPart == null) return 0;
@@ -998,8 +909,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       return ia.compareTo(ib);
     });
 
-    // 先頭の種目カードを選択状態に
-    if (_sections.isNotEmpty && _sections.first.selectedPart != null && _sections.first.menuControllers.isNotEmpty) {
+    if (_sections.isNotEmpty &&
+        _sections.first.selectedPart != null &&
+        _sections.first.menuControllers.isNotEmpty) {
       _currentSectionIndex = 0;
       _currentMenuIndex = 0;
       setState(() {});
@@ -1039,7 +951,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     section.nameFieldKeys.clear();
   }
 
-  /// 保存（戻り値：何か変更があってput/deleteしたらtrue）
   bool _saveAllSectionsData() {
     final dateKey = _getDateKey(widget.selectedDate);
     final Map<String, List<MenuData>> allMenusForRecord = {};
@@ -1123,13 +1034,11 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       }
     }
 
-    // メモ（本文のみ）
     final memoText = _memoController.text.trim();
     if (memoText.isNotEmpty) {
       hasAnyRecordData = true;
     }
 
-    // 体重
     double? bodyWeight;
     if (_weightController.text.isNotEmpty) {
       bodyWeight = double.tryParse(_weightController.text);
@@ -1144,31 +1053,24 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         lastModifiedPart: lastModifiedPart,
         weight: bodyWeight,
       );
-      // 可能なら拡張フィールドに書き込む（Dynamic）
       try {
         final dyn = newRecord as dynamic;
-        dyn.note = memoText; // 題名廃止 → note に本文を保存
-      } catch (_) {
-        // ignore
-      }
+        dyn.note = memoText;
+      } catch (_) {}
 
       widget.recordsBox.put(dateKey, newRecord);
       didChangeStorage = true;
 
-      // 互換：settingsBox にも保存（カレンダー等で参照可能に）
       widget.settingsBox.put('memo-$dateKey', {'body': memoText});
-      // ※ カレンダー側で実績表示する場合は、カレンダー画面でこのキーを参照して表示を追加してください。
     } else {
       final had = widget.recordsBox.containsKey(dateKey);
       widget.recordsBox.delete(dateKey);
-      // メモも消す
       widget.settingsBox.delete('memo-$dateKey');
       didChangeStorage = had;
     }
     return didChangeStorage;
   }
 
-  // ===== 末尾空セットの自動整理 =====
   bool _trimTrailingEmptySetsForAllMenus(int baseline) {
     final l10n = AppLocalizations.of(context)!;
     bool changed = false;
@@ -1251,7 +1153,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     });
   }
 
-  // 無酸素：1セット追加（最大10）
   void _addOneSetAt(int sectionIndex, int menuIndex) {
     final section = _sections[sectionIndex];
     if (menuIndex < 0 || menuIndex >= section.setInputDataList.length) return;
@@ -1283,7 +1184,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      await _scrollToBottom(); // ★ 一番下まで“しゅっ”と移動
+      await _scrollToBottom();
     });
   }
 
@@ -1354,7 +1255,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     });
   }
 
-  // FAB アクション
   void _handleAddSet(AppLocalizations l10n) {
     if (_sections.isEmpty) return;
     final secIdx = _currentSectionIndex ?? 0;
@@ -1376,29 +1276,82 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     _addTargetSection();
   }
 
-  // 「＋写真」タップ時：撮影→プレビュー（保存/破棄のみ）→どちらでもカメラに戻る
   void _handleAddPhoto() {
     _startCaptureLoop();
   }
 
-  // 「＋メモ」
-  void _handleAddMemo() {
+  // 追加：メモ追加（FABのダイヤル／メモカードから呼ぶ）
+  Future<void> _handleAddMemo() async {
     setState(() {
-      _showMemo = true;
-      _fabOpen = false;
+      _showMemo = true; // プレビューを出しておく（当日分メモが空でも）
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    // フローティング編集を開く（上からスッ）
+    await _openMemoOverlaySmooth();
+  }
+
+  // === ここからメモ・フローティングエディタ ===
+
+  Future<void> _openMemoOverlaySmooth() async {
+    if (_memoOverlayVisible || _memoOverlayOpening) return;
+
+    _memoOverlayOpening = true;
+
+    // 先にフォーカス→キーボードを出す（レイアウトは固定高さなので縮まない）
+    _memoOverlayFocus.requestFocus();
+    await SystemChannels.textInput.invokeMethod('TextInput.show');
+
+    if (!mounted) return;
+    setState(() {
+      _memoOverlayVisible = true;
+      _memoOverlayOpening = false;
+      _fabOpen = false; // ダイヤルは閉じる
+      _memoSlideIn = false; // 初期は少し上の位置
+    });
+
+    // 次フレームで「上からスッ」と入れる
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _memoFocus.requestFocus();
-      await SystemChannels.textInput.invokeMethod('TextInput.show');
-      await _scrollIntoComfortZoneAfterKeyboard(_kMemoCardKey, pivot: 0.0, topExtra: 28);
+      setState(() => _memoSlideIn = true);
     });
   }
 
-  // yyyy-MM-dd 形式のキー
+  // 保存して閉じるを一本化
+  Future<void> _saveMemoAndClose() async {
+    setState(() {
+      _showMemo = _memoController.text.trim().isNotEmpty;
+    });
+
+    final didSave = _saveAllSectionsData();
+    if (didSave) _showSavedChipFor(const Duration(milliseconds: 900));
+
+    await _dismissKeyboardSafely(context);
+    if (!mounted) return;
+    setState(() {
+      _memoOverlayVisible = false;
+      _memoSlideIn = false;
+    });
+  }
+
+  void _openMemoOverlayInline() {
+    setState(() => _memoOverlayOpen = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      _memoOverlayFocus.requestFocus();
+      await SystemChannels.textInput.invokeMethod('TextInput.show');
+    });
+  }
+
+  void _closeMemoOverlayAndSave() {
+    setState(() {
+      _memoOverlayOpen = false;
+      _showMemo = _memoController.text.trim().isNotEmpty;
+    });
+    final didSave = _saveAllSectionsData();
+    if (didSave) _showSavedChipFor(const Duration(milliseconds: 900));
+  }
+
   String _dateKey(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
-  // 当日メディアの保存先ディレクトリ
   Future<Directory> _mediaDirFor(DateTime date) async {
     final base = await getApplicationDocumentsDirectory();
     return Directory(p.join(base.path, 'media', _dateKey(date)));
@@ -1410,7 +1363,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     }
   }
 
-  // 当日分の写真を読み込み（左＝新しい）
   Future<void> _loadMediaForSelectedDate() async {
     try {
       final dir = await _mediaDirFor(widget.selectedDate);
@@ -1423,18 +1375,13 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           .whereType<File>()
           .where((f) {
         final pth = f.path.toLowerCase();
-        // ★ HEIC も拾う
-        return pth.endsWith('.jpg') || pth.endsWith('.jpeg') || pth.endsWith('.png') || pth.endsWith('.heic');
+        return pth.endsWith('.jpg') ||
+            pth.endsWith('.jpeg') ||
+            pth.endsWith('.png') ||
+            pth.endsWith('.heic');
       })
           .toList();
 
-      // ★ ログ
-      debugPrint('[PHOTO] load dir=${dir.path} files=${files.length}');
-      for (final f in files) {
-        debugPrint('  - ${f.path}  mtime=${f.lastModifiedSync()}');
-      }
-
-      // 古→新（下が新しいカード）
       files.sort((a, b) => a.lastModifiedSync().compareTo(b.lastModifiedSync()));
 
       if (mounted) {
@@ -1448,61 +1395,47 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   bool _recoveringLost = false;
 
   Future<void> _recoverLostImageIfAny() async {
-    if (!Platform.isAndroid) return; // iOS では不要
+    if (!Platform.isAndroid) return;
     if (_recoveringLost) return;
     _recoveringLost = true;
     try {
       final LostDataResponse resp = await _imagePicker.retrieveLostData();
       if (resp.isEmpty) {
-        debugPrint('[PHOTO] no lost data');
         return;
       }
       if (resp.file != null) {
-        debugPrint('[PHOTO] recovered one file from lost data: ${resp.file!.path}');
         await _saveAndAppendXFile(resp.file!);
       } else if (resp.files != null && resp.files!.isNotEmpty) {
-        debugPrint('[PHOTO] recovered ${resp.files!.length} files from lost data');
         for (final f in resp.files!) {
           await _saveAndAppendXFile(f);
         }
-      } else if (resp.exception != null) {
-        debugPrint('[PHOTO] retrieveLostData error: ${resp.exception}');
       }
-    } catch (e, st) {
-      debugPrint('[PHOTO] retrieveLostData threw: $e\n$st');
+    } catch (_) {
     } finally {
       _recoveringLost = false;
     }
   }
 
-  // 追加：pickImage が null を返した直後に LostData を数回ポーリングして回収
   Future<bool> _awaitMaybeLostData({int tries = 6}) async {
     for (int i = 0; i < tries; i++) {
       try {
         final resp = await _imagePicker.retrieveLostData();
         if (!resp.isEmpty) {
           if (resp.file != null) {
-            debugPrint('[PHOTO] recovered (try=${i}) ${resp.file!.path}');
             await _saveAndAppendXFile(resp.file!);
             return true;
           }
           if (resp.files != null && resp.files!.isNotEmpty) {
-            debugPrint('[PHOTO] recovered ${resp.files!.length} files (try=$i)');
             for (final f in resp.files!) {
               await _saveAndAppendXFile(f);
             }
             return true;
           }
           if (resp.exception != null) {
-            debugPrint('[PHOTO] retrieveLostData exception: ${resp.exception}');
             return false;
           }
-        } else {
-          debugPrint('[PHOTO] no lost data yet (try=$i)');
         }
-      } catch (e, st) {
-        debugPrint('[PHOTO] retrieveLostData threw: $e\n$st');
-      }
+      } catch (_) {}
       await Future<void>.delayed(Duration(milliseconds: i < 3 ? 200 : 500));
     }
     return false;
@@ -1512,28 +1445,22 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     final dir = await _mediaDirFor(widget.selectedDate);
     await _ensureDir(dir);
 
-    // 元の拡張子を尊重（.heic など）— なければ .jpg
     final ext = p.extension(shot.path).toLowerCase();
     final ts = DateTime.now();
-    final fileName = '${DateFormat('HHmmss_SSS').format(ts)}${ext.isNotEmpty ? ext : '.jpg'}';
+    final fileName =
+        '${DateFormat('HHmmss_SSS').format(ts)}${ext.isNotEmpty ? ext : '.jpg'}';
     final savePath = p.join(dir.path, fileName);
 
     await shot.saveTo(savePath);
-
-    final exists = await File(savePath).exists();
-    final len = exists ? await File(savePath).length() : -1;
-    debugPrint('[PHOTO] saved to: $savePath  exists=$exists length=$len');
 
     await _loadMediaForSelectedDate();
     await _scrollIntoViewKey(_kPhotoCardsKey, alignment: 0.98);
   }
 
-  // ====== ★ 撮影ループ：撮影 → プレビュー（保存／破棄のみ） → どちらでもカメラに戻る ======
   Future<void> _startCaptureLoop() async {
     if (!await _ensureCameraPermission(context)) return;
 
     while (mounted) {
-      // 上限チェック
       if (_mediaPaths.length >= _kDailyPhotoCap) {
         final l10n = AppLocalizations.of(context)!;
         showAppSnack(context, l10n.mediaReachedDailyCap);
@@ -1546,20 +1473,14 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           source: ImageSource.camera,
           preferredCameraDevice: CameraDevice.rear,
         );
-      } catch (e, st) {
-        debugPrint('[PHOTO] pickImage threw: $e\n$st');
-      }
+      } catch (_) {}
 
-      // カメラをキャンセル → ループ終了（記録画面へ戻る）
       if (shot == null) {
         final recovered = await _awaitMaybeLostData();
-        if (!recovered) {
-          debugPrint('[PHOTO] user canceled camera.');
-        }
+        if (!recovered) {}
         break;
       }
 
-      // プレビュー（保存／破棄 の二択のみ／破棄は確認出す）
       final res = await Navigator.of(context).push<_QuickReview>(
         PageRouteBuilder(
           opaque: true,
@@ -1574,17 +1495,13 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
       if (res == _QuickReview.save) {
         await _saveAndAppendXFile(shot);
-        // → 続けて自動でカメラへ（ループ継続）
         continue;
       } else if (res == _QuickReview.discard) {
-        // 一時ファイル削除（失敗は無視）
         try {
           await File(shot.path).delete();
         } catch (_) {}
-        // → 続けて自動でカメラへ（ループ継続）
         continue;
       } else {
-        // 何も選ばれず戻った（基本想定外だが安全側で抜ける）
         break;
       }
     }
@@ -1625,7 +1542,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l10n.mediaDelete), // 「削除」
+        title: Text(l10n.mediaDelete),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -1649,11 +1566,12 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     );
   }
 
-  // ★ メモカード（題名廃止／本文のみ 400字・カウンターはリアル更新）
+  // ===== メモ：プレビュー（タップでフローティング編集へ） =====
   Widget _buildMemoCard() {
     if (!_showMemo) return const SizedBox.shrink();
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
+    final preview = _memoController.text.trim();
 
     return Padding(
       key: _kMemoCardKey,
@@ -1662,83 +1580,56 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         color: cs.surfaceContainerHighest,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 1.0,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.memo,
-                style: TextStyle(
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 8),
-              // 本文のみ
-              Focus(
-                onFocusChange: (has) {
-                  if (has) {
-                    setState(() => _fabOpen = false);
-                  }
-                },
-                child: TextField(
-                  focusNode: _memoFocus,
-                  controller: _memoController,
-                  maxLines: null,
-                  minLines: 3,
-                  keyboardType: TextInputType.multiline,
-                  maxLength: 400, // ★ 最大400字
-                  // 入力ごとに TextField 自身だけが再描画されるので軽量（画面全体のsetStateは不要）
-                  buildCounter: (
-                      BuildContext context, {
-                        required int currentLength,
-                        required bool isFocused,
-                        int? maxLength,
-                      }) {
-                    return Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        '${currentLength}/${maxLength ?? 400}',
-                        style: TextStyle(color: cs.onSurfaceVariant, fontSize: 11),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: _handleAddMemo, // ← クリックでフローティング編集を開く
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      l10n.memo,
+                      style: TextStyle(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
                       ),
-                    );
-                  },
-                  // 念のため端末側の制限も（旧SDK互換）
-                  inputFormatters: [LengthLimitingTextInputFormatter(400)],
-                  style: TextStyle(color: cs.onSurface),
-                  decoration: InputDecoration(
-                    alignLabelWithHint: true,
-                    hintText: l10n.memoBodyPlaceholder,
-                    hintStyle: TextStyle(color: cs.onSurfaceVariant.withOpacity(0.6)),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: cs.onSurfaceVariant.withOpacity(0.4), width: 1),
                     ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: cs.primary, width: 2),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
-                  ),
+                    const Spacer(),
+                    Icon(Icons.edit_outlined, size: 18, color: cs.onSurfaceVariant),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                if (preview.isNotEmpty)
+                  Text(
+                    preview,
+                    style: TextStyle(color: cs.onSurface, height: 1.35),
+                    maxLines: 6,
+                    overflow: TextOverflow.ellipsis,
+                  )
+                else
+                  Text(
+                    l10n.memoBodyPlaceholder,
+                    style: TextStyle(color: cs.onSurfaceVariant.withOpacity(0.6)),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-// ★ 写真カード群（タイトル付き／1=中央, 2=中央寄せ2枚, 3+=3列グリッド）
   Widget _buildMediaCards() {
     if (_mediaPaths.isEmpty) return const SizedBox.shrink();
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
 
-    // 表示順：新しい→古い
     final paths = List<String>.from(_mediaPaths.reversed);
 
-    // ▼▼▼ ここから：外側の Padding を削除 ▼▼▼
     return Card(
       color: cs.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -1843,10 +1734,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         ),
       ),
     );
-    // ▲▲▲ ここまで：外側の Padding を削除 ▲▲▲
   }
 
-  // 「＋種目」を押せる条件：セクションが選ばれていて、部位が選択済み
   bool _canAddExercise() {
     if (_sections.isEmpty) return false;
     final si = _currentSectionIndex;
@@ -1863,7 +1752,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       elevation: 1.0,
       child: Padding(
-        // ← ここを const じゃなくす
         padding: const EdgeInsets.all(8.0),
         child: StopwatchWidget(
           controller: _swController,
@@ -1874,7 +1762,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     );
   }
 
-  // AppBarの「保存しました」ピル（フェード＋スライド）
   Widget _buildSavedPill(ColorScheme cs) {
     final l10n = AppLocalizations.of(context)!;
     return Container(
@@ -1904,20 +1791,26 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     );
   }
 
-  // ==== ここだけで「保存しました」を出す（離脱時） ====
   Future<void> _handleExit() async {
     if (_fabOpen) {
       setState(() => _fabOpen = false);
       return;
     }
+    if (_memoOverlayOpen) {
+      _closeMemoOverlayAndSave();
+      return;
+    }
+    if (_memoOverlayVisible) {
+      await _saveMemoAndClose();
+      return;
+    }
+
     await _dismissKeyboardSafely(context);
 
-    // 末尾空セットの整理 → 保存
     final trimmed = _trimTrailingEmptySetsForAllMenus(_currentSetCount);
-    if (trimmed) setState(() {}); // 見た目同期
+    if (trimmed) setState(() {});
     final didSave = _saveAllSectionsData();
 
-    // 退避前にだけピル表示（短めフェード）
     if (didSave) {
       _showSavedChipFor(const Duration(milliseconds: 900));
       await Future<void>.delayed(const Duration(milliseconds: 360));
@@ -1925,6 +1818,127 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
     if (!mounted) return;
     Navigator.of(context).pop();
+  }
+
+  // ===== 記入オーバーレイ（画面内フローティングシート：上半分、上からスッ） =====
+  Widget _buildMemoEditorOverlay() {
+    if (!_memoOverlayVisible) return const SizedBox.shrink();
+
+    final media = MediaQuery.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    // AppBar 直下に固定
+    final double topGap = media.padding.top + kToolbarHeight + 8;
+    // 高さは画面のちょうど半分（キーボードが出ても縮まない）
+    final double overlayHeight = media.size.height * 0.4;
+
+    return Stack(
+      children: [
+        // 半透明スクリーン（タップで保存して閉じる）
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: _saveMemoAndClose,
+            child: Container(color: Colors.black.withOpacity(0.25)),
+          ),
+        ),
+
+        Positioned(
+          left: 12,
+          right: 12,
+          top: topGap,
+          height: overlayHeight,
+          child: AnimatedSlide(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            offset: _memoSlideIn ? Offset.zero : const Offset(0, -0.08), // 上からシュッ
+            child: Material(
+              color: Colors.transparent,
+              elevation: 2,
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ヘッダー（カード風）右上は「保存」
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
+                      child: Row(
+                        children: [
+                          Text(
+                            l10n.memo,
+                            style: TextStyle(
+                              color: cs.onSurface,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton.icon(
+                            onPressed: _saveMemoAndClose,
+                            icon: const Icon(Icons.check_rounded),
+                            label: Text(l10n.save),
+                            style: TextButton.styleFrom(foregroundColor: cs.primary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+
+                    // 本文（固定領域内で伸縮）
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                        child: TextField(
+                          focusNode: _memoOverlayFocus,
+                          controller: _memoController,
+                          autofocus: true,
+                          keyboardType: TextInputType.multiline,
+                          maxLength: 400,
+                          inputFormatters: [LengthLimitingTextInputFormatter(400)],
+                          expands: true, // 固定の高さを埋める
+                          minLines: null,
+                          maxLines: null,
+                          style: TextStyle(color: cs.onSurface),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            hintText: l10n.memoBodyPlaceholder,
+                            hintStyle: TextStyle(
+                              color: cs.onSurfaceVariant.withOpacity(0.6),
+                            ),
+                            border: InputBorder.none,
+                            counterStyle: TextStyle(
+                              color: cs.onSurfaceVariant,
+                              fontSize: 11,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+                          ),
+                          onChanged: (_) {
+                            // 入力中は FAB を閉じておく
+                            if (_fabOpen) setState(() => _fabOpen = false);
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -1935,7 +1949,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
     final media = MediaQuery.of(context);
     final kbInset = media.viewInsets.bottom;
-    final bool keyboardVisible = kbInset > 0; // ★ 追加：キーボード表示中か
+    final bool keyboardVisible = kbInset > 0;
     final safeBottom = media.padding.bottom;
 
     final overlayStyle = isLight
@@ -1954,316 +1968,314 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
     final bool showWeight = SettingsManager.showWeightInput;
 
-    // ===== Body =====
-    final body = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-      child: Column(
-        children: [
-          const AdBanner(screenName: 'record'),
-          const SizedBox(height: 0.0),
+    // ===== Body (空き領域タップでフォーカス解除) =====
+    final body = GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+        child: Column(
+          children: [
+            const AdBanner(screenName: 'record'),
+            const SizedBox(height: 0.0),
 
-          // ストップウォッチ（設定ON時のみ）
-          Visibility(
-            visible: SettingsManager.showStopwatch,
-            maintainState: true,
-            maintainAnimation: true,
-            maintainSize: false,
-            child: Padding(
-              padding: EdgeInsets.zero,
-              child: _buildStopwatchCard(),
+            Visibility(
+              visible: SettingsManager.showStopwatch,
+              maintainState: true,
+              maintainAnimation: true,
+              maintainSize: false,
+              child: Padding(
+                padding: EdgeInsets.zero,
+                child: _buildStopwatchCard(),
+              ),
             ),
-          ),
 
-          Expanded(
-            child: AnimatedPadding(
-              duration: const Duration(milliseconds: 160),
-              curve: Curves.easeOutCubic,
-              padding: EdgeInsets.only(bottom: (kbInset > 0 ? kbInset + safeBottom + 12 : 12)),
-              child: ListView.builder(
-                controller: _scrollCtrl,
-                primary: false,
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: (showWeight ? 1 : 0) + _sections.length + (_showMemo ? 1 : 0) + 1, // +1 = 写真
-                itemBuilder: (context, index) {
-                  // ① 体重カード（下線TextField）
-                  if (showWeight && index == 0) {
-                    return Padding(
-                      padding: EdgeInsets.zero,
-                      child: Card(
-                        color: colorScheme.surfaceContainerHighest,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-                        elevation: 1.0,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                '${l10n.enterYourWeight}${Localizations.localeOf(context).languageCode == "ja" ? "：" : ":"}',
-                                style: TextStyle(
-                                  color: colorScheme.onSurface,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14.0,
+            Expanded(
+              child: AnimatedPadding(
+                duration: const Duration(milliseconds: 160),
+                curve: Curves.easeOutCubic,
+                padding: EdgeInsets.only(bottom: (kbInset > 0 ? kbInset + safeBottom + 12 : 12)),
+                child: ListView.builder(
+                  controller: _scrollCtrl,
+                  primary: false,
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag, // ← ドラッグで閉じる
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: (showWeight ? 1 : 0) + _sections.length + (_showMemo ? 1 : 0) + 1,
+                  itemBuilder: (context, index) {
+                    if (showWeight && index == 0) {
+                      return Padding(
+                        padding: EdgeInsets.zero,
+                        child: Card(
+                          color: colorScheme.surfaceContainerHighest,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                          elevation: 1.0,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '${l10n.enterYourWeight}${Localizations.localeOf(context).languageCode == "ja" ? "：" : ":"}',
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14.0,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              SizedBox(
-                                width: 180,
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Focus(
-                                        onFocusChange: (has) {
-                                          setState(() {
-                                            _weightFocused = has;
-                                            if (has) _fabOpen = false;
-                                          });
-                                        },
-                                        child: ConstrainedBox(
-                                          constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
-                                          child: TextField(
-                                            controller: _weightController,
-                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                            inputFormatters: [
-                                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                                            ],
-                                            textAlign: TextAlign.right,
-                                            style: TextStyle(color: colorScheme.onSurface),
-                                            decoration: InputDecoration(
-                                              isDense: true,
-                                              hintText: '',
-                                              hintStyle:
-                                              TextStyle(color: colorScheme.onSurfaceVariant.withOpacity(0.5)),
-                                              filled: false,
-                                              enabledBorder: UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                  color: colorScheme.onSurfaceVariant.withOpacity(0.4),
-                                                  width: 1,
+                                const SizedBox(width: 10),
+                                SizedBox(
+                                  width: 180,
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Focus(
+                                          onFocusChange: (has) {
+                                            setState(() {
+                                              _weightFocused = has;
+                                              if (has) _fabOpen = false;
+                                            });
+                                          },
+                                          child: ConstrainedBox(
+                                            constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                            child: TextField(
+                                              controller: _weightController,
+                                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                              inputFormatters: [
+                                                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                              ],
+                                              textAlign: TextAlign.right,
+                                              style: TextStyle(color: colorScheme.onSurface),
+                                              decoration: InputDecoration(
+                                                isDense: true,
+                                                hintText: '',
+                                                hintStyle:
+                                                TextStyle(color: colorScheme.onSurfaceVariant.withOpacity(0.5)),
+                                                filled: false,
+                                                enabledBorder: UnderlineInputBorder(
+                                                  borderSide: BorderSide(
+                                                    color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                                                    width: 1,
+                                                  ),
                                                 ),
-                                              ),
-                                              focusedBorder: UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                  color: colorScheme.primary,
-                                                  width: 2,
+                                                focusedBorder: UnderlineInputBorder(
+                                                  borderSide: BorderSide(
+                                                    color: colorScheme.primary,
+                                                    width: 2,
+                                                  ),
                                                 ),
+                                                contentPadding:
+                                                const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                                               ),
-                                              contentPadding:
-                                              const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                                             ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      SettingsManager.currentUnit,
-                                      style: TextStyle(
-                                        color: colorScheme.onSurfaceVariant,
-                                        fontSize: 12.0,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-
-                  // index 計算
-                  final int headerCount = (showWeight ? 1 : 0);
-                  final int sectionCount = _sections.length;
-                  final int bodyIdx = index - headerCount;
-
-                  // ② セクション群
-                  if (bodyIdx < sectionCount) {
-                    final secIndex = bodyIdx;
-                    final section = _sections[secIndex];
-
-                    return AnimatedListItem(
-                      key: section.key,
-                      direction: _firstBuildDone ? AnimationDirection.bottomToTop : AnimationDirection.none,
-                      child: Padding(
-                        padding: EdgeInsets.zero,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => _touchCard(secIndex, 0),
-                          child: Card(
-                            color: colorScheme.surfaceContainerHighest,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-                            elevation: 1.0,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      // 部位選択
-                                      Expanded(
-                                        child: Container(
-                                          constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
-                                          decoration: BoxDecoration(
-                                            color: colorScheme.surfaceContainer,
-                                            borderRadius: BorderRadius.circular(22.0),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withOpacity(0.04),
-                                                blurRadius: 3.0,
-                                                offset: const Offset(0, 1),
-                                              ),
-                                            ],
-                                          ),
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                            child: GestureDetector(
-                                              key: secIndex == 0 ? _kRecordPart : null,
-                                              behavior: HitTestBehavior.opaque,
-                                              onTap: () => _showPartPicker(secIndex),
-                                              child: Padding(
-                                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
-                                                child: Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: Text(
-                                                        section.selectedPart ?? l10n.selectTrainingPart,
-                                                        style: TextStyle(
-                                                          color: (section.selectedPart == null)
-                                                              ? colorScheme.onSurfaceVariant
-                                                              : colorScheme.onSurface,
-                                                          fontSize: 15.0,
-                                                          fontWeight: FontWeight.bold,
-                                                        ),
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ),
-                                                    const Icon(Icons.expand_more, size: 22),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        SettingsManager.currentUnit,
+                                        style: TextStyle(
+                                          color: colorScheme.onSurfaceVariant,
+                                          fontSize: 12.0,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 4.0),
-                                  if (section.selectedPart != null)
-                                    Column(
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    final int headerCount = (showWeight ? 1 : 0);
+                    final int sectionCount = _sections.length;
+                    final int bodyIdx = index - headerCount;
+
+                    if (bodyIdx < sectionCount) {
+                      final secIndex = bodyIdx;
+                      final section = _sections[secIndex];
+
+                      return AnimatedListItem(
+                        key: section.key,
+                        direction: _firstBuildDone ? AnimationDirection.bottomToTop : AnimationDirection.none,
+                        child: Padding(
+                          padding: EdgeInsets.zero,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _touchCard(secIndex, 0),
+                            child: Card(
+                              color: colorScheme.surfaceContainerHighest,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                              elevation: 1.0,
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
                                       children: [
-                                        ...List.generate(section.menuControllers.length, (menuIndex) {
-                                          final bool isSelected =
-                                          (_currentSectionIndex == secIndex && _currentMenuIndex == menuIndex);
-
-                                          final borderColor =
-                                          isSelected ? (isLight ? kBrandBlue : Colors.white) : Colors.transparent;
-                                          final glowColor = isSelected
-                                              ? (isLight
-                                              ? kBrandBlue.withOpacity(0.45)
-                                              : Colors.white.withOpacity(0.70))
-                                              : Colors.black.withOpacity(0.20);
-
-                                          return GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTap: () {
-                                              _touchCard(secIndex, menuIndex);
-                                              final k = section.nameFieldKeys[menuIndex];
-                                              _scrollIntoComfortZone(k, pivot: 0.0, topExtra: 28);
-                                            },
-                                            child: Card(
-                                              key: section.menuKeys[menuIndex],
-                                              color: colorScheme.surface,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12.0),
-                                                side: BorderSide(color: borderColor, width: isSelected ? 1.5 : 0),
-                                              ),
-                                              elevation: isSelected ? 3.0 : 0.0,
-                                              shadowColor: glowColor,
-                                              margin: const EdgeInsets.symmetric(vertical: 8.0),
-                                              child: Padding(
-                                                padding: const EdgeInsets.all(10.0),
-                                                child: MenuList(
-                                                  key: (secIndex == 0 && menuIndex == 0) ? _kExerciseField : null,
-                                                  nameFieldKey: section.nameFieldKeys[menuIndex],
-                                                  menuController: section.menuControllers[menuIndex],
-                                                  removeMenuCallback: () => _removeMenuItem(secIndex, menuIndex),
-                                                  setCount: section.setInputDataList[menuIndex].length,
-                                                  setInputDataList: section.setInputDataList[menuIndex],
-                                                  isAerobic: section.selectedPart == l10n.aerobicExercise,
-                                                  distanceController: (menuIndex < section.aerobicDistanceCtrls.length)
-                                                      ? section.aerobicDistanceCtrls[menuIndex]
-                                                      : TextEditingController(),
-                                                  durationController: (menuIndex < section.aerobicDurationCtrls.length)
-                                                      ? section.aerobicDurationCtrls[menuIndex]
-                                                      : TextEditingController(),
-                                                  aerobicIsSuggestion:
-                                                  (menuIndex < section.aerobicSuggestFlags.length)
-                                                      ? section.aerobicSuggestFlags[menuIndex]
-                                                      : true,
-                                                  onConfirmAerobic: () {
-                                                    setState(() {
-                                                      if (menuIndex < section.aerobicSuggestFlags.length) {
-                                                        section.aerobicSuggestFlags[menuIndex] = false;
-                                                      }
-                                                    });
-                                                  },
-                                                  onAnyFieldFocused: () {
-                                                    _touchCard(secIndex, menuIndex);
-                                                    final k = section.nameFieldKeys[menuIndex];
-                                                    _scrollIntoComfortZoneAfterKeyboard(k,
-                                                        pivot: 0.0, topExtra: 28);
-                                                  },
-                                                  onNameChanged: (prevEmpty, nowEmpty) {},
+                                        Expanded(
+                                          child: Container(
+                                            constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                            decoration: BoxDecoration(
+                                              color: colorScheme.surfaceContainer,
+                                              borderRadius: BorderRadius.circular(22.0),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.04),
+                                                  blurRadius: 3.0,
+                                                  offset: const Offset(0, 1),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                              child: GestureDetector(
+                                                key: secIndex == 0 ? _kRecordPart : null,
+                                                behavior: HitTestBehavior.opaque,
+                                                onTap: () => _showPartPicker(secIndex),
+                                                child: Padding(
+                                                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+                                                  child: Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          section.selectedPart ?? l10n.selectTrainingPart,
+                                                          style: TextStyle(
+                                                            color: (section.selectedPart == null)
+                                                                ? colorScheme.onSurfaceVariant
+                                                                : colorScheme.onSurface,
+                                                            fontSize: 15.0,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ),
+                                                      const Icon(Icons.expand_more, size: 22),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
                                             ),
-                                          );
-                                        }),
-                                        const SizedBox(height: 10.0),
-                                        const SizedBox.shrink(),
+                                          ),
+                                        ),
                                       ],
                                     ),
-                                ],
+                                    const SizedBox(height: 4.0),
+                                    if (section.selectedPart != null)
+                                      Column(
+                                        children: [
+                                          ...List.generate(section.menuControllers.length, (menuIndex) {
+                                            final bool isSelected =
+                                            (_currentSectionIndex == secIndex && _currentMenuIndex == menuIndex);
+
+                                            final borderColor = isSelected
+                                                ? (isLight ? kBrandBlue : Colors.white)
+                                                : Colors.transparent;
+                                            final glowColor = isSelected
+                                                ? (isLight
+                                                ? kBrandBlue.withOpacity(0.45)
+                                                : Colors.white.withOpacity(0.70))
+                                                : Colors.black.withOpacity(0.20);
+
+                                            return GestureDetector(
+                                              behavior: HitTestBehavior.opaque,
+                                              onTap: () {
+                                                _touchCard(secIndex, menuIndex);
+                                                final k = section.nameFieldKeys[menuIndex];
+                                                _scrollIntoComfortZone(k, pivot: 0.0, topExtra: 28);
+                                              },
+                                              child: Card(
+                                                key: section.menuKeys[menuIndex],
+                                                color: colorScheme.surface,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(12.0),
+                                                  side: BorderSide(color: borderColor, width: isSelected ? 1.5 : 0),
+                                                ),
+                                                elevation: isSelected ? 3.0 : 0.0,
+                                                shadowColor: glowColor,
+                                                margin: const EdgeInsets.symmetric(vertical: 8.0),
+                                                child: Padding(
+                                                  padding: const EdgeInsets.all(10.0),
+                                                  child: MenuList(
+                                                    key: (secIndex == 0 && menuIndex == 0) ? _kExerciseField : null,
+                                                    nameFieldKey: section.nameFieldKeys[menuIndex],
+                                                    menuController: section.menuControllers[menuIndex],
+                                                    removeMenuCallback: () => _removeMenuItem(secIndex, menuIndex),
+                                                    setCount: section.setInputDataList[menuIndex].length,
+                                                    setInputDataList: section.setInputDataList[menuIndex],
+                                                    isAerobic: section.selectedPart == l10n.aerobicExercise,
+                                                    distanceController:
+                                                    (menuIndex < section.aerobicDistanceCtrls.length)
+                                                        ? section.aerobicDistanceCtrls[menuIndex]
+                                                        : TextEditingController(),
+                                                    durationController:
+                                                    (menuIndex < section.aerobicDurationCtrls.length)
+                                                        ? section.aerobicDurationCtrls[menuIndex]
+                                                        : TextEditingController(),
+                                                    aerobicIsSuggestion:
+                                                    (menuIndex < section.aerobicSuggestFlags.length)
+                                                        ? section.aerobicSuggestFlags[menuIndex]
+                                                        : true,
+                                                    onConfirmAerobic: () {
+                                                      setState(() {
+                                                        if (menuIndex < section.aerobicSuggestFlags.length) {
+                                                          section.aerobicSuggestFlags[menuIndex] = false;
+                                                        }
+                                                      });
+                                                    },
+                                                    onAnyFieldFocused: () {
+                                                      _touchCard(secIndex, menuIndex);
+                                                      final k = section.nameFieldKeys[menuIndex];
+                                                      _scrollIntoComfortZoneAfterKeyboard(k, pivot: 0.0, topExtra: 28);
+                                                    },
+                                                    onNameChanged: (prevEmpty, nowEmpty) {},
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          }),
+                                          const SizedBox(height: 10.0),
+                                          const SizedBox.shrink(),
+                                        ],
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  }
+                      );
+                    }
 
-                  // ③ メモカード（部位カードの下、写真カードの上）
-                  if (bodyIdx == sectionCount && _showMemo) {
-                    return _buildMemoCard(); // ← 外側の Padding を外す（bottom: 0）
-                  }
+                    if (bodyIdx == sectionCount && _showMemo) {
+                      return _buildMemoCard();
+                    }
 
-// ④ 末尾スロット：写真カード
-                  final afterMemoOffset = sectionCount + (_showMemo ? 1 : 0);
-                  if (bodyIdx == afterMemoOffset) {
-                    return KeyedSubtree(
-                      key: _kPhotoCardsKey,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 0.0, bottom: 8.0), // ← 上0で二重加算を防止
-                        child: _buildMediaCards(),
-                      ),
-                    );
-                  }
+                    final afterMemoOffset = sectionCount + (_showMemo ? 1 : 0);
+                    if (bodyIdx == afterMemoOffset) {
+                      return KeyedSubtree(
+                        key: _kPhotoCardsKey,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 0.0, bottom: 8.0),
+                          child: _buildMediaCards(),
+                        ),
+                      );
+                    }
 
-
-                  return const SizedBox.shrink();
-                },
+                    return const SizedBox.shrink();
+                  },
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 
-    // ===== “＋” 周り =====
+    // ===== FAB =====
     final fabMain = FloatingActionButton(
       key: _kFabKey,
       onPressed: _weightFocused
@@ -2335,7 +2347,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       );
     }
 
-    final overlay = (_fabOpen && !keyboardVisible)
+    final overlay = (_fabOpen && !keyboardVisible && !_memoOverlayVisible && !_memoOverlayOpen)
         ? Positioned.fill(
       child: GestureDetector(
         onTap: () => setState(() => _fabOpen = false),
@@ -2353,7 +2365,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     final dial = Positioned(
       right: 16,
       bottom: dialBottom,
-      child: (_fabOpen && !keyboardVisible)
+      child: (_fabOpen && !keyboardVisible && !_memoOverlayVisible && !_memoOverlayOpen)
           ? Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -2363,7 +2375,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           const SizedBox(height: 8),
           chipAction(l10n.addPart, _handleAddPart),
           const SizedBox(height: 8),
-          chipAction(l10n.addMemo, _handleAddMemo), // ★ 追加：＋メモ
+          chipAction(l10n.addMemo, _handleAddMemo),
           const SizedBox(height: 8),
           chipAction(l10n.addPhoto, _handleAddPhoto),
           const SizedBox(height: 8),
@@ -2372,7 +2384,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           : const SizedBox.shrink(),
     );
 
-    // AppBar Saved ピル（AnimatedSwitcherで“ふわっ”）
+    // もう使わないけど、参照があっても安全にするためのダミー
+    final Widget doneOverlay = const SizedBox.shrink();
+
     final savedPillArea = AnimatedSwitcher(
       duration: const Duration(milliseconds: 240),
       switchInCurve: Curves.easeOutCubic,
@@ -2392,8 +2406,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       child: PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, result) async {
-          if (didPop) return; // 既にpopされた場合
-          await _handleExit(); // ここで保存＆ピル→短時間待ってからpop
+          if (didPop) return;
+          await _handleExit();
         },
         child: Scaffold(
           extendBody: true,
@@ -2405,11 +2419,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
             iconTheme: const IconThemeData(color: Colors.white),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-              onPressed: () async {
-                await _dismissKeyboardSafely(context);
-                if (!mounted) return;
-                Navigator.of(context).maybePop();
-              },
+              onPressed: _handleExit,
               tooltip: MaterialLocalizations.of(context).backButtonTooltip,
             ),
             title: Text(
@@ -2434,26 +2444,87 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           body: Stack(
             children: [
               body,
-              overlay,
-              dial,
+              overlay,                  // FABダイヤルのオーバーレイ
+              dial,                     // FABダイヤル
+              _buildMemoEditorOverlay(),// ← メモのフローティング編集シート（上半分・上から）
+              doneOverlay,              // キーボード上「完了」（ダミー）
             ],
           ),
-          // ★ キーボードが出ているときは FAB を出力しない
-          floatingActionButton: keyboardVisible
-              ? null
-              : AnimatedPadding(
+          floatingActionButton: (!keyboardVisible && !_memoOverlayVisible && !_memoOverlayOpen)
+              ? AnimatedPadding(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
             padding: EdgeInsets.only(bottom: (kbInset > 0 ? kbInset + 10 : 14)),
             child: fabMain,
-          ),
+          )
+              : null,
           floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         ),
       ),
     );
   }
 
-  // 部位選択後のヒント
+  Future<void> _scrollIntoComfortZoneAfterKeyboard(
+      GlobalKey key, {
+        double pivot = 0.0,
+        double topExtra = 28,
+      }) async {
+    await _waitForKeyboardStable();
+    await _scrollIntoComfortZone(key, pivot: pivot, topExtra: topExtra);
+  }
+
+  Future<void> _scrollIntoComfortZone(
+      GlobalKey key, {
+        double pivot = 0.5,
+        double topExtra = 28,
+      }) async {
+    _pendingScrollKey = key;
+    _scrollDebounce?.cancel();
+
+    _scrollDebounce = Timer(const Duration(milliseconds: 120), () async {
+      if (!mounted) return;
+
+      final ctx = _pendingScrollKey?.currentContext;
+      if (ctx == null) return;
+
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+
+      final targetCtx = _pendingScrollKey?.currentContext;
+      if (targetCtx == null) return;
+
+      final media = MediaQuery.of(context);
+      final double vh = media.size.height;
+      final double kb = media.viewInsets.bottom;
+      final double sb = media.padding.bottom;
+
+      double swH = 0;
+      if (SettingsManager.showStopwatch) {
+        final swCtx = _kStopwatchArea.currentContext;
+        if (swCtx != null) {
+          final rb = swCtx.findRenderObject() as RenderBox?;
+          if (rb != null) swH = rb.size.height;
+        }
+      }
+
+      final double topReserve = swH + topExtra;
+      final double bottomReserve = kb + sb + 16;
+
+      final double topFrac = (topReserve / vh).clamp(0.0, 0.7);
+      final double bottomFrac = (bottomReserve / vh).clamp(0.0, 0.8);
+      final double visibleFrac = (1.0 - topFrac - bottomFrac).clamp(0.15, 0.85);
+      final double p = pivot.clamp(0.0, 1.0);
+      final double align = (topFrac + visibleFrac * p).clamp(0.02, 0.98);
+
+      await Scrollable.ensureVisible(
+        targetCtx,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        alignment: align,
+      );
+    });
+  }
+
   Future<void> _scheduleHintsAfterPart() async {
     final box = widget.settingsBox;
     final seen = box.get('hint_seen_record_after_part') as bool? ?? false;
@@ -2504,9 +2575,8 @@ class SectionData {
   List<TextEditingController> menuControllers;
   List<List<SetInputData>> setInputDataList;
   List<Key> menuKeys;
-  List<GlobalKey> nameFieldKeys; // 種目名 TextField の直上に付けるキー群
+  List<GlobalKey> nameFieldKeys;
 
-  // 有酸素 per menu
   List<TextEditingController> aerobicDistanceCtrls;
   List<TextEditingController> aerobicDurationCtrls;
   List<bool> aerobicSuggestFlags;
@@ -2586,7 +2656,7 @@ class SetInputData {
 }
 
 class MenuList extends StatefulWidget {
-  final GlobalKey nameFieldKey; // 種目名行に付けるキー
+  final GlobalKey nameFieldKey;
   final TextEditingController menuController;
   final VoidCallback removeMenuCallback;
   final int setCount;
@@ -2597,8 +2667,6 @@ class MenuList extends StatefulWidget {
   final bool aerobicIsSuggestion;
   final VoidCallback? onConfirmAerobic;
   final VoidCallback? onAnyFieldFocused;
-
-  // 種目名の空⇔非空遷移を親に通知（UI制御用）
   final void Function(bool prevEmpty, bool nowEmpty)? onNameChanged;
 
   const MenuList({
@@ -2689,7 +2757,6 @@ class _MenuListState extends State<MenuList> {
     widget.distanceController.text = '${_kmController.text}.${_mController.text}';
   }
 
-  // 分秒ピッカー（ここでは保存UIは出さない）
   Future<void> _openDurationPicker() async {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -2779,8 +2846,6 @@ class _MenuListState extends State<MenuList> {
     void notifyFocus(bool has) {
       if (has) {
         widget.onAnyFieldFocused?.call();
-      } else {
-        // フォーカスアウト時も保存UIは出さない（退避時のみ）
       }
     }
 
@@ -2791,7 +2856,6 @@ class _MenuListState extends State<MenuList> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 種目名（下線のみ＋左余白）
           KeyedSubtree(
             key: widget.nameFieldKey,
             child: Row(
@@ -2845,19 +2909,16 @@ class _MenuListState extends State<MenuList> {
           ),
           const SizedBox(height: 2.0),
 
-          // 入力群
           Padding(
             padding: const EdgeInsets.only(left: 10.0),
             child: widget.isAerobic
                 ? Column(
               children: [
-                // 距離
                 Row(
                   children: [
                     Text(
                       l10n.distance,
-                      style:
-                      TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -2891,8 +2952,7 @@ class _MenuListState extends State<MenuList> {
                               focusedBorder: UnderlineInputBorder(
                                 borderSide: BorderSide(color: colorScheme.primary, width: 2),
                               ),
-                              contentPadding:
-                              const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                              contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                             ),
                           ),
                         ),
@@ -2900,9 +2960,7 @@ class _MenuListState extends State<MenuList> {
                     ),
                     Text(' ${l10n.km} ',
                         style: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.bold)),
+                            color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
                     Expanded(
                       flex: 2,
                       child: Focus(
@@ -2934,8 +2992,7 @@ class _MenuListState extends State<MenuList> {
                               focusedBorder: UnderlineInputBorder(
                                 borderSide: BorderSide(color: colorScheme.primary, width: 2),
                               ),
-                              contentPadding:
-                              const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                              contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                             ),
                           ),
                         ),
@@ -2943,22 +3000,17 @@ class _MenuListState extends State<MenuList> {
                     ),
                     Text(' ${l10n.m}',
                         style: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.bold)),
+                            color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 const SizedBox(height: 2),
-                // 時間（分・秒）
                 Row(
                   children: [
                     Text(
                       l10n.time,
-                      style:
-                      TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(width: 6),
-                    // 分
                     Expanded(
                       flex: 2,
                       child: GestureDetector(
@@ -2994,8 +3046,7 @@ class _MenuListState extends State<MenuList> {
                                   focusedBorder: UnderlineInputBorder(
                                     borderSide: BorderSide(color: colorScheme.primary, width: 2),
                                   ),
-                                  contentPadding:
-                                  const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                                 ),
                               ),
                             ),
@@ -3005,10 +3056,7 @@ class _MenuListState extends State<MenuList> {
                     ),
                     Text(' ${l10n.min} ',
                         style: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.bold)),
-                    // 秒
+                            color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
                     Expanded(
                       flex: 2,
                       child: GestureDetector(
@@ -3044,8 +3092,7 @@ class _MenuListState extends State<MenuList> {
                                   focusedBorder: UnderlineInputBorder(
                                     borderSide: BorderSide(color: colorScheme.primary, width: 2),
                                   ),
-                                  contentPadding:
-                                  const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                                 ),
                               ),
                             ),
@@ -3087,8 +3134,7 @@ class _MenuListState extends State<MenuList> {
                                   }
                                 },
                                 child: ConstrainedBox(
-                                  constraints:
-                                  const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                  constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                                   child: TextField(
                                     controller: set.weightController,
                                     keyboardType:
@@ -3107,22 +3153,20 @@ class _MenuListState extends State<MenuList> {
                                       filled: false,
                                       enabledBorder: UnderlineInputBorder(
                                         borderSide: BorderSide(
-                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4),
-                                            width: 1),
+                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
                                       ),
                                       focusedBorder: UnderlineInputBorder(
-                                        borderSide:
-                                        BorderSide(color: colorScheme.primary, width: 2),
+                                        borderSide: BorderSide(color: colorScheme.primary, width: 2),
                                       ),
-                                      contentPadding: const EdgeInsets.symmetric(
-                                          vertical: 6, horizontal: 0),
+                                      contentPadding:
+                                      const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
                             Text(
-                              ' ${currentUnit == 'kg' ? l10n.kg : l10n.lbs} ',
+                              ' ${currentUnit == "kg" ? l10n.kg : l10n.lbs} ',
                               style: TextStyle(
                                   color: colorScheme.onSurfaceVariant,
                                   fontSize: 13.0,
@@ -3137,8 +3181,7 @@ class _MenuListState extends State<MenuList> {
                                   }
                                 },
                                 child: ConstrainedBox(
-                                  constraints:
-                                  const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                  constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                                   child: TextField(
                                     controller: set.repController,
                                     keyboardType: TextInputType.number,
@@ -3154,15 +3197,13 @@ class _MenuListState extends State<MenuList> {
                                       filled: false,
                                       enabledBorder: UnderlineInputBorder(
                                         borderSide: BorderSide(
-                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4),
-                                            width: 1),
+                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
                                       ),
                                       focusedBorder: UnderlineInputBorder(
-                                        borderSide:
-                                        BorderSide(color: colorScheme.primary, width: 2),
+                                        borderSide: BorderSide(color: colorScheme.primary, width: 2),
                                       ),
-                                      contentPadding: const EdgeInsets.symmetric(
-                                          vertical: 6, horizontal: 0),
+                                      contentPadding:
+                                      const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                                     ),
                                   ),
                                 ),
@@ -3187,13 +3228,11 @@ class _MenuListState extends State<MenuList> {
   }
 }
 
-// ====== ★ ここに「プレビュー画面（保存／破棄のみ）」を同一ファイル内に実装 ======
-// ====== ★ プレビュー画面（保存／破棄ボタンを＋部位チップ風に統一） ======
+// ===== Photo preview =====
 class _PhotoPreviewPage extends StatelessWidget {
   final String imagePath;
   const _PhotoPreviewPage({required this.imagePath});
 
-  // ＋部位と同じブランドカラー
   static const Color kBrandBlue = Color(0xFF2563EB);
 
   Future<void> _confirmDiscard(BuildContext context) async {
