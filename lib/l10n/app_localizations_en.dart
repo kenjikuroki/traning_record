@@ -271,7 +271,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hintCalendarTapDate => 'Select a date to record.';
 
   @override
-  String get hintGraphFavorite => 'Mark as favorite to quickly recall later.';
+  String get hintGraphFavorite => 'Add frequently viewed data to Favorites.';
 
   @override
   String get hintGraphChartArea => 'The chart of your recorded data will appear here.';
@@ -302,7 +302,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get addPhoto => '＋Photo';
+  String get addPhoto => '+ Photo';
 
   @override
   String get dialogAddPhotoTitle => 'Add photo';
@@ -436,4 +436,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get albumEmptyMessage => 'Take photos from the Record screen and they will appear here. Keep your training progress in the album.';
+
+  @override
+  String get close => 'Close';
 }

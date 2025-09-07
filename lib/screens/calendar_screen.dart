@@ -65,7 +65,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
 
-    _focusedDay = DateTime(widget.selectedDate.year, widget.selectedDate.month, 1);
+    _focusedDay =
+        DateTime(widget.selectedDate.year, widget.selectedDate.month, 1);
     _selectedDay = DateTime(
       widget.selectedDate.year,
       widget.selectedDate.month,
@@ -74,7 +75,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     // CoachBubble（「日付をタップ」のみ）
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final seen = widget.settingsBox.get('hint_seen_calendar') as bool? ?? false;
+      final seen = widget.settingsBox.get('hint_seen_calendar') as bool? ??
+          false;
       if (seen) return;
 
       final l10n = AppLocalizations.of(context)!;
@@ -91,7 +93,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // ---------- Helpers ----------
   String _dateKey(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day
+          .toString()
+          .padLeft(2, '0')}';
 
   bool _sameDate(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
@@ -99,13 +103,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _hasAnyTrainingData(DailyRecord r) {
     for (final entry in r.menus.entries) {
       for (final m in entry.value) {
-        final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        final len = (m.weights.length < m.reps.length) ? m.weights.length : m
+            .reps.length;
         for (var i = 0; i < len; i++) {
           final w = m.weights[i].toString().trim();
           final p = m.reps[i].toString().trim();
           if (w.isNotEmpty || p.isNotEmpty) return true;
         }
-        if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
+        if ((m.distance
+            ?.trim()
+            .isNotEmpty ?? false) || (m.duration
+            ?.trim()
+            .isNotEmpty ?? false)) {
           return true;
         }
       }
@@ -150,7 +159,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // 「5.3」→「5km300m」
   String _formatDistance(String? raw, AppLocalizations l10n) {
-    if (raw == null || raw.trim().isEmpty) return '-';
+    if (raw == null || raw
+        .trim()
+        .isEmpty) return '-';
     final value = double.tryParse(raw);
     if (value == null) return '-';
     final km = value.floor();
@@ -160,7 +171,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // 「30:45」→「30分45秒」
   String _formatDuration(String? raw, AppLocalizations l10n) {
-    if (raw == null || raw.trim().isEmpty) return '-';
+    if (raw == null || raw
+        .trim()
+        .isEmpty) return '-';
     final parts = raw.split(':');
     final min = (parts.isNotEmpty && parts[0].isNotEmpty) ? parts[0] : '0';
     final sec = (parts.length > 1 && parts[1].isNotEmpty) ? parts[1] : '0';
@@ -173,7 +186,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     r.menus.forEach((part, menuList) {
       bool has = false;
       for (final m in menuList) {
-        final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        final len = (m.weights.length < m.reps.length) ? m.weights.length : m
+            .reps.length;
         for (int i = 0; i < len; i++) {
           final w = m.weights[i].toString().trim();
           final p = m.reps[i].toString().trim();
@@ -182,7 +196,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
             break;
           }
         }
-        if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
+        if ((m.distance
+            ?.trim()
+            .isNotEmpty ?? false) || (m.duration
+            ?.trim()
+            .isNotEmpty ?? false)) {
           has = true;
         }
         if (has) break; // returnしない
@@ -224,7 +242,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // 最大3ボックス（日付下：体重+部位の合計）の行高を算出
   double _rowHeightFor3(BuildContext context) {
     const double topPad = 6.0;
-    final double dayFont = Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14.0;
+    final double dayFont = Theme
+        .of(context)
+        .textTheme
+        .bodyMedium
+        ?.fontSize ?? 14.0;
     final double dayLine = dayFont * 1.2;
 
     const double chipFont = 10.0;
@@ -240,14 +262,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   // セル描画（数字は上固定 / 直下に体重+部位ボックスを“上→下”に積む・合計最大3つ）
-  Widget _buildDayCell(
-      BuildContext context,
+  Widget _buildDayCell(BuildContext context,
       DateTime day, {
         required Color textColor,
         bool selected = false,
         bool showEventsForOutOfMonth = false,
       }) {
-    final cs = Theme.of(context).colorScheme;
+    final cs = Theme
+        .of(context)
+        .colorScheme;
 
     // その日の部位イベント（'_w'＝体重のみは除外）
     final parts = _eventLoader(day)
@@ -260,7 +283,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final hasWeight = record?.weight != null;
 
     // 合計最大3つ（体重があれば1スロット使用）
-    final bool canShowParts = (showEventsForOutOfMonth || day.month == _focusedDay.month);
+    final bool canShowParts = (showEventsForOutOfMonth ||
+        day.month == _focusedDay.month);
     final int maxSlots = 3;
     final int partSlots = canShowParts ? (maxSlots - (hasWeight ? 1 : 0)) : 0;
     final List<String> showParts =
@@ -303,9 +327,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch, // 横幅いっぱい
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 上に日付
-            _dayLabelTop(context, day, textColor: textColor, selected: selected),
-
+            // 上に日付（当月のみ：土=青 / 日=赤）
+            Builder(
+              builder: (_) {
+                final outOfMonth = day.month != _focusedDay.month;
+                final Color dayNumberColor = outOfMonth
+                    ? textColor
+                    : (day.weekday == DateTime.sunday
+                    ? Colors.red
+                    : (day.weekday == DateTime.saturday ? Colors.blue : textColor));
+                return _dayLabelTop(
+                  context,
+                  day,
+                  textColor: dayNumberColor,
+                  selected: selected,
+                );
+              },
+            ),
             // 日付と最初のボックスの間は常に 2px（体重 or 部位があれば）
             if (hasWeight || showParts.isNotEmpty) const SizedBox(height: 2),
 
@@ -320,13 +358,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   final label = _translatePartToLocale(context, p);
                   final boxColor = _colorForPart(p, cs);
                   final textOnBox =
-                  ThemeData.estimateBrightnessForColor(boxColor) == Brightness.dark
+                  ThemeData.estimateBrightnessForColor(boxColor) ==
+                      Brightness.dark
                       ? Colors.white
                       : Colors.black87;
                   return Container(
                     // 最後のボックスだけ下マージン0
-                    margin: EdgeInsets.only(bottom: i == showParts.length - 1 ? 0 : 2),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    margin: EdgeInsets.only(
+                        bottom: i == showParts.length - 1 ? 0 : 2),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: boxColor,
                       borderRadius: BorderRadius.circular(6),
@@ -366,8 +407,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black54,
       builder: (ctx) {
-        final cs = Theme.of(ctx).colorScheme;
-        return WillPopScope(                     // ← 戻る（ボタン/スワイプ）は許可
+        final cs = Theme
+            .of(ctx)
+            .colorScheme;
+        return WillPopScope( // ← 戻る（ボタン/スワイプ）は許可
           onWillPop: () async => true,
           child: SizedBox.expand(
             child: Material(
@@ -375,7 +418,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   color: cs.surface,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20)),
                 ),
                 child: SafeArea(
                   top: false,
@@ -395,10 +439,41 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
     if (mounted) setState(() {});
   }
+
+  // 半角→全角数字（0-9）変換
+  String _toZenkakuDigits(String s) {
+    const half = '0123456789';
+    const full = '０１２３４５６７８９';
+    return s.split('').map((ch) {
+      final i = half.indexOf(ch);
+      return i >= 0 ? full[i] : ch;
+    }).join();
+  }
+
+  // AppBar/ヘッダ用のローカライズ済みタイトル
+  String _formatMonthTitle(BuildContext context, DateTime d) {
+    final locale = Localizations.localeOf(context);
+    final isJa = locale.languageCode == 'ja';
+    final fmt = DateFormat.yMMMM(locale.toString()); // 例: ja_JP → "2025年9月"
+    final s = fmt.format(d);
+
+    if (isJa) {
+      // 先頭の西暦4桁だけ全角化 → 「２０２５年9月」
+      final m = RegExp(r'^(\d{4})年').firstMatch(s);
+      if (m != null) {
+        final fullYear = _toZenkakuDigits(m.group(1)!);
+        return s.replaceFirst(m.group(1)!, fullYear);
+      }
+    }
+    return s;
+  }
+
   // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -407,7 +482,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
-          DateFormat('yyyy/MM').format(_focusedDay),
+          _formatMonthTitle(context, _focusedDay),
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -440,7 +515,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         child: ValueListenableBuilder<Box<DailyRecord>>(
           valueListenable: widget.recordsBox.listenable(),
           builder: (context, box, _) {
-            final selectedRecord = box.get(_dateKey(_selectedDay ?? DateTime.now()));
+            final selectedRecord = box.get(
+                _dateKey(_selectedDay ?? DateTime.now()));
             return Column(
               children: [
                 const AdBanner(screenName: 'calendar'),
@@ -457,7 +533,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildCalendar(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
 
     return Card(
       key: _kCalendarCard,
@@ -470,11 +548,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
           firstDay: DateTime.utc(2015, 1, 1),
           lastDay: DateTime.utc(2100, 12, 31),
           focusedDay: _focusedDay,
+          locale: Localizations.localeOf(context).toString(), // ← ロケール反映
 
           // 行の高さ＝「日付＋最大3ボックス」ぴったり
           rowHeight: _rowHeightFor3(context),
 
-          selectedDayPredicate: (day) => _selectedDay != null && _sameDate(day, _selectedDay!),
+          selectedDayPredicate: (day) =>
+          _selectedDay != null && _sameDate(day, _selectedDay!),
           startingDayOfWeek: StartingDayOfWeek.monday,
 
           headerStyle: HeaderStyle(
@@ -485,16 +565,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
-            leftChevronIcon: Icon(Icons.chevron_left, color: colorScheme.onSurface),
-            rightChevronIcon: Icon(Icons.chevron_right, color: colorScheme.onSurface),
+            leftChevronIcon: Icon(
+                Icons.chevron_left, color: colorScheme.onSurface),
+            rightChevronIcon: Icon(
+                Icons.chevron_right, color: colorScheme.onSurface),
           ),
 
           calendarStyle: CalendarStyle(
             defaultTextStyle: TextStyle(color: colorScheme.onSurface),
             weekendTextStyle: TextStyle(color: colorScheme.onSurface),
             outsideTextStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-            todayDecoration: const BoxDecoration(),     // 今日リングなし
-            selectedDecoration: const BoxDecoration(),  // 選択の円もなし
+            todayDecoration: const BoxDecoration(),
+            // 今日リングなし
+            selectedDecoration: const BoxDecoration(),
+            // 選択の円もなし
             selectedTextStyle: TextStyle(color: colorScheme.onSurface),
             markersMaxCount: 0, // 標準の●マーカーを無効化
           ),
@@ -502,7 +586,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
           // ▼ セル一体描画（markerBuilderは使わない）
           calendarBuilders: CalendarBuilders<Object>(
             defaultBuilder: (context, day, focusedDay) {
-              final cs = Theme.of(context).colorScheme;
+              final cs = Theme
+                  .of(context)
+                  .colorScheme;
               return _buildDayCell(
                 context,
                 day,
@@ -511,7 +597,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
               );
             },
             outsideBuilder: (context, day, focusedDay) {
-              final cs = Theme.of(context).colorScheme;
+              final cs = Theme
+                  .of(context)
+                  .colorScheme;
               return _buildDayCell(
                 context,
                 day,
@@ -521,7 +609,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
               );
             },
             todayBuilder: (context, day, focusedDay) {
-              final cs = Theme.of(context).colorScheme;
+              final cs = Theme
+                  .of(context)
+                  .colorScheme;
               return _buildDayCell(
                 context,
                 day,
@@ -530,7 +620,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
               );
             },
             selectedBuilder: (context, day, focusedDay) {
-              final cs = Theme.of(context).colorScheme;
+              final cs = Theme
+                  .of(context)
+                  .colorScheme;
               return _buildDayCell(
                 context,
                 day,
@@ -549,7 +641,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               return;
             }
             setState(() {
-              _selectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+              _selectedDay = DateTime(
+                  selectedDay.year, selectedDay.month, selectedDay.day);
               _focusedDay = focusedDay;
             });
           },
@@ -562,8 +655,74 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  Future<void> _showResultsDialog(BuildContext context,
+      List<Widget> summaryChildren) async {
+    final cs = Theme
+        .of(context)
+        .colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
+          insetPadding: const EdgeInsets.symmetric(
+              horizontal: 24, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.results, // 「実績」
+                    style: TextStyle(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery
+                          .of(ctx)
+                          .size
+                          .height * 0.65,
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: summaryChildren,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: Text(l10n.close),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildResultsArea(BuildContext context, DailyRecord? record) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
     final l10n = AppLocalizations.of(context)!;
 
     // 実績ゼロ日：広告のみ（スクロール可能）
@@ -598,7 +757,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             alignment: Alignment.centerLeft,
             child: Text(
               '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(1)} $unit',
-              style: TextStyle(color: colorScheme.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
+              style: TextStyle(color: colorScheme.onSurface,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600),
               textAlign: TextAlign.left,
             ),
           ),
@@ -611,14 +772,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
       // その部位に表示すべきデータがあるか
       bool partHasData = false;
       for (final m in menuList) {
-        final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        final len = (m.weights.length < m.reps.length) ? m.weights.length : m
+            .reps.length;
         for (int i = 0; i < len; i++) {
-          if (m.weights[i].toString().trim().isNotEmpty || m.reps[i].toString().trim().isNotEmpty) {
+          if (m.weights[i]
+              .toString()
+              .trim()
+              .isNotEmpty || m.reps[i]
+              .toString()
+              .trim()
+              .isNotEmpty) {
             partHasData = true;
             break;
           }
         }
-        if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
+        if ((m.distance
+            ?.trim()
+            .isNotEmpty ?? false) || (m.duration
+            ?.trim()
+            .isNotEmpty ?? false)) {
           partHasData = true;
         }
         if (partHasData) break;
@@ -664,7 +836,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         );
 
         // セット
-        final setCount = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        final setCount = (m.weights.length < m.reps.length)
+            ? m.weights.length
+            : m.reps.length;
         for (int i = 0; i < setCount; i++) {
           final w = m.weights[i].toString().trim();
           final r = m.reps[i].toString().trim();
@@ -675,7 +849,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '${i + 1}${l10n.sets}：${w.isNotEmpty ? '$w${unit == 'kg' ? l10n.kg : l10n.lbs}' : '-'} × ${r.isNotEmpty ? r : '-'}${l10n.reps}',
+                  '${i + 1}${l10n.sets}：${w.isNotEmpty ? '$w${unit == 'kg'
+                      ? l10n.kg
+                      : l10n.lbs}' : '-'} × ${r.isNotEmpty ? r : '-'}${l10n
+                      .reps}',
                   textAlign: TextAlign.left,
                   style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
                 ),
@@ -685,7 +862,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         }
 
         // 有酸素の距離・時間
-        if ((m.distance?.trim().isNotEmpty ?? false)) {
+        if ((m.distance
+            ?.trim()
+            .isNotEmpty ?? false)) {
           summaryChildren.add(
             Padding(
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
@@ -700,7 +879,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           );
         }
-        if ((m.duration?.trim().isNotEmpty ?? false)) {
+        if ((m.duration
+            ?.trim()
+            .isNotEmpty ?? false)) {
           summaryChildren.add(
             Padding(
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
@@ -736,22 +917,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
               elevation: 4,
               clipBehavior: Clip.none,
-              child: ExpansionTile(
-                tilePadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                expandedAlignment: Alignment.centerLeft,
-                maintainState: true,
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 12.0),
                 title: Text(
-                  l10n.results, // ← l10n を使用（"実績"）
-                  style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold),
+                  l10n.results, // 「実績」
+                  style: TextStyle(color: colorScheme.onSurface,
+                      fontWeight: FontWeight.bold),
                 ),
-                children: [
-                  // まとめて簡易表示
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: summaryChildren,
-                  ),
-                ],
+                trailing: Icon(Icons.open_in_new, color: colorScheme.onSurface),
+                onTap: () => _showResultsDialog(context, summaryChildren),
               ),
             ),
           ),

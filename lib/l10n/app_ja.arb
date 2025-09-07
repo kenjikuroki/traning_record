@@ -86,7 +86,7 @@
   "hintRecordOpenSettings": "セット数の初期値は設定から変更できます。",
   "hintRecordFab": "ここからセット・種目・部位を追加できます",
   "hintCalendarTapDate": "記録する日付を選択",
-  "hintGraphFavorite": "お気に入りに登録すると呼び出しに便利です。",
+  "hintGraphFavorite": "よく見るデータはお気に入りに登録しよう。",
   "hintGraphChartArea": "記録したデータのグラフが出力されます。",
   "hintGraphSelectPart": "部位・種目を選択",
   "discardLongPressLabel": "破棄（長押し）",
@@ -138,5 +138,6 @@
   "selectedCount": "{count}件選択中",
   "deleteSelectedConfirmTitle": "選択した{count}件を削除しますか？",
   "albumEmptyMessage": "記録画面で写真を撮影するとアルバムに表示されます。トレーニングの進捗をアルバムに残そう。",
-  "results": "実績"
+  "results": "実績",
+  "close": "閉じる"
 }

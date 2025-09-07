@@ -417,6 +417,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 4), // ← 日付と写真の間を狭く

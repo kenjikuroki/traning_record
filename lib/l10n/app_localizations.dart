@@ -614,7 +614,7 @@ abstract class AppLocalizations {
   /// No description provided for @hintGraphFavorite.
   ///
   /// In en, this message translates to:
-  /// **'Mark as favorite to quickly recall later.'**
+  /// **'Add frequently viewed data to Favorites.'**
   String get hintGraphFavorite;
 
   /// No description provided for @hintGraphChartArea.
@@ -668,7 +668,7 @@ abstract class AppLocalizations {
   /// No description provided for @addPhoto.
   ///
   /// In en, this message translates to:
-  /// **'＋Photo'**
+  /// **'+ Photo'**
   String get addPhoto;
 
   /// No description provided for @dialogAddPhotoTitle.
@@ -928,6 +928,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Take photos from the Record screen and they will appear here. Keep your training progress in the album.'**
   String get albumEmptyMessage;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

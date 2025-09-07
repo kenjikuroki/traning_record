@@ -271,7 +271,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get hintCalendarTapDate => '記録する日付を選択';
 
   @override
-  String get hintGraphFavorite => 'お気に入りに登録すると呼び出しに便利です。';
+  String get hintGraphFavorite => 'よく見るデータはお気に入りに登録しよう。';
 
   @override
   String get hintGraphChartArea => '記録したデータのグラフが出力されます。';
@@ -436,4 +436,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get albumEmptyMessage => '記録画面で写真を撮影するとアルバムに表示されます。トレーニングの進捗をアルバムに残そう。';
+
+  @override
+  String get close => '閉じる';
 }

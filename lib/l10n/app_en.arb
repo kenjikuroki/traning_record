@@ -86,7 +86,7 @@
   "hintRecordOpenSettings": "You can change default sets in Settings.",
   "hintRecordFab": "Add a set, exercise, or body part from here",
   "hintCalendarTapDate": "Select a date to record.",
-  "hintGraphFavorite": "Mark as favorite to quickly recall later.",
+  "hintGraphFavorite": "Add frequently viewed data to Favorites.",
   "hintGraphChartArea": "The chart of your recorded data will appear here.",
   "hintGraphSelectPart": "Select body part and exercise.",
   "discardLongPressLabel": "Discard (long press)",
@@ -95,7 +95,7 @@
   "noGraphData": "No records found",
   "favorited": "{menuName} added to favorites",
   "unfavorited": "{menuName} removed from favorites",
-  "addPhoto": "＋Photo",
+  "addPhoto": "+ Photo",
   "dialogAddPhotoTitle": "Add photo",
   "actionTakePhoto": "Take photo",
   "progressSnaps": "Progress snaps",
@@ -138,5 +138,6 @@
   "selectedCount": "{count} selected",
   "results": "Results",
   "deleteSelectedConfirmTitle": "Delete {count} item(s)?",
-  "albumEmptyMessage": "Take photos from the Record screen and they will appear here. Keep your training progress in the album."
+  "albumEmptyMessage": "Take photos from the Record screen and they will appear here. Keep your training progress in the album.",
+  "close": "Close"
 }
