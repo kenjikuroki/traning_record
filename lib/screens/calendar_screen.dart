@@ -518,9 +518,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         automaticallyImplyLeading: false,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: Text(
-          _formatMonthTitle(context, _focusedDay),
-          style: const TextStyle(
+        title: const Text(
+          'TrainingrRecord', // ← ここを固定文字列に
+          style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 20,

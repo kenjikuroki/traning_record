@@ -602,7 +602,7 @@ abstract class AppLocalizations {
   /// No description provided for @hintRecordFab.
   ///
   /// In en, this message translates to:
-  /// **'Add a set, exercise, or body part from here'**
+  /// **'Add a part, exercise, photo, or memo from here.'**
   String get hintRecordFab;
 
   /// No description provided for @hintCalendarTapDate.

@@ -313,10 +313,16 @@ class _AlbumScreenState extends State<AlbumScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white), // ← 追加：戻るアイコン等を白に
         title: Text(
           _inSelection
               ? l10n.selectedCount(_selectedPaths.length)
               : l10n.albumTitle,
+          style: const TextStyle( // ← 追加：他ページと同じフォントに統一
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
         ),
         actions: _inSelection
             ? [
@@ -334,7 +340,6 @@ class _AlbumScreenState extends State<AlbumScreen> {
             filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
             child: Container(
               decoration: BoxDecoration(
-                // うっすらグラデで読みやすさ確保（home_screenのボトムバーと同系）
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,

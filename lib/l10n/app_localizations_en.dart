@@ -265,7 +265,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hintRecordOpenSettings => 'You can change default sets in Settings.';
 
   @override
-  String get hintRecordFab => 'Add a set, exercise, or body part from here';
+  String get hintRecordFab => 'Add a part, exercise, photo, or memo from here.';
 
   @override
   String get hintCalendarTapDate => 'Select a date to record.';

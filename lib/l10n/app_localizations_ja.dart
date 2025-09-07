@@ -265,7 +265,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get hintRecordOpenSettings => 'セット数の初期値は設定から変更できます。';
 
   @override
-  String get hintRecordFab => 'ここからセット・種目・部位を追加できます';
+  String get hintRecordFab => 'ここから部位・種目・写真・メモを追加できます';
 
   @override
   String get hintCalendarTapDate => '記録する日付を選択';
