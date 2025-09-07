@@ -48,8 +48,35 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+// ▼ ライト：白地に黒文字／ダーク：黒地に白文字
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color navBgColor = isDark ? Colors.black : Colors.white;
+    final Color navFgColor = isDark ? Colors.white : Colors.black;
+
+
+// AppBar と同一の黒グラデ（すりガラスにグレーを足す）
+// Calendar / Album / Graph: 0.58, 0.38, 0.16
+// Settings:                 0.60, 0.40, 0.18
+    final List<Color> bottomBarColors = (() {
+      switch (_currentIndex) {
+        case 3: // Settings
+          return [
+            Colors.black.withOpacity(0.60),
+            Colors.black.withOpacity(0.40),
+            Colors.black.withOpacity(0.18),
+          ];
+        default: // Calendar / Album / Graph
+          return [
+            Colors.black.withOpacity(0.58),
+            Colors.black.withOpacity(0.38),
+            Colors.black.withOpacity(0.16),
+          ];
+      }
+    })();
+
+
     return Scaffold(
-      backgroundColor: Colors.transparent, // ← 壁紙を透過表示
+      backgroundColor: Colors.transparent,
       body: AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
                 transitionBuilder: (child, animation) {
@@ -87,48 +114,25 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
           ),
-      bottomNavigationBar: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withOpacity(0.22),
-                  Colors.black.withOpacity(0.45),
-                ],
-              ),
-            ),
-            child: BottomNavigationBar(
-              currentIndex: _currentIndex,
-              selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.white70,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              showSelectedLabels: false,
-              showUnselectedLabels: false,
-              onTap: _onItemTapped,
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.calendar_today),
-                  label: 'Calendar',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.photo_library_outlined),
-                  label: 'Album',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.bar_chart),
-                  label: 'Graph',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.settings),
-                  label: 'Settings',
-                ),
-              ],
-            ),
+      bottomNavigationBar: Container(
+        color: navBgColor,              // ← 外側の Container が下端まで塗る
+        child: SafeArea(                // ← SafeArea は“内側”に
+          top: false,
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            selectedItemColor: navFgColor,
+            unselectedItemColor: navFgColor.withOpacity(0.6),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            showSelectedLabels: false,
+            showUnselectedLabels: false,
+            onTap: _onItemTapped,
+            items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
+              BottomNavigationBarItem(icon: Icon(Icons.photo_library_outlined), label: 'Album'),
+              BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
+              BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+            ],
           ),
         ),
       ),

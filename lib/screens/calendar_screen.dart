@@ -513,7 +513,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: SettingsManager.backgroundAssetNotifier.value.isEmpty
+          ? null
+          : Colors.transparent,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         elevation: 0,

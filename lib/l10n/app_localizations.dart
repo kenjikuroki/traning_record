@@ -650,7 +650,7 @@ abstract class AppLocalizations {
   /// No description provided for @noGraphData.
   ///
   /// In en, this message translates to:
-  /// **'No records found'**
+  /// **'Select a body part/exercise or weight to display the graph.'**
   String get noGraphData;
 
   /// No description provided for @favorited.

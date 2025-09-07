@@ -289,7 +289,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get weekDisplay => 'Week';
 
   @override
-  String get noGraphData => 'No records found';
+  String get noGraphData => 'Select a body part/exercise or weight to display the graph.';
 
   @override
   String favorited(Object menuName) {

@@ -289,7 +289,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get weekDisplay => '週';
 
   @override
-  String get noGraphData => '記録がありません';
+  String get noGraphData => '部位・種目や体重を選択するとグラフが表示されます。';
 
   @override
   String favorited(Object menuName) {

@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../l10n/app_localizations.dart';
 import '../widgets/ad_banner.dart';
+import '../settings_manager.dart';
 
 class AlbumScreen extends StatefulWidget {
   const AlbumScreen({super.key});
@@ -292,7 +293,9 @@ class _AlbumScreenState extends State<AlbumScreen> {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.transparent, // 壁紙を透過表示
+      backgroundColor: SettingsManager.backgroundAssetNotifier.value.isEmpty
+          ? null
+          : Colors.transparent, // 壁紙を透過表示
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -335,7 +338,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
           // 背景を暗くするオーバーレイ（レイアウトに影響しない）
           Positioned.fill(
             child: IgnorePointer(
-              child: Container(color: Colors.black.withOpacity(0.90)),
+              child: Container(color: Colors.black.withOpacity(0.70)),
             ),
           ),
 
