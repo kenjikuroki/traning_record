@@ -139,5 +139,11 @@
   "results": "Results",
   "deleteSelectedConfirmTitle": "Delete {count} item(s)?",
   "albumEmptyMessage": "Take photos from the Record screen and they will appear here. Keep your training progress in the album.",
-  "close": "Close"
+  "close": "Close",
+  "addMemo": "+ Memo",
+  "memo": "Memo",
+  "memoTitle": "Title",
+  "memoBody": "Memo",
+  "memoTitlePlaceholder": "Enter title",
+  "memoBodyPlaceholder": "Enter memo"
 }

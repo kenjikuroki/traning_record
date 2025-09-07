@@ -439,4 +439,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get close => 'Close';
+
+  @override
+  String get addMemo => '+ Memo';
+
+  @override
+  String get memo => 'Memo';
+
+  @override
+  String get memoTitle => 'Title';
+
+  @override
+  String get memoBody => 'Memo';
+
+  @override
+  String get memoTitlePlaceholder => 'Enter title';
+
+  @override
+  String get memoBodyPlaceholder => 'Enter memo';
 }

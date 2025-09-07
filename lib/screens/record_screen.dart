@@ -98,6 +98,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   // ★ 写真カード表示位置（末尾セル）に付けるキー
   final GlobalKey _kPhotoCardsKey = GlobalKey();
 
+  // ★ メモカード位置
+  final GlobalKey _kMemoCardKey = GlobalKey();
+
   // 1日の写真上限（UIは出さず、Snackだけで通知）
   static const int _kDailyPhotoCap = 24;
 
@@ -141,6 +144,11 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   bool _fabOpen = false;
 
   final TextEditingController _weightController = TextEditingController();
+
+  // --- メモ（題名なし、本文のみ 400字） ---
+  bool _showMemo = false; // メモカード表示有無
+  final TextEditingController _memoController = TextEditingController();
+  final FocusNode _memoFocus = FocusNode();
 
   // --- 写真（メディア）関連 ---
   final ImagePicker _imagePicker = ImagePicker();
@@ -270,6 +278,10 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     }
     _sections.clear();
     _weightController.dispose();
+
+    _memoController.dispose();
+    _memoFocus.dispose();
+
     super.dispose();
   }
 
@@ -857,6 +869,25 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       _weightController.clear();
     }
 
+    // === メモ復元（DailyRecord に note があれば使用。なければ settingsBox の body を使う／互換で title 単体も拾う） ===
+    String? recoveredNote;
+    try {
+      final dyn = record as dynamic;
+      recoveredNote = dyn?.note as String?;
+    } catch (_) {
+      // ignore
+    }
+    if (recoveredNote == null) {
+      final m = widget.settingsBox.get('memo-$dateKey');
+      if (m is Map) {
+        final body = (m['body'] as String?) ?? '';
+        final titleCompat = (m['title'] as String?) ?? '';
+        recoveredNote = body.isNotEmpty ? body : titleCompat;
+      }
+    }
+    _memoController.text = (recoveredNote ?? '');
+    _showMemo = _memoController.text.trim().isNotEmpty;
+
     // 記録なし
     if (record == null || record.menus.isEmpty) {
       _sections.add(SectionData.createEmpty(_currentSetCount, shouldPopulateDefaults: false));
@@ -1092,6 +1123,13 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       }
     }
 
+    // メモ（本文のみ）
+    final memoText = _memoController.text.trim();
+    if (memoText.isNotEmpty) {
+      hasAnyRecordData = true;
+    }
+
+    // 体重
     double? bodyWeight;
     if (_weightController.text.isNotEmpty) {
       bodyWeight = double.tryParse(_weightController.text);
@@ -1106,11 +1144,25 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         lastModifiedPart: lastModifiedPart,
         weight: bodyWeight,
       );
+      // 可能なら拡張フィールドに書き込む（Dynamic）
+      try {
+        final dyn = newRecord as dynamic;
+        dyn.note = memoText; // 題名廃止 → note に本文を保存
+      } catch (_) {
+        // ignore
+      }
+
       widget.recordsBox.put(dateKey, newRecord);
       didChangeStorage = true;
+
+      // 互換：settingsBox にも保存（カレンダー等で参照可能に）
+      widget.settingsBox.put('memo-$dateKey', {'body': memoText});
+      // ※ カレンダー側で実績表示する場合は、カレンダー画面でこのキーを参照して表示を追加してください。
     } else {
       final had = widget.recordsBox.containsKey(dateKey);
       widget.recordsBox.delete(dateKey);
+      // メモも消す
+      widget.settingsBox.delete('memo-$dateKey');
       didChangeStorage = had;
     }
     return didChangeStorage;
@@ -1244,8 +1296,9 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel)),
           TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n.delete, style: const TextStyle(color: Colors.red))),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );
@@ -1326,6 +1379,20 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
   // 「＋写真」タップ時：撮影→プレビュー（保存/破棄のみ）→どちらでもカメラに戻る
   void _handleAddPhoto() {
     _startCaptureLoop();
+  }
+
+  // 「＋メモ」
+  void _handleAddMemo() {
+    setState(() {
+      _showMemo = true;
+      _fabOpen = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      _memoFocus.requestFocus();
+      await SystemChannels.textInput.invokeMethod('TextInput.show');
+      await _scrollIntoComfortZoneAfterKeyboard(_kMemoCardKey, pivot: 0.0, topExtra: 28);
+    });
   }
 
   // yyyy-MM-dd 形式のキー
@@ -1461,7 +1528,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     await _scrollIntoViewKey(_kPhotoCardsKey, alignment: 0.98);
   }
 
-  // ====== ★ 撮影ループ：撮影 → プレビュー（保存/破棄のみ） → どちらでもカメラに戻る ======
+  // ====== ★ 撮影ループ：撮影 → プレビュー（保存／破棄のみ） → どちらでもカメラに戻る ======
   Future<void> _startCaptureLoop() async {
     if (!await _ensureCameraPermission(context)) return;
 
@@ -1582,6 +1649,86 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     );
   }
 
+  // ★ メモカード（題名廃止／本文のみ 400字・カウンターはリアル更新）
+  Widget _buildMemoCard() {
+    if (!_showMemo) return const SizedBox.shrink();
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    return Padding(
+      key: _kMemoCardKey,
+      padding: EdgeInsets.zero,
+      child: Card(
+        color: cs.surfaceContainerHighest,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 1.0,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.memo,
+                style: TextStyle(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 8),
+              // 本文のみ
+              Focus(
+                onFocusChange: (has) {
+                  if (has) {
+                    setState(() => _fabOpen = false);
+                  }
+                },
+                child: TextField(
+                  focusNode: _memoFocus,
+                  controller: _memoController,
+                  maxLines: null,
+                  minLines: 3,
+                  keyboardType: TextInputType.multiline,
+                  maxLength: 400, // ★ 最大400字
+                  // 入力ごとに TextField 自身だけが再描画されるので軽量（画面全体のsetStateは不要）
+                  buildCounter: (
+                      BuildContext context, {
+                        required int currentLength,
+                        required bool isFocused,
+                        int? maxLength,
+                      }) {
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '${currentLength}/${maxLength ?? 400}',
+                        style: TextStyle(color: cs.onSurfaceVariant, fontSize: 11),
+                      ),
+                    );
+                  },
+                  // 念のため端末側の制限も（旧SDK互換）
+                  inputFormatters: [LengthLimitingTextInputFormatter(400)],
+                  style: TextStyle(color: cs.onSurface),
+                  decoration: InputDecoration(
+                    alignLabelWithHint: true,
+                    hintText: l10n.memoBodyPlaceholder,
+                    hintStyle: TextStyle(color: cs.onSurfaceVariant.withOpacity(0.6)),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: cs.onSurfaceVariant.withOpacity(0.4), width: 1),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: cs.primary, width: 2),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 // ★ 写真カード群（タイトル付き／1=中央, 2=中央寄せ2枚, 3+=3列グリッド）
   Widget _buildMediaCards() {
     if (_mediaPaths.isEmpty) return const SizedBox.shrink();
@@ -1591,123 +1738,112 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     // 表示順：新しい→古い
     final paths = List<String>.from(_mediaPaths.reversed);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Card(
-        color: cs.surfaceContainerHighest,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 1.0,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // タイトル（l10n 進捗スナップ）
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  l10n.progressSnaps, // ← 新規l10nキー
-                  style: TextStyle(
-                    color: cs.onSurface,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
+    // ▼▼▼ ここから：外側の Padding を削除 ▼▼▼
+    return Card(
+      color: cs.surfaceContainerHighest,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 1.0,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                l10n.progressSnaps,
+                style: TextStyle(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
                 ),
               ),
+            ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                const double gap = 6;
+                final double cell =
+                ((constraints.maxWidth - gap * 2) / 3).clamp(0, constraints.maxWidth);
 
-              // サムネ領域
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  const double gap = 6;
-                  // 3列時の1セル幅を基準に、1枚/2枚の中央寄せサイズも統一
-                  final double cell =
-                  ((constraints.maxWidth - gap * 2) / 3).clamp(0, constraints.maxWidth);
-
-                  Widget buildThumb(String path) {
-                    return InkWell(
-                      onTap: () => _openImageViewer(path),
-                      onLongPress: () => _confirmDelete(path),
-                      borderRadius: BorderRadius.circular(12),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: SizedBox.square(
-                          dimension: cell,
-                          child: Image.file(
-                            File(path),
-                            fit: BoxFit.cover,
-                            errorBuilder: (ctx, err, st) => Center(
-                              child: Icon(
-                                Icons.broken_image_outlined,
-                                color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
+                Widget buildThumb(String path) => InkWell(
+                  onTap: () => _openImageViewer(path),
+                  onLongPress: () => _confirmDelete(path),
+                  borderRadius: BorderRadius.circular(12),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox.square(
+                      dimension: cell,
+                      child: Image.file(
+                        File(path),
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx, err, st) => Center(
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: Theme.of(ctx).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
-                    );
-                  }
+                    ),
+                  ),
+                );
 
-                  if (paths.length == 1) {
-                    // 1枚：やや左寄せ（左すぎない）
-                    return Align(
-                      alignment: Alignment(-0.8, 0), // 左に35%だけ寄せる（-1.0が最左、0が中央）
-                      child: buildThumb(paths[0]),
-                    );
-                  }
-                  else if (paths.length == 2) {
-                    // 2枚：中央寄せで2枚
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        buildThumb(paths[0]),
-                        const SizedBox(width: gap),
-                        buildThumb(paths[1]),
-                      ],
-                    );
-                  } else {
-                    // 3枚以上：3列グリッド
-                    return GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: paths.length,
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        mainAxisSpacing: gap,
-                        crossAxisSpacing: gap,
-                      ),
-                      itemBuilder: (context, i) {
-                        final path = paths[i];
-                        return InkWell(
-                          onTap: () => _openImageViewer(path),
-                          onLongPress: () => _confirmDelete(path),
+                if (paths.length == 1) {
+                  return Align(
+                    alignment: const Alignment(-0.8, 0),
+                    child: buildThumb(paths[0]),
+                  );
+                } else if (paths.length == 2) {
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      buildThumb(paths[0]),
+                      const SizedBox(width: gap),
+                      buildThumb(paths[1]),
+                    ],
+                  );
+                } else {
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: paths.length,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      mainAxisSpacing: gap,
+                      crossAxisSpacing: gap,
+                    ),
+                    itemBuilder: (context, i) {
+                      final path = paths[i];
+                      return InkWell(
+                        onTap: () => _openImageViewer(path),
+                        onLongPress: () => _confirmDelete(path),
+                        borderRadius: BorderRadius.circular(12),
+                        child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: AspectRatio(
-                              aspectRatio: 1,
-                              child: Image.file(
-                                File(path),
-                                fit: BoxFit.cover,
-                                errorBuilder: (ctx, err, st) => Center(
-                                  child: Icon(
-                                    Icons.broken_image_outlined,
-                                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                                  ),
+                          child: AspectRatio(
+                            aspectRatio: 1,
+                            child: Image.file(
+                              File(path),
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, err, st) => Center(
+                                child: Icon(
+                                  Icons.broken_image_outlined,
+                                  color: Theme.of(ctx).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
                           ),
-                        );
-                      },
-                    );
-                  }
-                },
-              ),
-            ],
-          ),
+                        ),
+                      );
+                    },
+                  );
+                }
+              },
+            ),
+          ],
         ),
       ),
     );
+    // ▲▲▲ ここまで：外側の Padding を削除 ▲▲▲
   }
 
   // 「＋種目」を押せる条件：セクションが選ばれていて、部位が選択済み
@@ -1726,7 +1862,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       color: cs.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       elevation: 1.0,
-      child: Padding( // ← ここを const じゃなくす
+      child: Padding(
+        // ← ここを const じゃなくす
         padding: const EdgeInsets.all(8.0),
         child: StopwatchWidget(
           controller: _swController,
@@ -1798,6 +1935,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
 
     final media = MediaQuery.of(context);
     final kbInset = media.viewInsets.bottom;
+    final bool keyboardVisible = kbInset > 0; // ★ 追加：キーボード表示中か
     final safeBottom = media.padding.bottom;
 
     final overlayStyle = isLight
@@ -1815,7 +1953,6 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     const Color kBrandBlue = Color(0xFF2563EB);
 
     final bool showWeight = SettingsManager.showWeightInput;
-    final int headerCount = (showWeight ? 1 : 0);
 
     // ===== Body =====
     final body = Padding(
@@ -1847,7 +1984,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                 primary: false,
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
                 physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: headerCount + _sections.length + 1,
+                itemCount: (showWeight ? 1 : 0) + _sections.length + (_showMemo ? 1 : 0) + 1, // +1 = 写真
                 itemBuilder: (context, index) {
                   // ① 体重カード（下線TextField）
                   if (showWeight && index == 0) {
@@ -1887,8 +2024,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                           constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                                           child: TextField(
                                             controller: _weightController,
-                                            keyboardType:
-                                            const TextInputType.numberWithOptions(decimal: true),
+                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                             inputFormatters: [
                                               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                                             ],
@@ -1897,8 +2033,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                                             decoration: InputDecoration(
                                               isDense: true,
                                               hintText: '',
-                                              hintStyle: TextStyle(
-                                                  color: colorScheme.onSurfaceVariant.withOpacity(0.5)),
+                                              hintStyle:
+                                              TextStyle(color: colorScheme.onSurfaceVariant.withOpacity(0.5)),
                                               filled: false,
                                               enabledBorder: UnderlineInputBorder(
                                                 borderSide: BorderSide(
@@ -1938,173 +2074,187 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
                     );
                   }
 
-                  final secIndex = index - headerCount;
+                  // index 計算
+                  final int headerCount = (showWeight ? 1 : 0);
+                  final int sectionCount = _sections.length;
+                  final int bodyIdx = index - headerCount;
 
-                  // 末尾スロット：写真カードを表示（常にこの分岐が最後に来る）
-                  if (secIndex == _sections.length) {
-                    return KeyedSubtree(
-                      key: _kPhotoCardsKey, // ★ ensureVisible 用
+                  // ② セクション群
+                  if (bodyIdx < sectionCount) {
+                    final secIndex = bodyIdx;
+                    final section = _sections[secIndex];
+
+                    return AnimatedListItem(
+                      key: section.key,
+                      direction: _firstBuildDone ? AnimationDirection.bottomToTop : AnimationDirection.none,
                       child: Padding(
-                        padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
-                        child: _buildMediaCards(),
-                      ),
-                    );
-                  }
-
-                  final section = _sections[secIndex];
-
-                  return AnimatedListItem(
-                    key: section.key,
-                    direction: _firstBuildDone ? AnimationDirection.bottomToTop : AnimationDirection.none,
-                    child: Padding(
-                      padding: EdgeInsets.zero,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => _touchCard(secIndex, 0),
-                        child: Card(
-                          color: colorScheme.surfaceContainerHighest,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-                          elevation: 1.0,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    // 部位選択
-                                    Expanded(
-                                      child: Container(
-                                        constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
-                                        decoration: BoxDecoration(
-                                          color: colorScheme.surfaceContainer,
-                                          borderRadius: BorderRadius.circular(22.0),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withOpacity(0.04),
-                                              blurRadius: 3.0,
-                                              offset: const Offset(0, 1),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                          child: GestureDetector(
-                                            key: secIndex == 0 ? _kRecordPart : null,
-                                            behavior: HitTestBehavior.opaque,
-                                            onTap: () => _showPartPicker(secIndex),
-                                            child: Padding(
-                                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
-                                              child: Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      section.selectedPart ?? l10n.selectTrainingPart,
-                                                      style: TextStyle(
-                                                        color: (section.selectedPart == null)
-                                                            ? colorScheme.onSurfaceVariant
-                                                            : colorScheme.onSurface,
-                                                        fontSize: 15.0,
-                                                        fontWeight: FontWeight.bold,
+                        padding: EdgeInsets.zero,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _touchCard(secIndex, 0),
+                          child: Card(
+                            color: colorScheme.surfaceContainerHighest,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                            elevation: 1.0,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      // 部位選択
+                                      Expanded(
+                                        child: Container(
+                                          constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                          decoration: BoxDecoration(
+                                            color: colorScheme.surfaceContainer,
+                                            borderRadius: BorderRadius.circular(22.0),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withOpacity(0.04),
+                                                blurRadius: 3.0,
+                                                offset: const Offset(0, 1),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                            child: GestureDetector(
+                                              key: secIndex == 0 ? _kRecordPart : null,
+                                              behavior: HitTestBehavior.opaque,
+                                              onTap: () => _showPartPicker(secIndex),
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+                                                child: Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: Text(
+                                                        section.selectedPart ?? l10n.selectTrainingPart,
+                                                        style: TextStyle(
+                                                          color: (section.selectedPart == null)
+                                                              ? colorScheme.onSurfaceVariant
+                                                              : colorScheme.onSurface,
+                                                          fontSize: 15.0,
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
                                                       ),
-                                                      overflow: TextOverflow.ellipsis,
                                                     ),
-                                                  ),
-                                                  const Icon(Icons.expand_more, size: 22),
-                                                ],
+                                                    const Icon(Icons.expand_more, size: 22),
+                                                  ],
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4.0),
-                                if (section.selectedPart != null)
-                                  Column(
-                                    children: [
-                                      ...List.generate(section.menuControllers.length, (menuIndex) {
-                                        final bool isSelected =
-                                        (_currentSectionIndex == secIndex && _currentMenuIndex == menuIndex);
-
-                                        final borderColor =
-                                        isSelected ? (isLight ? kBrandBlue : Colors.white) : Colors.transparent;
-                                        final glowColor = isSelected
-                                            ? (isLight
-                                            ? kBrandBlue.withOpacity(0.45)
-                                            : Colors.white.withOpacity(0.70))
-                                            : Colors.black.withOpacity(0.20);
-
-                                        return GestureDetector(
-                                          behavior: HitTestBehavior.opaque,
-                                          onTap: () {
-                                            _touchCard(secIndex, menuIndex);
-                                            final k = section.nameFieldKeys[menuIndex];
-                                            _scrollIntoComfortZone(k, pivot: 0.0, topExtra: 28);
-                                          },
-                                          child: Card(
-                                            key: section.menuKeys[menuIndex],
-                                            color: colorScheme.surface,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(12.0),
-                                              side: BorderSide(color: borderColor, width: isSelected ? 1.5 : 0),
-                                            ),
-                                            elevation: isSelected ? 3.0 : 0.0,
-                                            shadowColor: glowColor,
-                                            margin: const EdgeInsets.symmetric(vertical: 8.0),
-                                            child: Padding(
-                                              padding: const EdgeInsets.all(10.0),
-                                              child: MenuList(
-                                                key: (secIndex == 0 && menuIndex == 0) ? _kExerciseField : null,
-                                                nameFieldKey: section.nameFieldKeys[menuIndex],
-                                                menuController: section.menuControllers[menuIndex],
-                                                removeMenuCallback: () => _removeMenuItem(secIndex, menuIndex),
-                                                setCount: section.setInputDataList[menuIndex].length,
-                                                setInputDataList: section.setInputDataList[menuIndex],
-                                                isAerobic: section.selectedPart == l10n.aerobicExercise,
-                                                distanceController:
-                                                (menuIndex < section.aerobicDistanceCtrls.length)
-                                                    ? section.aerobicDistanceCtrls[menuIndex]
-                                                    : TextEditingController(),
-                                                durationController:
-                                                (menuIndex < section.aerobicDurationCtrls.length)
-                                                    ? section.aerobicDurationCtrls[menuIndex]
-                                                    : TextEditingController(),
-                                                aerobicIsSuggestion:
-                                                (menuIndex < section.aerobicSuggestFlags.length)
-                                                    ? section.aerobicSuggestFlags[menuIndex]
-                                                    : true,
-                                                onConfirmAerobic: () {
-                                                  setState(() {
-                                                    if (menuIndex < section.aerobicSuggestFlags.length) {
-                                                      section.aerobicSuggestFlags[menuIndex] = false;
-                                                    }
-                                                  });
-                                                },
-                                                onAnyFieldFocused: () {
-                                                  _touchCard(secIndex, menuIndex);
-                                                  final k = section.nameFieldKeys[menuIndex];
-                                                  _scrollIntoComfortZoneAfterKeyboard(k,
-                                                      pivot: 0.0, topExtra: 28);
-                                                },
-                                                onNameChanged: (prevEmpty, nowEmpty) {},
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      }),
-                                      const SizedBox(height: 10.0),
-                                      const SizedBox.shrink(),
                                     ],
                                   ),
-                              ],
+                                  const SizedBox(height: 4.0),
+                                  if (section.selectedPart != null)
+                                    Column(
+                                      children: [
+                                        ...List.generate(section.menuControllers.length, (menuIndex) {
+                                          final bool isSelected =
+                                          (_currentSectionIndex == secIndex && _currentMenuIndex == menuIndex);
+
+                                          final borderColor =
+                                          isSelected ? (isLight ? kBrandBlue : Colors.white) : Colors.transparent;
+                                          final glowColor = isSelected
+                                              ? (isLight
+                                              ? kBrandBlue.withOpacity(0.45)
+                                              : Colors.white.withOpacity(0.70))
+                                              : Colors.black.withOpacity(0.20);
+
+                                          return GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onTap: () {
+                                              _touchCard(secIndex, menuIndex);
+                                              final k = section.nameFieldKeys[menuIndex];
+                                              _scrollIntoComfortZone(k, pivot: 0.0, topExtra: 28);
+                                            },
+                                            child: Card(
+                                              key: section.menuKeys[menuIndex],
+                                              color: colorScheme.surface,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12.0),
+                                                side: BorderSide(color: borderColor, width: isSelected ? 1.5 : 0),
+                                              ),
+                                              elevation: isSelected ? 3.0 : 0.0,
+                                              shadowColor: glowColor,
+                                              margin: const EdgeInsets.symmetric(vertical: 8.0),
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(10.0),
+                                                child: MenuList(
+                                                  key: (secIndex == 0 && menuIndex == 0) ? _kExerciseField : null,
+                                                  nameFieldKey: section.nameFieldKeys[menuIndex],
+                                                  menuController: section.menuControllers[menuIndex],
+                                                  removeMenuCallback: () => _removeMenuItem(secIndex, menuIndex),
+                                                  setCount: section.setInputDataList[menuIndex].length,
+                                                  setInputDataList: section.setInputDataList[menuIndex],
+                                                  isAerobic: section.selectedPart == l10n.aerobicExercise,
+                                                  distanceController: (menuIndex < section.aerobicDistanceCtrls.length)
+                                                      ? section.aerobicDistanceCtrls[menuIndex]
+                                                      : TextEditingController(),
+                                                  durationController: (menuIndex < section.aerobicDurationCtrls.length)
+                                                      ? section.aerobicDurationCtrls[menuIndex]
+                                                      : TextEditingController(),
+                                                  aerobicIsSuggestion:
+                                                  (menuIndex < section.aerobicSuggestFlags.length)
+                                                      ? section.aerobicSuggestFlags[menuIndex]
+                                                      : true,
+                                                  onConfirmAerobic: () {
+                                                    setState(() {
+                                                      if (menuIndex < section.aerobicSuggestFlags.length) {
+                                                        section.aerobicSuggestFlags[menuIndex] = false;
+                                                      }
+                                                    });
+                                                  },
+                                                  onAnyFieldFocused: () {
+                                                    _touchCard(secIndex, menuIndex);
+                                                    final k = section.nameFieldKeys[menuIndex];
+                                                    _scrollIntoComfortZoneAfterKeyboard(k,
+                                                        pivot: 0.0, topExtra: 28);
+                                                  },
+                                                  onNameChanged: (prevEmpty, nowEmpty) {},
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                        const SizedBox(height: 10.0),
+                                        const SizedBox.shrink(),
+                                      ],
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  );
+                    );
+                  }
+
+                  // ③ メモカード（部位カードの下、写真カードの上）
+                  if (bodyIdx == sectionCount && _showMemo) {
+                    return _buildMemoCard(); // ← 外側の Padding を外す（bottom: 0）
+                  }
+
+// ④ 末尾スロット：写真カード
+                  final afterMemoOffset = sectionCount + (_showMemo ? 1 : 0);
+                  if (bodyIdx == afterMemoOffset) {
+                    return KeyedSubtree(
+                      key: _kPhotoCardsKey,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 0.0, bottom: 8.0), // ← 上0で二重加算を防止
+                        child: _buildMediaCards(),
+                      ),
+                    );
+                  }
+
+
+                  return const SizedBox.shrink();
                 },
               ),
             ),
@@ -2185,7 +2335,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
       );
     }
 
-    final overlay = _fabOpen
+    final overlay = (_fabOpen && !keyboardVisible)
         ? Positioned.fill(
       child: GestureDetector(
         onTap: () => setState(() => _fabOpen = false),
@@ -2203,7 +2353,7 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
     final dial = Positioned(
       right: 16,
       bottom: dialBottom,
-      child: _fabOpen
+      child: (_fabOpen && !keyboardVisible)
           ? Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -2212,6 +2362,8 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
           chipAction(l10n.addExercise, _handleAddExercise, enabled: _canAddExercise()),
           const SizedBox(height: 8),
           chipAction(l10n.addPart, _handleAddPart),
+          const SizedBox(height: 8),
+          chipAction(l10n.addMemo, _handleAddMemo), // ★ 追加：＋メモ
           const SizedBox(height: 8),
           chipAction(l10n.addPhoto, _handleAddPhoto),
           const SizedBox(height: 8),
@@ -2286,7 +2438,10 @@ class _RecordScreenState extends State<RecordScreen> with WidgetsBindingObserver
               dial,
             ],
           ),
-          floatingActionButton: AnimatedPadding(
+          // ★ キーボードが出ているときは FAB を出力しない
+          floatingActionButton: keyboardVisible
+              ? null
+              : AnimatedPadding(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
             padding: EdgeInsets.only(bottom: (kbInset > 0 ? kbInset + 10 : 14)),
@@ -2701,8 +2856,8 @@ class _MenuListState extends State<MenuList> {
                   children: [
                     Text(
                       l10n.distance,
-                      style: TextStyle(
-                          color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
+                      style:
+                      TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -2730,8 +2885,8 @@ class _MenuListState extends State<MenuList> {
                               isDense: true,
                               filled: false,
                               enabledBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
+                                borderSide:
+                                BorderSide(color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
                               ),
                               focusedBorder: UnderlineInputBorder(
                                 borderSide: BorderSide(color: colorScheme.primary, width: 2),
@@ -2773,8 +2928,8 @@ class _MenuListState extends State<MenuList> {
                               isDense: true,
                               filled: false,
                               enabledBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
+                                borderSide:
+                                BorderSide(color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
                               ),
                               focusedBorder: UnderlineInputBorder(
                                 borderSide: BorderSide(color: colorScheme.primary, width: 2),
@@ -2799,8 +2954,8 @@ class _MenuListState extends State<MenuList> {
                   children: [
                     Text(
                       l10n.time,
-                      style: TextStyle(
-                          color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
+                      style:
+                      TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(width: 6),
                     // 分
@@ -2932,7 +3087,8 @@ class _MenuListState extends State<MenuList> {
                                   }
                                 },
                                 child: ConstrainedBox(
-                                  constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                  constraints:
+                                  const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                                   child: TextField(
                                     controller: set.weightController,
                                     keyboardType:
@@ -2951,7 +3107,8 @@ class _MenuListState extends State<MenuList> {
                                       filled: false,
                                       enabledBorder: UnderlineInputBorder(
                                         borderSide: BorderSide(
-                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
+                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                                            width: 1),
                                       ),
                                       focusedBorder: UnderlineInputBorder(
                                         borderSide:
@@ -2980,7 +3137,8 @@ class _MenuListState extends State<MenuList> {
                                   }
                                 },
                                 child: ConstrainedBox(
-                                  constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                  constraints:
+                                  const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                                   child: TextField(
                                     controller: set.repController,
                                     keyboardType: TextInputType.number,
@@ -2996,7 +3154,8 @@ class _MenuListState extends State<MenuList> {
                                       filled: false,
                                       enabledBorder: UnderlineInputBorder(
                                         borderSide: BorderSide(
-                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
+                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                                            width: 1),
                                       ),
                                       focusedBorder: UnderlineInputBorder(
                                         borderSide:
@@ -3011,8 +3170,7 @@ class _MenuListState extends State<MenuList> {
                             ),
                             Text(
                               ' ${l10n.reps}',
-                              style:
-                              TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13.0),
+                              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13.0),
                             ),
                           ],
                         ),
@@ -3087,8 +3245,8 @@ class _PhotoPreviewPage extends StatelessWidget {
             child: Center(
               child: Text(
                 label,
-                style: TextStyle(
-                  color: filled ? Colors.white : Colors.white,
+                style: const TextStyle(
+                  color: Colors.white,
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
                 ),
@@ -3148,4 +3306,3 @@ class _PhotoPreviewPage extends StatelessWidget {
     );
   }
 }
-

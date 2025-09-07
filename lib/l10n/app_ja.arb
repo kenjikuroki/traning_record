@@ -139,5 +139,11 @@
   "deleteSelectedConfirmTitle": "選択した{count}件を削除しますか？",
   "albumEmptyMessage": "記録画面で写真を撮影するとアルバムに表示されます。トレーニングの進捗をアルバムに残そう。",
   "results": "実績",
-  "close": "閉じる"
+  "close": "閉じる",
+  "addMemo": "＋メモ",
+  "memo": "メモ",
+  "memoTitle": "題名",
+  "memoBody": "メモ",
+  "memoTitlePlaceholder": "題名を入力",
+  "memoBodyPlaceholder": "メモを入力"
 }

@@ -439,4 +439,22 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get close => '閉じる';
+
+  @override
+  String get addMemo => '＋メモ';
+
+  @override
+  String get memo => 'メモ';
+
+  @override
+  String get memoTitle => '題名';
+
+  @override
+  String get memoBody => 'メモ';
+
+  @override
+  String get memoTitlePlaceholder => '題名を入力';
+
+  @override
+  String get memoBodyPlaceholder => 'メモを入力';
 }

@@ -934,6 +934,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close'**
   String get close;
+
+  /// No description provided for @addMemo.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Memo'**
+  String get addMemo;
+
+  /// No description provided for @memo.
+  ///
+  /// In en, this message translates to:
+  /// **'Memo'**
+  String get memo;
+
+  /// No description provided for @memoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get memoTitle;
+
+  /// No description provided for @memoBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Memo'**
+  String get memoBody;
+
+  /// No description provided for @memoTitlePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter title'**
+  String get memoTitlePlaceholder;
+
+  /// No description provided for @memoBodyPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter memo'**
+  String get memoBodyPlaceholder;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
