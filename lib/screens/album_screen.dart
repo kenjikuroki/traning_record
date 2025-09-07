@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/ad_banner.dart';
 import '../settings_manager.dart';
+import '../widgets/centered_constrained.dart';
 
 class AlbumScreen extends StatefulWidget {
   const AlbumScreen({super.key});
@@ -343,7 +344,8 @@ class _AlbumScreenState extends State<AlbumScreen> {
           ),
 
           // 既存レイアウト（Graph と同じ間隔：外周16 / 広告下12）
-          Padding(
+          CenteredConstrained(
+            maxWidth: 760,
             padding: const EdgeInsets.all(_kOuterPad),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -16,6 +16,8 @@ import 'settings_screen.dart';
 import '../widgets/ad_square.dart';
 import '../widgets/coach_bubble.dart';
 import '../routes/slide_up_route.dart';
+import '../widgets/centered_constrained.dart';
+
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -548,11 +550,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
       ),
 
-      body: Padding(
-        // 上だけ 8px にして AppBar と広告の間を詰める
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      body: CenteredConstrained(
+        maxWidth: 760,
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16), // 既存の余白は維持
         child: ValueListenableBuilder<Box<DailyRecord>>(
-          valueListenable: widget.recordsBox.listenable(),
+        valueListenable: widget.recordsBox.listenable(),
           builder: (context, box, _) {
             final selectedRecord = box.get(_dateKey(_selectedDay ?? DateTime.now()));
             return Column(

@@ -16,6 +16,7 @@ import 'settings_screen.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/coach_bubble.dart';
 import 'package:flutter/services.dart';
+import '../widgets/centered_constrained.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -1568,9 +1569,13 @@ class _GraphScreenState extends State<GraphScreen> {
         child: GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: _closeKeyboard,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: _closeKeyboard,
+            child: CenteredConstrained(
+              maxWidth: 760,
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
               children: [
                 const AdBanner(screenName: 'graph'),
                 const SizedBox(height: 12.0),
@@ -1894,7 +1899,7 @@ class _GraphScreenState extends State<GraphScreen> {
             ),
           ),
         ),
-      ),
+      ),),
     );
   }
 

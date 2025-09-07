@@ -8,6 +8,7 @@ import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../settings_manager.dart';
 import '../constants/backgrounds.dart';
+import '../widgets/centered_constrained.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
@@ -181,12 +182,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
 
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-        children: [
-          // ====== 最上部バナー ======
-          const AdBanner(screenName: 'settings_top'),
-          const SizedBox(height: 6),
+        body: CenteredConstrained(
+          maxWidth: 760,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+            children: [
+              // ====== 最上部バナー ======
+              const AdBanner(screenName: 'settings_top'),
+              const SizedBox(height: 6),
 
           // ─────────────────────────────────
           // ひとまとまり（上→下）:
@@ -520,7 +523,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ],
-      ),
+      ),),
     );
   }
 }
