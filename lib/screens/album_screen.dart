@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../l10n/app_localizations.dart';
+import '../widgets/ad_banner.dart';
 
 class AlbumScreen extends StatefulWidget {
   const AlbumScreen({super.key});
@@ -21,15 +22,19 @@ class _AlbumScreenState extends State<AlbumScreen> {
   final Map<String, List<File>> _byDate = {}; // dateKey -> files(新→旧)
   bool _loading = true;
 
+  // 選択モード管理
+  final Set<String> _selectedPaths = {};
+  bool get _inSelection => _selectedPaths.isNotEmpty;
+
+  // 統一マージン（Graphに合わせる）
+  static const double _kOuterPad = 16.0; // 画面の外側
+  static const double _kGap = 12.0;      // AppBar→広告、広告→本文、日付→グリッド など
+
   @override
   void initState() {
     super.initState();
     _loadAll(); // アルバムを読み込んで _loading を false にする
   }
-
-  // 選択モード管理
-  final Set<String> _selectedPaths = {};
-  bool get _inSelection => _selectedPaths.isNotEmpty;
 
   Future<void> _loadAll() async {
     setState(() => _loading = true);
@@ -139,7 +144,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
   }
 
   void _toggleSelect(File f) {
-    final filePath = f.path; // ← 競合回避のためリネーム
+    final filePath = f.path;
     setState(() {
       if (_selectedPaths.contains(filePath)) {
         _selectedPaths.remove(filePath);
@@ -220,28 +225,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
     );
   }
 
-  // ── ここから追記：スタイル統一（＋部位ボタン相当のトーンに合わせる） ──
-  ButtonStyle _primaryFilledButtonStyle(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return ElevatedButton.styleFrom(
-      minimumSize: const Size.fromHeight(44),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      backgroundColor: cs.primary,
-      foregroundColor: cs.onPrimary,
-    );
-  }
-
-  ButtonStyle _dangerFilledButtonStyle(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return ElevatedButton.styleFrom(
-      minimumSize: const Size.fromHeight(44),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      backgroundColor: cs.error,
-      foregroundColor: cs.onError,
-    );
-  }
-
-  // ── 追加：＋部位チップ風のピルボタン（濃い色） ──
+  // ── ここから：＋部位チップ風のピルボタン（濃い色） ──
   static const Color _kBrandBlueDark = Color(0xFF1D4ED8); // 濃い青
   static const Color _kDangerRedDark = Color(0xFFB91C1C); // 濃い赤
 
@@ -273,7 +257,6 @@ class _AlbumScreenState extends State<AlbumScreen> {
               ),
             ],
           ),
-          // ← 高さを“固定”して親に引き伸ばされないようにする
           child: SizedBox(
             height: 44,
             child: Center(
@@ -301,37 +284,28 @@ class _AlbumScreenState extends State<AlbumScreen> {
       ),
     );
   }
-
+  // ── ここまで ピルボタン ──
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.transparent, // ← 背景（壁紙）を通す
-      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent, // 壁紙を透過表示
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white), // ← 追加：戻るアイコン等を白に
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
-          _inSelection
-              ? l10n.selectedCount(_selectedPaths.length)
-              : l10n.albumTitle,
-          style: const TextStyle( // ← 追加：他ページと同じフォントに統一
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
+          _inSelection ? l10n.selectedCount(_selectedPaths.length) : l10n.albumTitle,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
         ),
         actions: _inSelection
             ? [
           TextButton(
             onPressed: _clearSelection,
-            child: Text(
-              l10n.clear,
-              style: const TextStyle(color: Colors.white),
-            ),
+            child: Text(l10n.clear, style: const TextStyle(color: Colors.white)),
           ),
         ]
             : null,
@@ -344,9 +318,9 @@ class _AlbumScreenState extends State<AlbumScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.60),
-                    Colors.black.withOpacity(0.40),
-                    Colors.black.withOpacity(0.18),
+                    Colors.black.withOpacity(0.58),
+                    Colors.black.withOpacity(0.38),
+                    Colors.black.withOpacity(0.16),
                   ],
                 ),
               ),
@@ -354,152 +328,176 @@ class _AlbumScreenState extends State<AlbumScreen> {
           ),
         ),
       ),
+
+      // === GraphScreen と同じ構成：Padding(16) -> AdBanner -> SizedBox(12) -> 本文 ===
       body: Stack(
         children: [
-          // 背景トーンを暗くする半透明ブラック（壁紙はそのまま見せる）
+          // 背景を暗くするオーバーレイ（レイアウトに影響しない）
           Positioned.fill(
-            top: MediaQuery.of(context).padding.top + kToolbarHeight, // ← AppBarぶんを除外
-            child: Container(color: Colors.black.withOpacity(0.80)),
+            child: IgnorePointer(
+              child: Container(color: Colors.black.withOpacity(0.90)),
+            ),
           ),
 
-          // 既存の本文はそのまま前面に表示
-          _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _byDate.isEmpty
-              ? Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                    decoration: BoxDecoration(
-                      // 軽い背景でも読める、ダサくない“うっすらフロスト”
-                      color: Colors.black.withOpacity(0.28),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withOpacity(0.12)),
-                    ),
-                    child: Text(
-                      l10n.albumEmptyMessage,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 18,           // 大きめ
-                        fontWeight: FontWeight.w700, // 太字
-                        height: 1.5,
-                        color: Colors.white,    // コントラスト確保
+          // 既存レイアウト（Graph と同じ間隔：外周16 / 広告下12）
+          Padding(
+            padding: const EdgeInsets.all(_kOuterPad),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const AdBanner(screenName: 'album'),
+                const SizedBox(height: _kGap),
+
+                Expanded(
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _byDate.isEmpty
+                      ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 20),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.28),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                  color: Colors.white.withOpacity(0.12)),
+                            ),
+                            child: Text(
+                              l10n.albumEmptyMessage,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                height: 1.5,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
+                  )
+                      : ListView.builder(
+                    padding: EdgeInsets.only(
+                      top: 0,
+                      bottom: _inSelection ? 96 : 24,
+                    ),
+                    itemCount: _byDate.length,
+                    itemBuilder: (ctx, section) {
+                      final dateKey =
+                      _byDate.keys.elementAt(section);
+                      final files = _byDate[dateKey]!;
+                      final dt = DateTime.tryParse('$dateKey 00:00:00');
+                      final label = dt != null
+                          ? DateFormat('yyyy/MM/dd').format(dt)
+                          : dateKey;
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 年月日を白文字に
+                            Text(
+                              label,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: _kGap),
+
+                            GridView.builder(
+                              padding: EdgeInsets.zero,
+                              itemCount: files.length,
+                              shrinkWrap: true,
+                              physics:
+                              const NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                mainAxisSpacing: 6,
+                                crossAxisSpacing: 6,
+                              ),
+                              itemBuilder: (gctx, i) {
+                                final f = files[i];
+                                final selected = _selectedPaths.contains(f.path);
+                                return GestureDetector(
+                                  onTap: () {
+                                    if (_inSelection) {
+                                      _toggleSelect(f);
+                                    } else {
+                                      _openViewer(f);
+                                    }
+                                  },
+                                  onLongPress: () {
+                                    if (_inSelection) {
+                                      _toggleSelect(f);
+                                    } else {
+                                      setState(() {
+                                        _selectedPaths.add(f.path); // 選択モード開始
+                                      });
+                                    }
+                                  },
+                                  child: Stack(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius:
+                                        BorderRadius.circular(10),
+                                        child: Image.file(
+                                          f,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                      if (selected)
+                                        Positioned.fill(
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.black26,
+                                              borderRadius:
+                                              BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                        ),
+                                      if (_inSelection)
+                                        Positioned(
+                                          left: 6,
+                                          top: 6,
+                                          child:
+                                          _checkBadge(selected),
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
-              ),
+              ],
             ),
-          ):
-          ListView.builder(
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + kToolbarHeight + 8, // ← AppBarぶん余白
-              bottom: _inSelection ? 96 : 24,
-            ),
-            itemCount: _byDate.length,
-            itemBuilder: (ctx, section) {
-              final dateKey = _byDate.keys.elementAt(section);
-              final files = _byDate[dateKey]!;
-              final dt = DateTime.tryParse('$dateKey 00:00:00');
-              final label = dt != null
-                  ? DateFormat('yyyy/MM/dd').format(dt)
-                  : dateKey;
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 4), // ← 日付と写真の間を狭く
-                    GridView.builder(
-                      padding: EdgeInsets.zero,
-                      itemCount: files.length,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        mainAxisSpacing: 6,
-                        crossAxisSpacing: 6,
-                      ),
-                      itemBuilder: (gctx, i) {
-                        final f = files[i];
-                        final selected = _selectedPaths.contains(f.path);
-                        return GestureDetector(
-                          onTap: () {
-                            if (_inSelection) {
-                              _toggleSelect(f);
-                            } else {
-                              _openViewer(f);
-                            }
-                          },
-                          onLongPress: () {
-                            if (_inSelection) {
-                              _toggleSelect(f);
-                            } else {
-                              setState(() {
-                                _selectedPaths.add(f.path); // 選択モード開始
-                              });
-                            }
-                          },
-                          child: Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.file(
-                                  f,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              if (selected)
-                                Positioned.fill(
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.black26,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                ),
-                              if (_inSelection)
-                                Positioned(
-                                  left: 6,
-                                  top: 6,
-                                  child: _checkBadge(selected),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
           ),
         ],
       ),
+
       bottomNavigationBar: _inSelection
           ? SafeArea(
         child: Container(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          color: Colors.black.withOpacity(0.8), // 下部も暗トーンを維持
+          color: Colors.black.withOpacity(0.80),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center, // ← 2つのピルを中央寄せ
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _pillActionButton(
                 icon: Icons.ios_share,
@@ -519,9 +517,6 @@ class _AlbumScreenState extends State<AlbumScreen> {
         ),
       )
           : null,
-
-
-
     );
   }
 }

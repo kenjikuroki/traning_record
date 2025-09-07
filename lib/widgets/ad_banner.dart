@@ -106,9 +106,10 @@ class _AdBannerState extends State<AdBanner> {
           return 'ca-app-pub-3331079517737737/3704893323';
         case 'graph':
           return 'ca-app-pub-3331079517737737/2942847126';
+        case 'album': // ← 追加：アルバム画面(Android)
+          return 'ca-app-pub-3331079517737737/8226790329';
         default:
-        // 画面名がズレたときの安全フォールバック（本番ID）
-          return 'ca-app-pub-3331079517737737/2576446816'; // Android カレンダー用など、任意の本番ID
+          return 'ca-app-pub-3331079517737737/2576446816';
       }
     } else if (Platform.isIOS) {
       switch (widget.screenName) {
@@ -120,11 +121,14 @@ class _AdBannerState extends State<AdBanner> {
           return 'ca-app-pub-3331079517737737/8271626623';
         case 'graph':
           return 'ca-app-pub-3331079517737737/8642020070';
+        case 'album': // ← 追加：アルバム画面(iOS)
+          return 'ca-app-pub-3331079517737737/9348300304';
         default:
-        // 画面名がズレたときの安全フォールバック（本番ID）
-          return 'ca-app-pub-3331079517737737/1430886104'; // iOS カレンダー用など、任意の本番ID
+          return 'ca-app-pub-3331079517737737/1430886104';
       }
-    } else {
+    }
+
+ else {
       // ほぼ来ないが、未知プラットフォーム時の無害フォールバック（テストID）
       return 'ca-app-pub-3940256099942544/6300978111';
     }

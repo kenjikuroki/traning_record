@@ -2295,13 +2295,11 @@ class _RecordScreenState extends State<RecordScreen>
                       final secIndex = bodyIdx;
                       final section = _sections[secIndex];
 
-                      return AnimatedListItem(
-                        key: section.key,
-                        direction: _firstBuildDone ? AnimationDirection.bottomToTop : AnimationDirection.none,
-                        child: Padding(
-                          padding: EdgeInsets.zero,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
+                      return Padding(
+                        key: section.key, // ← ensureVisible用のKeyは維持
+                        padding: EdgeInsets.zero,
+                        child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
                             onTap: () => _touchCard(secIndex, 0),
                             child: Card(
                               color: colorScheme.surfaceContainerHighest,
@@ -2449,7 +2447,6 @@ class _RecordScreenState extends State<RecordScreen>
                               ),
                             ),
                           ),
-                        ),
                       );
                     }
 
