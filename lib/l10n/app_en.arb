@@ -129,6 +129,7 @@
   "partLimitReached": "You can add up to 10 parts.",
   "exerciseLimitReached": "You can add up to 15 exercises.",
   "time": "Time",
+  "hour": "hour",
   "enterGoal": "Goal",
   "deleteMenuConfirmationTitle": "Delete Exercise?",
   "addPart": "+ Part",
@@ -146,10 +147,10 @@
   "memoBody": "Memo",
   "memoTitlePlaceholder": "Enter title",
   "memoBodyPlaceholder": "Enter memo",
-  "satisfactionLabel": "Satisfaction",
-  "satisfactionGood": "Good",
-  "satisfactionNeutral": "Neutral",
+  "satisfaction": "Satisfaction",
   "satisfactionBad": "Bad",
+  "satisfactionOkay": "Okay",
+  "satisfactionGood": "Good",
   "hintRecordFirst": "Start by recording a workout or your body weight.",
   "hintGraphSetGoal": "Set your goal."
 }

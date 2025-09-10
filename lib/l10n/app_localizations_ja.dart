@@ -404,6 +404,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get time => '時間';
 
   @override
+  String get hour => '時間';
+
+  @override
   String get enterGoal => '目標値';
 
   @override
@@ -459,16 +462,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get memoBodyPlaceholder => 'メモを入力';
 
   @override
-  String get satisfactionLabel => '満足度';
-
-  @override
-  String get satisfactionGood => '良い';
-
-  @override
-  String get satisfactionNeutral => '普通';
+  String get satisfaction => '満足度';
 
   @override
   String get satisfactionBad => '悪い';
+
+  @override
+  String get satisfactionOkay => '普通';
+
+  @override
+  String get satisfactionGood => '良い';
 
   @override
   String get hintRecordFirst => 'まずはトレーニングや体重を記録しよう';

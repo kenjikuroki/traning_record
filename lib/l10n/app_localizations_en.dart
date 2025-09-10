@@ -404,6 +404,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get time => 'Time';
 
   @override
+  String get hour => 'hour';
+
+  @override
   String get enterGoal => 'Goal';
 
   @override
@@ -459,16 +462,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memoBodyPlaceholder => 'Enter memo';
 
   @override
-  String get satisfactionLabel => 'Satisfaction';
-
-  @override
-  String get satisfactionGood => 'Good';
-
-  @override
-  String get satisfactionNeutral => 'Neutral';
+  String get satisfaction => 'Satisfaction';
 
   @override
   String get satisfactionBad => 'Bad';
+
+  @override
+  String get satisfactionOkay => 'Okay';
+
+  @override
+  String get satisfactionGood => 'Good';
 
   @override
   String get hintRecordFirst => 'Start by recording a workout or your body weight.';

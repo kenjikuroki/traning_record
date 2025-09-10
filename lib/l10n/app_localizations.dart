@@ -869,6 +869,12 @@ abstract class AppLocalizations {
   /// **'Time'**
   String get time;
 
+  /// No description provided for @hour.
+  ///
+  /// In en, this message translates to:
+  /// **'hour'**
+  String get hour;
+
   /// No description provided for @enterGoal.
   ///
   /// In en, this message translates to:
@@ -971,29 +977,29 @@ abstract class AppLocalizations {
   /// **'Enter memo'**
   String get memoBodyPlaceholder;
 
-  /// No description provided for @satisfactionLabel.
+  /// No description provided for @satisfaction.
   ///
   /// In en, this message translates to:
   /// **'Satisfaction'**
-  String get satisfactionLabel;
-
-  /// No description provided for @satisfactionGood.
-  ///
-  /// In en, this message translates to:
-  /// **'Good'**
-  String get satisfactionGood;
-
-  /// No description provided for @satisfactionNeutral.
-  ///
-  /// In en, this message translates to:
-  /// **'Neutral'**
-  String get satisfactionNeutral;
+  String get satisfaction;
 
   /// No description provided for @satisfactionBad.
   ///
   /// In en, this message translates to:
   /// **'Bad'**
   String get satisfactionBad;
+
+  /// No description provided for @satisfactionOkay.
+  ///
+  /// In en, this message translates to:
+  /// **'Okay'**
+  String get satisfactionOkay;
+
+  /// No description provided for @satisfactionGood.
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get satisfactionGood;
 
   /// No description provided for @hintRecordFirst.
   ///
