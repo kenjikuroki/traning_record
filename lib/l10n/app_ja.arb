@@ -152,5 +152,21 @@
   "satisfactionOkay": "普通",
   "satisfactionGood": "良い",
   "hintRecordFirst": "まずはトレーニングや体重を記録しよう",
-  "hintGraphSetGoal": "目標を設定しよう"
+  "hintGraphSetGoal": "目標を設定しよう",
+  "personalSettingsTitle": "パーソナル設定",
+  "gender": "性別",
+  "genderMale": "男",
+  "genderFemale": "女",
+  "genderUnspecified": "未選択",
+  "birthDate": "生年月日",
+  "notSet": "未設定",
+  "height": "身長",
+  "waist": "ウエスト",
+  "bodyFatTracking": "体脂肪管理",
+  "waistTracking": "ウエスト管理",
+  "bmiTracking": "BMI管理",
+  "unitCm": "cm",
+  "unitFtIn": "ft/in",
+  "unitFt": "ft",
+  "unitIn": "in"
 }

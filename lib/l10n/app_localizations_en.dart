@@ -478,4 +478,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hintGraphSetGoal => 'Set your goal.';
+
+  @override
+  String get personalSettingsTitle => 'Personal';
+
+  @override
+  String get gender => 'Gender';
+
+  @override
+  String get genderMale => 'Male';
+
+  @override
+  String get genderFemale => 'Female';
+
+  @override
+  String get genderUnspecified => 'Not specified';
+
+  @override
+  String get birthDate => 'Birth date';
+
+  @override
+  String get notSet => 'Not set';
+
+  @override
+  String get height => 'Height';
+
+  @override
+  String get waist => 'Waist';
+
+  @override
+  String get bodyFatTracking => 'Body fat tracking';
+
+  @override
+  String get waistTracking => 'Waist tracking';
+
+  @override
+  String get bmiTracking => 'BMI tracking';
+
+  @override
+  String get unitCm => 'cm';
+
+  @override
+  String get unitFtIn => 'ft/in';
+
+  @override
+  String get unitFt => 'ft';
+
+  @override
+  String get unitIn => 'in';
 }

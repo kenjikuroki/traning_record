@@ -152,5 +152,21 @@
   "satisfactionOkay": "Okay",
   "satisfactionGood": "Good",
   "hintRecordFirst": "Start by recording a workout or your body weight.",
-  "hintGraphSetGoal": "Set your goal."
+  "hintGraphSetGoal": "Set your goal.",
+  "personalSettingsTitle": "Personal",
+  "gender": "Gender",
+  "genderMale": "Male",
+  "genderFemale": "Female",
+  "genderUnspecified": "Not specified",
+  "birthDate": "Birth date",
+  "notSet": "Not set",
+  "height": "Height",
+  "waist": "Waist",
+  "bodyFatTracking": "Body fat tracking",
+  "waistTracking": "Waist tracking",
+  "bmiTracking": "BMI tracking",
+  "unitCm": "cm",
+  "unitFtIn": "ft/in",
+  "unitFt": "ft",
+  "unitIn": "in"
 }

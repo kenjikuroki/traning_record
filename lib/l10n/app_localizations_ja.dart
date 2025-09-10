@@ -478,4 +478,52 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get hintGraphSetGoal => '目標を設定しよう';
+
+  @override
+  String get personalSettingsTitle => 'パーソナル設定';
+
+  @override
+  String get gender => '性別';
+
+  @override
+  String get genderMale => '男';
+
+  @override
+  String get genderFemale => '女';
+
+  @override
+  String get genderUnspecified => '未選択';
+
+  @override
+  String get birthDate => '生年月日';
+
+  @override
+  String get notSet => '未設定';
+
+  @override
+  String get height => '身長';
+
+  @override
+  String get waist => 'ウエスト';
+
+  @override
+  String get bodyFatTracking => '体脂肪管理';
+
+  @override
+  String get waistTracking => 'ウエスト管理';
+
+  @override
+  String get bmiTracking => 'BMI管理';
+
+  @override
+  String get unitCm => 'cm';
+
+  @override
+  String get unitFtIn => 'ft/in';
+
+  @override
+  String get unitFt => 'ft';
+
+  @override
+  String get unitIn => 'in';
 }

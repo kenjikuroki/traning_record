@@ -1012,6 +1012,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Set your goal.'**
   String get hintGraphSetGoal;
+
+  /// No description provided for @personalSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal'**
+  String get personalSettingsTitle;
+
+  /// No description provided for @gender.
+  ///
+  /// In en, this message translates to:
+  /// **'Gender'**
+  String get gender;
+
+  /// No description provided for @genderMale.
+  ///
+  /// In en, this message translates to:
+  /// **'Male'**
+  String get genderMale;
+
+  /// No description provided for @genderFemale.
+  ///
+  /// In en, this message translates to:
+  /// **'Female'**
+  String get genderFemale;
+
+  /// No description provided for @genderUnspecified.
+  ///
+  /// In en, this message translates to:
+  /// **'Not specified'**
+  String get genderUnspecified;
+
+  /// No description provided for @birthDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Birth date'**
+  String get birthDate;
+
+  /// No description provided for @notSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get notSet;
+
+  /// No description provided for @height.
+  ///
+  /// In en, this message translates to:
+  /// **'Height'**
+  String get height;
+
+  /// No description provided for @waist.
+  ///
+  /// In en, this message translates to:
+  /// **'Waist'**
+  String get waist;
+
+  /// No description provided for @bodyFatTracking.
+  ///
+  /// In en, this message translates to:
+  /// **'Body fat tracking'**
+  String get bodyFatTracking;
+
+  /// No description provided for @waistTracking.
+  ///
+  /// In en, this message translates to:
+  /// **'Waist tracking'**
+  String get waistTracking;
+
+  /// No description provided for @bmiTracking.
+  ///
+  /// In en, this message translates to:
+  /// **'BMI tracking'**
+  String get bmiTracking;
+
+  /// No description provided for @unitCm.
+  ///
+  /// In en, this message translates to:
+  /// **'cm'**
+  String get unitCm;
+
+  /// No description provided for @unitFtIn.
+  ///
+  /// In en, this message translates to:
+  /// **'ft/in'**
+  String get unitFtIn;
+
+  /// No description provided for @unitFt.
+  ///
+  /// In en, this message translates to:
+  /// **'ft'**
+  String get unitFt;
+
+  /// No description provided for @unitIn.
+  ///
+  /// In en, this message translates to:
+  /// **'in'**
+  String get unitIn;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
