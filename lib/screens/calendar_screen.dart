@@ -96,6 +96,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
+  Widget _satisfactionLine(AppLocalizations l10n, int value, ColorScheme cs) {
+    IconData icon;
+    switch (value) {
+      case 0:
+      // 記録画面と同じ「バッド」
+        icon = Icons.sentiment_very_dissatisfied;
+        break;
+      case 1:
+        icon = Icons.sentiment_neutral;
+        break;
+      default:
+        icon = Icons.sentiment_very_satisfied;
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('${l10n.satisfaction}：',
+            style: TextStyle(color: cs.onSurface, fontSize: 13)),
+        const SizedBox(width: 6),
+        Icon(icon, size: 20, color: cs.onSurfaceVariant), // 大きさも記録画面に合わせて20
+      ],
+    );
+  }
   // ---------- Helpers ----------
   String _dateKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -165,13 +188,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return '$km${l10n.km}$m${l10n.m}';
   }
 
-  // 「30:45」→「30分45秒」
-  String _formatDuration(String? raw, AppLocalizations l10n) {
+// 「1:30」→「1時間30分」(ja) / 「1h30min」(それ以外)
+  String _formatDurationHM(BuildContext context, String? raw, AppLocalizations l10n) {
     if (raw == null || raw.trim().isEmpty) return '-';
     final parts = raw.split(':');
-    final min = (parts.isNotEmpty && parts[0].isNotEmpty) ? parts[0] : '0';
-    final sec = (parts.length > 1 && parts[1].isNotEmpty) ? parts[1] : '0';
-    return '$min${l10n.min}$sec${l10n.sec}';
+    final hour = (parts.isNotEmpty && parts[0].isNotEmpty) ? parts[0] : '0';
+    final min  = (parts.length > 1 && parts[1].isNotEmpty) ? parts[1] : '0';
+
+    final isJa = Localizations.localeOf(context).languageCode == 'ja';
+    return isJa ? '${hour}時間${min}${l10n.min}' : '${hour}h${min}${l10n.min}';
   }
 
   // その日に実績のある「部位」一覧を返す（表示用）
@@ -741,6 +766,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     // ▼ 実績あり：カードは「実績」1枚のみ。タップで簡易一覧を展開
     final unit = SettingsManager.currentUnit;
+    final String selKey = _dateKey(_selectedDay ?? DateTime.now());
+    final dynamic satAllRaw = widget.settingsBox.get('satisfaction-$selKey');
+    final Map<String, dynamic> satAll = (satAllRaw is Map<String, dynamic>) ? satAllRaw : {};
 
     final List<Widget> summaryChildren = [];
 
@@ -841,6 +869,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           );
         }
+        // 時間：時間と分に
         if ((m.duration?.trim().isNotEmpty ?? false)) {
           summaryChildren.add(
             Padding(
@@ -848,10 +877,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '${l10n.time}: ${_formatDuration(m.duration, l10n)}',
+                  '${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}',
                   textAlign: TextAlign.left,
                   style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
                 ),
+              ),
+            ),
+          );
+        }
+
+// 満足度：絵文字（記録画面で保存された値を表示）
+        final Map partSat = (satAll[originalPart] is Map) ? satAll[originalPart] as Map : const {};
+        final int? satVal = partSat[m.name] is int ? partSat[m.name] as int : null;
+        if (satVal != null) {
+          summaryChildren.add(
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0, top: 2.0, bottom: 2.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _satisfactionLine(l10n, satVal, colorScheme),
               ),
             ),
           );
