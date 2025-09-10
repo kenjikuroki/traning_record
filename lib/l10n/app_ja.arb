@@ -72,7 +72,6 @@
   "partAlreadySelected": "この部位はすでに選択されています。",
   "setCount": "セット数",
   "defaultSets": "初期セット数",
-  "enterYourWeight": "体重を入力",
   "bodyWeight": "体重",
   "bodyWeightTracking": "体重管理",
   "durationHint": "時間:分",
@@ -168,5 +167,7 @@
   "unitCm": "cm",
   "unitFtIn": "ft/in",
   "unitFt": "ft",
-  "unitIn": "in"
+  "unitIn": "in",
+  "bodyFat": "体脂肪",
+  "bmi": "BMI"
 }

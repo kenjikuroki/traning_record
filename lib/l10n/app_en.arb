@@ -72,7 +72,6 @@
   "partAlreadySelected": "This part is already selected.",
   "setCount": "Set Count",
   "defaultSets": "Default Sets",
-  "enterYourWeight": "Enter your weight",
   "bodyWeight": "Body weight",
   "bodyWeightTracking": "Body Weight Tracking",
   "durationHint": "min:sec",
@@ -168,5 +167,7 @@
   "unitCm": "cm",
   "unitFtIn": "ft/in",
   "unitFt": "ft",
-  "unitIn": "in"
+  "unitIn": "in",
+  "bodyFat": "Body fat",
+  "bmi": "BMI"
 }

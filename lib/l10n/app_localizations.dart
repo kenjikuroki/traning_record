@@ -1108,6 +1108,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'in'**
   String get unitIn;
+
+  /// No description provided for @bodyFat.
+  ///
+  /// In en, this message translates to:
+  /// **'Body fat'**
+  String get bodyFat;
+
+  /// No description provided for @bmi.
+  ///
+  /// In en, this message translates to:
+  /// **'BMI'**
+  String get bmi;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -526,4 +526,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unitIn => 'in';
+
+  @override
+  String get bodyFat => 'Body fat';
+
+  @override
+  String get bmi => 'BMI';
 }

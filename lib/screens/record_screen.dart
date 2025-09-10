@@ -8,7 +8,6 @@ import 'dart:async';
 import 'package:intl/intl.dart';
 import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
-import '../widgets/animated_list_item.dart';
 import '../settings_manager.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/stopwatch_widget.dart';
@@ -63,6 +62,8 @@ void showAppSnack(BuildContext context,
 
 const double kUnifiedFieldMinHeight = 36.0;
 
+const String kUiFont = 'NotoSansJP';
+
 class RecordScreen extends StatefulWidget {
   final DateTime selectedDate;
   final Box<DailyRecord> recordsBox;
@@ -89,6 +90,9 @@ class _RecordScreenState extends State<RecordScreen>
     with WidgetsBindingObserver {
   static const Duration _kIdleAutoPause = Duration(hours: 5);
   static const Duration _kHardCap = Duration(hours: 5);
+  static const double _bmiNudgeRight = 25.0;
+  static const double _bmiUnitReserve = 25.0;
+  static const double _unitReserveW  = 22.0;
 
   // ===== メモ・オーバーレイ（フローティング） =====
   bool _memoOverlayVisible = false; // 表示中か
@@ -142,6 +146,15 @@ class _RecordScreenState extends State<RecordScreen>
 
   final TextEditingController _weightController = TextEditingController();
 
+  // 体脂肪入力用
+  final TextEditingController _bodyFatController = TextEditingController();
+  // ウエスト入力用 ← 追加
+  final TextEditingController _waistController = TextEditingController();
+// BMI 表示用（null のときは未計算/未設定表示）
+  double? _bmiValue;
+// 設定から読む身長(cm)
+  double? _heightCm;
+
   // Memo（プレビュー用コントローラ）
   bool _showMemo = false;
   final TextEditingController _memoController = TextEditingController();
@@ -183,7 +196,6 @@ class _RecordScreenState extends State<RecordScreen>
       _currentSetCount = newCount;
       final changed = _trimTrailingEmptySetsForAllMenus(newCount);
       if (changed && mounted) setState(() {});
-      _loadMediaForSelectedDate();
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -251,6 +263,7 @@ class _RecordScreenState extends State<RecordScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _loadHeightFromSettings();
     if (!_initialized) {
       _initialized = true;
       _loadSettingsAndParts();
@@ -259,8 +272,7 @@ class _RecordScreenState extends State<RecordScreen>
 
   @override
   void dispose() {
-    SettingsManager.showStopwatchNotifier.removeListener(
-        _onShowStopwatchChanged);
+    SettingsManager.showStopwatchNotifier.removeListener(_onShowStopwatchChanged);
     WidgetsBinding.instance.removeObserver(this);
     _inactivityTimer?.cancel();
     _capTimer?.cancel();
@@ -268,11 +280,12 @@ class _RecordScreenState extends State<RecordScreen>
     _setCountSub?.cancel();
     _scrollDebounce?.cancel();
     _scrollCtrl.dispose();
-    for (var section in _sections) {
-      section.dispose();
-    }
+    for (var section in _sections) { section.dispose(); }
     _sections.clear();
+
     _weightController.dispose();
+    _bodyFatController.dispose();
+    _waistController.dispose();
     _memoController.dispose();
     _memoOverlayFocus.dispose();
     _menuOverlayFocus.dispose();
@@ -469,7 +482,7 @@ class _RecordScreenState extends State<RecordScreen>
         editable!.widget.focusNode!.requestFocus();
         await SystemChannels.textInput.invokeMethod('TextInput.show');
       } else {
-        FocusScope.of(targetCtx).requestFocus(FocusNode());
+        FocusScope.of(targetCtx).unfocus();
         await SystemChannels.textInput.invokeMethod('TextInput.show');
       }
 
@@ -833,6 +846,30 @@ class _RecordScreenState extends State<RecordScreen>
       _weightController.clear();
     }
 
+    // 当日の体脂肪（%）/ウエスト（cm）を settingsBox から復元
+    final pm = widget.settingsBox.get('personalMetrics-$dateKey');
+    if (pm is Map) {
+      final bf = pm['bodyFat'];
+      if (bf is num) {
+        _bodyFatController.text = bf.toString();
+      } else if (bf is String) {
+        _bodyFatController.text = bf;
+      }
+
+      final wst = pm['waist'];
+      if (wst is num) {
+        _waistController.text = wst.toString();
+      } else if (wst is String) {
+        _waistController.text = wst;
+      }
+    } else {
+      _bodyFatController.clear();
+      _waistController.clear();
+    }
+
+    // 体重(と身長)から BMI を初期計算
+    _updateBmiDisplay();
+
     String? recoveredNote;
     try {
       final dyn = record as dynamic;
@@ -1185,6 +1222,41 @@ class _RecordScreenState extends State<RecordScreen>
       widget.settingsBox.delete('satisfaction-$dateKey');
       didChangeStorage = had;
     }
+    // ───────── 体脂肪/ウエスト/BMI の保存（当日分）─────────
+        {
+      final pmKey = 'personalMetrics-$dateKey';
+      final Map<String, dynamic> pmNew = {};
+      final prevPm = widget.settingsBox.get(pmKey);
+
+      // 体脂肪
+      final String rawBf = _bodyFatController.text.trim();
+      final bfVal = double.tryParse(rawBf);
+      if (bfVal != null) pmNew['bodyFat'] = bfVal;
+
+      // ウエスト
+      final String rawWaist = _waistController.text.trim();
+      final waistVal = double.tryParse(rawWaist);
+      if (waistVal != null) pmNew['waist'] = waistVal;
+
+      // BMI
+      if (_bmiValue != null) {
+        pmNew['bmi'] = double.parse(_bmiValue!.toStringAsFixed(1));
+      }
+
+      final bool hadOld = prevPm is Map && prevPm.isNotEmpty;
+      final bool hasNew = pmNew.isNotEmpty;
+
+      if (hasNew) {
+        widget.settingsBox.put(pmKey, pmNew);
+        didChangeStorage = true;
+      } else if (hadOld) {
+        widget.settingsBox.delete(pmKey);
+        didChangeStorage = true;
+      }
+    }
+
+// ───────────────────────────────────────────────
+
     return didChangeStorage;
   }
 
@@ -1562,6 +1634,30 @@ class _RecordScreenState extends State<RecordScreen>
     } catch (_) {
       if (mounted) setState(() => _mediaPaths = []);
     }
+  }
+
+  // 設定(Box)から身長(cm)を読む
+  void _loadHeightFromSettings() {
+    final hc = widget.settingsBox.get('personal.heightCm');
+    if (hc is num) {
+      _heightCm = hc.toDouble();
+    } else if (hc is String) {
+      _heightCm = double.tryParse(hc);
+    }
+  }
+
+// 体重/身長から BMI を再計算して _bmiValue を更新
+  void _updateBmiDisplay() {
+    final w = double.tryParse(_weightController.text);
+    if (w == null || _heightCm == null || _heightCm == 0) {
+      setState(() => _bmiValue = null);
+      return;
+    }
+    // lbs の場合は kg に変換
+    final weightKg = (SettingsManager.currentUnit == 'lbs') ? (w * 0.45359237) : w;
+    final hMeters = (_heightCm! / 100.0);
+    final bmi = weightKg / (hMeters * hMeters);
+    setState(() => _bmiValue = bmi);
   }
 
   bool _recoveringLost = false;
@@ -2265,8 +2361,6 @@ class _RecordScreenState extends State<RecordScreen>
                                     .menuControllers[menuIndex],
                                 removeMenuCallback: () =>
                                     _removeMenuItem(secIndex, menuIndex),
-                                setCount: section.setInputDataList[menuIndex]
-                                    .length,
                                 setInputDataList: section
                                     .setInputDataList[menuIndex],
                                 isAerobic: isAerobic,
@@ -2354,6 +2448,10 @@ class _RecordScreenState extends State<RecordScreen>
     const Color kBrandBlue = Color(0xFF2563EB);
 
     final bool showWeight = SettingsManager.showWeightInput;
+    final bool showBodyFat = (widget.settingsBox.get('manage.bodyFat') as bool?) ?? false;
+    final bool showWaist   = (widget.settingsBox.get('manage.waist')   as bool?) ?? false;
+    final bool showBMI     = (widget.settingsBox.get('manage.bmi')     as bool?) ?? false;
+
 
     // ===== Body (空き領域タップでフォーカス解除) =====
     final body = GestureDetector(
@@ -2394,100 +2492,219 @@ class _RecordScreenState extends State<RecordScreen>
                       (_showMemo ? 1 : 0) + 1,
                   itemBuilder: (context, index) {
                     if (showWeight && index == 0) {
+                      final bmiValue = _bmiValue;
                       return Padding(
                         padding: EdgeInsets.zero,
                         child: Card(
                           color: colorScheme.surfaceContainerHighest,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16.0)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
                           elevation: 1.0,
                           child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  '${l10n.enterYourWeight}${Localizations
-                                      .localeOf(context)
-                                      .languageCode == "ja" ? "：" : ":"}',
-                                  style: TextStyle(
-                                    color: colorScheme.onSurface,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14.0,
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+                            child: Builder(
+                              builder: (context) {
+                                // ───────── レイアウト共通値 ─────────
+                                const double labelW = 96;   // ← ラベル固定幅（右寄せ）…「若干右に」
+                                const double fieldW = 184;  // ← 入力欄の固定幅（全行で統一）
+                                const double rowGap = 10;
+
+                                final labelStyle = TextStyle(
+                                  fontFamily: kUiFont,
+                                  color: colorScheme.onSurface,
+                                  fontSize: 14.0,
+                                  fontWeight: FontWeight.w700,
+                                );
+
+                                final inputTextStyle = TextStyle(
+                                  fontFamily: kUiFont,
+                                  color: colorScheme.onSurface,
+                                  fontSize: 14.0,
+                                  fontWeight: FontWeight.w600,
+                                );
+
+                                final unitStyle = TextStyle(
+                                  fontFamily: kUiFont,
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontSize: 12.0,
+                                  fontWeight: FontWeight.w700,
+                                );
+
+                                // ラベル（右寄せ・固定幅）
+                                Widget label(String text) => SizedBox(
+                                  width: labelW,
+                                  child: Align(
+                                    alignment: Alignment.centerRight,
+                                    child: Text(text, style: labelStyle),
                                   ),
-                                ),
-                                const SizedBox(width: 10),
-                                SizedBox(
-                                  width: 180,
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Focus(
+                                );
+
+                                // 下線フィールド（共通）
+                                Widget underlineField({
+                                  required TextEditingController controller,
+                                  required List<TextInputFormatter> formatters,
+                                  required TextInputType keyboardType,
+                                  String? unitSuffix,
+                                  VoidCallback? onChangedBmi,                 // 体重のみBMI再計算用
+                                  ValueChanged<bool>? onFocusChange,          // 体重のみFAB制御用
+                                }) {
+                                  final field = ConstrainedBox(
+                                    constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                    child: TextField(
+                                      controller: controller,
+                                      keyboardType: keyboardType,
+                                      inputFormatters: formatters,
+                                      textAlign: TextAlign.right,
+                                      // ★ ここを共通スタイルに変更
+                                      style: inputTextStyle,
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        hintText: '',
+                                        hintStyle: TextStyle(
+                                          color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                                        ),
+                                        filled: false,
+                                        enabledBorder: UnderlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        focusedBorder: UnderlineInputBorder(
+                                          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                                        ),
+                                        contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                                      ),
+                                      onChanged: (_) => onChangedBmi?.call(),
+                                    ),
+                                  );
+
+                                  return SizedBox(
+                                    width: fieldW,
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: onFocusChange == null
+                                              ? field
+                                              : Focus(onFocusChange: onFocusChange, child: field),
+                                        ),
+                                        if (unitSuffix != null) ...[
+                                          const SizedBox(width: 8),
+                                          // ← 単位の実幅に依存しないよう固定幅リザーブ
+                                          SizedBox(
+                                            width: _unitReserveW,
+                                            child: Align(
+                                              alignment: Alignment.centerRight,
+                                              child: Text(unitSuffix, style: unitStyle), // 2-2で統一したスタイル
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  );
+                                }
+
+                                final decimalFmt = <TextInputFormatter>[
+                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                ];
+
+                                final bmiValue = _bmiValue;
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // 1) 体重
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        label(
+                                          '${l10n.bodyWeight}'
+                                              '${Localizations.of(context, MaterialLocalizations)!.formatDecimal(0).contains("0") ? "：" : ":"}',
+                                        ),
+                                        const SizedBox(width: 12),
+                                        underlineField(
+                                          controller: _weightController,
+                                          formatters: decimalFmt,
+                                          keyboardType:
+                                          const TextInputType.numberWithOptions(decimal: true),
+                                          unitSuffix: SettingsManager.currentUnit, // kg / lbs
+                                          onChangedBmi: _updateBmiDisplay, // ★ BMI再計算
                                           onFocusChange: (has) {
                                             setState(() {
                                               _weightFocused = has;
                                               if (has) _fabOpen = false;
                                             });
                                           },
-                                          child: ConstrainedBox(
-                                            constraints: const BoxConstraints(
-                                                minHeight: kUnifiedFieldMinHeight),
-                                            child: TextField(
-                                              controller: _weightController,
-                                              keyboardType: const TextInputType
-                                                  .numberWithOptions(
-                                                  decimal: true),
-                                              inputFormatters: [
-                                                FilteringTextInputFormatter
-                                                    .allow(
-                                                    RegExp(r'^\d*\.?\d*')),
-                                              ],
-                                              textAlign: TextAlign.right,
-                                              style: TextStyle(
-                                                  color: colorScheme.onSurface),
-                                              decoration: InputDecoration(
-                                                isDense: true,
-                                                hintText: '',
-                                                hintStyle:
-                                                TextStyle(color: colorScheme
-                                                    .onSurfaceVariant
-                                                    .withOpacity(0.5)),
-                                                filled: false,
-                                                enabledBorder: UnderlineInputBorder(
-                                                  borderSide: BorderSide(
-                                                    color: colorScheme
-                                                        .onSurfaceVariant
-                                                        .withOpacity(0.4),
-                                                    width: 1,
-                                                  ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    // 2) 体脂肪（%）
+                                    if (showBodyFat) ...[
+                                      SizedBox(height: rowGap),
+                                      Row(
+                                        children: [
+                                          label('${l10n.bodyFat}：'),
+                                          const SizedBox(width: 12),
+                                          underlineField(
+                                            controller: _bodyFatController,
+                                            formatters: decimalFmt,
+                                            keyboardType:
+                                            const TextInputType.numberWithOptions(decimal: true),
+                                            unitSuffix: '%',
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+
+                                    // 3) ウエスト（cm）
+                                    if (showWaist) ...[
+                                      SizedBox(height: rowGap),
+                                      Row(
+                                        children: [
+                                          label('${l10n.waist}：'),
+                                          const SizedBox(width: 12),
+                                          underlineField(
+                                            controller: _waistController,
+                                            formatters: decimalFmt,
+                                            keyboardType:
+                                            const TextInputType.numberWithOptions(decimal: true),
+                                            unitSuffix: 'cm',
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+
+                                    // 4) BMI（値のみ表示。フィールド列と右端合わせ）
+                                    if (showBMI) ...[
+                                      SizedBox(height: rowGap),
+                                      Row(
+                                        children: [
+                                          label('${l10n.bmi}：'),
+                                          const SizedBox(width: 12),
+                                          // 値は他と同じ fieldW 幅で右寄せ
+                                          SizedBox(
+                                            width: fieldW,                              // ← 他行と同じ幅で右端を揃える
+                                            child: Align(
+                                              alignment: Alignment.centerRight,
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(right: _bmiNudgeRight), // ← 値だけ少し左に“見せる”
+                                                child: Text(
+                                                  (bmiValue == null) ? '—' : bmiValue.toStringAsFixed(1),
+                                                  style: inputTextStyle.copyWith(fontWeight: FontWeight.w700),
                                                 ),
-                                                focusedBorder: UnderlineInputBorder(
-                                                  borderSide: BorderSide(
-                                                    color: colorScheme.primary,
-                                                    width: 2,
-                                                  ),
-                                                ),
-                                                contentPadding:
-                                                const EdgeInsets.symmetric(
-                                                    vertical: 6, horizontal: 0),
                                               ),
                                             ),
                                           ),
-                                        ),
+                                          const SizedBox(width: _bmiUnitReserve),
+                                        ],
                                       ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        SettingsManager.currentUnit,
-                                        style: TextStyle(
-                                          color: colorScheme.onSurfaceVariant,
-                                          fontSize: 12.0,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                                      const SizedBox(height: 14),
+                                    ] else ...[
+                                      const SizedBox(height: 6),
+                                    ]
+                                  ],
+                                );
+                              },
                             ),
                           ),
                         ),
@@ -2559,16 +2776,12 @@ class _RecordScreenState extends State<RecordScreen>
                                                             l10n
                                                                 .selectTrainingPart,
                                                         style: TextStyle(
-                                                          color: (section
-                                                              .selectedPart ==
-                                                              null)
-                                                              ? colorScheme
-                                                              .onSurfaceVariant
-                                                              : colorScheme
-                                                              .onSurface,
+                                                          fontFamily: kUiFont,
+                                                          color: (section.selectedPart == null)
+                                                              ? colorScheme.onSurfaceVariant
+                                                              : colorScheme.onSurface,
                                                           fontSize: 15.0,
-                                                          fontWeight: FontWeight
-                                                              .bold,
+                                                          fontWeight: FontWeight.w700,
                                                         ),
                                                         overflow: TextOverflow
                                                             .ellipsis,
@@ -2641,45 +2854,20 @@ class _RecordScreenState extends State<RecordScreen>
                                                 // ダブルバインド防止のプレースホルダ
                                                     ? const SizedBox(height: 12)
                                                     : MenuList(
-                                                  key: (secIndex == 0 &&
-                                                      menuIndex == 0)
-                                                      ? _kExerciseField
-                                                      : null,
-                                                  nameFieldKey: section
-                                                      .nameFieldKeys[menuIndex],
-                                                  menuController: section
-                                                      .menuControllers[menuIndex],
-                                                  removeMenuCallback: () =>
-                                                      _removeMenuItem(
-                                                          secIndex, menuIndex),
-                                                  setCount: section
-                                                      .setInputDataList[menuIndex]
-                                                      .length,
-                                                  setInputDataList: section
-                                                      .setInputDataList[menuIndex],
-                                                  isAerobic: section
-                                                      .selectedPart ==
-                                                      l10n.aerobicExercise,
-                                                  distanceController:
-                                                  (menuIndex < section
-                                                      .aerobicDistanceCtrls
-                                                      .length)
-                                                      ? section
-                                                      .aerobicDistanceCtrls[menuIndex]
+                                                  key: (secIndex == 0 && menuIndex == 0) ? _kExerciseField : null,
+                                                  nameFieldKey: section.nameFieldKeys[menuIndex],
+                                                  menuController: section.menuControllers[menuIndex],
+                                                  removeMenuCallback: () => _removeMenuItem(secIndex, menuIndex),
+                                                  setInputDataList: section.setInputDataList[menuIndex],
+                                                  isAerobic: section.selectedPart == l10n.aerobicExercise,
+                                                  distanceController: (menuIndex < section.aerobicDistanceCtrls.length)
+                                                      ? section.aerobicDistanceCtrls[menuIndex]
                                                       : TextEditingController(),
-                                                  durationController:
-                                                  (menuIndex < section
-                                                      .aerobicDurationCtrls
-                                                      .length)
-                                                      ? section
-                                                      .aerobicDurationCtrls[menuIndex]
+                                                  durationController: (menuIndex < section.aerobicDurationCtrls.length)
+                                                      ? section.aerobicDurationCtrls[menuIndex]
                                                       : TextEditingController(),
-                                                  aerobicIsSuggestion:
-                                                  (menuIndex < section
-                                                      .aerobicSuggestFlags
-                                                      .length)
-                                                      ? section
-                                                      .aerobicSuggestFlags[menuIndex]
+                                                  aerobicIsSuggestion: (menuIndex < section.aerobicSuggestFlags.length)
+                                                      ? section.aerobicSuggestFlags[menuIndex]
                                                       : true,
                                                   onConfirmAerobic: () {
                                                     setState(() {
@@ -2693,15 +2881,11 @@ class _RecordScreenState extends State<RecordScreen>
                                                     });
                                                   },
                                                   enabledForInput: false,
-                                                  onNameChanged: (prevEmpty,
-                                                      nowEmpty) {},
-                                                  satisfaction: (menuIndex <
-                                                      section.satisfactionList
-                                                          .length)
-                                                      ? section
-                                                      .satisfactionList[menuIndex]
+                                                  onNameChanged: (prevEmpty, nowEmpty) {},
+                                                  satisfaction: (menuIndex < section.satisfactionList.length)
+                                                      ? section.satisfactionList[menuIndex]
                                                       : null,
-                                                  onSatisfactionChanged: (v) {
+                                                  onSatisfactionChanged: (v){
                                                     setState(() {
                                                       if (menuIndex < section
                                                           .satisfactionList
@@ -3170,7 +3354,6 @@ class MenuList extends StatefulWidget {
   final GlobalKey nameFieldKey;
   final TextEditingController menuController;
   final VoidCallback removeMenuCallback;
-  final int setCount;
   final List<SetInputData> setInputDataList;
   final bool isAerobic;
   final TextEditingController distanceController;
@@ -3189,7 +3372,6 @@ class MenuList extends StatefulWidget {
     required this.nameFieldKey,
     required this.menuController,
     required this.removeMenuCallback,
-    required this.setCount,
     required this.setInputDataList,
     required this.isAerobic,
     required this.distanceController,
@@ -3415,7 +3597,6 @@ class _MenuListState extends State<MenuList> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme
@@ -3456,11 +3637,12 @@ class _MenuListState extends State<MenuList> {
                           child: TextField(
                             controller: widget.menuController,
                             keyboardType: TextInputType.text,
-                            inputFormatters: [
-                              LengthLimitingTextInputFormatter(25)
-                            ],
+                            inputFormatters: [ LengthLimitingTextInputFormatter(25) ],
                             textAlign: TextAlign.left,
-                            style: TextStyle(color: colorScheme.onSurface),
+                            style: TextStyle(                        // ← 追加
+                              fontFamily: kUiFont,
+                              color: colorScheme.onSurface,
+                            ),
                             decoration: InputDecoration(
                               isDense: true,
                               hintText: l10n.addExercisePlaceholder,
@@ -3541,9 +3723,12 @@ class _MenuListState extends State<MenuList> {
                     children: [
                       Text(
                         l10n.distance,
-                        style: TextStyle(color: colorScheme.onSurface,
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontFamily: kUiFont,
+                          color: colorScheme.onSurface,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -3566,9 +3751,9 @@ class _MenuListState extends State<MenuList> {
                               ],
                               textAlign: TextAlign.right,
                               style: TextStyle(
+                                fontFamily: kUiFont,
                                 color: widget.aerobicIsSuggestion
-                                    ? colorScheme.onSurfaceVariant.withOpacity(
-                                    0.5)
+                                    ? colorScheme.onSurfaceVariant.withOpacity(0.5)
                                     : colorScheme.onSurface,
                               ),
                               decoration: InputDecoration(
@@ -3592,9 +3777,11 @@ class _MenuListState extends State<MenuList> {
                       ),
                       Text(' ${l10n.km} ',
                           style: TextStyle(
-                              color: colorScheme.onSurfaceVariant,
-                              fontSize: 14.0,
-                              fontWeight: FontWeight.bold)),
+                            fontFamily: kUiFont,
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.w700,
+                          )),
                       Expanded(
                         flex: 2,
                         child: Focus(
@@ -3615,9 +3802,9 @@ class _MenuListState extends State<MenuList> {
                               ],
                               textAlign: TextAlign.right,
                               style: TextStyle(
+                                fontFamily: kUiFont,
                                 color: widget.aerobicIsSuggestion
-                                    ? colorScheme.onSurfaceVariant.withOpacity(
-                                    0.5)
+                                    ? colorScheme.onSurfaceVariant.withOpacity(0.5)
                                     : colorScheme.onSurface,
                               ),
                               decoration: InputDecoration(
@@ -3679,6 +3866,7 @@ class _MenuListState extends State<MenuList> {
                                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                   textAlign: TextAlign.right,
                                   style: TextStyle(
+                                    fontFamily: kUiFont,
                                     color: widget.aerobicIsSuggestion
                                         ? colorScheme.onSurfaceVariant.withOpacity(0.5)
                                         : colorScheme.onSurface,
@@ -3724,6 +3912,7 @@ class _MenuListState extends State<MenuList> {
                                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                   textAlign: TextAlign.right,
                                   style: TextStyle(
+                                    fontFamily: kUiFont,
                                     color: widget.aerobicIsSuggestion
                                         ? colorScheme.onSurfaceVariant.withOpacity(0.5)
                                         : colorScheme.onSurface,
@@ -3792,9 +3981,9 @@ class _MenuListState extends State<MenuList> {
                                       ],
                                       textAlign: TextAlign.right,
                                       style: TextStyle(
+                                        fontFamily: kUiFont,
                                         color: set.isSuggestion
-                                            ? colorScheme.onSurfaceVariant
-                                            .withOpacity(0.5)
+                                            ? colorScheme.onSurfaceVariant.withOpacity(0.5)
                                             : colorScheme.onSurface,
                                       ),
                                       decoration: InputDecoration(
@@ -3822,9 +4011,10 @@ class _MenuListState extends State<MenuList> {
                               Text(
                                 ' ${currentUnit == "kg" ? l10n.kg : l10n.lbs} ',
                                 style: TextStyle(
+                                    fontFamily: kUiFont,
                                     color: colorScheme.onSurfaceVariant,
                                     fontSize: 13.0,
-                                    fontWeight: FontWeight.bold),
+                                    fontWeight: FontWeight.w700),
                               ),
                               Expanded(
                                 child: Focus(
@@ -3875,8 +4065,10 @@ class _MenuListState extends State<MenuList> {
                               Text(
                                 ' ${l10n.reps}',
                                 style: TextStyle(
-                                    color: colorScheme.onSurfaceVariant,
-                                    fontSize: 13.0),
+                                  fontFamily: kUiFont,
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontSize: 13,
+                                ),
                               ),
                             ],
                           ),
