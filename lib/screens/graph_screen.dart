@@ -48,6 +48,26 @@ class _GraphScreenState extends State<GraphScreen> {
   final GlobalKey _kFav = GlobalKey();
   final GlobalKey _kChart = GlobalKey();
   final GlobalKey _kPart = GlobalKey();
+  final GlobalKey _kGoal = GlobalKey(); // ← 追加：目標ボタン用
+
+  // 連打抑止
+  DateTime? _lastHintShownAt;
+  static const Duration _kHintCooldown = Duration(milliseconds: 1200);
+
+  void _showThrottledHint(String msg) {
+    final now = DateTime.now();
+    if (_lastHintShownAt != null && now.difference(_lastHintShownAt!) < _kHintCooldown) return;
+    _lastHintShownAt = now;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  bool get _noMenusForSelectedPart {
+    final l10n = AppLocalizations.of(context)!;
+    return _selectedPart != null
+        && _selectedPart != l10n.bodyWeight
+        && _selectedPart != l10n.favorites
+        && _menusForPart.isEmpty;
+  }
 
   // 設定キー
   static const String _prefGraphPart = 'graph_selected_part';
@@ -183,6 +203,7 @@ class _GraphScreenState extends State<GraphScreen> {
     final anchorsReady = [
       _kPart.currentContext,
       _kChart.currentContext,
+      _kGoal.currentContext,
       _kFav.currentContext,
     ].every((c) => c != null);
     if (!anchorsReady) return;
@@ -190,10 +211,11 @@ class _GraphScreenState extends State<GraphScreen> {
     final l10n = AppLocalizations.of(context)!;
     await CoachBubbleController.showSequence(
       context: context,
-      anchors: [_kPart, _kChart, _kFav],
+      anchors: [_kPart, _kChart, _kGoal, _kFav],
       messages: [
         l10n.hintGraphSelectPart,
         l10n.hintGraphChartArea,
+        l10n.hintGraphSetGoal, // ← 追加
         l10n.hintGraphFavorite,
       ],
       semanticsPrefix: l10n.coachBubbleSemantic,
@@ -613,10 +635,9 @@ class _GraphScreenState extends State<GraphScreen> {
   }
 
   // ====== tick helpers ======
-  // ラベルとグリッドの起点を「実際にチャートへ渡している minY」にそろえる
   double get _tickStart {
     final step = _yLabelStep;
-    final minY = _baseMinY; // ← 今の実装では両チャートとも minY=_baseMinY を渡しているのでこれでOK
+    final minY = _baseMinY;
     return (minY / step).floorToDouble() * step;
   }
 
@@ -674,22 +695,21 @@ class _GraphScreenState extends State<GraphScreen> {
       _maxY = (_spots.length == 1) ? y : max(_maxY, y);
     }
 
-    // 固定刻み（間引き無し）
+    // 固定刻み
     if (_isStrengthContext()) {
       _yLabelStep = (SettingsManager.currentUnit == 'kg') ? 5.0 : 11.0;
     } else if (_isBodyWeightContext()) {
       _yLabelStep = (SettingsManager.currentUnit == 'kg') ? 0.5 : 1.0;
     } else {
-      // 有酸素（例の固定値）
       switch (_aeroMetric) {
         case AerobicMetric.distance:
-          _yLabelStep = 1.0; // 1km
+          _yLabelStep = 1.0;
           break;
         case AerobicMetric.time:
-          _yLabelStep = 10.0; // 10分
+          _yLabelStep = 10.0;
           break;
         case AerobicMetric.pace:
-          _yLabelStep = 0.5; // 0.5 分/ km (=30秒)
+          _yLabelStep = 0.5;
           break;
       }
     }
@@ -697,15 +717,12 @@ class _GraphScreenState extends State<GraphScreen> {
     double floorTo(double v, double step) => (v / step).floorToDouble() * step;
     double ceilTo(double v, double step) => (v / step).ceilToDouble() * step;
 
-    // データにフィットさせたベースを作る
     _baseMinY = floorTo(_minY, _yLabelStep);
     _baseMaxY = ceilTo(_maxY, _yLabelStep);
 
-    // 上下に“空き目盛”を加えて、Y方向にもスクロール余裕を作る（定数を使用）
     _baseMinY = floorTo(_baseMinY - _kYPadStepsBottom * _yLabelStep, _yLabelStep);
     _baseMaxY = ceilTo (_baseMaxY + _kYPadStepsTop    * _yLabelStep, _yLabelStep);
 
-    // 有酸素は負値なし
     if (_isAerobicContext()) _baseMinY = max(0, _baseMinY);
   }
 
@@ -724,10 +741,9 @@ class _GraphScreenState extends State<GraphScreen> {
 
   // ラベル
   String _weekSuffix() {
-    final lang = Localizations.localeOf(context).languageCode; // ← これでOK
+    final lang = Localizations.localeOf(context).languageCode;
     return (lang == 'ja') ? '週' : 'wk';
   }
-
 
   String _formatDayLabel(DateTime d) {
     final locale = Localizations.localeOf(context).toString();
@@ -1129,9 +1145,9 @@ class _GraphScreenState extends State<GraphScreen> {
                           children: List.generate(
                             maxMinutes + 1,
                                 (i) => Center(
-                                  child: Text('$i ${AppLocalizations.of(context)!.min}',
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
-                                ),
+                                child: Text('$i ${AppLocalizations.of(context)!.min}',
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+                          ),
                         ),
                       ),
                       Container(width: 1, color: Theme.of(context).colorScheme.outlineVariant),
@@ -1143,9 +1159,9 @@ class _GraphScreenState extends State<GraphScreen> {
                           children: List.generate(
                             60,
                                 (i) => Center(
-                                  child: Text('$i ${AppLocalizations.of(context)!.sec}',
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
-                                ),
+                                child: Text('$i ${AppLocalizations.of(context)!.sec}',
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+                          ),
                         ),
                       ),
                     ],
@@ -1347,6 +1363,7 @@ class _GraphScreenState extends State<GraphScreen> {
     final l10n = AppLocalizations.of(context)!;
     final isAerobic = _isAerobicContext();
     final unitText = _unitOverlayText(l10n);
+    final bool _noMenus = _noMenusForSelectedPart;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _tryShowGraphCoachIfVisible();
@@ -1356,11 +1373,11 @@ class _GraphScreenState extends State<GraphScreen> {
     Widget dayWeekToggle = SizedBox(
       height: _kControlHeight,
       child: Align(
-        alignment: Alignment.centerLeft, // ← Expanded内でも横一杯に広がらない
+        alignment: Alignment.centerLeft,
         child: Material(
-          color: Theme.of(context).colorScheme.surfaceContainer,               // 背景色
+          color: Theme.of(context).colorScheme.surfaceContainer,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_kControlRadius)),
-          clipBehavior: Clip.antiAlias,                                        // ← 角丸外へのはみ出し防止
+          clipBehavior: Clip.antiAlias,
           child: ToggleButtons(
             isSelected: [
               _displayMode == DisplayMode.day,
@@ -1395,46 +1412,56 @@ class _GraphScreenState extends State<GraphScreen> {
       ),
     );
 
-
-
-    // 目標ボタン
-    Widget goalButton = SizedBox(
-      height: _kControlHeight,
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-          side: BorderSide(color: colorScheme.outlineVariant),
-          backgroundColor: colorScheme.surfaceContainer,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-        ),
-        onPressed: _openGoalPicker,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.flag_outlined, size: 18),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                _goalController.text.isEmpty ? l10n.enterGoal : _goalController.text,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w700,
+    // 目標ボタン（未登録部位なら控えめ＆タップでヒント）
+    Widget goalButton = Opacity(
+      opacity: (_noMenus && !_isBodyWeightContext()) ? 0.4 : 1.0,
+      child: SizedBox(
+        height: _kControlHeight,
+        child: OutlinedButton(
+          key: _kGoal,
+          style: OutlinedButton.styleFrom(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            side: BorderSide(color: colorScheme.outlineVariant),
+            backgroundColor: colorScheme.surfaceContainer,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+          ),
+          onPressed: (_noMenus && !_isBodyWeightContext())
+              ? () => _showThrottledHint(l10n.hintRecordFirst)
+              : _openGoalPicker,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.flag_outlined, size: 18),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  _goalController.text.isEmpty ? l10n.enterGoal : _goalController.text,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
 
+    // お気に入り（未登録部位なら控えめ＆タップでヒント）
     Widget favButton = (_selectedPart != l10n.favorites)
-        ? FavoritePillButton(
-      key: _kFav,
-      isFavorite: _isFavorite,
-      label: l10n.favorites,
-      onTap: _toggleFavorite,
-      height: _kControlHeight,
+        ? Opacity(
+      opacity: (_noMenus && !_isBodyWeightContext()) ? 0.4 : 1.0,
+      child: FavoritePillButton(
+        key: _kFav,
+        isFavorite: _isFavorite,
+        label: l10n.favorites,
+        onTap: (_noMenus && !_isBodyWeightContext())
+            ? () => _showThrottledHint(l10n.hintRecordFirst)
+            : _toggleFavorite,
+        height: _kControlHeight,
+      ),
     )
         : const SizedBox.shrink();
 
@@ -1442,6 +1469,7 @@ class _GraphScreenState extends State<GraphScreen> {
     final menuDisplay =
     (_selectedPart == l10n.bodyWeight) ? '' : (_selectedMenu ?? l10n.selectExercise);
 
+    // 種目ピッカー（未登録時はヒントを出す）
     Widget partMenuRow = Row(
       children: [
         Expanded(
@@ -1486,7 +1514,9 @@ class _GraphScreenState extends State<GraphScreen> {
             child: SizedBox(
               height: _kPickerHeight,
               child: InkWell(
-                onTap: _menusForPart.isNotEmpty ? _openMenuPicker : null,
+                onTap: _menusForPart.isNotEmpty
+                    ? _openMenuPicker
+                    : () => _showThrottledHint(l10n.hintRecordFirst),
                 borderRadius: BorderRadius.circular(12),
                 child: Ink(
                   decoration: BoxDecoration(
@@ -1576,330 +1606,343 @@ class _GraphScreenState extends State<GraphScreen> {
               maxWidth: 760,
               padding: const EdgeInsets.all(16.0),
               child: Column(
-              children: [
-                const AdBanner(screenName: 'graph'),
-                const SizedBox(height: 12.0),
+                children: [
+                  const AdBanner(screenName: 'graph'),
+                  const SizedBox(height: 12.0),
 
-                Row(
-                  children: [
-                    Expanded(child: dayWeekToggle),
-                    const SizedBox(width: 8),
-                    Expanded(child: goalButton),
-                    const SizedBox(width: 8),
-                    Expanded(child: favButton),
-                  ],
-                ),
-
-                if (isAerobic) ...[
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: ToggleButtons(
-                      isSelected: [
-                        _aeroMetric == AerobicMetric.distance,
-                        _aeroMetric == AerobicMetric.time,
-                        _aeroMetric == AerobicMetric.pace,
-                      ],
-                      onPressed: (i) {
-                        setState(() {
-                          _aeroMetric = AerobicMetric.values[i];
-                          _saveGraphPrefs();
-                          if (_selectedMenu != null) _loadAerobicData(_selectedMenu!);
-                          _loadGoalForCurrentContext();
-                        });
-                      },
-                      constraints: const BoxConstraints(minHeight: 34),
-                      borderRadius: BorderRadius.circular(18),
-                      selectedColor: colorScheme.onPrimary,
-                      fillColor: colorScheme.primary,
-                      color: colorScheme.onSurface,
-                      borderColor: colorScheme.outlineVariant,
-                      selectedBorderColor: colorScheme.primary,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(l10n.distance),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(l10n.time),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(l10n.pace),
-                        ),
-                      ],
-                    ),
+                  Row(
+                    children: [
+                      Expanded(child: dayWeekToggle),
+                      const SizedBox(width: 8),
+                      Expanded(child: goalButton),
+                      const SizedBox(width: 8),
+                      Expanded(child: favButton),
+                    ],
                   ),
-                ],
 
-                const SizedBox(height: 8),
-
-                // ====== グラフ ======
-                Expanded(
-                  child: Card(
-                    key: _kChart,
-                    color: colorScheme.surfaceContainerHighest,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-                    elevation: 4,
-                    clipBehavior: Clip.antiAlias,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final totalW = constraints.maxWidth;
-                          final totalH = constraints.maxHeight;
-
-                          _plotHeightPx = totalH;
-                          final yAxisPanelW = _axisDates.isEmpty ? 0.0 : _kYAxisWidth;
-                          final plotAvailW = max(60.0, totalW - yAxisPanelW - 4);
-                          final points = max(1, _axisDates.length);
-                          final chartW = max(plotAvailW, points * _kXStridePx);
-
-                          final unitOverlay = (unitText.isEmpty || _axisDates.isEmpty)
-                              ? const SizedBox.shrink()
-                              : Positioned(
-                            left: 2,
-                            top: 6,
-                            child: Text(
-                              unitText,
-                              style: TextStyle(
-                                color: colorScheme.onSurfaceVariant,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          );
-
-                          // ---- ここから追加：目標ライン込みの表示レンジを計算 ----
-                          double viewMinY = _baseMinY;
-                          double viewMaxY = _baseMaxY;
-                          if (_goalValue != null) {
-                            viewMinY = min(viewMinY, _goalValue!);
-                            viewMaxY = max(viewMaxY, _goalValue!);
-                            // 余白（“空き目盛”）を確保
-                            viewMinY = (viewMinY / _yLabelStep).floor() * _yLabelStep - _kYPadStepsBottom * _yLabelStep;
-                            viewMaxY = (viewMaxY / _yLabelStep).ceil()  * _yLabelStep + _kYPadStepsTop    * _yLabelStep;
-                            if (_isAerobicContext()) {
-                              viewMinY = max(0, viewMinY); // 有酸素は負値なし
-                            }
-                          }
-                          // ---- 追加ここまで ----
-
-                          // 必要なチャート全高（ビュー用 min/max で再計算）
-                          final tickCount = ((viewMaxY - viewMinY) / _yLabelStep).round() + 1;
-                          final double computedChartH = 24 + (tickCount - 1) * _kYTickPx + 24;
-                          final double chartH = max(totalH, computedChartH);
-
-                          // 左Y軸（ビュー用 min/max を採用）
-                          final yAxisChart = SizedBox(
-                            width: yAxisPanelW,
-                            height: chartH,
-                            child: _axisDates.isEmpty
-                                ? const SizedBox.shrink()
-                                : LineChart(
-                              LineChartData(
-                                minX: 0,
-                                maxX: 1,
-                                minY: viewMinY,
-                                maxY: viewMaxY,
-                                clipData: const FlClipData.all(),
-                                lineBarsData: const [],
-                                titlesData: FlTitlesData(
-                                  leftTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      reservedSize: _kYAxisWidth - 4,
-                                      interval: _yLabelStep,
-                                      getTitlesWidget: _leftTitle,
-                                    ),
-                                  ),
-                                  bottomTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      reservedSize: _kXAxisReservedPx,
-                                      getTitlesWidget: (v, meta) => const SizedBox.shrink(),
-                                    ),
-                                  ),
-                                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                ),
-                                gridData: FlGridData(
-                                  show: true,
-                                  horizontalInterval: _yLabelStep,
-                                  checkToShowHorizontalLine: (v) => _isLabelTick(v),
-                                  drawVerticalLine: false,
-                                  getDrawingHorizontalLine: (v) =>
-                                      FlLine(color: colorScheme.outlineVariant, strokeWidth: 0.5),
-                                ),
-                                borderData: FlBorderData(
-                                  show: true,
-                                  border: Border(
-                                    left: BorderSide(color: colorScheme.outlineVariant),
-                                    bottom: BorderSide(color: colorScheme.outlineVariant),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-
-                          // 右側プロット（ビュー用 min/max を採用）
-                          final plotArea = _axisDates.isEmpty
-                              ? Center(
-                            child: Text(
-                              AppLocalizations.of(context)!.noGraphData,
-                              style: TextStyle(
-                                color: colorScheme.onSurfaceVariant,
-                                fontSize: 16,
-                              ),
-                            ),
-                          )
-                              : SizedBox(
-                            height: chartH,
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              physics: const BouncingScrollPhysics(),
-                              child: SizedBox(
-                                width: chartW,
-                                height: chartH,
-                                child: LineChart(
-                                  LineChartData(
-                                    minX: 0,
-                                    maxX: (_axisDates.length - 1).toDouble(),
-                                    minY: viewMinY,
-                                    maxY: viewMaxY,
-                                    clipData: const FlClipData.all(),
-                                    lineBarsData: [
-                                      LineChartBarData(
-                                        spots: _spots,
-                                        isCurved: false,
-                                        color: colorScheme.primary,
-                                        barWidth: 3,
-                                        dotData: const FlDotData(show: true),
-                                        belowBarData: BarAreaData(show: false),
-                                      ),
-                                    ],
-                                    titlesData: FlTitlesData(
-                                      leftTitles: const AxisTitles(
-                                        sideTitles: SideTitles(showTitles: false),
-                                      ),
-                                      bottomTitles: AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: true,
-                                          interval: 1,
-                                          reservedSize: _kXAxisReservedPx,
-                                          getTitlesWidget: _bottomTitle,
-                                        ),
-                                      ),
-                                      topTitles: const AxisTitles(
-                                        sideTitles: SideTitles(showTitles: false),
-                                      ),
-                                      rightTitles: const AxisTitles(
-                                        sideTitles: SideTitles(showTitles: false),
-                                      ),
-                                    ),
-                                    gridData: FlGridData(
-                                      show: true,
-                                      horizontalInterval: _yLabelStep,
-                                      checkToShowHorizontalLine: (v) => _isLabelTick(v),
-                                      drawVerticalLine: true,
-                                      verticalInterval: 1,
-                                      checkToShowVerticalLine: (v) => (v - v.round()).abs() < 1e-6,
-                                      getDrawingHorizontalLine: (v) => FlLine(
-                                        color: colorScheme.outlineVariant,
-                                        strokeWidth: 0.5,
-                                      ),
-                                      getDrawingVerticalLine: (v) => FlLine(
-                                        color: colorScheme.outlineVariant,
-                                        strokeWidth: 0.5,
-                                      ),
-                                    ),
-                                    borderData: FlBorderData(
-                                      show: true,
-                                      border: Border(
-                                        bottom: BorderSide(color: colorScheme.outlineVariant),
-                                        right: BorderSide(color: colorScheme.outlineVariant),
-                                      ),
-                                    ),
-                                    lineTouchData: LineTouchData(
-                                      touchTooltipData: LineTouchTooltipData(
-                                        getTooltipItems: (items) {
-                                          final loc = Localizations.localeOf(context).toString();
-                                          return items.map((s) {
-                                            final i = s.x.toInt();
-                                            final d = (i >= 0 && i < _xDates.length) ? _xDates[i] : null;
-                                            final dateStr = (_displayMode == DisplayMode.day)
-                                                ? (d != null ? DateFormat('M/d', loc).format(d) : '')
-                                                : (d != null ? _formatWeekLabel(d) : '');
-                                            final valStr = _formatTooltipValue(s.y, l10n);
-                                            return LineTooltipItem(
-                                              '$dateStr\n$valStr',
-                                              TextStyle(
-                                                color: colorScheme.onPrimaryContainer,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            );
-                                          }).toList();
-                                        },
-                                      ),
-                                    ),
-                                    extraLinesData: ExtraLinesData(
-                                      horizontalLines: (_goalValue != null)
-                                          ? [
-                                        HorizontalLine(
-                                          y: _goalValue!,
-                                          color: colorScheme.tertiary,
-                                          strokeWidth: 2,
-                                          dashArray: [6, 4],
-                                        ),
-                                      ]
-                                          : const [],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-
-                          // 縦スクロールで同期
-                          return Stack(
-                            children: [
-                              SizedBox(
-                                width: totalW,
-                                height: totalH,
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.vertical,
-                                  physics: const BouncingScrollPhysics(),
-                                  child: SizedBox(
-                                    height: chartH,
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        yAxisChart,
-                                        const SizedBox(width: 2),
-                                        Expanded(child: plotArea),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              unitOverlay,
+                  if (isAerobic) ...[
+                    const SizedBox(height: 8),
+                    SizedBox( // ← 高さを日/週と同じに固定
+                      height: _kControlHeight,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Material(
+                          color: colorScheme.surfaceContainer, // 日/週と同じ背景
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(_kControlRadius),
+                          ),
+                          clipBehavior: Clip.antiAlias, // はみ出し防止
+                          child: ToggleButtons(
+                            isSelected: [
+                              _aeroMetric == AerobicMetric.distance,
+                              _aeroMetric == AerobicMetric.time,
+                              _aeroMetric == AerobicMetric.pace,
                             ],
-                          );
-                        },
+                            onPressed: (i) {
+                              setState(() {
+                                _aeroMetric = AerobicMetric.values[i];
+                                _saveGraphPrefs();
+                                if (_selectedMenu != null) _loadAerobicData(_selectedMenu!);
+                                _loadGoalForCurrentContext();
+                              });
+                            },
+                            constraints: const BoxConstraints(minHeight: _kControlHeight), // ← 同じ高さ
+                            borderRadius: BorderRadius.circular(_kControlRadius),
+                            selectedColor: colorScheme.onPrimary,
+                            fillColor: colorScheme.primary,
+                            color: colorScheme.onSurface,
+                            borderColor: colorScheme.outlineVariant,
+                            selectedBorderColor: colorScheme.primary,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: Text(l10n.distance),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: Text(l10n.time),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: Text(l10n.pace),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
+                    ),
+                  ],
 
+
+                  const SizedBox(height: 8),
+
+                  // ====== グラフ ======
+                  Expanded(
+                    child: Card(
+                      key: _kChart,
+                      color: colorScheme.surfaceContainerHighest,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                      elevation: 4,
+                      clipBehavior: Clip.antiAlias,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final totalW = constraints.maxWidth;
+                            final totalH = constraints.maxHeight;
+
+                            _plotHeightPx = totalH;
+                            final yAxisPanelW = _axisDates.isEmpty ? 0.0 : _kYAxisWidth;
+                            final plotAvailW = max(60.0, totalW - yAxisPanelW - 4);
+                            final points = max(1, _axisDates.length);
+                            final chartW = max(plotAvailW, points * _kXStridePx);
+
+                            final unitOverlay = (unitText.isEmpty || _axisDates.isEmpty)
+                                ? const SizedBox.shrink()
+                                : Positioned(
+                              left: 2,
+                              top: 6,
+                              child: Text(
+                                unitText,
+                                style: TextStyle(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            );
+
+                            // 目標ライン込みの表示レンジ
+                            double viewMinY = _baseMinY;
+                            double viewMaxY = _baseMaxY;
+                            if (_goalValue != null) {
+                              viewMinY = min(viewMinY, _goalValue!);
+                              viewMaxY = max(viewMaxY, _goalValue!);
+                              viewMinY = (viewMinY / _yLabelStep).floor() * _yLabelStep - _kYPadStepsBottom * _yLabelStep;
+                              viewMaxY = (viewMaxY / _yLabelStep).ceil()  * _yLabelStep + _kYPadStepsTop    * _yLabelStep;
+                              if (_isAerobicContext()) {
+                                viewMinY = max(0, viewMinY);
+                              }
+                            }
+
+                            final tickCount = ((viewMaxY - viewMinY) / _yLabelStep).round() + 1;
+                            final double computedChartH = 24 + (tickCount - 1) * _kYTickPx + 24;
+                            final double chartH = max(totalH, computedChartH);
+
+                            // 左Y軸
+                            final yAxisChart = SizedBox(
+                              width: yAxisPanelW,
+                              height: chartH,
+                              child: _axisDates.isEmpty
+                                  ? const SizedBox.shrink()
+                                  : LineChart(
+                                LineChartData(
+                                  minX: 0,
+                                  maxX: 1,
+                                  minY: viewMinY,
+                                  maxY: viewMaxY,
+                                  clipData: const FlClipData.all(),
+                                  lineBarsData: const [],
+                                  titlesData: FlTitlesData(
+                                    leftTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        reservedSize: _kYAxisWidth - 4,
+                                        interval: _yLabelStep,
+                                        getTitlesWidget: _leftTitle,
+                                      ),
+                                    ),
+                                    bottomTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        reservedSize: _kXAxisReservedPx,
+                                        getTitlesWidget: (v, meta) => const SizedBox.shrink(),
+                                      ),
+                                    ),
+                                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                  ),
+                                  gridData: FlGridData(
+                                    show: true,
+                                    horizontalInterval: _yLabelStep,
+                                    checkToShowHorizontalLine: (v) => _isLabelTick(v),
+                                    drawVerticalLine: false,
+                                    getDrawingHorizontalLine: (v) =>
+                                        FlLine(color: colorScheme.outlineVariant, strokeWidth: 0.5),
+                                  ),
+                                  borderData: FlBorderData(
+                                    show: true,
+                                    border: Border(
+                                      left: BorderSide(color: colorScheme.outlineVariant),
+                                      bottom: BorderSide(color: colorScheme.outlineVariant),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+
+                            // 右側プロット
+                            final plotArea = _axisDates.isEmpty
+                                ? Center(
+                              child: Text(
+                                AppLocalizations.of(context)!.noGraphData,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                softWrap: true,
+                                style: TextStyle(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontSize: 14,
+                                  height: 1.15,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                            )
+                                : SizedBox(
+                              height: chartH,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                physics: const BouncingScrollPhysics(),
+                                child: SizedBox(
+                                  width: chartW,
+                                  height: chartH,
+                                  child: LineChart(
+                                    LineChartData(
+                                      minX: 0,
+                                      maxX: (_axisDates.length - 1).toDouble(),
+                                      minY: viewMinY,
+                                      maxY: viewMaxY,
+                                      clipData: const FlClipData.all(),
+                                      lineBarsData: [
+                                        LineChartBarData(
+                                          spots: _spots,
+                                          isCurved: false,
+                                          color: colorScheme.primary,
+                                          barWidth: 3,
+                                          dotData: const FlDotData(show: true),
+                                          belowBarData: BarAreaData(show: false),
+                                        ),
+                                      ],
+                                      titlesData: FlTitlesData(
+                                        leftTitles: const AxisTitles(
+                                          sideTitles: SideTitles(showTitles: false),
+                                        ),
+                                        bottomTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            interval: 1,
+                                            reservedSize: _kXAxisReservedPx,
+                                            getTitlesWidget: _bottomTitle,
+                                          ),
+                                        ),
+                                        topTitles: const AxisTitles(
+                                          sideTitles: SideTitles(showTitles: false),
+                                        ),
+                                        rightTitles: const AxisTitles(
+                                          sideTitles: SideTitles(showTitles: false),
+                                        ),
+                                      ),
+                                      gridData: FlGridData(
+                                        show: true,
+                                        horizontalInterval: _yLabelStep,
+                                        checkToShowHorizontalLine: (v) => _isLabelTick(v),
+                                        drawVerticalLine: true,
+                                        verticalInterval: 1,
+                                        checkToShowVerticalLine: (v) => (v - v.round()).abs() < 1e-6,
+                                        getDrawingHorizontalLine: (v) => FlLine(
+                                          color: colorScheme.outlineVariant,
+                                          strokeWidth: 0.5,
+                                        ),
+                                        getDrawingVerticalLine: (v) => FlLine(
+                                          color: colorScheme.outlineVariant,
+                                          strokeWidth: 0.5,
+                                        ),
+                                      ),
+                                      borderData: FlBorderData(
+                                        show: true,
+                                        border: Border(
+                                          bottom: BorderSide(color: colorScheme.outlineVariant),
+                                          right: BorderSide(color: colorScheme.outlineVariant),
+                                        ),
+                                      ),
+                                      lineTouchData: LineTouchData(
+                                        touchTooltipData: LineTouchTooltipData(
+                                          getTooltipItems: (items) {
+                                            final loc = Localizations.localeOf(context).toString();
+                                            return items.map((s) {
+                                              final i = s.x.toInt();
+                                              final d = (i >= 0 && i < _xDates.length) ? _xDates[i] : null;
+                                              final dateStr = (_displayMode == DisplayMode.day)
+                                                  ? (d != null ? DateFormat('M/d', loc).format(d) : '')
+                                                  : (d != null ? _formatWeekLabel(d) : '');
+                                              final valStr = _formatTooltipValue(s.y, l10n);
+                                              return LineTooltipItem(
+                                                '$dateStr\n$valStr',
+                                                TextStyle(
+                                                  color: colorScheme.onPrimaryContainer,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              );
+                                            }).toList();
+                                          },
+                                        ),
+                                      ),
+                                      extraLinesData: ExtraLinesData(
+                                        horizontalLines: (_goalValue != null)
+                                            ? [
+                                          HorizontalLine(
+                                            y: _goalValue!,
+                                            color: colorScheme.tertiary,
+                                            strokeWidth: 2,
+                                            dashArray: [6, 4],
+                                          ),
+                                        ]
+                                            : const [],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+
+                            // 縦スクロールで同期
+                            return Stack(
+                              children: [
+                                SizedBox(
+                                  width: totalW,
+                                  height: totalH,
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.vertical,
+                                    physics: const BouncingScrollPhysics(),
+                                    child: SizedBox(
+                                      height: chartH,
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          yAxisChart,
+                                          const SizedBox(width: 2),
+                                          Expanded(child: plotArea),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                unitOverlay,
+                              ],
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 8),
-                partMenuRow,
-              ],
+                  const SizedBox(height: 8),
+                  partMenuRow,
+                ],
+              ),
             ),
           ),
         ),
-      ),),
+      ),
     );
   }
 

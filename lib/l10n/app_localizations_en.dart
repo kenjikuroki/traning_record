@@ -457,4 +457,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get memoBodyPlaceholder => 'Enter memo';
+
+  @override
+  String get satisfactionLabel => 'Satisfaction';
+
+  @override
+  String get satisfactionGood => 'Good';
+
+  @override
+  String get satisfactionNeutral => 'Neutral';
+
+  @override
+  String get satisfactionBad => 'Bad';
+
+  @override
+  String get hintRecordFirst => 'Start by recording a workout or your body weight.';
+
+  @override
+  String get hintGraphSetGoal => 'Set your goal.';
 }

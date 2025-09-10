@@ -970,6 +970,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter memo'**
   String get memoBodyPlaceholder;
+
+  /// No description provided for @satisfactionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Satisfaction'**
+  String get satisfactionLabel;
+
+  /// No description provided for @satisfactionGood.
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get satisfactionGood;
+
+  /// No description provided for @satisfactionNeutral.
+  ///
+  /// In en, this message translates to:
+  /// **'Neutral'**
+  String get satisfactionNeutral;
+
+  /// No description provided for @satisfactionBad.
+  ///
+  /// In en, this message translates to:
+  /// **'Bad'**
+  String get satisfactionBad;
+
+  /// No description provided for @hintRecordFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Start by recording a workout or your body weight.'**
+  String get hintRecordFirst;
+
+  /// No description provided for @hintGraphSetGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Set your goal.'**
+  String get hintGraphSetGoal;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

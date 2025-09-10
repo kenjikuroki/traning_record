@@ -437,46 +437,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  // 記録画面（不透明ボトムシート）
+// 記録画面（フルスクリーン遷移・アニメーションなし）
   Future<void> _openRecordSheet(DateTime day) async {
-    await showModalBottomSheet(
-      context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      useSafeArea: true,
-      // ▼ 下スワイプ/ドラッグで閉じない
-      enableDrag: false,
-      // ▼ 外側タップやAndroid戻るキーで閉じない
-      isDismissible: false,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black54,
-      builder: (ctx) {
-        final cs = Theme.of(ctx).colorScheme;
-        return WillPopScope( // ← 戻る（ボタン/スワイプ）は許可
-          onWillPop: () async => true,
-          child: SizedBox.expand(
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: cs.surface,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                child: SafeArea(
-                  top: false,
-                  child: RecordScreen(
-                    selectedDate: day,
-                    recordsBox: widget.recordsBox,
-                    lastUsedMenusBox: widget.lastUsedMenusBox,
-                    settingsBox: widget.settingsBox,
-                    setCountBox: widget.setCountBox,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+    await Navigator.of(context, rootNavigator: true).push(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => RecordScreen(
+          selectedDate: day,
+          recordsBox: widget.recordsBox,
+          lastUsedMenusBox: widget.lastUsedMenusBox,
+          settingsBox: widget.settingsBox,
+          setCountBox: widget.setCountBox,
+        ),
+        transitionDuration: Duration(milliseconds: 0),
+        reverseTransitionDuration: Duration(milliseconds: 0),
+        transitionsBuilder: (_, __, ___, child) => child, // ← 完全に無アニメ
+      ),
     );
     if (mounted) setState(() {});
   }

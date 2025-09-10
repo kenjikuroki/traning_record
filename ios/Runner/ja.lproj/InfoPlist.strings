@@ -1,2 +1,5 @@
 /* App Tracking Transparency (ATT) */
-"NSUserTrackingUsageDescription" = "「トラッキングを許可」を押すと、他社のデータも活用して、同じ広告の繰り返しを減らすなど、よりお客様に適した広告を表示します。「Appにトラッキングしないように要求」を選んでも、すべての機能は引き続きご利用いただけます。";
+"NSUserTrackingUsageDescription" = "広告の表示最適化、効果測定、不正防止のために、デバイスの広告識別子（IDFA）などの情報を利用します。他社アプリやWebサイトでの活動情報と関連付けられる場合があります。設定からいつでも変更できます。";
+"NSCameraUsageDescription" = "トレーニングの写真を記録するためにカメラを使用します。";
+"NSMicrophoneUsageDescription" = "一部の音声機能でマイクを利用する可能性があるためアクセスが必要です。";
+"NSPhotoLibraryAddUsageDescription" = "撮影したトレーニング写真をギャラリーに保存するために使用します。";

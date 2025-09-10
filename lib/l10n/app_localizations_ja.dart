@@ -457,4 +457,22 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get memoBodyPlaceholder => 'メモを入力';
+
+  @override
+  String get satisfactionLabel => '満足度';
+
+  @override
+  String get satisfactionGood => '良い';
+
+  @override
+  String get satisfactionNeutral => '普通';
+
+  @override
+  String get satisfactionBad => '悪い';
+
+  @override
+  String get hintRecordFirst => 'まずはトレーニングや体重を記録しよう';
+
+  @override
+  String get hintGraphSetGoal => '目標を設定しよう';
 }

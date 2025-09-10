@@ -145,5 +145,11 @@
   "memoTitle": "Title",
   "memoBody": "Memo",
   "memoTitlePlaceholder": "Enter title",
-  "memoBodyPlaceholder": "Enter memo"
+  "memoBodyPlaceholder": "Enter memo",
+  "satisfactionLabel": "Satisfaction",
+  "satisfactionGood": "Good",
+  "satisfactionNeutral": "Neutral",
+  "satisfactionBad": "Bad",
+  "hintRecordFirst": "Start by recording a workout or your body weight.",
+  "hintGraphSetGoal": "Set your goal."
 }
