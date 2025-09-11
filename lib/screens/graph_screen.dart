@@ -577,12 +577,38 @@ class _GraphScreenState extends State<GraphScreen> {
     return '${m.toString()}:${s.toString().padLeft(2, '0')}';
   }
 
+  // 文字列や単位混じりの数値を安全に double にする（%, kg, lb, cm, カンマなどに対応）
+  double? _parseNumber(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toDouble();
+    var s = v.toString().trim();
+    if (s.isEmpty) return null;
+
+    // 許可文字以外を除去（数字・符号・小数点・カンマ）
+    s = s.replaceAll(RegExp(r'[^0-9\-\.,]'), '');
+
+    // 小数点としてカンマを使っている場合 "20,5" → "20.5"
+    if (s.contains(',') && !s.contains('.')) {
+      s = s.replaceAll(',', '.');
+    } else {
+      // 千区切りのカンマは除去 "1,234.5" → "1234.5"
+      s = s.replaceAll(',', '');
+    }
+    return double.tryParse(s);
+  }
+
   // ====== PERSONAL（体重/体脂肪率/BMI） ======
   // 体脂肪率（複数キー対応）
   double? _safeBodyFat(dynamic r) {
     // どれか1つでも値が取れたら返す
     try {
       final v = (r as dynamic).bodyFat;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v);
+    } catch (_) {}
+    // ★ ここを追加：実際の保存先は bodyFatPercent
+    try {
+      final v = (r as dynamic).bodyFatPercent;
       if (v is num) return v.toDouble();
       if (v is String) return double.tryParse(v);
     } catch (_) {}
@@ -659,12 +685,45 @@ class _GraphScreenState extends State<GraphScreen> {
   }
 
   double? _heightMetersFromSettings() {
+    // 現行キー（Settings画面）
+    final hPersonalCm = widget.settingsBox.get('personal.heightCm');
+    if (hPersonalCm is num && hPersonalCm > 0) return hPersonalCm.toDouble() / 100.0;
+    if (hPersonalCm is String) {
+      final d = double.tryParse(hPersonalCm);
+      if (d != null && d > 0) return d / 100.0;
+    }
+
+    final hPersonalM = widget.settingsBox.get('personal.heightM');
+    if (hPersonalM is num && hPersonalM > 0) return hPersonalM.toDouble();
+    if (hPersonalM is String) {
+      final d = double.tryParse(hPersonalM);
+      if (d != null && d > 0) return d;
+    }
+
+    // 旧キー（cm）
     final h = widget.settingsBox.get('height_cm');
     if (h is num && h > 0) return h.toDouble() / 100.0;
+    if (h is String) {
+      final d = double.tryParse(h);
+      if (d != null && d > 0) return d / 100.0;
+    }
+
+    // 旧キー（m）
     final h2 = widget.settingsBox.get('height_m');
     if (h2 is num && h2 > 0) return h2.toDouble();
+    if (h2 is String) {
+      final d = double.tryParse(h2);
+      if (d != null && d > 0) return d;
+    }
+
+    // さらに旧キー 'height'（>10 を cm とみなす）
+    final h3 = widget.settingsBox.get('height');
+    final n = _parseNumber(h3);
+    if (n != null && n > 0) return n > 10 ? (n / 100.0) : n;
+
     return null;
   }
+
 
   String? _genderFromSettings() {
     final g = widget.settingsBox.get('gender');
@@ -677,6 +736,59 @@ class _GraphScreenState extends State<GraphScreen> {
 
   double _toKg(double w) =>
       (SettingsManager.currentUnit == 'kg') ? w : (w * 0.45359237);
+
+double _kgToUser(double kg) =>
+    (SettingsManager.currentUnit == 'kg') ? kg : kg * 2.2046226218;
+
+/// レコードから体重を**kg**で取得（String/num・kg/lbs・いろんなキー名に対応）
+double? _safeWeightKg(dynamic r) {
+  double? asKg;
+
+  // 明示kg
+  try {
+    final v = (r as dynamic).weightKg;
+    if (v is num) asKg = v.toDouble();
+    if (v is String) asKg = double.tryParse(v);
+  } catch (_) {}
+  try {
+    final v = (r as dynamic).weight_kg;
+    if (asKg == null) {
+      if (v is num) asKg = v.toDouble();
+      if (v is String) asKg = double.tryParse(v);
+    }
+  } catch (_) {}
+
+  // 明示lbs
+  try {
+    final v = (r as dynamic).weightLbs;
+    if (v is num) asKg = v.toDouble() * 0.45359237;
+    if (v is String) {
+      final d = double.tryParse(v);
+      if (d != null) asKg = d * 0.45359237;
+    }
+  } catch (_) {}
+  try {
+    final v = (r as dynamic).weight_lbs;
+    if (v is num) asKg = v.toDouble() * 0.45359237;
+    if (v is String) {
+      final d = double.tryParse(v);
+      if (d != null) asKg = d * 0.45359237;
+    }
+  } catch (_) {}
+
+  // 汎用 'weight'（**現在の単位設定**で入力されたとみなしkgへ変換）
+  if (asKg == null) {
+    try {
+      final v = (r as dynamic).weight;
+      double? raw;
+      if (v is num) raw = v.toDouble();
+      if (v is String) raw = double.tryParse(v);
+      if (raw != null) asKg = _toKg(raw); // 既存ロジックを尊重
+    } catch (_) {}
+  }
+
+  return asKg;
+}
 
   void _loadPersonalData() {
     final Iterable records = widget.recordsBox
@@ -692,20 +804,22 @@ class _GraphScreenState extends State<GraphScreen> {
           final day = DateTime(dr.date.year, dr.date.month, dr.date.day);
           double? v;
           switch (_personalMetric) {
-            case PersonalMetric.weight:
-              v = (dr.weight as num?)?.toDouble();
+            case PersonalMetric.weight: {
+              final wKg = _safeWeightKg(dr);
+              if (wKg != null) v = _kgToUser(wKg); // ユーザーの現在単位で表示
               break;
+            }
             case PersonalMetric.bodyFat:
-              v = _safeBodyFat(dr); // %
+              v = _safeBodyFat(dr);
               break;
-            case PersonalMetric.bmi:
-              final w = (dr.weight as num?)?.toDouble();
-              final h = _heightMetersFromSettings() ??
-                  _heightMetersFromRecord(dr);
-              if (w != null && h != null && h > 0) v = _toKg(w) / (h * h);
+            case PersonalMetric.bmi: {
+              final wKg = _safeWeightKg(dr);
+              final h = _heightMetersFromSettings() ?? _heightMetersFromRecord(dr);
+              if (wKg != null && h != null && h > 0) v = wKg / (h * h);
               break;
+            }
             case PersonalMetric.waist:
-              v = _safeWaist(dr); // cm
+              v = _safeWaist(dr);
               break;
           }
           if (v != null) map[day] = v;
@@ -725,18 +839,17 @@ class _GraphScreenState extends State<GraphScreen> {
               v = (dr.weight as num?)?.toDouble();
               break;
             case PersonalMetric.bodyFat:
-              v = _safeBodyFat(dr); // %
+              v = _safeBodyFat(dr);
               break;
             case PersonalMetric.bmi:
-              final w = (dr.weight as num?)?.toDouble();
-              final h = _heightMetersFromSettings() ??
-                  _heightMetersFromRecord(dr);
-              if (w != null && h != null && h > 0) v = _toKg(w) / (h * h);
+              final wKg = _safeWeightKg(dr);
+              final h = _heightMetersFromSettings() ?? _heightMetersFromRecord(dr);
+              if (wKg != null && h != null && h > 0) v = wKg / (h * h);
               break;
             case PersonalMetric.waist:
-              v = _safeWaist(dr); // cm
+              v = _safeWaist(dr);
               break;
-          }
+        }
           if (v != null) wk.putIfAbsent(key, () => []).add(v);
         } catch (_) {}
       }
