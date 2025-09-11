@@ -146,6 +146,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _hasAnyData(DailyRecord? r) {
     if (r == null) return false;
     if (r.weight != null) return true;
+    // ▼ 追加：当日の個人値だけの日も「実績あり」にする
+    if (r.bodyFatPercent != null) return true;
+    if (r.waistCm != null) return true;
     if (r.menus.isEmpty) return false;
     return _hasAnyTrainingData(r);
   }
@@ -198,6 +201,378 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final isJa = Localizations.localeOf(context).languageCode == 'ja';
     return isJa ? '${hour}時間${min}${l10n.min}' : '${hour}h${min}${l10n.min}';
   }
+
+  // ウエスト表示単位の取得（cm / in）
+  String _waistUnitPref() {
+    // 明示キー優先（文字列想定）
+    for (final k in ['waistUnit', 'lengthUnit', 'unitLength', 'personal.lengthUnit']) {
+      final v = widget.settingsBox.get(k);
+      if (v is String) {
+        final s = v.toLowerCase();
+        if (s.contains('inch') || s == 'in') return 'in';
+        if (s.contains('cm')) return 'cm';
+      }
+    }
+    // true/false 系の補助キー
+    final useInch = widget.settingsBox.get('useInch');
+    if (useInch is bool && useInch) return 'in';
+    return 'cm';
+  }
+
+  // ウエスト数値の表示加工（cm→in 変換・小数桁）
+  ({double value, String unit}) _formatWaistForDisplay(double waistCm) {
+    final pref = _waistUnitPref();
+    if (pref == 'in') {
+      final inch = waistCm / 2.54;
+      return (value: double.parse(inch.toStringAsFixed(1)), unit: 'in');
+    }
+    return (value: double.parse(waistCm.toStringAsFixed(1)), unit: 'cm');
+  }
+
+
+  // 「30:45」→「30分45秒」
+  String _formatDuration(String? raw, AppLocalizations l10n) {
+    if (raw == null || raw.trim().isEmpty) return '-';
+    final parts = raw.split(':');
+    final min = (parts.isNotEmpty && parts[0].isNotEmpty) ? parts[0] : '0';
+    final sec = (parts.length > 1 && parts[1].isNotEmpty) ? parts[1] : '0';
+    return '$min${l10n.min}$sec${l10n.sec}';
+  }
+
+  // ▼ 個人値表示用のユーティリティ -------------------------------
+
+  // settingsBox から身長(cm)を推測して取得
+  double? _getUserHeightCm() {
+    final keys = ['user_height_cm', 'height_cm', 'height', '身長cm', '身長'];
+    for (final k in keys) {
+      final v = widget.settingsBox.get(k);
+      if (v == null) continue;
+      if (v is num) return v.toDouble();
+      if (v is String) {
+        final d = double.tryParse(v);
+        if (d != null) return d;
+      }
+    }
+    return null;
+  }
+
+  // settingsBox から性別を推測して取得（'male' | 'female' を返す）
+  String? _getUserGender() {
+    // 新：設定画面の保存先
+    final pg = widget.settingsBox.get('personal.gender');
+    if (pg is String) {
+      final s = pg.toLowerCase();
+      if (s.startsWith('male') || s == 'm' || s.contains('男')) return 'male';
+      if (s.startsWith('female') || s == 'f' || s.contains('女')) return 'female';
+      // 'unspecified' などは null 扱い
+    }
+
+    // 互換：旧キー群
+    for (final k in ['user_gender', 'gender', 'sex', '性別']) {
+      final v = widget.settingsBox.get(k);
+      if (v is String) {
+        final s = v.toLowerCase();
+        if (s.contains('male') || s.contains('man') || s == 'm' || s.contains('男')) return 'male';
+        if (s.contains('female') || s.contains('woman') || s == 'f' || s.contains('女')) return 'female';
+      } else if (v is int) {
+        if (v == 0) return 'male';
+        if (v == 1) return 'female';
+      } else if (v is bool) {
+        return v ? 'male' : 'female';
+      }
+    }
+    return null;
+  }
+
+  // record に存在するかもしれない動的プロパティから double を読む
+  double? _getOptionalDouble(dynamic dyn, List<String> candidates) {
+    for (final name in candidates) {
+      try {
+        final dynamic v = switch (name) {
+          'bodyFatPercent' => dyn.bodyFatPercent,
+          'bodyFat'        => dyn.bodyFat,
+          'fatPercent'     => dyn.fatPercent,
+          'waistCm'        => dyn.waistCm,
+          'waist'          => dyn.waist,
+          'waist_cm'       => dyn.waist_cm,
+          _                => null,
+        };
+        if (v == null) continue;
+        if (v is num) return v.toDouble();
+        if (v is String) {
+          final d = double.tryParse(v);
+          if (d != null) return d;
+        }
+      } catch (_) {/* 未定義なら無視 */}
+    }
+    return null;
+  }
+
+  // 基準テキスト（性別文言は出さない）
+  String _bmiRangeText() => '18.5〜24.9';
+  String _bodyFatRangeText(String gender) => gender == 'male' ? '10〜20' : '20〜30';
+  String _waistStdText(String gender) => gender == 'male' ? '85' : '90';
+
+    // ====== ここから追加：パーソナル指標の取得/計算ヘルパー ======
+
+  // 体脂肪率（よくあるキー名の取りこぼし防止）
+  double? _safeBodyFat(dynamic r) {
+    try {
+      final v = (r as dynamic).bodyFatPercent;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v);
+    } catch (_) {}
+    try {
+      final v = (r as dynamic).bodyFat;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v);
+    } catch (_) {}
+    try {
+      final v = (r as dynamic).bodyFatPercentage;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v);
+    } catch (_) {}
+    try {
+      final v = (r as dynamic).bodyFatRate;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v);
+    } catch (_) {}
+    try {
+      final v = (r as dynamic).fatPercentage;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v);
+    } catch (_) {}
+    return null;
+  }
+
+  // ウエスト(cm)
+  double? _safeWaist(dynamic r) {
+    try {
+      final v = (r as dynamic).waist;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v);
+    } catch (_) {}
+    try {
+      final v = (r as dynamic).waistCm;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v);
+    } catch (_) {}
+    try {
+      final v = (r as dynamic).waist_cm;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v);
+    } catch (_) {}
+    return null;
+  }
+
+  // 設定から身長(m)
+  double? _heightMetersFromSettings() {
+    // 新：設定画面の正規化保存値（cm）
+    final phc = widget.settingsBox.get('personal.heightCm');
+    if (phc is num && phc > 0) return phc.toDouble() / 100.0;
+    if (phc is String) {
+      final d = double.tryParse(phc);
+      if (d != null && d > 0) return d / 100.0;
+    }
+
+    // 互換：従来キー（cm か m 推定）
+    for (final key in ['height_cm', 'user_height_cm', '身長cm', '身長', 'height']) {
+      final v = widget.settingsBox.get(key);
+      if (v == null) continue;
+      if (v is num && v > 0) return v.toDouble() / 100.0;
+      if (v is String) {
+        final d = double.tryParse(v);
+        if (d != null && d > 0) return (d > 100) ? (d / 100.0) : d; // 100超はcm扱い
+      }
+    }
+
+    // m保存
+    final hM = widget.settingsBox.get('height_m');
+    if (hM is num && hM > 0) return hM.toDouble();
+    if (hM is String) {
+      final d = double.tryParse(hM);
+      if (d != null && d > 0) return d;
+    }
+
+    // 互換：ft/in 保存
+    final hFt = widget.settingsBox.get('height_ft');
+    final hIn = widget.settingsBox.get('height_in');
+    double? ft, inch;
+    if (hFt is num) ft = hFt.toDouble();
+    if (hIn is num) inch = hIn.toDouble();
+    if (hFt is String) ft = double.tryParse(hFt) ?? ft;
+    if (hIn is String) inch = double.tryParse(hIn) ?? inch;
+    if (ft != null || inch != null) {
+      final totalIn = (ft ?? 0) * 12.0 + (inch ?? 0);
+      if (totalIn > 0) return (totalIn * 2.54) / 100.0;
+    }
+    return null;
+  }
+
+  // レコードから身長(m)（フォールバック用）
+  double? _heightMetersFromRecord(dynamic r) {
+    try {
+      final v = (r as dynamic).height_m;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v);
+    } catch (_) {}
+    try {
+      final v = (r as dynamic).heightCm;
+      if (v is num) return v.toDouble() / 100.0;
+      if (v is String) {
+        final d = double.tryParse(v);
+        if (d != null) return d / 100.0;
+      }
+    } catch (_) {}
+    try {
+      final v = (r as dynamic).height_cm;
+      if (v is num) return v.toDouble() / 100.0;
+      if (v is String) {
+        final d = double.tryParse(v);
+        if (d != null) return d / 100.0;
+      }
+    } catch (_) {}
+    try {
+      final v = (r as dynamic).height; // cm または m 想定（>10 を cm と見なす）
+      if (v is num) return v > 10 ? v.toDouble() / 100.0 : v.toDouble();
+      if (v is String) {
+        final d = double.tryParse(v);
+        if (d != null) return d > 10 ? d / 100.0 : d;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  // 設定の性別（表示には使わず、基準の選択だけに使う）
+  String? _genderFromSettings() {
+    final g = widget.settingsBox.get('gender');
+    if (g == null) return null;
+    final s = g.toString().toLowerCase();
+    if (s.contains('male')) return 'male';
+    if (s.contains('female')) return 'female';
+    return null;
+  }
+
+  // 単位：lb→kg 変換（BMI計算用）
+  double _toKg(double w) => (SettingsManager.currentUnit == 'kg') ? w : (w * 0.45359237);
+
+  // 基準値（性別ありのときのみ返す）
+  Map<String, double>? _standardsForGender(String gender) {
+    // BMI（共通）
+    final bmiMin = (widget.settingsBox.get('bmiRangeMin') as num?)?.toDouble() ?? 18.5;
+    final bmiMax = (widget.settingsBox.get('bmiRangeMax') as num?)?.toDouble() ?? 25.0;
+
+    // 体脂肪率（性別で既定）
+    double bfMin = (widget.settingsBox.get('bodyFatRangeMin') as num?)?.toDouble() ??
+        (gender == 'male' ? 10.0 : 20.0);
+    double bfMax = (widget.settingsBox.get('bodyFatRangeMax') as num?)?.toDouble() ??
+        (gender == 'male' ? 20.0 : 30.0);
+
+    // ウエスト（性別で既定、上書きがあれば使う）
+    double waistStd;
+    final keyGender = gender == 'male' ? 'waistStdMaleCm' : 'waistStdFemaleCm';
+    final gVal = widget.settingsBox.get(keyGender);
+    if (gVal is num) {
+      waistStd = gVal.toDouble();
+    } else {
+      final anyVal = widget.settingsBox.get('waistStdCm');
+      waistStd = (anyVal is num) ? anyVal.toDouble() : (gender == 'male' ? 85.0 : 90.0);
+    }
+
+    return {
+      'bmiMin': bmiMin,
+      'bmiMax': bmiMax,
+      'bfMin': bfMin,
+      'bfMax': bfMax,
+      'waistStd': waistStd,
+    };
+  }
+
+  // settingsBox に保存されている数値（num / 文字列 / Map内の数値）を柔軟に取り出す
+  double? _getDoubleFromSettings(List<String> candidateKeys) {
+    for (final k in candidateKeys) {
+      final v = widget.settingsBox.get(k);
+      if (v == null) continue;
+      if (v is num) return v.toDouble();
+      if (v is String) {
+        final d = double.tryParse(v);
+        if (d != null) return d;
+      }
+      if (v is Map) {
+        for (final e in v.values) {
+          if (e is num) return e.toDouble();
+          if (e is String) {
+            final d = double.tryParse(e);
+            if (d != null) return d;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  // settingsBox を「-yyyy-MM-dd」サフィックスで横断探索（キー名の表記揺れを吸収）
+  double? _scanSettingsBySuffix(String dateKey, List<String> tokenVariants) {
+    try {
+      for (final k in widget.settingsBox.keys) {
+        final ks = k.toString().toLowerCase();
+        if (!ks.endsWith('-$dateKey')) continue;
+        for (final t in tokenVariants) {
+          if (!ks.contains(t)) continue;
+          final v = widget.settingsBox.get(k);
+          if (v is num) return v.toDouble();
+          if (v is String) {
+            final d = double.tryParse(v);
+            if (d != null) return d;
+          }
+          if (v is Map) {
+            for (final e in (v as Map).values) {
+              if (e is num) return e.toDouble();
+              if (e is String) {
+                final d = double.tryParse(e);
+                if (d != null) return d;
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  // DailyRecord 内の Map（extras/metrics/personal/stats/attributes 等）を横断探索
+  double? _scanRecordMaps(dynamic r, List<String> mapProps, List<String> tokenVariants) {
+    for (final prop in mapProps) {
+      try {
+        final dynamic m = switch (prop) {
+          'extras'      => (r as dynamic).extras,
+          'extra'       => (r as dynamic).extra,
+          'metrics'     => (r as dynamic).metrics,
+          'personal'    => (r as dynamic).personal,
+          'stats'       => (r as dynamic).stats,
+          'attributes'  => (r as dynamic).attributes,
+          _             => null,
+        };
+        if (m is Map) {
+          for (final entry in m.entries) {
+            final key = entry.key.toString().toLowerCase();
+            for (final t in tokenVariants) {
+              if (!key.contains(t)) continue;
+              final v = entry.value;
+              if (v is num) return v.toDouble();
+              if (v is String) {
+                final d = double.tryParse(v);
+                if (d != null) return d;
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  // ====== ここまで追加 ======
 
   // その日に実績のある「部位」一覧を返す（表示用）
   List<String> _partsWithDataForDay(DailyRecord r) {
@@ -735,7 +1110,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       },
     );
   }
-
   Widget _buildResultsArea(BuildContext context, DailyRecord? record) {
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
@@ -767,57 +1141,138 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // ▼ 実績あり：カードは「実績」1枚のみ。タップで簡易一覧を展開
     final unit = SettingsManager.currentUnit;
     final String selKey = _dateKey(_selectedDay ?? DateTime.now());
-    final dynamic satAllRaw = widget.settingsBox.get('satisfaction-$selKey');
-    final Map<String, dynamic> satAll = (satAllRaw is Map<String, dynamic>) ? satAllRaw : {};
 
     final List<Widget> summaryChildren = [];
 
-    // 1) 体重
+    // ===== パーソナル用の素材値 =====
+    final double? bodyFatVal = record?.bodyFatPercent; // %
+    final double? waistValCm = record?.waistCm;        // cm
+    double? bmiVal;
     if (record?.weight != null) {
-      summaryChildren.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6.0),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '${l10n.bodyWeight}: ${record!.weight!.toStringAsFixed(1)} $unit',
-              style: TextStyle(color: colorScheme.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
-              textAlign: TextAlign.left,
-            ),
-          ),
-        ),
-      );
+      final w = record!.weight!;
+      final h = _heightMetersFromSettings() ?? _heightMetersFromRecord(record);
+      if (h != null && h > 0) {
+        bmiVal = _toKg(w) / (h * h);
+      }
     }
 
-    // 2) 部位別
-    record?.menus.forEach((originalPart, menuList) {
-      bool partHasData = false;
-      for (final m in menuList) {
-        final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
-        for (int i = 0; i < len; i++) {
-          if (m.weights[i].toString().trim().isNotEmpty || m.reps[i].toString().trim().isNotEmpty) {
-            partHasData = true;
-            break;
-          }
-        }
-        if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
-          partHasData = true;
-        }
-        if (partHasData) break;
+    bool _menuHasAnyData(m) {
+      final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+      for (int i = 0; i < len; i++) {
+        final w = m.weights[i].toString().trim();
+        final r = m.reps[i].toString().trim();
+        if (w.isNotEmpty || r.isNotEmpty) return true;
       }
-      if (!partHasData) return;
+      if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
+        return true;
+      }
+      return false;
+    }
 
-      final partTitle = _translatePartToLocale(context, originalPart);
+    // ===== 1) 有酸素 =====
+    // null を空リストに正規化して以降を非nullで扱う
+    final List<MenuData> aerobicMenus =
+        (record?.menus['有酸素運動'] as List<MenuData>?) ?? const <MenuData>[];
 
+    if (aerobicMenus.any(_menuHasAnyData)) {
       summaryChildren.add(
         Padding(
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
           child: Text(
-            partTitle,
+            '■${_translatePartToLocale(context, '有酸素運動')}',
             style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
           ),
         ),
       );
+      final dynamic satAllRaw = widget.settingsBox.get('satisfaction-$selKey');
+      final Map<String, dynamic> satAll = (satAllRaw is Map<String, dynamic>) ? satAllRaw : {};
+
+      for (final m in aerobicMenus) {
+        summaryChildren.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2.0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                m.name,
+                textAlign: TextAlign.left,
+                style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+            ),
+          ),
+        );
+
+        if ((m.distance?.trim().isNotEmpty ?? false)) {
+          summaryChildren.add(
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
+                  textAlign: TextAlign.left,
+                  style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
+                ),
+              ),
+            ),
+          );
+        }
+        if ((m.duration?.trim().isNotEmpty ?? false)) {
+          summaryChildren.add(
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}',
+                  textAlign: TextAlign.left,
+                  style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
+                ),
+              ),
+            ),
+          );
+        }
+
+        final Map partSat = (satAll['有酸素運動'] is Map) ? satAll['有酸素運動'] as Map : const {};
+        final int? satVal = partSat[m.name] is int ? partSat[m.name] as int : null;
+        if (satVal != null) {
+          summaryChildren.add(
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0, top: 2.0, bottom: 2.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _satisfactionLine(l10n, satVal, colorScheme),
+              ),
+            ),
+          );
+        }
+      }
+      summaryChildren.add(const SizedBox(height: 8));
+    }
+
+    // ===== 2) トレーニング（有酸素以外） =====
+    record?.menus.forEach((originalPart, menuList) {
+      if (originalPart == '有酸素運動') return;
+
+      bool partHasData = false;
+      for (final m in menuList) {
+        if (_menuHasAnyData(m)) { partHasData = true; break; }
+      }
+      if (!partHasData) return;
+
+      final partTitle = _translatePartToLocale(context, originalPart);
+      summaryChildren.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
+          child: Text(
+            '■$partTitle',
+            style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+        ),
+      );
+
+      final dynamic satAllRaw = widget.settingsBox.get('satisfaction-$selKey');
+      final Map<String, dynamic> satAll = (satAllRaw is Map<String, dynamic>) ? satAllRaw : {};
 
       for (final m in menuList) {
         summaryChildren.add(
@@ -836,16 +1291,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
         final setCount = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
         for (int i = 0; i < setCount; i++) {
-          final w = m.weights[i].toString().trim();
-          final r = m.reps[i].toString().trim();
-          if (w.isEmpty && r.isEmpty) continue;
+          final wStr = m.weights[i].toString().trim();
+          final rStr = m.reps[i].toString().trim();
+          if (wStr.isEmpty && rStr.isEmpty) continue;
           summaryChildren.add(
             Padding(
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '${i + 1}${l10n.sets}：${w.isNotEmpty ? '$w${unit == 'kg' ? l10n.kg : l10n.lbs}' : '-'} × ${r.isNotEmpty ? r : '-'}${l10n.reps}',
+                  '${i + 1}${l10n.sets}：'
+                      '${wStr.isNotEmpty ? '$wStr${unit == 'kg' ? l10n.kg : l10n.lbs}' : '-'}'
+                      ' × '
+                      '${rStr.isNotEmpty ? rStr : '-'}${l10n.reps}',
                   textAlign: TextAlign.left,
                   style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
                 ),
@@ -854,39 +1312,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           );
         }
 
-        if ((m.distance?.trim().isNotEmpty ?? false)) {
-          summaryChildren.add(
-            Padding(
-              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
-                  textAlign: TextAlign.left,
-                  style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
-                ),
-              ),
-            ),
-          );
-        }
-        // 時間：時間と分に
-        if ((m.duration?.trim().isNotEmpty ?? false)) {
-          summaryChildren.add(
-            Padding(
-              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}',
-                  textAlign: TextAlign.left,
-                  style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
-                ),
-              ),
-            ),
-          );
-        }
-
-// 満足度：絵文字（記録画面で保存された値を表示）
         final Map partSat = (satAll[originalPart] is Map) ? satAll[originalPart] as Map : const {};
         final int? satVal = partSat[m.name] is int ? partSat[m.name] as int : null;
         if (satVal != null) {
@@ -901,9 +1326,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
           );
         }
       }
+      summaryChildren.add(const SizedBox(height: 8));
     });
 
-    // 3) メモ
+    // ===== メモ（任意） =====
     if (hasMemo) {
       summaryChildren.add(
         Padding(
@@ -921,6 +1347,178 @@ class _CalendarScreenState extends State<CalendarScreen> {
             memoText!,
             textAlign: TextAlign.left,
             style: TextStyle(color: colorScheme.onSurface, fontSize: 14, height: 1.3),
+          ),
+        ),
+      );
+    }
+
+    // ===== 3) パーソナル =====
+    final bool hasPersonal = (record?.weight != null) || (bodyFatVal != null) || (waistValCm != null) || (bmiVal != null);
+    if (hasPersonal) {
+      summaryChildren.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
+          child: Text(
+            '■${l10n.personal}',
+            style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+        ),
+      );
+      if (record?.weight != null) {
+        summaryChildren.add(
+          Padding(
+            padding: const EdgeInsets.only(left: 8.0, bottom: 6.0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '${l10n.bodyWeight}: ${record!.weight!.toStringAsFixed(1)} $unit',
+                style: TextStyle(color: colorScheme.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
+                textAlign: TextAlign.left,
+              ),
+            ),
+          ),
+        );
+      }
+      if (bodyFatVal != null) {
+        summaryChildren.add(
+          Padding(
+            padding: const EdgeInsets.only(left: 8.0, bottom: 6.0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '${l10n.bodyFatPercentage}: ${bodyFatVal.toStringAsFixed(1)} ${l10n.percentSymbol}',
+                style: TextStyle(color: colorScheme.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
+                textAlign: TextAlign.left,
+              ),
+            ),
+          ),
+        );
+      }
+      if (waistValCm != null) {
+        final formatted = _formatWaistForDisplay(waistValCm);
+        final String unitLabel = (formatted.unit == 'in') ? l10n.unitIn : l10n.unitCm;
+        final String waistText =
+            '${l10n.waist}: ${formatted.value.toStringAsFixed(1)} $unitLabel';
+
+        summaryChildren.add(
+          Padding(
+            padding: const EdgeInsets.only(left: 8.0, bottom: 6.0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                waistText,
+                style: TextStyle(
+                  color: colorScheme.onSurface,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.left,
+              ),
+            ),
+          ),
+        );
+      }
+      if (bmiVal != null) {
+        summaryChildren.add(
+          Padding(
+            padding: const EdgeInsets.only(left: 8.0, bottom: 6.0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '${l10n.bmi}: ${bmiVal.toStringAsFixed(1)}',
+                style: TextStyle(color: colorScheme.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
+                textAlign: TextAlign.left,
+              ),
+            ),
+          ),
+        );
+      }
+      summaryChildren.add(const SizedBox(height: 8));
+    }
+
+// ===== 4) 基準（従来の表記） =====
+    final String? gender = _getUserGender();
+    final List<Widget> stdWidgets = [];
+    final TextStyle stdStyle = TextStyle(
+      color: colorScheme.onSurfaceVariant,
+      fontSize: 11,
+      height: 1.15,
+    );
+
+    if (bodyFatVal != null) {
+      if (gender != null) {
+        final std = _standardsForGender(gender)!;
+        stdWidgets.add(Text(
+          '${l10n.bodyFatPercentage}: ${std['bfMin']!.toStringAsFixed(1)}〜${std['bfMax']!.toStringAsFixed(1)}（${l10n.percentSymbol}）',
+          style: stdStyle,
+          textAlign: TextAlign.left,
+        ));
+      } else {
+        final m = _standardsForGender('male')!;
+        final f = _standardsForGender('female')!;
+        stdWidgets.add(Text(
+          '${l10n.bodyFatPercentage}: ${l10n.maleShort} ${m['bfMin']!.toStringAsFixed(1)}〜${m['bfMax']!.toStringAsFixed(1)} / '
+              '${l10n.femaleShort} ${f['bfMin']!.toStringAsFixed(1)}〜${f['bfMax']!.toStringAsFixed(1)}（${l10n.percentSymbol}）',
+          style: stdStyle,
+          textAlign: TextAlign.left,
+        ));
+      }
+    }
+
+    if (waistValCm != null) {
+      if (gender != null) {
+        final std = _standardsForGender(gender)!;
+        stdWidgets.add(Text(
+          '${l10n.waist}: ${std['waistStd']!.toStringAsFixed(0)}（${l10n.unitCm}）',
+          style: stdStyle,
+          textAlign: TextAlign.left,
+        ));
+      } else {
+        final m = _standardsForGender('male')!;
+        final f = _standardsForGender('female')!;
+        stdWidgets.add(Text(
+          '${l10n.waist}: ${l10n.maleShort} ${m['waistStd']!.toStringAsFixed(0)} / '
+              '${l10n.femaleShort} ${f['waistStd']!.toStringAsFixed(0)}（${l10n.unitCm}）',
+          style: stdStyle,
+          textAlign: TextAlign.left,
+        ));
+      }
+    }
+
+    if (bmiVal != null) {
+      final bmiMin = (widget.settingsBox.get('bmiRangeMin') as num?)?.toDouble() ?? 18.5;
+      final bmiMax = (widget.settingsBox.get('bmiRangeMax') as num?)?.toDouble() ?? 25.0;
+      stdWidgets.add(Text(
+        '${l10n.bmi}: ${bmiMin.toStringAsFixed(1)}〜${bmiMax.toStringAsFixed(1)}',
+        style: stdStyle,
+        textAlign: TextAlign.left,
+      ));
+    }
+
+    if (stdWidgets.isNotEmpty) {
+      summaryChildren.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 6.0),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.standards,
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                ...stdWidgets.map((w) => Padding(
+                  padding: const EdgeInsets.only(top: 1.0),
+                  child: w,
+                )),
+              ],
+            ),
           ),
         ),
       );
@@ -947,10 +1545,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
               child: ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                 title: Text(
-                  l10n.results, // 「実績」
+                  l10n.results,
                   style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold),
                 ),
-                // trailing アイコンは不要 → 削除
                 onTap: () => _showResultsDialog(context, summaryChildren),
               ),
             ),
@@ -959,4 +1556,5 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
+
 }

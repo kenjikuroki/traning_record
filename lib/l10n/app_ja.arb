@@ -169,5 +169,17 @@
   "unitFt": "ft",
   "unitIn": "in",
   "bodyFat": "体脂肪",
-  "bmi": "BMI"
+  "bmi": "BMI",
+  "personal": "パーソナル",
+  "bodyFatPercentage": "体脂肪率",
+  "percentSymbol": "%",
+  "cm": "cm",
+  "standards": "基準",
+  "bmiStdRange": "BMI {min}–{max}",
+  "bodyFatStdRange": "体脂肪率 {min}–{max}{percent}",
+  "waistStdSingle": "ウエスト {value}{cm}",
+  "photos": "写真",
+  "maleShort": "男",
+  "femaleShort": "女"
+
 }

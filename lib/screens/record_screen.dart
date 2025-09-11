@@ -846,8 +846,17 @@ class _RecordScreenState extends State<RecordScreen>
       _weightController.clear();
     }
 
-    // 当日の体脂肪（%）/ウエスト（cm）を settingsBox から復元
+    // ▼ 追加：固定フィールドがあれば優先表示
+    if (record?.bodyFatPercent != null) {
+      _bodyFatController.text = record!.bodyFatPercent!.toString();
+    }
+    if (record?.waistCm != null) {
+      _waistController.text = record!.waistCm!.toString();
+    }
+
+    // （レガシーデータ用）settingsBox からの復元は残す
     final pm = widget.settingsBox.get('personalMetrics-$dateKey');
+
     if (pm is Map) {
       final bf = pm['bodyFat'];
       if (bf is num) {
@@ -1192,14 +1201,24 @@ class _RecordScreenState extends State<RecordScreen>
       if (bodyWeight != null) hasAnyRecordData = true;
     }
 
+    // ▼ 追加：体脂肪率/ウエストを先に数値化（固定フィールドへ保存するため）
+    final String rawBf = _bodyFatController.text.trim();
+    final double? bodyFatVal = rawBf.isEmpty ? null : double.tryParse(rawBf);
+
+    final String rawWaist = _waistController.text.trim();
+    final double? waistVal = rawWaist.isEmpty ? null : double.tryParse(rawWaist);
+
     bool didChangeStorage = false;
-    if (hasAnyRecordData) {
+    if (hasAnyRecordData || bodyFatVal != null || waistVal != null) {
       final newRecord = DailyRecord(
         date: widget.selectedDate,
         menus: allMenusForRecord,
         lastModifiedPart: lastModifiedPart,
         weight: bodyWeight,
+        bodyFatPercent: bodyFatVal, // 追加
+        waistCm: waistVal,          // 追加
       );
+
       try {
         final dyn = newRecord as dynamic;
         dyn.note = memoText;

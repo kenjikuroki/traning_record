@@ -527,12 +527,6 @@ abstract class AppLocalizations {
   /// **'Default Sets'**
   String get defaultSets;
 
-  /// No description provided for @enterYourWeight.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter your weight'**
-  String get enterYourWeight;
-
   /// No description provided for @bodyWeight.
   ///
   /// In en, this message translates to:
@@ -1120,6 +1114,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'BMI'**
   String get bmi;
+
+  /// No description provided for @personal.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal'**
+  String get personal;
+
+  /// No description provided for @bodyFatPercentage.
+  ///
+  /// In en, this message translates to:
+  /// **'Body Fat %'**
+  String get bodyFatPercentage;
+
+  /// No description provided for @percentSymbol.
+  ///
+  /// In en, this message translates to:
+  /// **'%'**
+  String get percentSymbol;
+
+  /// No description provided for @cm.
+  ///
+  /// In en, this message translates to:
+  /// **'cm'**
+  String get cm;
+
+  /// No description provided for @standards.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference'**
+  String get standards;
+
+  /// No description provided for @bmiStdRange.
+  ///
+  /// In en, this message translates to:
+  /// **'BMI {min}–{max}'**
+  String bmiStdRange(Object max, Object min);
+
+  /// No description provided for @bodyFatStdRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Body fat {min}–{max}{percent}'**
+  String bodyFatStdRange(Object max, Object min, Object percent);
+
+  /// No description provided for @waistStdSingle.
+  ///
+  /// In en, this message translates to:
+  /// **'Waist {value}{cm}'**
+  String waistStdSingle(Object cm, Object value);
+
+  /// No description provided for @photos.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos'**
+  String get photos;
+
+  /// No description provided for @maleShort.
+  ///
+  /// In en, this message translates to:
+  /// **'M'**
+  String get maleShort;
+
+  /// No description provided for @femaleShort.
+  ///
+  /// In en, this message translates to:
+  /// **'F'**
+  String get femaleShort;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

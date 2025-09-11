@@ -229,9 +229,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get defaultSets => 'Default Sets';
 
   @override
-  String get enterYourWeight => 'Enter your weight';
-
-  @override
   String get bodyWeight => 'Body weight';
 
   @override
@@ -532,4 +529,43 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bmi => 'BMI';
+
+  @override
+  String get personal => 'Personal';
+
+  @override
+  String get bodyFatPercentage => 'Body Fat %';
+
+  @override
+  String get percentSymbol => '%';
+
+  @override
+  String get cm => 'cm';
+
+  @override
+  String get standards => 'Reference';
+
+  @override
+  String bmiStdRange(Object max, Object min) {
+    return 'BMI $min–$max';
+  }
+
+  @override
+  String bodyFatStdRange(Object max, Object min, Object percent) {
+    return 'Body fat $min–$max$percent';
+  }
+
+  @override
+  String waistStdSingle(Object cm, Object value) {
+    return 'Waist $value$cm';
+  }
+
+  @override
+  String get photos => 'Photos';
+
+  @override
+  String get maleShort => 'M';
+
+  @override
+  String get femaleShort => 'F';
 }

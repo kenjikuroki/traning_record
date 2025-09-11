@@ -64,10 +64,19 @@ class DailyRecord extends HiveObject {
   @HiveField(3)
   final double? weight;
 
+  // ▼ 追加：固定フィールド
+  @HiveField(4)
+  final double? bodyFatPercent; // %
+
+  @HiveField(5)
+  final double? waistCm; // cm
+
   DailyRecord({
     required this.date,
     required this.menus,
     this.lastModifiedPart,
     this.weight,
+    this.bodyFatPercent,
+    this.waistCm,
   });
 }

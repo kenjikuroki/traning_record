@@ -229,9 +229,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get defaultSets => '初期セット数';
 
   @override
-  String get enterYourWeight => '体重を入力';
-
-  @override
   String get bodyWeight => '体重';
 
   @override
@@ -532,4 +529,43 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get bmi => 'BMI';
+
+  @override
+  String get personal => 'パーソナル';
+
+  @override
+  String get bodyFatPercentage => '体脂肪率';
+
+  @override
+  String get percentSymbol => '%';
+
+  @override
+  String get cm => 'cm';
+
+  @override
+  String get standards => '基準';
+
+  @override
+  String bmiStdRange(Object max, Object min) {
+    return 'BMI $min–$max';
+  }
+
+  @override
+  String bodyFatStdRange(Object max, Object min, Object percent) {
+    return '体脂肪率 $min–$max$percent';
+  }
+
+  @override
+  String waistStdSingle(Object cm, Object value) {
+    return 'ウエスト $value$cm';
+  }
+
+  @override
+  String get photos => '写真';
+
+  @override
+  String get maleShort => '男';
+
+  @override
+  String get femaleShort => '女';
 }

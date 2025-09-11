@@ -169,5 +169,17 @@
   "unitFt": "ft",
   "unitIn": "in",
   "bodyFat": "Body fat",
-  "bmi": "BMI"
+  "bmi": "BMI",
+  "personal": "Personal",
+  "bodyFatPercentage": "Body Fat %",
+  "percentSymbol": "%",
+  "cm": "cm",
+  "standards": "Reference",
+  "bmiStdRange": "BMI {min}–{max}",
+  "bodyFatStdRange": "Body fat {min}–{max}{percent}",
+  "waistStdSingle": "Waist {value}{cm}",
+  "photos": "Photos",
+  "maleShort": "M",
+  "femaleShort": "F"
+
 }
