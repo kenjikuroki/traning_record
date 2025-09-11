@@ -170,6 +170,35 @@ class _GraphScreenState extends State<GraphScreen> {
     }
   }
 
+  // --- Personal表示名⇔メトリック/キー 変換ヘルパー ---
+  PersonalMetric? _metricFromDisplay(AppLocalizations l10n, String label) {
+    final waistLabel = (() { try { return l10n.waist; } catch (_) { return 'ウエスト'; } })();
+    if (label == l10n.bodyWeight) return PersonalMetric.weight;
+    if (label == l10n.bodyFatPercentage) return PersonalMetric.bodyFat;
+    if (label == 'BMI') return PersonalMetric.bmi;
+    if (label == waistLabel) return PersonalMetric.waist;
+    return null;
+  }
+
+  String _favoriteKeyForPersonalMetric(PersonalMetric m) {
+    switch (m) {
+      case PersonalMetric.weight: return 'personal:bodyWeight';
+      case PersonalMetric.bodyFat: return 'personal:bodyFat';
+      case PersonalMetric.bmi:    return 'personal:bmi';
+      case PersonalMetric.waist:  return 'personal:waist';
+    }
+  }
+
+  String _displayNameFromFavoriteKey(AppLocalizations l10n, String key) {
+    final waistLabel = (() { try { return l10n.waist; } catch (_) { return 'ウエスト'; } })();
+    if (key == l10n.bodyWeight || key == 'personal:bodyWeight') return l10n.bodyWeight;
+    if (key == 'personal:bodyFat') return l10n.bodyFatPercentage;
+    if (key == 'personal:bmi')     return 'BMI';
+    if (key == 'personal:waist')   return waistLabel;
+    if (key.startsWith('menu:'))   return key.substring(5);
+    return key; // 後方互換・未知キー
+  }
+
   Future<void> _openPersonalMetricPicker() async {
     final l10n = AppLocalizations.of(context)!;
     final waistLabel = (() {
@@ -191,6 +220,7 @@ class _GraphScreenState extends State<GraphScreen> {
       _saveGraphPrefs();
       _loadPersonalData();
       _loadGoalForCurrentContext();
+      _checkIfFavorite(); // ← 追加：指標切替後に再判定
     });
   }
 
@@ -394,7 +424,10 @@ class _GraphScreenState extends State<GraphScreen> {
     if (translatedPart == l10n.favorites) {
       final dynamic rawFavorites = widget.settingsBox.get('favorites');
       if (rawFavorites is List) {
-        _menusForPart = rawFavorites.whereType<String>().toList();
+        final l = rawFavorites.whereType<String>().toList();
+        _menusForPart = l.map((k) => _displayNameFromFavoriteKey(l10n, k))
+            .toSet()
+            .toList(); // 重複除去
       }
     } else {
       final originalPartName = _getOriginalPartName(context, translatedPart);
@@ -412,6 +445,15 @@ class _GraphScreenState extends State<GraphScreen> {
       _selectedMenu = savedMenu;
     } else {
       _selectedMenu = _menusForPart.isNotEmpty ? _menusForPart.first : null;
+    }
+
+    // FavoritesでPersonalを選んだ場合は_current metric を同期
+    if (translatedPart == l10n.favorites && _selectedMenu != null) {
+      final m = _metricFromDisplay(l10n, _selectedMenu!);
+      if (m != null && m != _personalMetric) {
+        _personalMetric = m;
+        _saveGraphPrefs();
+      }
     }
 
     if (mounted) {
@@ -441,6 +483,17 @@ class _GraphScreenState extends State<GraphScreen> {
 
   // ====== choose loader ======
   void _refreshDataForSelection() {
+    final l10n = AppLocalizations.of(context)!;
+
+    // Favorites上でPersonal表示名が選ばれていたら _personalMetric を合わせる
+    if (_selectedPart == l10n.favorites && _selectedMenu != null) {
+      final m = _metricFromDisplay(l10n, _selectedMenu!);
+      if (m != null && m != _personalMetric) {
+        _personalMetric = m;
+        _saveGraphPrefs();
+      }
+    }
+
     final isPersonal = _isPersonalContext();
     final isAero = _isAerobicContext();
 
@@ -481,8 +534,11 @@ class _GraphScreenState extends State<GraphScreen> {
 
   bool _isPersonalContext() {
     final l10n = AppLocalizations.of(context)!;
-    return _selectedPart == l10n.personal ||
-        (_selectedPart == l10n.favorites && _selectedMenu == l10n.personal);
+    if (_selectedPart == l10n.personal) return true;
+    if (_selectedPart == l10n.favorites && _selectedMenu != null) {
+      return _metricFromDisplay(l10n, _selectedMenu!) != null;
+    }
+    return false;
   }
 
   bool _isStrengthContext() {
@@ -1119,29 +1175,58 @@ class _GraphScreenState extends State<GraphScreen> {
 
   void _checkIfFavorite() {
     final l10n = AppLocalizations.of(context)!;
-    final String? key = _isPersonalContext()
-        ? l10n.personal // パーソナルはまとめてお気に入り扱い
-        : _selectedMenu;
+    String? key;
+
+    if (_isPersonalContext()) {
+      key = _favoriteKeyForPersonalMetric(_personalMetric);
+    } else if (_selectedMenu != null) {
+      key = 'menu:${_selectedMenu!}';
+    }
+
     if (key == null) {
       _isFavorite = false;
       return;
     }
+
     final rawFavorites = widget.settingsBox.get('favorites');
     final favs = (rawFavorites is List)
         ? rawFavorites.whereType<String>().toList()
         : <String>[];
-    _isFavorite = favs.contains(key);
+
+    // 後方互換：体重のみ旧形式 '体重' もOK
+    final legacyHit = (_personalMetric == PersonalMetric.weight)
+        ? favs.contains(l10n.bodyWeight)
+        : false;
+
+    _isFavorite = favs.contains(key) || legacyHit;
   }
 
   void _toggleFavorite() {
     final l10n = AppLocalizations.of(context)!;
-    final String? key = _isPersonalContext() ? l10n.personal : _selectedMenu;
-    if (key == null) return;
+
+    String? key;
+    String display;
+
+    if (_isPersonalContext()) {
+      key = _favoriteKeyForPersonalMetric(_personalMetric);
+      display = _personalMetricLabel(l10n);
+    } else if (_selectedMenu != null) {
+      key = 'menu:${_selectedMenu!}';
+      display = _selectedMenu!;
+    } else {
+      return;
+    }
 
     final rawFavorites = widget.settingsBox.get('favorites');
     final favorites = (rawFavorites is List)
         ? rawFavorites.whereType<String>().toList()
         : <String>[];
+
+    // 後方互換整理：体重のみ旧 '体重' を除去
+    favorites.removeWhere((e) => e == null);
+    if (key == 'personal:bodyWeight' && favorites.contains(l10n.bodyWeight)) {
+      favorites.remove(l10n.bodyWeight);
+    }
 
     final willAdd = !favorites.contains(key);
     if (willAdd) {
@@ -1156,7 +1241,7 @@ class _GraphScreenState extends State<GraphScreen> {
       if (_selectedPart == l10n.favorites) _loadMenusForPart(_selectedPart!);
     });
 
-    final msg = willAdd ? l10n.favorited(key) : l10n.unfavorited(key);
+    final msg = willAdd ? l10n.favorited(display) : l10n.unfavorited(display);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
@@ -1799,6 +1884,13 @@ class _GraphScreenState extends State<GraphScreen> {
     final value = _menusForPart[picked];
     setState(() {
       _selectedMenu = value;
+
+      // FavoritesでPersonal表示名ならメトリックを同期
+      final m = _metricFromDisplay(l10n, value);
+      if (_selectedPart == l10n.favorites && m != null) {
+        _personalMetric = m;
+      }
+
       _saveGraphPrefs();
       _refreshDataForSelection();
       _checkIfFavorite();
@@ -1906,21 +1998,19 @@ class _GraphScreenState extends State<GraphScreen> {
       ),
     );
 
-    // お気に入り（未登録部位なら控えめ＆タップでヒント）
-    Widget favButton = (_selectedPart != l10n.favorites)
-        ? Opacity(
-      opacity: (_noMenus && !_isPersonalContext()) ? 0.4 : 1.0,
+    // お気に入り（常時表示。未登録部位のみ無効化）
+    final bool favEnabled = !(_noMenus && !_isPersonalContext());
+
+    Widget favButton = Opacity(
+      opacity: favEnabled ? 1.0 : 0.4,
       child: FavoritePillButton(
         key: _kFav,
-        isFavorite: _isFavorite,
+        isFavorite: favEnabled ? _isFavorite : false,
         label: l10n.favorites,
-        onTap: (_noMenus && !_isPersonalContext())
-            ? () => _showThrottledHint(l10n.hintRecordFirst)
-            : _toggleFavorite,
+        onTap: favEnabled ? _toggleFavorite : () {},
         height: _kControlHeight,
       ),
-    )
-        : const SizedBox.shrink();
+    );
 
     final partDisplay = _selectedPart ?? l10n.selectTrainingPart;
     final menuDisplay =
