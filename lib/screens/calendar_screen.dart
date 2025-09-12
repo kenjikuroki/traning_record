@@ -445,6 +445,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   double _toKg(double w) => (SettingsManager.currentUnit == 'kg') ? w : (w * 0.45359237);
 
+// --- 距離表示用 ---
+  double _kmToDisplay(double km) =>
+      (SettingsManager.currentLengthUnit == 'mile') ? km * 0.6213711922 : km;
+  String _distanceUnitLabel(AppLocalizations l10n) =>
+      (SettingsManager.currentLengthUnit == 'mile') ? l10n.mile : l10n.km;
+
   Map<String, double>? _standardsForGender(String gender) {
     final bmiMin = (widget.settingsBox.get('bmiRangeMin') as num?)?.toDouble() ?? 18.5;
     final bmiMax = (widget.settingsBox.get('bmiRangeMax') as num?)?.toDouble() ?? 25.0;

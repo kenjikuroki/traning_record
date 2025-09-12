@@ -55,12 +55,44 @@ class _GraphScreenState extends State<GraphScreen> {
   DateTime? _lastHintShownAt;
   static const Duration _kHintCooldown = Duration(milliseconds: 1200);
 
-  void _showThrottledHint(String msg) {
+  void _showThrottledHint(String message) {
     final now = DateTime.now();
     if (_lastHintShownAt != null &&
-        now.difference(_lastHintShownAt!) < _kHintCooldown) return;
+        now.difference(_lastHintShownAt!) < _kHintCooldown) {
+      return;
+    }
     _lastHintShownAt = now;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+// --- length/waist unit helpers ---
+  bool get _isMetricLength => SettingsManager.currentLengthUnit == 'km';
+
+// distance
+  double _kmToUser(double km) => _isMetricLength ? km : km * 0.62137119223733;
+  String _distanceUnit(AppLocalizations l10n) {
+    if (_isMetricLength) return l10n.km;
+    // l10n.mile が無い環境のフォールバック
+    try { return (l10n as dynamic).mile as String; } catch (_) { return 'mi'; }
+  }
+
+// pace (min per km -> min per mile)
+  double _minPerKmToUser(double minPerKm) => _isMetricLength ? minPerKm : minPerKm * 1.609344;
+
+// waist
+  double _waistToUser(double cm) => _isMetricLength ? cm : cm / 2.54;
+  String _waistUnit(AppLocalizations l10n) {
+    if (_isMetricLength) {
+      try { return (l10n as dynamic).cm as String; } catch (_) { return 'cm'; }
+    } else {
+      // l10n.in / l10n.inch / l10n.unitIn どれも無い場合のフォールバック
+      try { return (l10n as dynamic).inches as String; } catch (_) {}
+      try { return (l10n as dynamic).inch as String; } catch (_) {}
+      try { return (l10n as dynamic).unitIn as String; } catch (_) {}
+      return 'in';
+    }
   }
 
   bool get _noMenusForSelectedPart {
@@ -806,7 +838,7 @@ double? _safeWeightKg(dynamic r) {
           switch (_personalMetric) {
             case PersonalMetric.weight: {
               final wKg = _safeWeightKg(dr);
-              if (wKg != null) v = _kgToUser(wKg); // ユーザーの現在単位で表示
+              if (wKg != null) v = _kgToUser(wKg);     // ← 週もユーザー単位で表示
               break;
             }
             case PersonalMetric.bodyFat:
@@ -818,14 +850,17 @@ double? _safeWeightKg(dynamic r) {
               if (wKg != null && h != null && h > 0) v = wKg / (h * h);
               break;
             }
-            case PersonalMetric.waist:
-              v = _safeWaist(dr);
+            case PersonalMetric.waist: {
+              final w = _safeWaist(dr);                 // 保存は cm
+              if (w != null) v = _waistToUser(w);      // ← 週も cm / in に変換
               break;
+            }
           }
           if (v != null) map[day] = v;
         } catch (_) {}
       }
     } else {
+      // 週集計（体重/ウエストもユーザー単位で）
       final Map<DateTime, List<double>> wk = {};
       for (final r in records) {
         try {
@@ -833,29 +868,41 @@ double? _safeWeightKg(dynamic r) {
           final day = DateTime(dr.date.year, dr.date.month, dr.date.day);
           final weekStart = day.subtract(Duration(days: day.weekday - 1));
           final key = DateTime(weekStart.year, weekStart.month, weekStart.day);
+
           double? v;
           switch (_personalMetric) {
-            case PersonalMetric.weight:
-              v = (dr.weight as num?)?.toDouble();
+            case PersonalMetric.weight: {
+              // まず kg で安全取得 → 表示単位へ変換
+              final wKg = _safeWeightKg(dr);
+              if (wKg != null) v = _kgToUser(wKg);
               break;
+            }
             case PersonalMetric.bodyFat:
               v = _safeBodyFat(dr);
               break;
-            case PersonalMetric.bmi:
+            case PersonalMetric.bmi: {
               final wKg = _safeWeightKg(dr);
               final h = _heightMetersFromSettings() ?? _heightMetersFromRecord(dr);
               if (wKg != null && h != null && h > 0) v = wKg / (h * h);
               break;
-            case PersonalMetric.waist:
-              v = _safeWaist(dr);
+            }
+            case PersonalMetric.waist: {
+              // 保存は cm 想定 → 表示単位へ変換
+              final w = _safeWaist(dr);
+              if (w != null) v = _waistToUser(w);
               break;
-        }
+            }
+          }
+
           if (v != null) wk.putIfAbsent(key, () => []).add(v);
         } catch (_) {}
       }
+
+      // 週平均
       wk.forEach((k, list) {
-        if (list.isNotEmpty)
+        if (list.isNotEmpty) {
           map[k] = list.reduce((a, b) => a + b) / list.length;
+        }
       });
     }
 
@@ -944,33 +991,55 @@ double? _safeWeightKg(dynamic r) {
 
   // ====== aerobic ======
   void _loadAerobicData(String menuName) {
-    final Iterable records = widget.recordsBox
-        .toMap()
-        .values;
+    final Iterable records = widget.recordsBox.toMap().values;
     final Map<DateTime, double> map = {};
+
+    // まず '有酸素運動' を優先し、無ければ全パートから名前一致で拾う
+    List<dynamic>? _findAeroMenuList(dynamic dr) {
+      try {
+        final list = (dr as dynamic).menus['有酸素運動'];
+        if (list != null) return list as List<dynamic>;
+      } catch (_) {}
+      try {
+        final menusMap = (dr as dynamic).menus;
+        if (menusMap is Map) {
+          for (final entry in menusMap.entries) {
+            final list = entry.value;
+            if (list is List &&
+                list.any((x) => ((x as dynamic).name) == menuName)) {
+              return list as List<dynamic>;
+            }
+          }
+        }
+      } catch (_) {}
+      return null;
+    }
 
     if (_displayMode == DisplayMode.day) {
       for (final r in records) {
         try {
           final dr = r as dynamic;
-          final list = dr.menus['有酸素運動'];
+          final list = _findAeroMenuList(dr);
           if (list == null) continue;
-          final m = list.firstWhereOrNull((x) => x.name == menuName);
+          final m = list.firstWhereOrNull((x) => (x as dynamic).name == menuName);
           if (m == null) continue;
 
-          final km = _parseDistanceKm(m.distance) ?? 0;
-          final minVal = _parseDurationMin(m.duration) ?? 0;
+          final km = _parseDistanceKm((m as dynamic).distance) ?? 0;
+          final minVal = _parseDurationMin((m as dynamic).duration) ?? 0;
 
           double? value;
           switch (_aeroMetric) {
             case AerobicMetric.distance:
-              value = km > 0 ? km : null;
+              value = km > 0 ? _kmToUser(km) : null;
               break;
             case AerobicMetric.time:
               value = minVal > 0 ? minVal : null;
               break;
             case AerobicMetric.pace:
-              if (km > 0 && minVal > 0) value = minVal / km;
+              if (km > 0 && minVal > 0) {
+                final paceMinPerKm = minVal / km;
+                value = _minPerKmToUser(paceMinPerKm);
+              }
               break;
           }
           if (value != null) {
@@ -984,13 +1053,13 @@ double? _safeWeightKg(dynamic r) {
       for (final r in records) {
         try {
           final dr = r as dynamic;
-          final list = dr.menus['有酸素運動'];
+          final list = _findAeroMenuList(dr);
           if (list == null) continue;
-          final m = list.firstWhereOrNull((x) => x.name == menuName);
+          final m = list.firstWhereOrNull((x) => (x as dynamic).name == menuName);
           if (m == null) continue;
 
-          final km = _parseDistanceKm(m.distance) ?? 0;
-          final minVal = _parseDurationMin(m.duration) ?? 0;
+          final km = _parseDistanceKm((m as dynamic).distance) ?? 0;
+          final minVal = _parseDurationMin((m as dynamic).duration) ?? 0;
 
           final day = DateTime(dr.date.year, dr.date.month, dr.date.day);
           final weekStart = day.subtract(Duration(days: day.weekday - 1));
@@ -998,14 +1067,16 @@ double? _safeWeightKg(dynamic r) {
 
           switch (_aeroMetric) {
             case AerobicMetric.distance:
-              weeklyList.putIfAbsent(key, () => []).add(km);
+              weeklyList.putIfAbsent(key, () => []).add(_kmToUser(km));
               break;
             case AerobicMetric.time:
               weeklyList.putIfAbsent(key, () => []).add(minVal);
               break;
             case AerobicMetric.pace:
               if (km > 0 && minVal > 0) {
-                weeklyList.putIfAbsent(key, () => []).add(minVal / km);
+                final paceMinPerKm = minVal / km;
+                weeklyList.putIfAbsent(key, () => [])
+                    .add(_minPerKmToUser(paceMinPerKm));
               }
               break;
           }
@@ -1095,6 +1166,7 @@ double? _safeWeightKg(dynamic r) {
     }
 
     // 固定刻み
+// 固定刻み（文脈で決める：間引きしない／常に固定）
     if (_isStrengthContext()) {
       _yLabelStep = (SettingsManager.currentUnit == 'kg') ? 5.0 : 11.0;
     } else if (_isPersonalContext()) {
@@ -1109,7 +1181,7 @@ double? _safeWeightKg(dynamic r) {
           _yLabelStep = 1.0;
           break;
         case PersonalMetric.waist:
-          _yLabelStep = 1.0; // 1cm刻み
+          _yLabelStep = _isMetricLength ? 1.0 : 0.5; // cm:1.0 / in:0.5
           break;
       }
     } else {
@@ -1230,11 +1302,11 @@ double? _safeWeightKg(dynamic r) {
     if (_isAerobicContext()) {
       switch (_aeroMetric) {
         case AerobicMetric.distance:
-          return l10n.km;
+          return _distanceUnit(l10n);                  // km / mi
         case AerobicMetric.time:
-          return l10n.min;
+          return l10n.min;                             // 分
         case AerobicMetric.pace:
-          return '${l10n.min}/${l10n.km}';
+          return '${l10n.min}/${_distanceUnit(l10n)}'; // 分/km or 分/mi
       }
     } else if (_isPersonalContext()) {
       switch (_personalMetric) {
@@ -1243,16 +1315,9 @@ double? _safeWeightKg(dynamic r) {
         case PersonalMetric.bodyFat:
           return l10n.percentSymbol;
         case PersonalMetric.bmi:
-          return ''; // BMIは単位無し
+          return ''; // 単位なし
         case PersonalMetric.waist:
-          final cm = (() {
-            try {
-              return l10n.cm;
-            } catch (_) {
-              return 'cm';
-            }
-          })();
-          return cm;
+          return _waistUnit(l10n);                     // cm / in
       }
     }
     return SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
@@ -1262,11 +1327,11 @@ double? _safeWeightKg(dynamic r) {
     if (_isAerobicContext()) {
       switch (_aeroMetric) {
         case AerobicMetric.distance:
-          return '${y.toStringAsFixed(2)} ${l10n.km}';
+          return '${y.toStringAsFixed(2)} ${_distanceUnit(l10n)}';
         case AerobicMetric.time:
           return '${_formatMinToMMSS(y)} ${l10n.min}';
         case AerobicMetric.pace:
-          return '${_formatMinToMMSS(y)} ${l10n.min}/${l10n.km}';
+          return '${_formatMinToMMSS(y)} ${l10n.min}/${_distanceUnit(l10n)}';
       }
     } else if (_isPersonalContext()) {
       switch (_personalMetric) {
@@ -1277,9 +1342,8 @@ double? _safeWeightKg(dynamic r) {
           return '${y.toStringAsFixed(1)} ${l10n.percentSymbol}';
         case PersonalMetric.bmi:
           return y.toStringAsFixed(1);
-        case PersonalMetric.waist: // ← 追加
-          final cm = (() { try { return l10n.cm; } catch (_) { return 'cm'; } })();
-          return '${y.toStringAsFixed(1)} $cm';
+        case PersonalMetric.waist:
+          return '${y.toStringAsFixed(1)} ${_waistUnit(l10n)}';
       }
     }
     final u = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
@@ -1818,15 +1882,19 @@ double? _safeWeightKg(dynamic r) {
           }
         case PersonalMetric.waist: {
           final waistLabel = (() { try { return l10n.waist; } catch (_) { return 'ウエスト'; } })();
-          final cm = (() { try { return l10n.cm; } catch (_) { return 'cm'; } })();
+          final wu = _waistUnit(l10n);
+          final minDefault = _isMetricLength ? 40.0 : 16.0;  // だいたい 40cm / 16in
+          final maxDefault = _isMetricLength ? 120.0 : 50.0; // だいたい 120cm / 50in
+          final step = _isMetricLength ? 0.5 : 0.25;
+
           final v = await _showNumberPicker(
             title: waistLabel,
-            minValue: max(40.0, _baseMinY - 5),
-            maxValue: max(120.0, _baseMaxY + 5),
-            step: 0.5,
+            minValue: max(minDefault, _baseMinY - 5),
+            maxValue: max(maxDefault, _baseMaxY + 5),
+            step: step,
             fractionDigits: 1,
             current: _goalValue,
-            suffix: cm,
+            suffix: wu,
           );
           if (v != null) {
             setState(() { _goalValue = v; _goalController.text = _goalDisplayString(); });
@@ -1849,7 +1917,8 @@ double? _safeWeightKg(dynamic r) {
               step: 0.1,
               fractionDigits: 1,
               current: _goalValue,
-              suffix: l10n.km,
+              // ← km固定ではなくユーザーの長さ単位（km / mi）
+              suffix: _distanceUnit(l10n),
             );
             if (v != null) {
               setState(() {
@@ -1863,11 +1932,12 @@ double? _safeWeightKg(dynamic r) {
         case AerobicMetric.time:
           {
             final init = Duration(
-                minutes: ((_goalValue ?? 30).clamp(0, 600)).round());
+              minutes: ((_goalValue ?? 30).clamp(0, 600)).round(),
+            );
             final dur = await _showTimeWheelPicker(
               title: l10n.time,
-              initial: init,
               suffix: l10n.min,
+              initial: init,
             );
             if (dur != null) {
               setState(() {
@@ -1881,12 +1951,13 @@ double? _safeWeightKg(dynamic r) {
         case AerobicMetric.pace:
           {
             final init = Duration(
-                seconds: (((_goalValue ?? 6.0) * 60).clamp(60, 60 * 30))
-                    .round());
+              seconds: (((_goalValue ?? 6.0) * 60).clamp(60, 60 * 30)).round(),
+            );
             final dur = await _showTimeWheelPicker(
               title: l10n.pace,
+              // ← これも km 固定ではなくユーザーの長さ単位
+              suffix: '${l10n.min}/${_distanceUnit(l10n)}',
               initial: init,
-              suffix: '${l10n.min}/${l10n.km}',
             );
             if (dur != null) {
               setState(() {
@@ -1933,30 +2004,33 @@ double? _safeWeightKg(dynamic r) {
   String _goalDisplayString() {
     final l10n = AppLocalizations.of(context)!;
     if (_goalValue == null) return '';
+
     if (_isAerobicContext()) {
       switch (_aeroMetric) {
         case AerobicMetric.distance:
-          return '${_goalValue!.toStringAsFixed(1)} ${l10n.km}';
+          return '${_goalValue!.toStringAsFixed(1)} ${_distanceUnit(l10n)}';
         case AerobicMetric.time:
           return '${_formatMinToMMSS(_goalValue!)} ${l10n.min}';
         case AerobicMetric.pace:
-          return '${_formatMinToMMSS(_goalValue!)} ${l10n.min}/${l10n.km}';
+          return '${_formatMinToMMSS(_goalValue!)} ${l10n.min}/${_distanceUnit(l10n)}';
       }
     }
+
     if (_isPersonalContext()) {
       switch (_personalMetric) {
-        case PersonalMetric.weight:
+        case PersonalMetric.weight: {
           final u = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
           return '${_goalValue!.toStringAsFixed(1)} $u';
+        }
         case PersonalMetric.bodyFat:
           return '${_goalValue!.toStringAsFixed(1)} ${l10n.percentSymbol}';
         case PersonalMetric.bmi:
           return _goalValue!.toStringAsFixed(1);
-        case PersonalMetric.waist:  // ← 追加
-          final cm = (() { try { return l10n.cm; } catch (_) { return 'cm'; } })();
-          return '${_goalValue!.toStringAsFixed(1)} $cm';
+        case PersonalMetric.waist:
+          return '${_goalValue!.toStringAsFixed(1)} ${_waistUnit(l10n)}';
       }
     }
+
     final u = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
     final fd = _isStrengthContext() ? (u == l10n.kg ? 1 : 0) : 1;
     return '${_goalValue!.toStringAsFixed(fd)} $u';
