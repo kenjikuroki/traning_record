@@ -98,7 +98,7 @@ class _RecordScreenState extends State<RecordScreen>
   bool _memoOverlayVisible = false; // 表示中か
   bool _memoOverlayOpening = false; // キーボード待ち中か
   bool _memoSlideIn = false; // 上からのスライド演出
-
+  bool _lastWaistUnitIsInch = SettingsManager.isWaistInch; // 追加
   // ===== 種目・オーバーレイ（フローティング） =====
   bool _menuOverlayVisible = false;
   bool _menuOverlayOpening = false;
@@ -180,16 +180,55 @@ class _RecordScreenState extends State<RecordScreen>
   GlobalKey? _pendingScrollKey;
   double _pendingScrollAlignment = 0.22;
 
+  // 体型カードの下あたり、クラス内メソッドとして追加
+  void _applyWaistDisplayUnitFromCm() {
+    final raw = _waistController.text.trim();
+    if (raw.isEmpty) return;
+    final cm = double.tryParse(raw);
+    if (cm == null) return;
+
+    final disp = SettingsManager.waistCmToDisplay(cm);
+    _waistController.text = SettingsManager.isWaistInch
+        ? disp.toStringAsFixed(1)  // in
+        : disp.toStringAsFixed(0); // cm
+  }
+
+  void _onLengthUnitChanged() {
+    if (!mounted) return;
+
+    final nowInch = SettingsManager.isWaistInch;
+    if (nowInch != _lastWaistUnitIsInch) {
+      // 表示中のウエスト値を cm⇄inch 変換
+      final raw = _waistController.text.trim();
+      final v = double.tryParse(raw);
+      if (v != null) {
+        final converted = nowInch ? (v / 2.54) : (v * 2.54);
+        _waistController.text = nowInch
+            ? converted.toStringAsFixed(1)  // inch 表示
+            : converted.toStringAsFixed(0); // cm 表示
+      }
+      _lastWaistUnitIsInch = nowInch;
+    }
+
+    setState(() {}); // ラベル等の再描画
+  }
+
+
   void _onShowStopwatchChanged() {
     if (!mounted) return;
     setState(() {});
   }
+
+
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     SettingsManager.showStopwatchNotifier.addListener(_onShowStopwatchChanged);
+
+    // ★追加：単位切替（inch/cm 等）のUI反映
+    SettingsManager.lengthUnitNotifier.addListener(_onLengthUnitChanged);
 
     _setCountSub = widget.setCountBox.watch(key: 'setCount').listen((event) {
       final int newCount = (event.value as int?) ?? 3;
@@ -274,13 +313,17 @@ class _RecordScreenState extends State<RecordScreen>
   void dispose() {
     SettingsManager.showStopwatchNotifier.removeListener(_onShowStopwatchChanged);
     WidgetsBinding.instance.removeObserver(this);
+
     _inactivityTimer?.cancel();
     _capTimer?.cancel();
     _savedChipTimer?.cancel();
     _setCountSub?.cancel();
     _scrollDebounce?.cancel();
+
     _scrollCtrl.dispose();
-    for (var section in _sections) { section.dispose(); }
+    for (var section in _sections) {
+      section.dispose();
+    }
     _sections.clear();
 
     _weightController.dispose();
@@ -289,8 +332,13 @@ class _RecordScreenState extends State<RecordScreen>
     _memoController.dispose();
     _memoOverlayFocus.dispose();
     _menuOverlayFocus.dispose();
+
+    // ★ 重要：リスナー解除は super.dispose() の前に
+    SettingsManager.lengthUnitNotifier.removeListener(_onLengthUnitChanged);
+
     super.dispose();
   }
+
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -1051,6 +1099,7 @@ class _RecordScreenState extends State<RecordScreen>
       _currentMenuIndex = null;
       setState(() {});
     }
+    _applyWaistDisplayUnitFromCm();
   }
 
   String _getDateKey(DateTime date) =>
@@ -1206,7 +1255,13 @@ class _RecordScreenState extends State<RecordScreen>
     final double? bodyFatVal = rawBf.isEmpty ? null : double.tryParse(rawBf);
 
     final String rawWaist = _waistController.text.trim();
-    final double? waistVal = rawWaist.isEmpty ? null : double.tryParse(rawWaist);
+    double? waistVal;
+    if (rawWaist.isNotEmpty) {
+      final w = double.tryParse(rawWaist);
+      if (w != null) {
+        waistVal = SettingsManager.isWaistInch ? (w * 2.54) : w; // -> cm
+      }
+    }
 
     bool didChangeStorage = false;
     if (hasAnyRecordData || bodyFatVal != null || waistVal != null) {
@@ -1254,8 +1309,10 @@ class _RecordScreenState extends State<RecordScreen>
 
       // ウエスト
       final String rawWaist = _waistController.text.trim();
-      final waistVal = double.tryParse(rawWaist);
-      if (waistVal != null) pmNew['waist'] = waistVal;
+      final w = double.tryParse(rawWaist);
+      if (w != null) {
+        pmNew['waist'] = SettingsManager.isWaistInch ? (w * 2.54) : w;
+      }
 
       // BMI
       if (_bmiValue != null) {
@@ -2687,7 +2744,7 @@ class _RecordScreenState extends State<RecordScreen>
                                             formatters: decimalFmt,
                                             keyboardType:
                                             const TextInputType.numberWithOptions(decimal: true),
-                                            unitSuffix: 'cm',
+                                            unitSuffix: SettingsManager.isWaistInch ? 'in' : 'cm',
                                           ),
                                         ],
                                       ),
@@ -3409,15 +3466,32 @@ class MenuList extends StatefulWidget {
 }
 
 class _MenuListState extends State<MenuList> {
+  // 既存
   final TextEditingController _kmController   = TextEditingController();
   final TextEditingController _mController    = TextEditingController();
-  final TextEditingController _hourController = TextEditingController(); // ★変更
-  final TextEditingController _minAeroCtrl    = TextEditingController(); // ★変更
+  final TextEditingController _hourController = TextEditingController();
+  final TextEditingController _minAeroCtrl    = TextEditingController();
 
-  bool _prevNameEmpty = true;
+  bool _prevNameEmpty = true; // ← これを追加
 
-  @override
-  void initState() {
+  // ★追加：単位変更のローカルハンドラ
+  void _onLengthUnitChangedLocal() {
+    if (!mounted) return;
+    // 距離の km<->mi, m<->yd 表示を即座に再パース反映
+    setState(_parseDurationAndDistance);
+  }
+
+  void _onLengthUnitChanged() {
+    if (!mounted) return;
+    // 保存側（widget.distanceController.text）は常に km の小数なので、
+    // 単位が切り替わったら表示用のフィールドを作り直すだけでよい。
+    setState(() {
+      _parseDurationAndDistance(); // km⇄mi, m⇄yd の表示を再計算
+    });
+  }
+
+    @override
+    void initState() {
     super.initState();
     _parseDurationAndDistance();
     _kmController.addListener(_updateDistanceController);
@@ -3425,11 +3499,14 @@ class _MenuListState extends State<MenuList> {
     _hourController.addListener(_updateDurationController);
     _minAeroCtrl.addListener(_updateDurationController);
 
-    _prevNameEmpty = widget.menuController.text
-        .trim()
-        .isEmpty;
+    // メニュー名の空/非空トラッキング
+    _prevNameEmpty = widget.menuController.text.trim().isEmpty;
     widget.menuController.addListener(_handleNameChanged);
+
+    // 単位切り替えに追従（mi/yd ⇄ km/m）
+    SettingsManager.lengthUnitNotifier.addListener(_onLengthUnitChanged);
   }
+
 
   @override
   void dispose() {
@@ -3437,22 +3514,27 @@ class _MenuListState extends State<MenuList> {
     _mController.dispose();
     _hourController.dispose();
     _minAeroCtrl.dispose();
+
+    // リスナー解除を忘れずに
     widget.menuController.removeListener(_handleNameChanged);
+    SettingsManager.lengthUnitNotifier.removeListener(_onLengthUnitChanged);
+
     super.dispose();
   }
 
+
   void _handleNameChanged() {
-    final nowEmpty = widget.menuController.text
-        .trim()
-        .isEmpty;
+    final nowEmpty = widget.menuController.text.trim().isEmpty;
     if (nowEmpty != _prevNameEmpty) {
       widget.onNameChanged?.call(_prevNameEmpty, nowEmpty);
-      setState(() {});
+      setState(() {}); // 見た目更新（セット入力の活性/不活性など）
       _prevNameEmpty = nowEmpty;
     }
   }
 
+
   void _parseDurationAndDistance() {
+    // 時間
     final t = widget.durationController.text.split(':');
     if (t.length == 2) {
       _hourController.text = t[0];
@@ -3462,13 +3544,24 @@ class _MenuListState extends State<MenuList> {
       _minAeroCtrl.text    = widget.durationController.text;
     }
 
-    final d = widget.distanceController.text.split('.');
-    if (d.length == 2) {
-      _kmController.text = d[0];
-      _mController.text  = d[1];
+    // 距離（保存は km、小数）
+    final raw = widget.distanceController.text.trim();
+    final dKm = double.tryParse(raw) ?? 0.0;
+    final useImperial = (SettingsManager.currentLengthUnit == 'mi') || SettingsManager.isWaistInch;
+    if (useImperial) {
+      // km → mi & yd
+      final miles = dKm / 1.609344;
+      final totalYd = miles * 1760.0;
+      final mi = totalYd ~/ 1760;
+      final yd = (totalYd - mi * 1760).round();
+      _kmController.text = mi.toString();
+      _mController.text  = yd.toString();
     } else {
-      _kmController.text = widget.distanceController.text;
-      _mController.text  = '';
+      // km → km & m
+      final kmInt = dKm.floor();
+      final mInt  = ((dKm - kmInt) * 1000).round();
+      _kmController.text = kmInt.toString();
+      _mController.text  = mInt.toString();
     }
   }
 
@@ -3478,8 +3571,23 @@ class _MenuListState extends State<MenuList> {
   }
 
   void _updateDistanceController() {
-    widget.distanceController.text =
-    '${_kmController.text}.${_mController.text}';
+    final major = int.tryParse(_kmController.text) ?? 0;
+    final minor = int.tryParse(_mController.text)  ?? 0;
+    final useImperial = (SettingsManager.currentLengthUnit == 'mi') || SettingsManager.isWaistInch;
+    double dKm;
+    if (useImperial) {
+      // mi & yd → km（保存は km）
+      final yd = minor.clamp(0, 1760);
+      final miles = major.toDouble() + (yd / 1760.0);
+      dKm = miles * 1.609344;
+    } else {
+      // km & m → km
+      final m = minor.clamp(0, 999);
+      dKm = major.toDouble() + (m / 1000.0);
+    }
+
+    // 小数で km を保存（グラフ互換）
+    widget.distanceController.text = dKm.toStringAsFixed(3);
   }
 
   Future<void> _openDurationPicker() async {
@@ -3738,6 +3846,7 @@ class _MenuListState extends State<MenuList> {
               child: widget.isAerobic
                   ? Column(
                 children: [
+                  // --- 距離Row ---
                   Row(
                     children: [
                       Text(
@@ -3750,6 +3859,8 @@ class _MenuListState extends State<MenuList> {
                         ),
                       ),
                       const SizedBox(width: 6),
+
+                      // 大きい桁：mi or km
                       Expanded(
                         flex: 2,
                         child: Focus(
@@ -3760,14 +3871,11 @@ class _MenuListState extends State<MenuList> {
                             }
                           },
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(
-                                minHeight: kUnifiedFieldMinHeight),
+                            constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                             child: TextField(
                               controller: _kmController,
                               keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly
-                              ],
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                               textAlign: TextAlign.right,
                               style: TextStyle(
                                 fontFamily: kUiFont,
@@ -3779,28 +3887,31 @@ class _MenuListState extends State<MenuList> {
                                 isDense: true,
                                 filled: false,
                                 enabledBorder: UnderlineInputBorder(
-                                  borderSide:
-                                  BorderSide(color: colorScheme.onSurfaceVariant
-                                      .withOpacity(0.4), width: 1),
+                                  borderSide: BorderSide(
+                                    color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                                    width: 1,
+                                  ),
                                 ),
                                 focusedBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(
-                                      color: colorScheme.primary, width: 2),
+                                  borderSide: BorderSide(color: colorScheme.primary, width: 2),
                                 ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 6, horizontal: 0),
+                                contentPadding:
+                                const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                               ),
                             ),
                           ),
                         ),
                       ),
-                      Text(' ${l10n.km} ',
-                          style: TextStyle(
-                            fontFamily: kUiFont,
-                            color: colorScheme.onSurfaceVariant,
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.w700,
-                          )),
+                      Text(
+                        ' ${ ((SettingsManager.currentLengthUnit == "mi") || SettingsManager.isWaistInch) ? "mi" : l10n.km } ',
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      // 小さい桁：yd or m
                       Expanded(
                         flex: 2,
                         child: Focus(
@@ -3811,14 +3922,11 @@ class _MenuListState extends State<MenuList> {
                             }
                           },
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(
-                                minHeight: kUnifiedFieldMinHeight),
+                            constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                             child: TextField(
                               controller: _mController,
                               keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly
-                              ],
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                               textAlign: TextAlign.right,
                               style: TextStyle(
                                 fontFamily: kUiFont,
@@ -3830,31 +3938,34 @@ class _MenuListState extends State<MenuList> {
                                 isDense: true,
                                 filled: false,
                                 enabledBorder: UnderlineInputBorder(
-                                  borderSide:
-                                  BorderSide(color: colorScheme.onSurfaceVariant
-                                      .withOpacity(0.4), width: 1),
+                                  borderSide: BorderSide(
+                                    color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                                    width: 1,
+                                  ),
                                 ),
                                 focusedBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(
-                                      color: colorScheme.primary, width: 2),
+                                  borderSide: BorderSide(color: colorScheme.primary, width: 2),
                                 ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 6, horizontal: 0),
+                                contentPadding:
+                                const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                               ),
                             ),
                           ),
                         ),
                       ),
-                      Text(' ${l10n.m}',
-                          style: TextStyle(
-                              color: colorScheme.onSurfaceVariant,
-                              fontSize: 14.0,
-                              fontWeight: FontWeight.bold)),
+                      Text(
+                        ' ${ ((SettingsManager.currentLengthUnit == "mi") || SettingsManager.isWaistInch) ? "yd" : l10n.m } ',
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 14.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
-                  // --- 距離Row（そのまま） ---
-// その下の「時間Row」をこれに置換
                   const SizedBox(height: 2),
+
+                  // --- 距離Row（そのまま） ---
                   Row(
                     children: [
                       Text(
