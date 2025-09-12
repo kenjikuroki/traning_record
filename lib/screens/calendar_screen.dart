@@ -193,13 +193,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   // 「5.3」→「5km300m」
+  // 「5.3」→ 「5km300m」 または 「3mi  720yd」
   String _formatDistance(String? raw, AppLocalizations l10n) {
     if (raw == null || raw.trim().isEmpty) return '-';
-    final value = double.tryParse(raw);
-    if (value == null) return '-';
-    final km = value.floor();
-    final m = ((value - km) * 1000).round();
-    return '$km${l10n.km}$m${l10n.m}';
+    final dKm = double.tryParse(raw);
+    if (dKm == null) return '-';
+
+    // mi/yd 表示条件（どちらかがインペリアルならインペリアル扱い）
+    final useImperial =
+        (SettingsManager.currentLengthUnit == 'mi' || SettingsManager.currentLengthUnit == 'mile')
+            || SettingsManager.isWaistInch;
+
+    if (useImperial) {
+      // km → miles + yards（固定フィールド）
+      final miles = dKm / 1.609344;
+      final totalYd = miles * 1760.0;
+      final mi = totalYd ~/ 1760;                 // 整数マイル
+      final yd = (totalYd - mi * 1760).round();   // 残りヤード（0–1759）
+      return '$mi mi $yd yd';
+    } else {
+      // km → km + m（固定フィールド）
+      final km = dKm.floor();
+      final m  = ((dKm - km) * 1000).round();     // 0–999
+      return '$km${l10n.km}$m${l10n.m}';
+    }
   }
 
   // 「1:30」→「1時間30分」(ja) / 「1h30min」(それ以外)
@@ -900,32 +917,39 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
 
       // ▼ ここで SettingsManager.waistUnitNotifier を監視して即反映
+      // ▼ ここで SettingsManager.waistUnitNotifier を監視して即反映
       body: ValueListenableBuilder<String>(
         valueListenable: SettingsManager.waistUnitNotifier,
         builder: (context, __, ___) {
-          return CenteredConstrained(
-            maxWidth: 760,
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-            child: ValueListenableBuilder<Box<dynamic>>(
-              valueListenable: widget.settingsBox.listenable(), // 他設定の変更でも再構築
-              builder: (context, _settings, __) {
-                return ValueListenableBuilder<Box<DailyRecord>>(
-                  valueListenable: widget.recordsBox.listenable(),
-                  builder: (context, box, _) {
-                    final selectedRecord = box.get(_dateKey(_selectedDay ?? DateTime.now()));
-                    return Column(
-                      children: [
-                        const AdBanner(screenName: 'calendar'),
-                        const SizedBox(height: 2),
-                        _buildCalendar(context),
-                        const SizedBox(height: 2),
-                        _buildResultsArea(context, selectedRecord),
-                      ],
+          // ▼ 距離（mi/km）の切替にも反応
+          return ValueListenableBuilder(
+            valueListenable: SettingsManager.lengthUnitNotifier,
+            builder: (context, ___, ____) {
+              return CenteredConstrained(
+                maxWidth: 760,
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                child: ValueListenableBuilder<Box<dynamic>>(
+                  valueListenable: widget.settingsBox.listenable(),
+                  builder: (context, _settings, __) {
+                    return ValueListenableBuilder<Box<DailyRecord>>(
+                      valueListenable: widget.recordsBox.listenable(),
+                      builder: (context, box, _) {
+                        final selectedRecord = box.get(_dateKey(_selectedDay ?? DateTime.now()));
+                        return Column(
+                          children: [
+                            const AdBanner(screenName: 'calendar'),
+                            const SizedBox(height: 2),
+                            _buildCalendar(context),
+                            const SizedBox(height: 2),
+                            _buildResultsArea(context, selectedRecord),
+                          ],
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
+                ),
+              );
+            },
           );
         },
       ),
