@@ -34,7 +34,7 @@
   "lbs": "lbs",
   "unit": "単位",
   "unitTitle": "単位",
-  "weightUnit": "重量単位",
+  "weightUnit": "重量",
   "min": "分",
   "sec": "秒",
   "minutes": "分",
@@ -180,6 +180,8 @@
   "waistStdSingle": "ウエスト {value}{cm}",
   "photos": "写真",
   "maleShort": "男",
-  "femaleShort": "女"
-
+  "femaleShort": "女",
+  "mile": "mile",
+  "length": "長さ",
+  "lengthNote": "長さの単位に合わせて、身長・ウエスト（cm / ft·in）も自動で切り替わります。"
 }

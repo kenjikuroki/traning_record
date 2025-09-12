@@ -34,7 +34,7 @@
   "lbs": "lbs",
   "unit": "unit",
   "unitTitle": "Unit",
-  "weightUnit": "Weight Unit",
+  "weightUnit": "Weight",
   "min": "min",
   "sec": "sec",
   "minutes": "min",
@@ -180,6 +180,9 @@
   "waistStdSingle": "Waist {value}{cm}",
   "photos": "Photos",
   "maleShort": "M",
-  "femaleShort": "F"
+  "femaleShort": "F",
+  "mile": "mile",
+  "length": "Length",
+  "lengthNote": "Height and waist follow the Length unit (cm or ft·in)."
 
 }

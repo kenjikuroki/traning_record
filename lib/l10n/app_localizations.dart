@@ -302,7 +302,7 @@ abstract class AppLocalizations {
   /// No description provided for @weightUnit.
   ///
   /// In en, this message translates to:
-  /// **'Weight Unit'**
+  /// **'Weight'**
   String get weightUnit;
 
   /// No description provided for @min.
@@ -1180,6 +1180,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'F'**
   String get femaleShort;
+
+  /// No description provided for @mile.
+  ///
+  /// In en, this message translates to:
+  /// **'mile'**
+  String get mile;
+
+  /// No description provided for @length.
+  ///
+  /// In en, this message translates to:
+  /// **'Length'**
+  String get length;
+
+  /// No description provided for @lengthNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Height and waist follow the Length unit (cm or ft·in).'**
+  String get lengthNote;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

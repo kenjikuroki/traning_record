@@ -115,7 +115,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unitTitle => 'Unit';
 
   @override
-  String get weightUnit => 'Weight Unit';
+  String get weightUnit => 'Weight';
 
   @override
   String get min => 'min';
@@ -568,4 +568,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get femaleShort => 'F';
+
+  @override
+  String get mile => 'mile';
+
+  @override
+  String get length => 'Length';
+
+  @override
+  String get lengthNote => 'Height and waist follow the Length unit (cm or ft·in).';
 }

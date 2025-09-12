@@ -61,6 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late int _setCount;
   ThemeMode _themeMode = ThemeMode.system;
   String _selectedUnit = 'kg';
+  String _selectedDistanceUnit = 'km';
 
   // 背景選択
   String _selectedBgAsset = '';
@@ -76,7 +77,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   DateTime? _birthDate;
 
   // 身長（内部は cm で保存）/ 単位（表示用）: "cm" | "ftin"
-  String _heightUnit = 'cm';
   double? _heightCm; // 正規化保存値
   final TextEditingController _heightCmCtrl = TextEditingController();
   final TextEditingController _heightFtCtrl = TextEditingController();
@@ -105,8 +105,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     { for (final p in _bodyPartsOriginal) p: (stored[p] as bool?) ?? true};
 
     _setCount = widget.setCountBox.get('setCount') ?? 3;
-    _themeMode = SettingsManager.currentThemeMode;
-    _selectedUnit = SettingsManager.currentUnit;
+    _themeMode           = SettingsManager.currentThemeMode;
+    _selectedUnit        = SettingsManager.currentUnit;
+    _selectedDistanceUnit= SettingsManager.currentDistanceUnit;
 
     _selectedBgAsset = SettingsManager.currentBackgroundAsset;
 
@@ -124,8 +125,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final df = DateFormat('yyyy-MM-dd');
     _birthDateCtrl.text = _birthDate == null ? '' : df.format(_birthDate!);
 
-    _heightUnit =
-        (widget.settingsBox.get('personal.heightUnit') as String?) ?? 'cm';
     final hc = widget.settingsBox.get('personal.heightCm');
     if (hc is num) {
       _heightCm = hc.toDouble();
@@ -239,6 +238,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     SettingsManager.setUnit(u);
   }
 
+  void _onDistanceUnitChanged(String? u) {
+    if (u == null) return;
+    setState(() => _selectedDistanceUnit = u);
+    SettingsManager.setDistanceUnit(u);
+  }
+
   // ===== パーソナル設定：ハンドラ =====
   void _setGender(String value) {
     setState(() => _gender = value);
@@ -262,13 +267,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final df = DateFormat('yyyy-MM-dd');
       _birthDateCtrl.text = df.format(picked);
     }
-  }
-
-  void _setHeightUnit(String unit) {
-    if (_heightUnit == unit) return;
-    setState(() => _heightUnit = unit);
-    widget.settingsBox.put('personal.heightUnit', unit);
-    _syncHeightControllersFromCm();
   }
 
   void _onHeightCmChanged(String text) {
@@ -487,19 +485,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 // ← ここを if/else から三項演算子に変更
-                                _heightUnit == 'cm'
+                                // 長さ設定に追従：cm / ft+in を自動切替
+                                (SettingsManager.currentHeightUnit == 'cm')
                                     ? SizedBox(
                                   width: 110,
                                   child: TextField(
                                     controller: _heightCmCtrl,
-                                    keyboardType: const TextInputType
-                                        .numberWithOptions(decimal: true),
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                     decoration: InputDecoration(
                                       labelText: l10n.unitCm,
-                                      border: OutlineInputBorder(),
+                                      border: const OutlineInputBorder(),
                                       isDense: true,
-                                      contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 8),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                     ),
                                     onChanged: _onHeightCmChanged,
                                   ),
@@ -514,13 +511,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         keyboardType: TextInputType.number,
                                         decoration: InputDecoration(
                                           labelText: l10n.unitFt,
-                                          border: OutlineInputBorder(),
+                                          border: const OutlineInputBorder(),
                                           isDense: true,
-                                          contentPadding: EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 8),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                         ),
-                                        onChanged: (_) =>
-                                            _onHeightFtInChanged(),
+                                        onChanged: (_) => _onHeightFtInChanged(),
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -528,30 +523,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       width: 70,
                                       child: TextField(
                                         controller: _heightInCtrl,
-                                        keyboardType: const TextInputType
-                                            .numberWithOptions(decimal: true),
+                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                         decoration: InputDecoration(
                                           labelText: l10n.unitIn,
-                                          border: OutlineInputBorder(),
+                                          border: const OutlineInputBorder(),
                                           isDense: true,
-                                          contentPadding: EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 8),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                         ),
-                                        onChanged: (_) =>
-                                            _onHeightFtInChanged(),
+                                        onChanged: (_) => _onHeightFtInChanged(),
                                       ),
                                     ),
-                                  ],
-                                ),
-                                // 単位ラジオ
-                                Wrap(
-                                  spacing: 12,
-                                  children: [
-                                    _radio(
-                                        l10n.unitCm, 'cm', _heightUnit, (v) =>
-                                        _setHeightUnit(v!)),
-                                    _radio(l10n.unitFtIn, 'ftin', _heightUnit, (
-                                        v) => _setHeightUnit(v!)),
                                   ],
                                 ),
                               ],
@@ -871,45 +852,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             const SizedBox(height: _kGap),
 
-            // 単位（ブロック末尾：下だけ角丸）
+            // 単位（重さ＋長さ）※1カードに統合
             Card(
               color: colorScheme.surfaceContainerHighest,
               shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16),
-                    bottomRight: Radius.circular(16)),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
               ),
               margin: _kCardMargin,
               child: Padding(
                 padding: _kOuterPad,
-                child: _headerRow(
-                  icon: Icons.fitness_center_outlined,
-                  title: l10n.unitTitle,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Radio<String>(
-                        value: 'kg',
-                        groupValue: _selectedUnit,
-                        onChanged: _onUnitChanged,
-                        activeColor: colorScheme.primary,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _headerRow(
+                      icon: Icons.fitness_center_outlined,
+                      title: l10n.unitTitle,
+                      trailing: const SizedBox.shrink(),
+                    ),
+                    const SizedBox(height: 12),
+                    // 行1：重さ
+                    _rowItem(
+                      context,
+                      label: l10n.weightUnit,
+                      control: Wrap(
+                        spacing: 16,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          _radio(l10n.kg,  'kg',  _selectedUnit, (v) => _onUnitChanged(v)),
+                          _radio(l10n.lbs, 'lbs', _selectedUnit, (v) => _onUnitChanged(v)),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Text('${l10n.kg}', style: const TextStyle(
-                          fontSize: 16.0, fontWeight: FontWeight.w600)),
-                      const SizedBox(width: 24),
-                      Radio<String>(
-                        value: 'lbs',
-                        groupValue: _selectedUnit,
-                        onChanged: _onUnitChanged,
-                        activeColor: colorScheme.primary,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    const SizedBox(height: 12),
+                    // 行2：長さ（距離・身長・ウエストの共通単位）
+                    _rowItem(
+                      context,
+                      label: l10n.length, // ←「距離」ではなく「長さ」
+                      control: Wrap(
+                        spacing: 16,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          _radio(l10n.km,   'km',   _selectedDistanceUnit, (v) => _onDistanceUnitChanged(v)),
+                          _radio(l10n.mile, 'mile', _selectedDistanceUnit, (v) => _onDistanceUnitChanged(v)),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Text('${l10n.lbs}', style: const TextStyle(
-                          fontSize: 16.0, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),

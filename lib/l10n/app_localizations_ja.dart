@@ -115,7 +115,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get unitTitle => '単位';
 
   @override
-  String get weightUnit => '重量単位';
+  String get weightUnit => '重量';
 
   @override
   String get min => '分';
@@ -568,4 +568,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get femaleShort => '女';
+
+  @override
+  String get mile => 'mile';
+
+  @override
+  String get length => '長さ';
+
+  @override
+  String get lengthNote => '長さの単位に合わせて、身長・ウエスト（cm / ft·in）も自動で切り替わります。';
 }
