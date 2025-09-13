@@ -1198,6 +1198,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Height and waist follow the Length unit (cm or ft·in).'**
   String get lengthNote;
+
+  /// No description provided for @graphTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Graph'**
+  String get graphTitle;
+
+  /// No description provided for @backTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get backTooltip;
+
+  /// No description provided for @noneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get noneLabel;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

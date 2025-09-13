@@ -38,6 +38,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const double _kIconGap = 12.0; // アイコンと文字の距離
   static const EdgeInsets _kOuterPad = EdgeInsets.symmetric(
       horizontal: 16, vertical: 12);
+  static const double _kUnitGroupWidth = 160.0;
+// ↓ 右側カラムの列幅（ラベル/ギャップ/ラジオの幅）を定数化
+  static const double _kUnitLabelWidth   = 88.0;   // 「重量」「長さ」ラベルの幅
+  static const double _kUnitBetweenGap   = 24.0;   // ラベルとラジオの間隔
+  static const double _kUnitRightPaneWidth =
+      _kUnitLabelWidth + _kUnitBetweenGap + _kUnitGroupWidth;
+
+
+
 
   // ===== 既存状態 =====
   late bool _showStopwatch; // ストップウォッチ表示
@@ -852,7 +861,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             const SizedBox(height: _kGap),
 
-            // 単位（重さ＋長さ）※1カードに統合
+// 単位（見出し左：アイコン＋「単位」／右：重量行＋その下に長さ行）
             Card(
               color: colorScheme.surfaceContainerHighest,
               shape: const RoundedRectangleBorder(
@@ -867,40 +876,121 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _headerRow(
-                      icon: Icons.fitness_center_outlined,
-                      title: l10n.unitTitle,
-                      trailing: const SizedBox.shrink(),
-                    ),
-                    const SizedBox(height: 12),
-                    // 行1：重さ
-                    _rowItem(
-                      context,
-                      label: l10n.weightUnit,
-                      control: Wrap(
-                        spacing: 16,
-                        runSpacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          _radio(l10n.kg,  'kg',  _selectedUnit, (v) => _onUnitChanged(v)),
-                          _radio(l10n.lbs, 'lbs', _selectedUnit, (v) => _onUnitChanged(v)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // 行2：長さ（距離・身長・ウエストの共通単位）
-                    _rowItem(
-                      context,
-                      label: l10n.length, // ←「距離」ではなく「長さ」
-                      control: Wrap(
-                        spacing: 16,
-                        runSpacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          _radio(l10n.km,   'km',   _selectedDistanceUnit, (v) => _onDistanceUnitChanged(v)),
-                          _radio(l10n.mile, 'mile', _selectedDistanceUnit, (v) => _onDistanceUnitChanged(v)),
-                        ],
-                      ),
+                    // 1行構成：左に見出し、右に固定幅の2行カラム（重量／長さ）
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 左：見出し（アイコン＋「単位」）
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.fitness_center_outlined),
+                            const SizedBox(width: _kIconGap),
+                            Text(
+                              l10n.unitTitle,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15.0,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        // 右：固定幅の2行（重量／長さ）→ 縦位置・列幅が完全一致
+                        SizedBox(
+                          width: _kUnitRightPaneWidth,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // 行1：重量
+                              Row(
+                                children: [
+                                  SizedBox(
+                                    width: _kUnitLabelWidth,
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        l10n.weightUnit,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: colorScheme.onSurface,
+                                        ),
+                                        textAlign: TextAlign.right,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: _kUnitBetweenGap),
+                                  SizedBox(
+                                    width: _kUnitGroupWidth,
+                                    child: Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Theme(
+                                        data: Theme.of(context).copyWith(
+                                          visualDensity: const VisualDensity(
+                                              horizontal: -2, vertical: -3),
+                                        ),
+                                        child: Wrap(
+                                          spacing: 16,
+                                          runSpacing: 0,
+                                          crossAxisAlignment: WrapCrossAlignment.center,
+                                          children: [
+                                            _radio(l10n.kg,  'kg',  _selectedUnit, (v) => _onUnitChanged(v)),
+                                            _radio(l10n.lbs, 'lbs', _selectedUnit, (v) => _onUnitChanged(v)),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              // 行2：長さ（列幅・位置は上行と同じ）
+                              Row(
+                                children: [
+                                  SizedBox(
+                                    width: _kUnitLabelWidth,
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        l10n.length,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: colorScheme.onSurface,
+                                        ),
+                                        textAlign: TextAlign.right,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: _kUnitBetweenGap),
+                                  SizedBox(
+                                    width: _kUnitGroupWidth,
+                                    child: Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Theme(
+                                        data: Theme.of(context).copyWith(
+                                          visualDensity: const VisualDensity(
+                                              horizontal: -2, vertical: -3),
+                                        ),
+                                        child: Wrap(
+                                          spacing: 16,
+                                          runSpacing: 0,
+                                          crossAxisAlignment: WrapCrossAlignment.center,
+                                          children: [
+                                            _radio(l10n.km,   'km',   _selectedDistanceUnit, (v) => _onDistanceUnitChanged(v)),
+                                            _radio(l10n.mile, 'mile', _selectedDistanceUnit, (v) => _onDistanceUnitChanged(v)),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

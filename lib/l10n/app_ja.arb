@@ -183,5 +183,8 @@
   "femaleShort": "女",
   "mile": "mile",
   "length": "長さ",
-  "lengthNote": "長さの単位に合わせて、身長・ウエスト（cm / ft·in）も自動で切り替わります。"
+  "lengthNote": "長さの単位に合わせて、身長・ウエスト（cm / ft·in）も自動で切り替わります。",
+  "graphTitle": "グラフ",
+  "backTooltip": "戻る",
+  "noneLabel": "なし"
 }

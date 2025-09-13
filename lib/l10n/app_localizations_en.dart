@@ -577,4 +577,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lengthNote => 'Height and waist follow the Length unit (cm or ft·in).';
+
+  @override
+  String get graphTitle => 'Graph';
+
+  @override
+  String get backTooltip => 'Back';
+
+  @override
+  String get noneLabel => 'None';
 }

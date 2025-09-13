@@ -543,18 +543,25 @@ class _GraphScreenState extends State<GraphScreen> {
 
   bool _menuIsAerobic(String? menuName) {
     if (menuName == null) return false;
-    final raw = widget.lastUsedMenusBox.get('有酸素運動');
-    if (raw is List) {
-      for (final e in raw) {
-        if (e is MenuData && e.name == menuName) return true;
+    try {
+      for (final r in widget.recordsBox.values) {
+        final dr = r as dynamic;
+        final menusMap = dr.menus;
+        if (menusMap is! Map) continue;
+        for (final entry in menusMap.entries) {
+          final list = entry.value;
+          if (list is! List) continue;
+          for (final x in list) {
+            if (_sameMenuName(x, menuName)) {
+              final hasAero =
+                  ((x as dynamic).distance != null && (x as dynamic).distance.toString().trim().isNotEmpty) ||
+                      ((x as dynamic).duration != null && (x as dynamic).duration.toString().trim().isNotEmpty);
+              if (hasAero) return true;
+            }
+          }
+        }
       }
-    }
-    for (final r in widget.recordsBox.values) {
-      try {
-        final list = (r as dynamic).menus['有酸素運動'];
-        if (list != null && list.any((m) => m.name == menuName)) return true;
-      } catch (_) {}
-    }
+    } catch (_) {}
     return false;
   }
 
@@ -591,15 +598,46 @@ class _GraphScreenState extends State<GraphScreen> {
 
   double? _parseDurationMin(String? raw) {
     if (raw == null) return null;
-    final s = raw.trim();
+    var s = raw.trim();
     if (s.isEmpty) return null;
-    final parts = s.split(':');
-    if (parts.length == 2) {
-      final mm = int.tryParse(parts[0]) ?? 0;
-      final ss = int.tryParse(parts[1]) ?? 0;
-      return mm + ss / 60.0;
+
+    // 数字+単位（例: "1h30m", "90m"）も将来に備えて軽く対応
+    final unitMatch = RegExp(r'^(\d+)(h|m)$', caseSensitive: false);
+    if (!s.contains(':')) {
+      final m = unitMatch.firstMatch(s);
+      if (m != null) {
+        final v = int.tryParse(m.group(1)!);
+        if (v == null) return null;
+        return (m.group(2)!.toLowerCase() == 'h') ? v * 60.0 : v.toDouble();
+      }
+      return double.tryParse(s);
     }
-    return double.tryParse(s);
+
+    final parts = s.split(':').map((e) => e.trim()).toList();
+    int h = 0, m = 0, sec = 0;
+
+    if (parts.length == 3) {
+      // hh:mm:ss
+      h = int.tryParse(parts[0]) ?? 0;
+      m = int.tryParse(parts[1]) ?? 0;
+      sec = int.tryParse(parts[2]) ?? 0;
+      return h * 60.0 + m + sec / 60.0;
+    } else if (parts.length == 2) {
+      final a = int.tryParse(parts[0]) ?? 0;
+      final b = int.tryParse(parts[1]) ?? 0;
+      // ヒューリスティック:
+      //  - 「時間:分」を優先: a <= 5（0〜5時間想定）か、a==0 のときは hh:mm とみなす
+      //  - それ以外は mm:ss
+      final asHourMinute = (a <= 5);
+      if (asHourMinute) {
+        h = a; m = b; sec = 0;
+        return h * 60.0 + m;
+      } else {
+        // mm:ss
+        return a + b / 60.0;
+      }
+    }
+    return null;
   }
 
   String _formatMinToMMSS(double minutes) {
@@ -910,6 +948,20 @@ double? _safeWeightKg(dynamic r) {
     setState(() {});
   }
 
+  // メニュー名の一致判定（空白除去・小文字化・全角スペース対応）
+  bool _sameMenuName(dynamic x, String target) {
+    String nrm(String s) => s
+        .replaceAll(RegExp(r'\s+'), '')     // 連続空白を除去
+        .replaceAll('　', '')               // 全角スペースも除去
+        .toLowerCase();
+    try {
+      final a = (x as dynamic).name?.toString() ?? '';
+      return nrm(a) == nrm(target);
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ====== strength ======
   void _loadStrengthData(String menuName) {
     final List<String> allPartsOriginal = [
@@ -932,19 +984,35 @@ double? _safeWeightKg(dynamic r) {
     if (_displayMode == DisplayMode.day) {
       for (final r in records) {
         double maxW = 0;
-        for (final part in allPartsOriginal) {
-          try {
-            final list = (r as dynamic).menus[part];
-            if (list == null) continue;
-            final m = list.firstWhereOrNull((x) => x.name == menuName);
-            if (m == null) continue;
-            for (int i = 0; i < min(m.weights.length, m.reps.length); i++) {
-              final w = double.tryParse(m.weights[i]) ?? 0;
-              final reps = int.tryParse(m.reps[i]) ?? 0;
-              if (reps >= 1) maxW = max(maxW, w);
+        try {
+          final dr = r as dynamic;
+          final menusMap = dr.menus;
+          if (menusMap is Map) {
+            for (final entry in menusMap.entries) {
+              final list = entry.value;
+              if (list is List) {
+                final m = list.firstWhereOrNull((x) => _sameMenuName(x, menuName));
+                if (m == null) continue;
+
+                final wList = (m.weights as List?) ?? const [];
+                final rList = (m.reps   as List?) ?? const [];
+                final len = max(wList.length, rList.length);
+
+                for (int i = 0; i < len; i++) {
+                  final wRaw = (i < wList.length) ? wList[i] : null;
+                  final rRaw = (i < rList.length) ? rList[i] : null;
+
+                  final w = (_parseNumber(wRaw) ?? 0).toDouble(); // "60kg" 等OK
+                  int reps  = (_parseNumber(rRaw) ?? 0).round();  // "10回" 等OK
+                  if (reps <= 0 && w > 0) reps = 1;               // フォールバック
+
+                  if (reps >= 1) maxW = max(maxW, w);
+                }
+              }
             }
-          } catch (_) {}
-        }
+          }
+        } catch (_) {}
+
         if (maxW > 0) {
           try {
             final dr = r as dynamic;
@@ -953,38 +1021,49 @@ double? _safeWeightKg(dynamic r) {
           } catch (_) {}
         }
       }
-    } else {
+    }
+    else {
       final Map<DateTime, double> weeklyMax = {};
       for (final r in records) {
         double maxW = 0;
-        for (final part in allPartsOriginal) {
-          try {
-            final list = (r as dynamic).menus[part];
-            if (list == null) continue;
-            final m = list.firstWhereOrNull((x) => x.name == menuName);
-            if (m == null) continue;
-            for (int i = 0; i < min(m.weights.length, m.reps.length); i++) {
-              final w = double.tryParse(m.weights[i]) ?? 0;
-              final reps = int.tryParse(m.reps[i]) ?? 0;
-              if (reps >= 1) maxW = max(maxW, w);
+        try {
+          final dr = r as dynamic;
+          final menusMap = dr.menus;
+          if (menusMap is Map) {
+            for (final entry in menusMap.entries) {
+              final list = entry.value;
+              if (list is List) {
+                final m = list.firstWhereOrNull((x) => _sameMenuName(x, menuName));
+                if (m == null) continue;
+
+                final wList = (m.weights as List?) ?? const [];
+                final rList = (m.reps   as List?) ?? const [];
+                final len = max(wList.length, rList.length);
+
+                for (int i = 0; i < len; i++) {
+                  final wRaw = (i < wList.length) ? wList[i] : null;
+                  final rRaw = (i < rList.length) ? rList[i] : null;
+
+                  final w = (_parseNumber(wRaw) ?? 0).toDouble();
+                  int reps  = (_parseNumber(rRaw) ?? 0).round();
+                  if (reps <= 0 && w > 0) reps = 1;
+
+                  if (reps >= 1) maxW = max(maxW, w);
+                }
+              }
             }
-          } catch (_) {}
-        }
-        if (maxW > 0) {
-          try {
-            final dr = r as dynamic;
+          }
+
+          if (maxW > 0) {
             final day = DateTime(dr.date.year, dr.date.month, dr.date.day);
             final weekStart = day.subtract(Duration(days: day.weekday - 1));
-            final key = DateTime(
-                weekStart.year, weekStart.month, weekStart.day);
-            weeklyMax.update(
-                key, (old) => max(old, maxW), ifAbsent: () => maxW);
-          } catch (_) {}
-        }
+            final key = DateTime(weekStart.year, weekStart.month, weekStart.day);
+            weeklyMax.update(key, (old) => max(old, maxW), ifAbsent: () => maxW);
+          }
+        } catch (_) {}
       }
       map.addAll(weeklyMax);
     }
-
     _buildSeriesFromMap(map);
     setState(() {});
   }

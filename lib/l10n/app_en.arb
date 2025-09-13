@@ -183,6 +183,8 @@
   "femaleShort": "F",
   "mile": "mile",
   "length": "Length",
-  "lengthNote": "Height and waist follow the Length unit (cm or ft·in)."
-
+  "lengthNote": "Height and waist follow the Length unit (cm or ft·in).",
+  "graphTitle": "Graph",
+  "backTooltip": "Back",
+  "noneLabel": "None"
 }

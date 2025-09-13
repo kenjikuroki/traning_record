@@ -577,4 +577,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get lengthNote => '長さの単位に合わせて、身長・ウエスト（cm / ft·in）も自動で切り替わります。';
+
+  @override
+  String get graphTitle => 'グラフ';
+
+  @override
+  String get backTooltip => '戻る';
+
+  @override
+  String get noneLabel => 'なし';
 }
