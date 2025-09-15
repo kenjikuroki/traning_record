@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+
 /// アプリ全体の設定を管理するユーティリティ（静的クラス）
 /// - 重さ（kg/lbs）: 体重・トレーニング重量に影響
 /// - 長さ（km/mile）: 距離・身長・ウエストに影響（身長/ウエストは cm / ft/in に自動切替）
@@ -13,6 +14,8 @@ class SettingsManager {
 
   static Box<dynamic>? _box;
 
+  static bool demoMode = true; // 撮影用に広告非表示
+
   // ===== Keys =====
   static const String _unitKey = 'unit_of_weight';            // 'kg' | 'lbs'
   static const String _lengthUnitKey = 'unit_of_length';      // 'km' | 'mile'
@@ -21,6 +24,12 @@ class SettingsManager {
   static const String _backgroundAssetKey = 'background_asset';
   static const String _showStopwatchTimerKey = 'show_stopwatch_timer'; // true/false
   static const String _showWeightInputKey = 'show_weight_input';       // 体重入力の表示ON/OFF（互換）
+
+  // ★ 追加：機能トグル（有酸素カロリー算出）
+  static const String _featureAeroKcalEnabledKey = 'feature.aeroKcalEnabled';
+
+  // ★ 追加：身長の保存キー（既存の SettingsScreen と同一キー）
+  static const String _personalHeightCmKey = 'personal.heightCm';
 
   // ===== Notifiers =====
   // 重さ
@@ -46,6 +55,45 @@ class SettingsManager {
   // 体重入力の表示
   static final ValueNotifier<bool> _showWeightInputNotifier =
   ValueNotifier<bool>(true);
+
+// ★ 追加：有酸素運動のカロリー算出トグル
+  static final ValueNotifier<bool> _aeroKcalEnabledNotifier =
+  ValueNotifier<bool>(false); // 既定OFF
+// （ここでは代入しない。読み込みは _loadFromStorage() に移動）
+
+
+  // ★ 追加：有酸素運動のカロリー算出（設定トグル）
+  static bool get aerobicCalorieEstimationEnabled =>
+  _aeroKcalEnabledNotifier.value;
+  static ValueNotifier<bool> get aerobicCalorieEstimationEnabledNotifier =>
+  _aeroKcalEnabledNotifier;
+
+  // ★ 追加：身長(cm)の現在値（設定からそのまま読む／存在しなければ null）
+  static double? get heightCmSetting {
+  final v = _box?.get(_personalHeightCmKey);
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v);
+  return null;
+  }
+
+  // ★ 追加：身長(cm)から標準体重(kg)を算出（BMI=22）
+  static double? standardWeightKgFromHeightCm(double? heightCm) {
+  if (heightCm == null || heightCm <= 0) return null;
+  final m = heightCm / 100.0;
+  return 22.0 * m * m;
+  }
+
+  // ★ 追加：現在の重量単位に応じて kg に正規化
+  static double toKg(double value) {
+  return (currentUnit == 'lbs') ? (value * 0.45359237) : value;
+  }
+
+  // ★ 追加：有酸素運動のカロリー算出トグル設定
+  static Future<void> setAerobicCalorieEstimationEnabled(bool enabled) async {
+  await _ensureBox();
+  await _box?.put(_featureAeroKcalEnabledKey, enabled);
+  _aeroKcalEnabledNotifier.value = enabled;
+  }
 
   // ===== Initialize =====
   static Future<void> init() async {
@@ -100,9 +148,19 @@ class SettingsManager {
     // 体重入力の表示
     _showWeightInputNotifier.value =
         (box.get(_showWeightInputKey) as bool?) ?? true;
+
+    // ★ 追加：有酸素カロリー算出トグルを読み込み
+    _aeroKcalEnabledNotifier.value =
+        (box.get(_featureAeroKcalEnabledKey) as bool?) ?? false;
   }
 
   // ===== Getters / Notifiers =====
+
+  /// 有酸素カロリー算出トグル（読み取り）
+  static bool get aerobicCalorieEstimationEnabled =>
+      _aeroKcalEnabledNotifier.value;
+  static ValueNotifier<bool> get aerobicCalorieEstimationEnabledNotifier =>
+      _aeroKcalEnabledNotifier;
 
   /// 重さ（'kg' / 'lbs'）
   static String get currentUnit => _unitNotifier.value;
@@ -227,4 +285,14 @@ class SettingsManager {
   // 互換（旧API名）
   static Future<void> setShowStopwatch(bool show) =>
       setShowStopwatchTimer(show);
+
+  /// 有酸素カロリー算出トグルの保存
+  static Future<void> setAerobicCalorieEstimationEnabled(bool enabled) async {
+    await _ensureBox();
+    await _box?.put(_featureAeroKcalEnabledKey, enabled);
+    _aeroKcalEnabledNotifier.value = enabled;
+  }
+
 }
+
+

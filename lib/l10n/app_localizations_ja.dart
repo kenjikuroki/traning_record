@@ -586,4 +586,49 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get noneLabel => 'なし';
+
+  @override
+  String get aerobicCalorieToggle => 'Auto-calculate calories for cardio';
+
+  @override
+  String get calorie => 'Calories';
+
+  @override
+  String get kcalUnit => 'kcal';
+
+  @override
+  String get calorieOverrideHint => 'You can edit this value';
+
+  @override
+  String get calorieHelpTitle => 'About the calorie calculation';
+
+  @override
+  String get calorieHelpBody => 'Formula: Energy = MET × 3.5 × weight(kg) ÷ 200 × time(min) − resting metabolism.\n\nMET is chosen by speed [km/h] derived from distance and time (walking vs. running). Resting metabolism uses the Mifflin–St Jeor equation from age, sex, height, and weight, and we show net calories (exercise over baseline).\n\nThis is an estimate. You can overwrite it with a smartwatch reading. Both distance and time are required.';
+
+  @override
+  String get dailyCalorieTotal => 'Total calories';
+
+  @override
+  String get chooseFromPresets => 'プリセットを選ぶ';
+
+  @override
+  String get presetRunning => 'ランニング';
+
+  @override
+  String get presetWalking => 'ウォーキング';
+
+  @override
+  String get presetCycling => 'サイクリング';
+
+  @override
+  String get presetExerciseBike => 'エアロバイク';
+
+  @override
+  String get presetElliptical => 'エリプティカル';
+
+  @override
+  String get presetRowing => 'ローイング';
+
+  @override
+  String get aerobicPickerTitle => '種目を入力・選択';
 }

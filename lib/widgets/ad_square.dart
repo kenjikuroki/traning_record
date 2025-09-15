@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../settings_manager.dart';
 
 /// 利用可能なバナーサイズ
 enum AdBoxSize {
@@ -87,12 +88,6 @@ class _AdSquareState extends State<AdSquare> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _loadAd();
-  }
-
-  @override
   void dispose() {
     _bannerAd?.dispose();
     super.dispose();
@@ -131,6 +126,8 @@ class _AdSquareState extends State<AdSquare> {
 
   @override
   Widget build(BuildContext context) {
+    if (SettingsManager.demoMode) return const SizedBox.shrink(); // ← 追加
+
     // 成功
     if (_isAdLoaded && _bannerAd != null) {
       return SizedBox(

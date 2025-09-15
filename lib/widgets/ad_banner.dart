@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../settings_manager.dart';
 
 class AdBanner extends StatefulWidget {
   final String screenName;
@@ -142,6 +143,7 @@ class _AdBannerState extends State<AdBanner> {
 
   @override
   Widget build(BuildContext context) {
+    if (SettingsManager.demoMode) return const SizedBox.shrink(); // ← ここ！
     final double reservedHeight =
     (_anchoredSize?.height ?? AdSize.banner.height).toDouble();
 

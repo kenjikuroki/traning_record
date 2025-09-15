@@ -1247,7 +1247,7 @@ double? _safeWeightKg(dynamic r) {
     // 固定刻み
 // 固定刻み（文脈で決める：間引きしない／常に固定）
     if (_isStrengthContext()) {
-      _yLabelStep = (SettingsManager.currentUnit == 'kg') ? 5.0 : 11.0;
+      _yLabelStep = 5.0; // kg / lbs ともに 5 刻み
     } else if (_isPersonalContext()) {
       switch (_personalMetric) {
         case PersonalMetric.weight:
@@ -1426,7 +1426,8 @@ double? _safeWeightKg(dynamic r) {
       }
     }
     final u = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
-    return '${y.toStringAsFixed(1)} $u';
+    final digits = _isStrengthContext() ? 0 : 1; // 強度は 0 桁
+    return '${y.toStringAsFixed(digits)} $u';
   }
 
   void _checkIfFavorite() {
@@ -2053,7 +2054,7 @@ double? _safeWeightKg(dynamic r) {
     // STRENGTH
     if (_isStrengthContext()) {
       final isKg = SettingsManager.currentUnit == 'kg';
-      final step = isKg ? 5.0 : 11.0;
+      final step = 5.0; // kg / lbs ともに 5 刻み
       final unit = isKg ? l10n.kg : l10n.lbs;
 
       double lo = (_baseMinY - 20).floorToDouble();
@@ -2065,7 +2066,7 @@ double? _safeWeightKg(dynamic r) {
         minValue: lo,
         maxValue: hi,
         step: step,
-        fractionDigits: isKg ? 1 : 0,
+        fractionDigits: 0, // 強度系は常に整数表示
         current: _goalValue,
         suffix: unit,
       );
@@ -2111,7 +2112,7 @@ double? _safeWeightKg(dynamic r) {
     }
 
     final u = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
-    final fd = _isStrengthContext() ? (u == l10n.kg ? 1 : 0) : 1;
+    final fd = _isStrengthContext() ? 0 : 1; // 強度は常に整数
     return '${_goalValue!.toStringAsFixed(fd)} $u';
   }
 

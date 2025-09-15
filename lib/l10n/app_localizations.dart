@@ -1216,6 +1216,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'None'**
   String get noneLabel;
+
+  /// No description provided for @aerobicCalorieToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-calculate calories for cardio'**
+  String get aerobicCalorieToggle;
+
+  /// No description provided for @calorie.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories'**
+  String get calorie;
+
+  /// No description provided for @kcalUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'kcal'**
+  String get kcalUnit;
+
+  /// No description provided for @calorieOverrideHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can edit this value'**
+  String get calorieOverrideHint;
+
+  /// No description provided for @calorieHelpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'About the calorie calculation'**
+  String get calorieHelpTitle;
+
+  /// No description provided for @calorieHelpBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Formula: Energy = MET × 3.5 × weight(kg) ÷ 200 × time(min) − resting metabolism.\n\nMET is chosen by speed [km/h] derived from distance and time (walking vs. running). Resting metabolism uses the Mifflin–St Jeor equation from age, sex, height, and weight, and we show net calories (exercise over baseline).\n\nThis is an estimate. You can overwrite it with a smartwatch reading. Both distance and time are required.'**
+  String get calorieHelpBody;
+
+  /// No description provided for @dailyCalorieTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total calories'**
+  String get dailyCalorieTotal;
+
+  /// No description provided for @chooseFromPresets.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from presets'**
+  String get chooseFromPresets;
+
+  /// No description provided for @presetRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get presetRunning;
+
+  /// No description provided for @presetWalking.
+  ///
+  /// In en, this message translates to:
+  /// **'Walking'**
+  String get presetWalking;
+
+  /// No description provided for @presetCycling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cycling'**
+  String get presetCycling;
+
+  /// No description provided for @presetExerciseBike.
+  ///
+  /// In en, this message translates to:
+  /// **'Exercise bike'**
+  String get presetExerciseBike;
+
+  /// No description provided for @presetElliptical.
+  ///
+  /// In en, this message translates to:
+  /// **'Elliptical'**
+  String get presetElliptical;
+
+  /// No description provided for @presetRowing.
+  ///
+  /// In en, this message translates to:
+  /// **'Rowing'**
+  String get presetRowing;
+
+  /// No description provided for @aerobicPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose or type exercise'**
+  String get aerobicPickerTitle;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

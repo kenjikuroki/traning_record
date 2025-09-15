@@ -186,5 +186,20 @@
   "lengthNote": "Height and waist follow the Length unit (cm or ft·in).",
   "graphTitle": "Graph",
   "backTooltip": "Back",
-  "noneLabel": "None"
+  "noneLabel": "None",
+  "aerobicCalorieToggle": "Auto-calculate calories for cardio",
+  "calorie": "Calories",
+  "kcalUnit": "kcal",
+  "calorieOverrideHint": "You can edit this value",
+  "calorieHelpTitle": "About the calorie calculation",
+  "calorieHelpBody": "Formula: Energy = MET × 3.5 × weight(kg) ÷ 200 × time(min) − resting metabolism.\n\nMET is chosen by speed [km/h] derived from distance and time (walking vs. running). Resting metabolism uses the Mifflin–St Jeor equation from age, sex, height, and weight, and we show net calories (exercise over baseline).\n\nThis is an estimate. You can overwrite it with a smartwatch reading. Both distance and time are required.",
+  "dailyCalorieTotal": "Total calories",
+  "chooseFromPresets": "Choose from presets",
+  "presetRunning": "Running",
+  "presetWalking": "Walking",
+  "presetCycling": "Cycling",
+  "presetExerciseBike": "Exercise bike",
+  "presetElliptical": "Elliptical",
+  "presetRowing": "Rowing",
+  "aerobicPickerTitle": "Choose or type exercise"
 }

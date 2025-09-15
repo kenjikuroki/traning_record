@@ -186,5 +186,13 @@
   "lengthNote": "長さの単位に合わせて、身長・ウエスト（cm / ft·in）も自動で切り替わります。",
   "graphTitle": "グラフ",
   "backTooltip": "戻る",
-  "noneLabel": "なし"
+  "noneLabel": "なし",
+  "aerobicPickerTitle": "種目を入力・選択",
+  "chooseFromPresets": "プリセットを選ぶ",
+  "presetRunning": "ランニング",
+  "presetWalking": "ウォーキング",
+  "presetCycling": "サイクリング",
+  "presetExerciseBike": "エアロバイク",
+  "presetElliptical": "エリプティカル",
+  "presetRowing": "ローイング"
 }
