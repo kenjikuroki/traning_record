@@ -117,10 +117,34 @@ class _RecordScreenState extends State<RecordScreen>
 
   bool _weightFocused = false;
 
+  // 共通の下線InputDecoration（見出しやメトリクスで使い回し）
+  InputDecoration _underlineDec() {
+    final cs = Theme.of(context).colorScheme;
+    return InputDecoration(
+      isDense: true,
+      filled: false,
+      enabledBorder: UnderlineInputBorder(
+        borderSide: BorderSide(
+          color: cs.onSurfaceVariant.withOpacity(0.4),
+          width: 1,
+        ),
+      ),
+      focusedBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: cs.primary, width: 2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+    );
+  }
+
   bool _isTopMostRoute(BuildContext context) {
     final route = ModalRoute.of(context);
     return route?.isCurrent ?? true;
   }
+
+  // ===== パーソナル・オーバーレイ（体重/体脂肪/ウエスト/BMI 編集） =====
+  bool _personalOverlayVisible = false;
+  bool _personalSlideIn = false;
+  final FocusNode _personalOverlayFocus = FocusNode();
 
   final GlobalKey _kRecordPart = GlobalKey();
   final GlobalKey _kExerciseField = GlobalKey();
@@ -195,7 +219,6 @@ class _RecordScreenState extends State<RecordScreen>
 
   void _onLengthUnitChanged() {
     if (!mounted) return;
-
     final nowInch = SettingsManager.isWaistInch;
     if (nowInch != _lastWaistUnitIsInch) {
       // 表示中のウエスト値を cm⇄inch 変換
@@ -209,17 +232,13 @@ class _RecordScreenState extends State<RecordScreen>
       }
       _lastWaistUnitIsInch = nowInch;
     }
-
     setState(() {}); // ラベル等の再描画
   }
-
 
   void _onShowStopwatchChanged() {
     if (!mounted) return;
     setState(() {});
   }
-
-
 
   @override
   void initState() {
@@ -877,6 +896,43 @@ class _RecordScreenState extends State<RecordScreen>
         _loadInitialSections();
       });
     }
+  }
+
+  // === ここから パーソナル・フローティングエディタ ===
+
+  Future<void> _openPersonalOverlaySmooth() async {
+    if (_personalOverlayVisible) return;
+
+    // 先にキーボード表示（固定高さなので押し上げを抑制）
+    _personalOverlayFocus.requestFocus();
+    await SystemChannels.textInput.invokeMethod('TextInput.show');
+
+    if (!mounted) return;
+    setState(() {
+      _personalOverlayVisible = true;
+      _fabOpen = false; // FABダイヤルは閉じる
+      _personalSlideIn = false; // 初期は少し上
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _personalSlideIn = true);
+    });
+  }
+
+  Future<void> _savePersonalAndClose() async {
+    // BMI 再計算（体重変更時）※ _updateBmiDisplay は内部で setState
+    _updateBmiDisplay();
+
+    final didSave = _saveAllSectionsData();
+    if (didSave) _showSavedChipFor(const Duration(milliseconds: 900));
+
+    await _dismissKeyboardSafely(context);
+    if (!mounted) return;
+    setState(() {
+      _personalOverlayVisible = false;
+      _personalSlideIn = false;
+    });
   }
 
   void _loadInitialSections() {
@@ -2189,6 +2245,295 @@ class _RecordScreenState extends State<RecordScreen>
     Navigator.of(context).pop();
   }
 
+  // パーソナル編集用オーバーレイ（上から/高さ0.4/背景薄暗 + フェード＆スケール）
+  Widget _buildPersonalEditorOverlay() {
+    if (!_personalOverlayVisible) return const SizedBox.shrink();
+
+    final media = MediaQuery.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    final bool showBodyFat = (widget.settingsBox.get('manage.bodyFat') as bool?) ?? false;
+    final bool showWaist   = (widget.settingsBox.get('manage.waist')   as bool?) ?? false;
+    final bool showBMI     = (widget.settingsBox.get('manage.bmi')     as bool?) ?? false;
+
+    final double topGap = media.padding.top + kToolbarHeight + 8;
+    final double overlayHeight = media.size.height * 0.4;
+
+    // ラベル右側の入力域で「下線 2/3」を実現する版
+    Widget underlineField({
+      required TextEditingController controller,
+      required List<TextInputFormatter> formatters,
+      required TextInputType keyboardType,
+      String? unitSuffix,
+      VoidCallback? onChanged,
+    }) {
+      final cs = Theme.of(context).colorScheme;
+      return LayoutBuilder(
+        builder: (ctx, constraints) {
+          final double total = constraints.maxWidth; // ラベル右側の総幅
+          final double unitReserve = (unitSuffix != null) ? (_unitReserveW + 6) : 0;
+          // 単位ぶんを引いた残りの 2/3 を下線に
+          final double fieldW = ((total - unitReserve) * 4 / 5)
+              .clamp(120.0, total - unitReserve);
+
+          return Row(
+            children: [
+              SizedBox(
+                width: fieldW,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                  child: TextField(
+                    controller: controller,
+                    keyboardType: keyboardType,
+                    inputFormatters: formatters,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontFamily: kUiFont,
+                      color: cs.onSurface,
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      filled: false,
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: cs.onSurfaceVariant.withOpacity(0.4), width: 1),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: cs.primary, width: 2),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                    ),
+                    onChanged: (_) => onChanged?.call(),
+                  ),
+                ),
+              ),
+              if (unitSuffix != null) ...[
+                const SizedBox(width: 6), // ← ここも 6px
+                SizedBox(
+                  width: _unitReserveW,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      unitSuffix,
+                      style: TextStyle(
+                        fontFamily: kUiFont,
+                        color: cs.onSurfaceVariant,
+                        fontSize: 12.0,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          );
+        },
+      );
+    }
+
+    final decimalFmt = <TextInputFormatter>[
+      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+    ];
+
+    return Stack(
+      children: [
+        // 背景（タップで保存して閉じる）
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: _savePersonalAndClose,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              opacity: _personalSlideIn ? 1.0 : 0.0,
+              child: Container(color: Colors.black.withOpacity(0.25)),
+            ),
+          ),
+        ),
+
+        Positioned(
+          left: 12,
+          right: 12,
+          top: topGap,
+          height: overlayHeight,
+          child: AnimatedSlide(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            offset: _personalSlideIn ? Offset.zero : const Offset(0, -0.08),
+            child: AnimatedScale(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              scale: _personalSlideIn ? 1.0 : 0.98, // ふわっと拡大
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                opacity: _personalSlideIn ? 1.0 : 0.0,
+                child: Material(
+                  color: Colors.transparent,
+                  elevation: 2,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ヘッダー
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(18, 12, 6, 8),
+                          child: Row(
+                            children: [
+                              Text(
+                                l10n.personal,
+                                style: TextStyle(
+                                  color: cs.onSurface,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const Spacer(),
+                              TextButton.icon(
+                                onPressed: _savePersonalAndClose,
+                                icon: const Icon(Icons.check_rounded),
+                                label: Text(l10n.save),
+                                style: TextButton.styleFrom(foregroundColor: cs.primary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Divider(height: 1),
+
+                        // 本文
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                            child: Focus(
+                              focusNode: _personalOverlayFocus,
+                              child: Column(
+                                children: [
+                                  // 体重
+                                  Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 96,
+                                        child: Align(
+                                          alignment: Alignment.centerRight,
+                                          child: Text(
+                                            l10n.bodyWeight,
+                                            style: TextStyle(
+                                              fontFamily: kUiFont,
+                                              color: cs.onSurface,
+                                              fontSize: 14.0,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: underlineField(
+                                          controller: _weightController,
+                                          formatters: decimalFmt,
+                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          unitSuffix: SettingsManager.currentUnit,
+                                          onChanged: _updateBmiDisplay,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  // 体脂肪
+                                  if (showBodyFat) ...[
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        SizedBox(
+                                          width: 96,
+                                          child: Align(
+                                            alignment: Alignment.centerRight,
+                                            child: Text(
+                                              l10n.bodyFat,
+                                              style: TextStyle(
+                                                fontFamily: kUiFont,
+                                                color: cs.onSurface,
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: underlineField(
+                                            controller: _bodyFatController,
+                                            formatters: decimalFmt,
+                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                            unitSuffix: l10n.percentSymbol,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+
+                                  // ウエスト
+                                  if (showWaist) ...[
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        SizedBox(
+                                          width: 96,
+                                          child: Align(
+                                            alignment: Alignment.centerRight,
+                                            child: Text(
+                                              l10n.waist,
+                                              style: TextStyle(
+                                                fontFamily: kUiFont,
+                                                color: cs.onSurface,
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: underlineField(
+                                            controller: _waistController,
+                                            formatters: decimalFmt,
+                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                            unitSuffix: SettingsManager.isWaistInch ? l10n.unitIn : l10n.unitCm,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   // ===== 記入オーバーレイ（画面内フローティングシート：上からスッ） =====
   Widget _buildMemoEditorOverlay() {
     if (!_memoOverlayVisible) return const SizedBox.shrink();
@@ -2568,220 +2913,191 @@ class _RecordScreenState extends State<RecordScreen>
                       (_showMemo ? 1 : 0) + 1,
                   itemBuilder: (context, index) {
                     if (showWeight && index == 0) {
-                      final bmiValue = _bmiValue;
+                      final cs = colorScheme;
+                      final l10n = AppLocalizations.of(context)!;
+                      final currentUnit = SettingsManager.currentUnit;
+
+                      // コロン揃え用
+                      const double _labelColW = 92.0;
+
+                      Widget _metricRow({
+                        required String label,
+                        required TextEditingController controller,
+                        String? unit,
+                      }) {
+                        final cs = colorScheme;
+                        final labelStyle = TextStyle(color: cs.onSurfaceVariant, fontSize: 13.0);
+
+                        InputDecoration _underlineDec() => InputDecoration(
+                          isDense: true,
+                          filled: false,
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: cs.onSurfaceVariant.withOpacity(0.4), width: 1),
+                          ),
+                          focusedBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: cs.primary, width: 2),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                        );
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6.0),
+                          child: LayoutBuilder(
+                            builder: (ctx, constraints) {
+                              final total = constraints.maxWidth;
+
+                              // ← 微妙に左寄せ：ラベルとフィールドの間隔を 8 → 6 に
+                              final leftW = _labelColW + 6;
+
+                              // ← 単位の有無に関係なく右側を常に確保（BMI でも確保）
+                              const baseRight = _unitReserveW + 6;
+
+                              // ← 計算は「左側だけ引いた 2/3」に統一（BMIと同じ）
+                              final fieldW = ((total - leftW) * 4 / 5)
+                                  .clamp(120.0, total - leftW - baseRight);;             // 最小幅ガード
+
+                              return Row(
+                                children: [
+                                  SizedBox(
+                                    width: _labelColW,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        Text(label, style: labelStyle),
+                                        const SizedBox(width: 2),
+                                        Text('：', style: labelStyle),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+
+                                  // ← 下線を 2/3 に縮める（幅指定）
+                                  SizedBox(
+                                    width: fieldW.toDouble(),
+                                    child: ConstrainedBox(
+                                      constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                      child: TextField(
+                                        controller: controller,
+                                        readOnly: true,
+                                        enableInteractiveSelection: false,
+                                        textAlign: TextAlign.right,
+                                        style: TextStyle(fontFamily: kUiFont, color: cs.onSurface),
+                                        decoration: _underlineDec(),
+                                        onTap: _openPersonalOverlaySmooth,
+                                      ),
+                                    ),
+                                  ),
+
+                                  if (unit != null) ...[
+                                    const SizedBox(width: 6),
+                                    SizedBox(
+                                      width: _unitReserveW,
+                                      child: Align(
+                                        alignment: Alignment.centerRight,
+                                        child: Text(
+                                          unit,
+                                          style: TextStyle(
+                                            fontFamily: kUiFont,
+                                            color: cs.onSurfaceVariant,
+                                            fontSize: 13.0,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
+                          ),
+                        );
+                      }
+
+
+                      // BMI：未計算は空欄の下線
+                      final _bmiCtrl = TextEditingController(
+                        text: _bmiValue?.toStringAsFixed(1) ?? '',
+                      );
+
                       return Padding(
                         padding: EdgeInsets.zero,
                         child: Card(
-                          color: colorScheme.surfaceContainerHighest,
+                          color: cs.surfaceContainerHighest,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
                           elevation: 1.0,
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
-                            child: Builder(
-                              builder: (context) {
-                                // ───────── レイアウト共通値 ─────────
-                                const double labelW = 96;   // ← ラベル固定幅（右寄せ）…「若干右に」
-                                const double fieldW = 184;  // ← 入力欄の固定幅（全行で統一）
-                                const double rowGap = 10;
-
-                                final labelStyle = TextStyle(
-                                  fontFamily: kUiFont,
-                                  color: colorScheme.onSurface,
-                                  fontSize: 14.0,
-                                  fontWeight: FontWeight.w700,
-                                );
-
-                                final inputTextStyle = TextStyle(
-                                  fontFamily: kUiFont,
-                                  color: colorScheme.onSurface,
-                                  fontSize: 14.0,
-                                  fontWeight: FontWeight.w600,
-                                );
-
-                                final unitStyle = TextStyle(
-                                  fontFamily: kUiFont,
-                                  color: colorScheme.onSurfaceVariant,
-                                  fontSize: 12.0,
-                                  fontWeight: FontWeight.w700,
-                                );
-
-                                // ラベル（右寄せ・固定幅）
-                                Widget label(String text) => SizedBox(
-                                  width: labelW,
-                                  child: Align(
-                                    alignment: Alignment.centerRight,
-                                    child: Text(text, style: labelStyle),
-                                  ),
-                                );
-
-                                // 下線フィールド（共通）
-                                Widget underlineField({
-                                  required TextEditingController controller,
-                                  required List<TextInputFormatter> formatters,
-                                  required TextInputType keyboardType,
-                                  String? unitSuffix,
-                                  VoidCallback? onChangedBmi,                 // 体重のみBMI再計算用
-                                  ValueChanged<bool>? onFocusChange,          // 体重のみFAB制御用
-                                }) {
-                                  final field = ConstrainedBox(
-                                    constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
-                                    child: TextField(
-                                      controller: controller,
-                                      keyboardType: keyboardType,
-                                      inputFormatters: formatters,
-                                      textAlign: TextAlign.right,
-                                      // ★ ここを共通スタイルに変更
-                                      style: inputTextStyle,
-                                      decoration: InputDecoration(
-                                        isDense: true,
-                                        hintText: '',
-                                        hintStyle: TextStyle(
-                                          color: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                                        ),
-                                        filled: false,
-                                        enabledBorder: UnderlineInputBorder(
-                                          borderSide: BorderSide(
-                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        focusedBorder: UnderlineInputBorder(
-                                          borderSide: BorderSide(color: colorScheme.primary, width: 2),
-                                        ),
-                                        contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
-                                      ),
-                                      onChanged: (_) => onChangedBmi?.call(),
-                                    ),
-                                  );
-
-                                  return SizedBox(
-                                    width: fieldW,
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: onFocusChange == null
-                                              ? field
-                                              : Focus(onFocusChange: onFocusChange, child: field),
-                                        ),
-                                        if (unitSuffix != null) ...[
-                                          const SizedBox(width: 8),
-                                          // ← 単位の実幅に依存しないよう固定幅リザーブ
-                                          SizedBox(
-                                            width: _unitReserveW,
-                                            child: Align(
-                                              alignment: Alignment.centerRight,
-                                              child: Text(unitSuffix, style: unitStyle), // 2-2で統一したスタイル
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  );
-                                }
-
-                                final decimalFmt = <TextInputFormatter>[
-                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                                ];
-
-                                final bmiValue = _bmiValue;
-
-                                return Column(
+                          child: Stack(
+                            children: [
+                              // ↓ 先に中身（白いカードなど）
+                              Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // 1) 体重
+                                    // 見出し（下線）
                                     Row(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
                                       children: [
-                                        label(
-                                          '${l10n.bodyWeight}'
-                                              '${Localizations.of(context, MaterialLocalizations)!.formatDecimal(0).contains("0") ? "：" : ":"}',
-                                        ),
-                                        const SizedBox(width: 12),
-                                        underlineField(
-                                          controller: _weightController,
-                                          formatters: decimalFmt,
-                                          keyboardType:
-                                          const TextInputType.numberWithOptions(decimal: true),
-                                          unitSuffix: SettingsManager.currentUnit, // kg / lbs
-                                          onChangedBmi: _updateBmiDisplay, // ★ BMI再計算
-                                          onFocusChange: (has) {
-                                            setState(() {
-                                              _weightFocused = has;
-                                              if (has) _fabOpen = false;
-                                            });
-                                          },
-                                        ),
-                                      ],
-                                    ),
-
-                                    // 2) 体脂肪（%）
-                                    if (showBodyFat) ...[
-                                      SizedBox(height: rowGap),
-                                      Row(
-                                        children: [
-                                          label('${l10n.bodyFat}：'),
-                                          const SizedBox(width: 12),
-                                          underlineField(
-                                            controller: _bodyFatController,
-                                            formatters: decimalFmt,
-                                            keyboardType:
-                                            const TextInputType.numberWithOptions(decimal: true),
-                                            unitSuffix: '%',
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-
-                                    // 3) ウエスト（cm）
-                                    if (showWaist) ...[
-                                      SizedBox(height: rowGap),
-                                      Row(
-                                        children: [
-                                          label('${l10n.waist}：'),
-                                          const SizedBox(width: 12),
-                                          underlineField(
-                                            controller: _waistController,
-                                            formatters: decimalFmt,
-                                            keyboardType:
-                                            const TextInputType.numberWithOptions(decimal: true),
-                                            unitSuffix: SettingsManager.isWaistInch ? 'in' : 'cm',
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-
-                                    // 4) BMI（値のみ表示。フィールド列と右端合わせ）
-                                    if (showBMI) ...[
-                                      SizedBox(height: rowGap),
-                                      Row(
-                                        children: [
-                                          label('${l10n.bmi}：'),
-                                          const SizedBox(width: 12),
-                                          // 値は他と同じ fieldW 幅で右寄せ
-                                          SizedBox(
-                                            width: fieldW,                              // ← 他行と同じ幅で右端を揃える
-                                            child: Align(
-                                              alignment: Alignment.centerRight,
-                                              child: Padding(
-                                                padding: const EdgeInsets.only(right: _bmiNudgeRight), // ← 値だけ少し左に“見せる”
-                                                child: Text(
-                                                  (bmiValue == null) ? '—' : bmiValue.toStringAsFixed(1),
-                                                  style: inputTextStyle.copyWith(fontWeight: FontWeight.w700),
+                                        Expanded(
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(left: 6.0),
+                                            child: ConstrainedBox(
+                                              constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                              child: Focus( // ← 後述の「編集禁止」もここで
+                                                canRequestFocus: false,
+                                                descendantsAreFocusable: false,
+                                                child: TextField(
+                                                  controller: TextEditingController(text: l10n.personal),
+                                                  readOnly: true,
+                                                  showCursor: false,
+                                                  enableInteractiveSelection: false,
+                                                  decoration: _underlineDec(),
                                                 ),
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(width: _bmiUnitReserve),
-                                        ],
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4.0),
+
+                                    // ===== 白いカード =====
+                                    Container(
+                                      margin: const EdgeInsets.symmetric(vertical: 8.0),
+                                      decoration: BoxDecoration(
+                                        color: cs.surface,
+                                        borderRadius: BorderRadius.circular(12.0),
+                                        boxShadow: [ BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: Offset(0,2)) ],
+                                        border: Border.all(color: cs.onSurfaceVariant.withOpacity(0.08), width: 0.8),
                                       ),
-                                      const SizedBox(height: 14),
-                                    ] else ...[
-                                      const SizedBox(height: 6),
-                                    ]
+                                      child: Padding(
+                                        padding: const EdgeInsets.fromLTRB(6.0, 10.0, 10.0, 10.0),
+                                        child: Column(
+                                          children: [
+                                            _metricRow(label: l10n.bodyWeight, controller: _weightController, unit: currentUnit == 'kg' ? l10n.kg : l10n.lbs),
+                                            if ((widget.settingsBox.get('manage.bodyFat') as bool?) ?? false)
+                                              _metricRow(label: l10n.bodyFat, controller: _bodyFatController, unit: l10n.percentSymbol),
+                                            if ((widget.settingsBox.get('manage.waist') as bool?) ?? false)
+                                              _metricRow(label: l10n.waist, controller: _waistController, unit: SettingsManager.isWaistInch ? l10n.unitIn : l10n.unitCm),
+                                            if ((widget.settingsBox.get('manage.bmi') as bool?) ?? false)
+                                              _metricRow(label: l10n.bmi, controller: _bmiCtrl),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ],
-                                );
-                              },
-                            ),
+                                ),
+                              ),
+
+                              // ← これを最後に置く（最上面）。白いカードも含めてどこでもタップOK
+                              Positioned.fill(
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(16.0),
+                                    onTap: _openPersonalOverlaySmooth,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       );
@@ -3110,7 +3426,7 @@ class _RecordScreenState extends State<RecordScreen>
       right: 16,
       bottom: dialBottom,
       child: (_fabOpen && !keyboardVisible && !_memoOverlayVisible &&
-          !_memoOverlayOpen && !_menuOverlayVisible)
+          !_memoOverlayOpen && !_menuOverlayVisible && !_personalOverlayVisible)
           ? Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -3201,11 +3517,12 @@ class _RecordScreenState extends State<RecordScreen>
           body: Stack(
             children: [
               body,
-              overlay, // FABダイヤルのオーバーレイ
-              dial, // FABダイヤル
-              _buildMenuEditorOverlay(), // ← 種目のフローティング編集
-              _buildMemoEditorOverlay(), // ← メモのフローティング編集
-              doneOverlay, // キーボード上「完了」（ダミー）
+              overlay,
+              dial,
+              _buildMenuEditorOverlay(),
+              _buildMemoEditorOverlay(),
+              _buildPersonalEditorOverlay(), // ← 追加
+              doneOverlay,
             ],
           ),
           floatingActionButton: (!keyboardVisible && !_memoOverlayVisible &&
@@ -3715,7 +4032,7 @@ class _MenuListState extends State<MenuList> {
             ),
             child: Icon(
               icon,
-              size: 20,                        // ★絵文字サイズはそのまま
+              size: 25,                        // ★絵文字サイズはそのまま
               color: selected ? cs.onPrimary : cs.onSurfaceVariant,
             ),
           ),
