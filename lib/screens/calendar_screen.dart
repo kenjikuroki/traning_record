@@ -1017,7 +1017,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 day,
                 textColor: cs.onSurfaceVariant,
                 selected: false,
-                showEventsForOutOfMonth: false,
+                showEventsForOutOfMonth: true,
               );
             },
             todayBuilder: (context, day, focusedDay) {
