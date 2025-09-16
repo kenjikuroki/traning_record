@@ -87,12 +87,14 @@ class RecordScreen extends StatefulWidget {
 enum _QuickReview { save, discard }
 
 class _RecordScreenState extends State<RecordScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   static const Duration _kIdleAutoPause = Duration(hours: 5);
   static const Duration _kHardCap = Duration(hours: 5);
   static const double _bmiNudgeRight = 25.0;
   static const double _bmiUnitReserve = 25.0;
   static const double _unitReserveW  = 22.0;
+
+  late final AnimationController _fabCtrl;
 
   // ===== メモ・オーバーレイ（フローティング） =====
   bool _memoOverlayVisible = false; // 表示中か
@@ -243,6 +245,13 @@ class _RecordScreenState extends State<RecordScreen>
   @override
   void initState() {
     super.initState();
+
+    _fabCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+      reverseDuration: const Duration(milliseconds: 180),
+    );
+
     WidgetsBinding.instance.addObserver(this);
     SettingsManager.showStopwatchNotifier.addListener(_onShowStopwatchChanged);
 
@@ -330,6 +339,7 @@ class _RecordScreenState extends State<RecordScreen>
 
   @override
   void dispose() {
+    _fabCtrl.dispose(); // ← 追加
     SettingsManager.showStopwatchNotifier.removeListener(_onShowStopwatchChanged);
     WidgetsBinding.instance.removeObserver(this);
 
@@ -921,19 +931,18 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   Future<void> _savePersonalAndClose() async {
-    // BMI 再計算（体重変更時）※ _updateBmiDisplay は内部で setState
     _updateBmiDisplay();
-
     final didSave = _saveAllSectionsData();
     if (didSave) _showSavedChipFor(const Duration(milliseconds: 900));
 
     await _dismissKeyboardSafely(context);
     if (!mounted) return;
-    setState(() {
-      _personalOverlayVisible = false;
-      _personalSlideIn = false;
-    });
+    setState(() => _personalSlideIn = false);
+    await Future.delayed(const Duration(milliseconds: 220));
+    if (!mounted) return;
+    setState(() => _personalOverlayVisible = false);
   }
+
 
   void _loadInitialSections() {
     final dateKey = _getDateKey(widget.selectedDate);
@@ -1413,7 +1422,7 @@ class _RecordScreenState extends State<RecordScreen>
           }
         }
 
-        final int keep = max(baseline, lastFilled + 1).clamp(0, row.length);
+        final int keep = max(baseline, lastFilled + 1).clamp(0, row.length) as int;
         if (keep < row.length) {
           for (int i = row.length - 1; i >= keep; i--) {
             row[i].dispose();
@@ -1648,22 +1657,18 @@ class _RecordScreenState extends State<RecordScreen>
 
   // 保存して閉じるを一本化
   Future<void> _saveMemoAndClose() async {
-    setState(() {
-      _showMemo = _memoController.text
-          .trim()
-          .isNotEmpty;
-    });
-
+    setState(() { _showMemo = _memoController.text.trim().isNotEmpty; });
     final didSave = _saveAllSectionsData();
     if (didSave) _showSavedChipFor(const Duration(milliseconds: 900));
 
     await _dismissKeyboardSafely(context);
     if (!mounted) return;
-    setState(() {
-      _memoOverlayVisible = false;
-      _memoSlideIn = false;
-    });
+    setState(() => _memoSlideIn = false);                 // ← まずアニメ逆再生
+    await Future.delayed(const Duration(milliseconds: 220));
+    if (!mounted) return;
+    setState(() => _memoOverlayVisible = false);          // ← その後非表示
   }
+
 
   void _openMemoOverlayInline() {
     setState(() => _memoOverlayOpen = true);
@@ -1717,19 +1722,19 @@ class _RecordScreenState extends State<RecordScreen>
     if (didSave) _showSavedChipFor(const Duration(milliseconds: 900));
     await _dismissKeyboardSafely(context);
     if (!mounted) return;
+    setState(() => _menuSlideIn = false);
+    await Future.delayed(const Duration(milliseconds: 220));
+    if (!mounted) return;
     setState(() {
       _menuOverlayVisible = false;
-      _menuSlideIn = false;
       _menuSecIndex = null;
       _menuMenuIndex = null;
     });
   }
 
-  String _dateKey(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
-
   Future<Directory> _mediaDirFor(DateTime date) async {
     final base = await getApplicationDocumentsDirectory();
-    return Directory(p.join(base.path, 'media', _dateKey(date)));
+    return Directory(p.join(base.path, 'media', _getDateKey(date)));
   }
 
   Future<void> _ensureDir(Directory dir) async {
@@ -2555,9 +2560,15 @@ class _RecordScreenState extends State<RecordScreen>
         Positioned.fill(
           child: GestureDetector(
             onTap: _saveMemoAndClose,
-            child: Container(color: Colors.black.withOpacity(0.25)),
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              opacity: _memoSlideIn ? 1.0 : 0.0,
+              child: Container(color: Colors.black.withOpacity(0.25)),
+            ),
           ),
         ),
+
 
         Positioned(
           left: 12,
@@ -2585,74 +2596,81 @@ class _RecordScreenState extends State<RecordScreen>
                     ),
                   ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ヘッダー（右上は「保存」）
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
-                      child: Row(
-                        children: [
-                          Text(
-                            l10n.memo,
-                            style: TextStyle(
-                              color: cs.onSurface,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
+                // ▼ フォーム全体をふわっと（フェード＋わずかにスケール）
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  opacity: _memoSlideIn ? 1.0 : 0.0,
+                  child: AnimatedScale(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    scale: _memoSlideIn ? 1.0 : 0.98,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ヘッダー（右上は「保存」）
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
+                          child: Row(
+                            children: [
+                              Text(
+                                l10n.memo,
+                                style: TextStyle(
+                                  color: cs.onSurface,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const Spacer(),
+                              TextButton.icon(
+                                onPressed: _saveMemoAndClose,
+                                icon: const Icon(Icons.check_rounded),
+                                label: Text(l10n.save),
+                                style: TextButton.styleFrom(foregroundColor: cs.primary),
+                              ),
+                            ],
                           ),
-                          const Spacer(),
-                          TextButton.icon(
-                            onPressed: _saveMemoAndClose,
-                            icon: const Icon(Icons.check_rounded),
-                            label: Text(l10n.save),
-                            style: TextButton.styleFrom(
-                                foregroundColor: cs.primary),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1),
-
-                    // 本文（固定領域内で伸縮）
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                        child: TextField(
-                          focusNode: _memoOverlayFocus,
-                          controller: _memoController,
-                          autofocus: true,
-                          keyboardType: TextInputType.multiline,
-                          maxLength: 400,
-                          inputFormatters: [LengthLimitingTextInputFormatter(
-                              400)
-                          ],
-                          expands: true,
-                          // 固定の高さを埋める
-                          minLines: null,
-                          maxLines: null,
-                          style: TextStyle(color: cs.onSurface),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            hintText: l10n.memoBodyPlaceholder,
-                            hintStyle: TextStyle(
-                              color: cs.onSurfaceVariant.withOpacity(0.6),
-                            ),
-                            border: InputBorder.none,
-                            counterStyle: TextStyle(
-                              color: cs.onSurfaceVariant,
-                              fontSize: 11,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                vertical: 6, horizontal: 2),
-                          ),
-                          onChanged: (_) {
-                            if (_fabOpen) setState(() => _fabOpen = false);
-                          },
                         ),
-                      ),
+                        const Divider(height: 1),
+
+                        // 本文（固定領域内で伸縮）
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                            child: TextField(
+                              focusNode: _memoOverlayFocus,
+                              controller: _memoController,
+                              autofocus: true,
+                              keyboardType: TextInputType.multiline,
+                              maxLength: 400,
+                              inputFormatters: [LengthLimitingTextInputFormatter(400)],
+                              expands: true,
+                              minLines: null,
+                              maxLines: null,
+                              style: TextStyle(color: cs.onSurface),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                hintText: l10n.memoBodyPlaceholder,
+                                hintStyle: TextStyle(
+                                  color: cs.onSurfaceVariant.withOpacity(0.6),
+                                ),
+                                border: InputBorder.none,
+                                counterStyle: TextStyle(
+                                  color: cs.onSurfaceVariant,
+                                  fontSize: 11,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 6, horizontal: 2),
+                              ),
+                              onChanged: (_) {
+                                if (_fabOpen) setState(() => _fabOpen = false);
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -2700,7 +2718,12 @@ class _RecordScreenState extends State<RecordScreen>
         Positioned.fill(
           child: GestureDetector(
             onTap: _saveMenuAndClose,
-            child: Container(color: Colors.black.withOpacity(0.25)),
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              opacity: _menuSlideIn ? 1.0 : 0.0,
+              child: Container(color: Colors.black.withOpacity(0.25)),
+            ),
           ),
         ),
 
@@ -2727,109 +2750,106 @@ class _RecordScreenState extends State<RecordScreen>
                     ),
                   ],
                 ),
-                child: Column(
-                  children: [
-                    // ヘッダー：左=部位、右=＋セット＆保存
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
-                      child: Row(
-                        children: [
-                          Text(
-                            section.selectedPart ?? '',
-                            style: TextStyle(
-                              color: cs.onSurface,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const Spacer(),
-                          // ＋セット（有酸素は無効）※テキストのみ表示
-                          TextButton(
-                            onPressed: (!isAerobic &&
-                                menuIndex < section.setInputDataList.length &&
-                                section.setInputDataList[menuIndex].length < 10)
-                                ? () {
-                              HapticFeedback.selectionClick();
-                              _addOneSetAt(secIndex, menuIndex);
-                            }
-                                : null,
-                            child: Text(l10n.addSet), // 「+セット」のみ
-                          ),
-                          const SizedBox(width: 4),
-                          TextButton.icon(
-                            onPressed: _saveMenuAndClose,
-                            icon: const Icon(Icons.check_rounded),
-                            label: Text(l10n.save),
-                            style: TextButton.styleFrom(
-                                foregroundColor: cs.primary),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1),
-
-                    // 内容：MenuList を再利用（下のカード側はダブルバインド回避のためプレースホルダ）
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                        child: Scrollbar(
-                          child: SingleChildScrollView(
-                            child: Focus(
-                              focusNode: _menuOverlayFocus,
-                              child: MenuList(
-                                nameFieldKey: section.nameFieldKeys[menuIndex],
-                                menuController: section
-                                    .menuControllers[menuIndex],
-                                removeMenuCallback: () =>
-                                    _removeMenuItem(secIndex, menuIndex),
-                                setInputDataList: section
-                                    .setInputDataList[menuIndex],
-                                isAerobic: isAerobic,
-                                distanceController: (menuIndex <
-                                    section.aerobicDistanceCtrls.length)
-                                    ? section.aerobicDistanceCtrls[menuIndex]
-                                    : TextEditingController(),
-                                // 念のための安全策
-                                durationController: (menuIndex <
-                                    section.aerobicDurationCtrls.length)
-                                    ? section.aerobicDurationCtrls[menuIndex]
-                                    : TextEditingController(),
-                                aerobicIsSuggestion: (menuIndex <
-                                    section.aerobicSuggestFlags.length)
-                                    ? section.aerobicSuggestFlags[menuIndex]
-                                    : true,
-                                onConfirmAerobic: () {
-                                  setState(() {
-                                    if (menuIndex <
-                                        section.aerobicSuggestFlags.length) {
-                                      section.aerobicSuggestFlags[menuIndex] =
-                                      false;
-                                    }
-                                  });
-                                },
-                                onAnyFieldFocused: () {},
-                                // すでにオーバーレイ中
-                                onNameChanged: (prevEmpty, nowEmpty) {},
-                                satisfaction: (menuIndex <
-                                    section.satisfactionList.length)
-                                    ? section.satisfactionList[menuIndex]
+                // ▼ フォーム全体をふわっと（フェード＋わずかにスケール）
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  opacity: _menuSlideIn ? 1.0 : 0.0,
+                  child: AnimatedScale(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    scale: _menuSlideIn ? 1.0 : 0.98,
+                    child: Column(
+                      children: [
+                        // ヘッダー：左=部位、右=＋セット＆保存
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
+                          child: Row(
+                            children: [
+                              Text(
+                                section.selectedPart ?? '',
+                                style: TextStyle(
+                                  color: cs.onSurface,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const Spacer(),
+                              TextButton(
+                                onPressed: (!isAerobic &&
+                                    menuIndex < section.setInputDataList.length &&
+                                    section.setInputDataList[menuIndex].length < 10)
+                                    ? () {
+                                  HapticFeedback.selectionClick();
+                                  _addOneSetAt(secIndex, menuIndex);
+                                }
                                     : null,
-                                onSatisfactionChanged: (v) {
-                                  setState(() {
-                                    if (menuIndex <
-                                        section.satisfactionList.length) {
-                                      section.satisfactionList[menuIndex] = v;
-                                    }
-                                  });
-                                },
-                                enabledForInput: true,
+                                child: Text(l10n.addSet),
+                              ),
+                              const SizedBox(width: 4),
+                              TextButton.icon(
+                                onPressed: _saveMenuAndClose,
+                                icon: const Icon(Icons.check_rounded),
+                                label: Text(l10n.save),
+                                style: TextButton.styleFrom(foregroundColor: cs.primary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Divider(height: 1),
+
+                        // 内容：MenuList ...
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                            child: Scrollbar(
+                              child: SingleChildScrollView(
+                                child: Focus(
+                                  focusNode: _menuOverlayFocus,
+                                  child: MenuList(
+                                    nameFieldKey: section.nameFieldKeys[menuIndex],
+                                    menuController: section.menuControllers[menuIndex],
+                                    removeMenuCallback: () => _removeMenuItem(secIndex, menuIndex),
+                                    setInputDataList: section.setInputDataList[menuIndex],
+                                    isAerobic: isAerobic,
+                                    distanceController: (menuIndex < section.aerobicDistanceCtrls.length)
+                                        ? section.aerobicDistanceCtrls[menuIndex]
+                                        : TextEditingController(),
+                                    durationController: (menuIndex < section.aerobicDurationCtrls.length)
+                                        ? section.aerobicDurationCtrls[menuIndex]
+                                        : TextEditingController(),
+                                    aerobicIsSuggestion: (menuIndex < section.aerobicSuggestFlags.length)
+                                        ? section.aerobicSuggestFlags[menuIndex]
+                                        : true,
+                                    onConfirmAerobic: () {
+                                      setState(() {
+                                        if (menuIndex < section.aerobicSuggestFlags.length) {
+                                          section.aerobicSuggestFlags[menuIndex] = false;
+                                        }
+                                      });
+                                    },
+                                    onAnyFieldFocused: () {},
+                                    onNameChanged: (prevEmpty, nowEmpty) {},
+                                    satisfaction: (menuIndex < section.satisfactionList.length)
+                                        ? section.satisfactionList[menuIndex]
+                                        : null,
+                                    onSatisfactionChanged: (v) {
+                                      setState(() {
+                                        if (menuIndex < section.satisfactionList.length) {
+                                          section.satisfactionList[menuIndex] = v;
+                                        }
+                                      });
+                                    },
+                                    enabledForInput: true,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -3337,10 +3357,18 @@ class _RecordScreenState extends State<RecordScreen>
           ? null
           : () {
         HapticFeedback.lightImpact();
-        setState(() => _fabOpen = !_fabOpen);
+        final opening = !_fabOpen;
+        setState(() => _fabOpen = opening);
+        opening ? _fabCtrl.forward() : _fabCtrl.reverse();
       },
       backgroundColor: kBrandBlue,
-      child: const Icon(Icons.add, color: Colors.white),
+      child: AnimatedBuilder(
+        animation: _fabCtrl,
+        builder: (_, __) => Transform.rotate(
+          angle: _fabCtrl.value * (3.1415926535 / 4), // ＋→× っぽく
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
+      ),
       tooltip: l10n.openAddMenu,
     );
 
@@ -3404,12 +3432,21 @@ class _RecordScreenState extends State<RecordScreen>
       );
     }
 
-    final overlay = (_fabOpen && !keyboardVisible && !_memoOverlayVisible &&
-        !_memoOverlayOpen && !_menuOverlayVisible)
+    final overlay = (!keyboardVisible && !_memoOverlayVisible && !_memoOverlayOpen &&
+        !_menuOverlayVisible && !_personalOverlayVisible)
         ? Positioned.fill(
-      child: GestureDetector(
-        onTap: () => setState(() => _fabOpen = false),
-        child: Container(color: Colors.black.withOpacity(0.25)),
+      child: IgnorePointer(
+        ignoring: !_fabOpen,
+        child: FadeTransition(
+          opacity: CurvedAnimation(parent: _fabCtrl, curve: Curves.easeOutCubic),
+          child: GestureDetector(
+            onTap: () {
+              setState(() => _fabOpen = false);
+              _fabCtrl.reverse();
+            },
+            child: Container(color: Colors.black.withOpacity(0.25)),
+          ),
+        ),
       ),
     )
         : const SizedBox.shrink();
@@ -3422,24 +3459,41 @@ class _RecordScreenState extends State<RecordScreen>
             fabMargin + gapAboveFab;
 
     // ＋セットはダイヤルから削除（オーバーレイのヘッダーへ移動）
+    Widget _stagger(int index, Widget child) {
+      final curved = CurvedAnimation(
+        parent: _fabCtrl,
+        curve: Interval(0.15 + index * 0.10, 1.0, curve: Curves.easeOutCubic),
+        reverseCurve: const Interval(0.0, 0.70, curve: Curves.easeInCubic),
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero).animate(curved),
+          child: child,
+        ),
+      );
+    }
+
     final dial = Positioned(
       right: 16,
       bottom: dialBottom,
-      child: (_fabOpen && !keyboardVisible && !_memoOverlayVisible &&
-          !_memoOverlayOpen && !_menuOverlayVisible && !_personalOverlayVisible)
-          ? Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          chipAction(
-              l10n.addExercise, _handleAddExercise, enabled: _canAddExercise()),
-          const SizedBox(height: 8),
-          chipAction(l10n.addPart, _handleAddPart),
-          const SizedBox(height: 8),
-          chipAction(l10n.addMemo, _handleAddMemo),
-          const SizedBox(height: 8),
-          chipAction(l10n.addPhoto, _handleAddPhoto),
-          const SizedBox(height: 8),
-        ],
+      child: (!keyboardVisible && !_memoOverlayVisible && !_memoOverlayOpen &&
+          !_menuOverlayVisible && !_personalOverlayVisible)
+          ? IgnorePointer(
+        ignoring: !_fabOpen,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            _stagger(0, chipAction(l10n.addExercise, _handleAddExercise, enabled: _canAddExercise())),
+            const SizedBox(height: 8),
+            _stagger(1, chipAction(l10n.addPart, _handleAddPart)),
+            const SizedBox(height: 8),
+            _stagger(2, chipAction(l10n.addMemo, _handleAddMemo)),
+            const SizedBox(height: 8),
+            _stagger(3, chipAction(l10n.addPhoto, _handleAddPhoto)),
+            const SizedBox(height: 8),
+          ],
+        ),
       )
           : const SizedBox.shrink(),
     );
@@ -3864,7 +3918,7 @@ class _MenuListState extends State<MenuList> {
     // 距離（保存は km、小数）
     final raw = widget.distanceController.text.trim();
     final dKm = double.tryParse(raw) ?? 0.0;
-    final useImperial = (SettingsManager.currentLengthUnit == 'mi') || SettingsManager.isWaistInch;
+    final useImperial = (SettingsManager.currentLengthUnit == 'mi');
     if (useImperial) {
       // km → mi & yd
       final miles = dKm / 1.609344;
@@ -3890,7 +3944,7 @@ class _MenuListState extends State<MenuList> {
   void _updateDistanceController() {
     final major = int.tryParse(_kmController.text) ?? 0;
     final minor = int.tryParse(_mController.text)  ?? 0;
-    final useImperial = (SettingsManager.currentLengthUnit == 'mi') || SettingsManager.isWaistInch;
+    final useImperial = (SettingsManager.currentLengthUnit == 'mi');
     double dKm;
     if (useImperial) {
       // mi & yd → km（保存は km）
@@ -4220,14 +4274,13 @@ class _MenuListState extends State<MenuList> {
                         ),
                       ),
                       Text(
-                        ' ${ ((SettingsManager.currentLengthUnit == "mi") || SettingsManager.isWaistInch) ? "mi" : l10n.km } ',
+                        ' ${ (SettingsManager.currentLengthUnit == "mi") ? "mi" : l10n.km } ',
                         style: TextStyle(
                           color: colorScheme.onSurfaceVariant,
                           fontSize: 14.0,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-
                       // 小さい桁：yd or m
                       Expanded(
                         flex: 2,
@@ -4271,7 +4324,7 @@ class _MenuListState extends State<MenuList> {
                         ),
                       ),
                       Text(
-                        ' ${ ((SettingsManager.currentLengthUnit == "mi") || SettingsManager.isWaistInch) ? "yd" : l10n.m } ',
+                        ' ${ (SettingsManager.currentLengthUnit == "mi") ? "yd" : l10n.m } ',
                         style: TextStyle(
                           color: colorScheme.onSurfaceVariant,
                           fontSize: 14.0,
