@@ -1,6 +1,7 @@
 // lib/screens/calendar_screen.dart
 import 'dart:ui';
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -106,6 +107,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       await widget.settingsBox.put('hint_seen_calendar', true);
     });
+
   }
 
   Widget _satisfactionLine(AppLocalizations l10n, int value, ColorScheme cs) {
@@ -840,12 +842,58 @@ class _CalendarScreenState extends State<CalendarScreen> {
           settingsBox: widget.settingsBox,
           setCountBox: widget.setCountBox,
         ),
-        transitionDuration: Duration(milliseconds: 0),
-        reverseTransitionDuration: Duration(milliseconds: 0),
-        transitionsBuilder: (_, __, ___, child) => child,
+        transitionDuration: const Duration(milliseconds: 260),
+        reverseTransitionDuration: const Duration(milliseconds: 220),
+        transitionsBuilder: (_, animation, __, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(opacity: curved, child: child);
+        },
       ),
     );
     if (mounted) setState(() {});
+  }
+
+  void _handleAddPressed() {
+    final day = _selectedDay ?? DateTime.now();
+    unawaited(_openRecordSheet(DateTime(day.year, day.month, day.day)));
+  }
+
+  Widget _buildTimetreeFab({required VoidCallback onTap}) {
+    return SizedBox(
+      width: 34,
+      height: 34,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: Ink(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: [Color(0xFF2563EB), Color(0xFF3B82F6)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.25),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            splashColor: Colors.white24,
+            child: const Icon(Icons.add, size: 16, color: Colors.white),
+          ),
+        ),
+      ),
+    );
   }
 
   // 半角→全角数字（0-9）変換
@@ -879,6 +927,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+
+    final double bottomInset = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
       backgroundColor: SettingsManager.backgroundAssetNotifier.value.isEmpty
@@ -914,6 +964,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
         ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: 8 + bottomInset),
+        child: _buildTimetreeFab(onTap: _handleAddPressed),
       ),
 
       // ▼ ここで SettingsManager.waistUnitNotifier を監視して即反映

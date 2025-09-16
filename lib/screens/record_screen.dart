@@ -415,6 +415,17 @@ class _RecordScreenState extends State<RecordScreen>
     );
   }
 
+  String _formatAppBarDate(BuildContext context) {
+    final locale = Localizations.localeOf(context);
+    final date = widget.selectedDate;
+    if (locale.languageCode == 'ja') {
+      final base = DateFormat('yyyy/MM/dd', locale.toString()).format(date);
+      final weekday = DateFormat.E(locale.toString()).format(date);
+      return '$base（$weekday）';
+    }
+    return DateFormat.yMMMMEEEEd(locale.toString()).format(date);
+  }
+
   void _showSavedChipFor(Duration duration) {
     _savedChipTimer?.cancel();
     setState(() => _showSavedChip = true);
@@ -1592,6 +1603,7 @@ class _RecordScreenState extends State<RecordScreen>
       _currentSectionIndex = sectionIndex;
       _currentMenuIndex = menuIndex;
       _lastInteractionAt = DateTime.now();
+      _closeFabDial();
     });
   }
 
@@ -1605,23 +1617,59 @@ class _RecordScreenState extends State<RecordScreen>
     _addOneSetAt(secIdx, menuIdx);
   }
 
+  int? _resolveActiveSectionIndex() {
+    final si = _currentSectionIndex;
+    if (si != null && si >= 0 && si < _sections.length) {
+      return si;
+    }
+    for (int i = 0; i < _sections.length; i++) {
+      if (_sections[i].selectedPart != null) {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  void _closeFabDial() {
+    if (!_fabOpen) return;
+    _fabOpen = false;
+    _fabCtrl.reverse();
+  }
+
   void _handleAddExercise() {
-    final secIdx = _currentSectionIndex!;
+    final l10n = AppLocalizations.of(context)!;
+    final secIdx = _resolveActiveSectionIndex();
+    if (secIdx == null) {
+      showAppSnack(context, l10n.selectTrainingPart);
+      return;
+    }
+    final section = _sections[secIdx];
+    if (section.selectedPart == null) {
+      showAppSnack(context, l10n.selectTrainingPart);
+      return;
+    }
+
     _addMenuItem(secIdx);
-    _currentSectionIndex = secIdx;
-    _currentMenuIndex = _sections[secIdx].menuControllers.length - 1;
+    setState(() {
+      _currentSectionIndex = secIdx;
+      _currentMenuIndex = _sections[secIdx].menuControllers.length - 1;
+      _closeFabDial();
+    });
   }
 
   void _handleAddPart() {
     _addTargetSection();
+    setState(_closeFabDial);
   }
 
   void _handleAddPhoto() {
+    setState(_closeFabDial);
     _startCaptureLoop();
   }
 
   // 追加：メモ追加（FABのダイヤル／メモカードから呼ぶ）
   Future<void> _handleAddMemo() async {
+    setState(_closeFabDial);
     setState(() {
       _showMemo = true; // プレビューを出しておく（当日分メモが空でも）
     });
@@ -2162,9 +2210,8 @@ class _RecordScreenState extends State<RecordScreen>
 
   bool _canAddExercise() {
     if (_sections.isEmpty) return false;
-    final si = _currentSectionIndex;
+    final si = _resolveActiveSectionIndex();
     if (si == null) return false;
-    if (si < 0 || si >= _sections.length) return false;
     return _sections[si].selectedPart != null;
   }
 
@@ -3398,7 +3445,10 @@ class _RecordScreenState extends State<RecordScreen>
             onTap: enabled
                 ? () {
               HapticFeedback.selectionClick();
-              setState(() => _fabOpen = false);
+              setState(() {
+                _fabOpen = false;
+                _fabCtrl.reverse();
+              });
               onTap();
             }
                 : null,
@@ -3542,11 +3592,28 @@ class _RecordScreenState extends State<RecordScreen>
                   .of(context)
                   .backButtonTooltip,
             ),
-            title: Text(
-              AppLocalizations.of(context)!.recordScreenTitle,
-              style: const TextStyle(color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 19.0),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n.recordScreenTitle,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 19.0,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _formatAppBarDate(context),
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
             flexibleSpace: ClipRect(
               child: BackdropFilter(

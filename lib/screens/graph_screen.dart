@@ -2079,6 +2079,7 @@ double? _safeWeightKg(dynamic r) {
       }
       return;
     }
+
   }
 
   String _goalDisplayString() {
@@ -2949,6 +2950,5 @@ class FavoritePillButton extends StatelessWidget {
     );
   }
 }
-
 
 

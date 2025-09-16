@@ -3,15 +3,43 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../l10n/app_localizations.dart';
 import '../widgets/ad_banner.dart';
 import '../settings_manager.dart';
 import '../widgets/centered_constrained.dart';
+
+Future<bool> _ensureAlbumCameraPermission(BuildContext context) async {
+  var status = await Permission.camera.status;
+  if (status.isGranted) return true;
+  status = await Permission.camera.request();
+  if (status.isGranted) return true;
+
+  if (status.isPermanentlyDenied) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(l10n.cameraPermissionRequired),
+        duration: const Duration(milliseconds: 2200),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: cs.inverseSurface,
+        action: SnackBarAction(
+          label: l10n.openSettings,
+          onPressed: () => openAppSettings(),
+        ),
+      ),
+    );
+  }
+  return false;
+}
 
 class AlbumScreen extends StatefulWidget {
   const AlbumScreen({super.key});
@@ -23,6 +51,9 @@ class AlbumScreen extends StatefulWidget {
 class _AlbumScreenState extends State<AlbumScreen> {
   final Map<String, List<File>> _byDate = {}; // dateKey -> files(新→旧)
   bool _loading = true;
+
+  final ImagePicker _imagePicker = ImagePicker();
+  bool _captureInProgress = false;
 
   // 選択モード管理
   final Set<String> _selectedPaths = {};
@@ -210,6 +241,82 @@ class _AlbumScreenState extends State<AlbumScreen> {
     });
   }
 
+  Future<void> _handleAddPressed() async {
+    if (_captureInProgress) return;
+    if (!await _ensureAlbumCameraPermission(context)) return;
+    if (!mounted) return;
+
+    setState(() => _captureInProgress = true);
+    try {
+      final shots = await _captureNewShots();
+      if (shots.isEmpty) return;
+
+      for (final shot in shots) {
+        await _saveShotToToday(shot);
+      }
+      if (mounted) {
+        await _loadAll();
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _captureInProgress = false);
+      }
+    }
+  }
+
+  Future<List<XFile>> _captureNewShots() async {
+    XFile? shot;
+    try {
+      shot = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.rear,
+      );
+    } catch (_) {}
+
+    if (shot != null) {
+      return [shot];
+    }
+
+    if (!Platform.isAndroid) {
+      return <XFile>[];
+    }
+
+    try {
+      final LostDataResponse resp = await _imagePicker.retrieveLostData();
+      if (resp.isEmpty) return <XFile>[];
+      final List<XFile> recovered = [];
+      if (resp.file != null) {
+        recovered.add(resp.file!);
+      }
+      if (resp.files != null && resp.files!.isNotEmpty) {
+        recovered.addAll(resp.files!);
+      }
+      return recovered;
+    } catch (_) {
+      return <XFile>[];
+    }
+  }
+
+  Future<void> _saveShotToToday(XFile shot) async {
+    final now = DateTime.now();
+    final dir = Directory(
+      p.join(
+        (await getApplicationDocumentsDirectory()).path,
+        'media',
+        DateFormat('yyyy-MM-dd').format(now),
+      ),
+    );
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+
+    final ext = p.extension(shot.path).toLowerCase();
+    final fileName =
+        '${DateFormat('HHmmss_SSS').format(DateTime.now())}${ext.isNotEmpty ? ext : '.jpg'}';
+    final savePath = p.join(dir.path, fileName);
+    await shot.saveTo(savePath);
+  }
+
   Widget _checkBadge(bool selected) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -286,6 +393,59 @@ class _AlbumScreenState extends State<AlbumScreen> {
       ),
     );
   }
+
+  Widget _buildTimetreeFab({
+    required bool busy,
+    required Future<void> Function() onPressed,
+  }) {
+    return SizedBox(
+      width: 34,
+      height: 34,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: Ink(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: [Color(0xFF2563EB), Color(0xFF3B82F6)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.25),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: busy
+                ? null
+                : () async {
+                    await onPressed();
+                  },
+            splashColor: Colors.white24,
+            child: Center(
+              child: busy
+                  ? const SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.add, color: Colors.white, size: 16),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ── ここまで ピルボタン ──
 
   @override
@@ -388,11 +548,11 @@ class _AlbumScreenState extends State<AlbumScreen> {
                       ),
                     ),
                   )
-                      : ListView.builder(
-                    padding: EdgeInsets.only(
-                      top: 0,
-                      bottom: _inSelection ? 96 : 24,
-                    ),
+                  : ListView.builder(
+                padding: EdgeInsets.only(
+                  top: 0,
+                  bottom: _inSelection ? 96 : 140,
+                ),
                     itemCount: _byDate.length,
                     itemBuilder: (ctx, section) {
                       final dateKey =
@@ -495,7 +655,18 @@ class _AlbumScreenState extends State<AlbumScreen> {
           ),
         ],
       ),
-
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: _inSelection
+          ? null
+          : Padding(
+              padding: EdgeInsets.only(
+                bottom: 8 + MediaQuery.of(context).padding.bottom,
+              ),
+              child: _buildTimetreeFab(
+                busy: _captureInProgress,
+                onPressed: _handleAddPressed,
+              ),
+            ),
       bottomNavigationBar: _inSelection
           ? SafeArea(
         child: Container(
