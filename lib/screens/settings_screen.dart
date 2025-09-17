@@ -96,6 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _manageBodyFat = false;
   bool _manageWaist = false;
   bool _manageBmi = false;
+  bool _enableAerobicCalories = false;
 
   @override
   void initState() {
@@ -146,6 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         (widget.settingsBox.get('manage.bodyFat') as bool?) ?? false;
     _manageWaist = (widget.settingsBox.get('manage.waist') as bool?) ?? false;
     _manageBmi = (widget.settingsBox.get('manage.bmi') as bool?) ?? false;
+    _enableAerobicCalories = SettingsManager.enableAerobicCalories;
   }
 
   // ========== ヘルパ ==========
@@ -567,6 +569,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _toggleRow(context, title: l10n.bmiTracking,
                           value: _manageBmi,
                           onChanged: _setManageBmi),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Wrap(
+                                  spacing: 4,
+                                  runSpacing: 4,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Text(
+                                      l10n.aerobicCalorieToggle,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: colorScheme.onSurface,
+                                      ),
+                                    ),
+                                    _aerobicCalorieHelpButton(context),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Switch(
+                              value: _enableAerobicCalories,
+                              onChanged: (v) {
+                                setState(() => _enableAerobicCalories = v);
+                                SettingsManager.setEnableAerobicCalories(v);
+                              },
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              activeColor: colorScheme.primary,
+                            ),
+                          ],
+                        ),
+                      ),
 
                       const SizedBox(height: 4),
                     ],
@@ -1078,6 +1118,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _aerobicCalorieHelpButton(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: () => _showAerobicCalorieHelp(context),
+      customBorder: const CircleBorder(),
+      child: Container(
+        width: 20,
+        height: 20,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: colorScheme.outline),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          '?',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: colorScheme.primary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAerobicCalorieHelp(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(l10n.aerobicCalorieInfoTitle),
+          content: Text(
+            l10n.aerobicCalorieInfoBody,
+            style: const TextStyle(fontSize: 14, height: 1.6),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(l10n.close),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -187,12 +187,12 @@
   "graphTitle": "Graph",
   "backTooltip": "Back",
   "noneLabel": "None",
-  "aerobicCalorieToggle": "Auto-calculate calories for cardio",
+  "aerobicCalorieToggle": "Estimate aerobic calories",
   "calorie": "Calories",
   "kcalUnit": "kcal",
   "calorieOverrideHint": "You can edit this value",
-  "calorieHelpTitle": "About the calorie calculation",
-  "calorieHelpBody": "Formula: Energy = MET × 3.5 × weight(kg) ÷ 200 × time(min) − resting metabolism.\n\nMET is chosen by speed [km/h] derived from distance and time (walking vs. running). Resting metabolism uses the Mifflin–St Jeor equation from age, sex, height, and weight, and we show net calories (exercise over baseline).\n\nThis is an estimate. You can overwrite it with a smartwatch reading. Both distance and time are required.",
+  "calorieHelpTitle": "About the calorie estimation",
+  "calorieHelpBody": "Formula: calories = MET × weight(kg) × time(hours).\n\nThe MET value is estimated from the exercise name. Because this is only an approximation, feel free to overwrite it with the reading from your smartwatch or other tracker.",
   "dailyCalorieTotal": "Total calories",
   "chooseFromPresets": "Choose from presets",
   "presetRunning": "Running",
@@ -201,5 +201,8 @@
   "presetExerciseBike": "Exercise bike",
   "presetElliptical": "Elliptical",
   "presetRowing": "Rowing",
-  "aerobicPickerTitle": "Choose or type exercise"
+  "aerobicPickerTitle": "Choose or type exercise",
+  "aerobicCalorieUnknownHint": "Could not estimate calories for this exercise name. Please enter the value obtained from another device if available.",
+  "aerobicCalorieInfoTitle": "About Calorie Estimation",
+  "aerobicCalorieInfoBody": "Calories are estimated as MET × weight (kg) × time (hours). MET is inferred from the exercise name, distance, and duration.\\n\\nBecause this is only an approximation, please overwrite it with the value obtained from your smartwatch or other tracker if available. Distance or time must be provided for the estimate.\\n\\nEnvironmental conditions and your physical condition affect calorie expenditure. Remember to take breaks and stay hydrated."
 }

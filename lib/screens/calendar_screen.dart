@@ -196,39 +196,98 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // 「5.3」→「5km300m」
   // 「5.3」→ 「5km300m」 または 「3mi  720yd」
   String _formatDistance(String? raw, AppLocalizations l10n) {
-    if (raw == null || raw.trim().isEmpty) return '-';
-    final dKm = double.tryParse(raw);
-    if (dKm == null) return '-';
+    if (raw == null) return '-';
+    final normalized = raw.replaceAll(',', '').trim();
+    if (normalized.isEmpty) return '-';
+    final dKm = double.tryParse(normalized);
+    if (dKm == null || dKm <= 0) return '-';
 
-    // mi/yd 表示条件（どちらかがインペリアルならインペリアル扱い）
     final useImperial =
-        (SettingsManager.currentLengthUnit == 'mi' || SettingsManager.currentLengthUnit == 'mile')
-            || SettingsManager.isWaistInch;
+        (SettingsManager.currentLengthUnit == 'mi' || SettingsManager.currentLengthUnit == 'mile') ||
+        SettingsManager.isWaistInch;
 
     if (useImperial) {
-      // km → miles + yards（固定フィールド）
       final miles = dKm / 1.609344;
       final totalYd = miles * 1760.0;
-      final mi = totalYd ~/ 1760;                 // 整数マイル
-      final yd = (totalYd - mi * 1760).round();   // 残りヤード（0–1759）
-      return '$mi mi $yd yd';
+      final mi = totalYd ~/ 1760;
+      final yd = (totalYd - mi * 1760).round();
+      if (mi == 0 && yd == 0) return '-';
+      if (mi == 0) return '${yd} yd';
+      if (yd == 0) return '${mi} mi';
+      return '${mi} mi ${yd} yd';
     } else {
-      // km → km + m（固定フィールド）
       final km = dKm.floor();
-      final m  = ((dKm - km) * 1000).round();     // 0–999
-      return '$km${l10n.km}$m${l10n.m}';
+      final m = ((dKm - km) * 1000).round();
+      if (km == 0 && m == 0) return '-';
+      if (km == 0) return '${m}${l10n.m}';
+      if (m == 0) return '${km}${l10n.km}';
+      return '${km}${l10n.km}${m}${l10n.m}';
     }
   }
 
-  // 「1:30」→「1時間30分」(ja) / 「1h30min」(それ以外)
   String _formatDurationHM(BuildContext context, String? raw, AppLocalizations l10n) {
-    if (raw == null || raw.trim().isEmpty) return '-';
-    final parts = raw.split(':');
-    final hour = (parts.isNotEmpty && parts[0].isNotEmpty) ? parts[0] : '0';
-    final min  = (parts.length > 1 && parts[1].isNotEmpty) ? parts[1] : '0';
+    if (raw == null) return '-';
+    final normalized = raw.replaceAll(',', '').trim();
+    if (normalized.isEmpty) return '-';
+    final parts = normalized.split(':');
+    int hour = 0;
+    int min = 0;
+    int sec = 0;
+    if (parts.length >= 3) {
+      hour = int.tryParse(parts[0]) ?? 0;
+      min = int.tryParse(parts[1]) ?? 0;
+      sec = int.tryParse(parts[2]) ?? 0;
+    } else if (parts.length == 2) {
+      hour = int.tryParse(parts[0]) ?? 0;
+      min = int.tryParse(parts[1]) ?? 0;
+    } else if (parts.length == 1) {
+      if (normalized.contains(':')) {
+        min = int.tryParse(parts[0]) ?? 0;
+      } else {
+        final totalMinutes = double.tryParse(normalized) ?? 0;
+        hour = (totalMinutes ~/ 60).toInt();
+        min = (totalMinutes % 60).round();
+      }
+    }
+
+    if (hour == 0 && min == 0 && sec == 0) return '-';
 
     final isJa = Localizations.localeOf(context).languageCode == 'ja';
-    return isJa ? '${hour}時間${min}${l10n.min}' : '${hour}h${min}${l10n.min}';
+    final buffer = StringBuffer();
+    if (hour > 0) {
+      buffer.write(isJa ? '${hour}時間' : '${hour}h');
+    }
+    if (min > 0) {
+      buffer.write('${min}${l10n.min}');
+    }
+    if (hour == 0 && min == 0 && sec > 0) {
+      buffer.write('${sec}${l10n.sec}');
+    }
+    final result = buffer.toString();
+    return result.isEmpty ? '-' : result;
+  }
+
+  bool _hasPositiveDistanceValue(String? raw) {
+    if (raw == null) return false;
+    final normalized = raw.replaceAll(',', '').trim();
+    if (normalized.isEmpty) return false;
+    final value = double.tryParse(normalized);
+    return value != null && value > 0;
+  }
+
+  bool _hasPositiveDurationValue(String? raw) {
+    if (raw == null) return false;
+    final normalized = raw.replaceAll(',', '').trim();
+    if (normalized.isEmpty) return false;
+    if (normalized.contains(':')) {
+      final parts = normalized.split(':');
+      int hours = int.tryParse(parts[0]) ?? 0;
+      int minutes = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+      int seconds = parts.length > 2 ? int.tryParse(parts[2]) ?? 0 : 0;
+      return hours > 0 || minutes > 0 || seconds > 0;
+    }
+    final value = double.tryParse(normalized);
+    return value != null && value > 0;
   }
 
   Widget _selectableLine({
@@ -609,6 +668,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
           }
         }
         if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
+          has = true;
+        }
+        if (m.calories?.trim().isNotEmpty ?? false) {
           has = true;
         }
         if (has) break;
@@ -1213,15 +1275,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     bool _menuHasAnyData(m) {
-      final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+      final len = (m.weights.length < m.reps.length)
+          ? m.weights.length
+          : m.reps.length;
       for (int i = 0; i < len; i++) {
         final w = m.weights[i].toString().trim();
         final r = m.reps[i].toString().trim();
         if (w.isNotEmpty || r.isNotEmpty) return true;
       }
-      if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
-        return true;
-      }
+      if (_hasPositiveDistanceValue(m.distance)) return true;
+      if (_hasPositiveDurationValue(m.duration)) return true;
+      if ((m.calories?.trim().isNotEmpty ?? false)) return true;
       return false;
     }
 
@@ -1244,20 +1308,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       for (final m in aerobicMenus) {
         summaryChildren.add(
-          Padding(
+          _selectableLine(
+            text: m.name,
             padding: const EdgeInsets.only(bottom: 2.0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                m.name,
-                textAlign: TextAlign.left,
-                style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
-              ),
+            style: TextStyle(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
             ),
           ),
         );
 
-        if ((m.distance?.trim().isNotEmpty ?? false)) {
+        final bool hasDistance = _hasPositiveDistanceValue(m.distance);
+        final bool hasDuration = _hasPositiveDurationValue(m.duration);
+
+        if (hasDistance) {
           summaryChildren.add(
             _selectableLine(
               text: '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
@@ -1266,10 +1331,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           );
         }
-        if ((m.duration?.trim().isNotEmpty ?? false)) {
+        if (hasDuration) {
           summaryChildren.add(
             _selectableLine(
               text: '${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}',
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+              style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
+            ),
+          );
+        }
+        if ((m.calories?.trim().isNotEmpty ?? false)) {
+          summaryChildren.add(
+            _selectableLine(
+              text: '${l10n.calorie}: ${m.calories} ${l10n.kcalUnit}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
             ),

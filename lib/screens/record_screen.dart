@@ -86,6 +86,8 @@ class RecordScreen extends StatefulWidget {
 
 enum _QuickReview { save, discard }
 
+enum _AerobicFailureReason { noMatch }
+
 class _RecordScreenState extends State<RecordScreen>
     with WidgetsBindingObserver, TickerProviderStateMixin {
   static const Duration _kIdleAutoPause = Duration(hours: 5);
@@ -169,6 +171,8 @@ class _RecordScreenState extends State<RecordScreen>
   StreamSubscription<BoxEvent>? _setCountSub;
 
   bool _fabOpen = false;
+
+  bool _calcAerobicCalories = SettingsManager.enableAerobicCalories;
 
   final TextEditingController _weightController = TextEditingController();
 
@@ -257,6 +261,10 @@ class _RecordScreenState extends State<RecordScreen>
 
     // ★追加：単位切替（inch/cm 等）のUI反映
     SettingsManager.lengthUnitNotifier.addListener(_onLengthUnitChanged);
+    SettingsManager.aerobicCalorieNotifier
+        .addListener(_onAerobicCalorieSettingChanged);
+    _weightController.addListener(_handleWeightChanged);
+    _calcAerobicCalories = SettingsManager.enableAerobicCalories;
 
     _setCountSub = widget.setCountBox.watch(key: 'setCount').listen((event) {
       final int newCount = (event.value as int?) ?? 3;
@@ -325,6 +333,13 @@ class _RecordScreenState extends State<RecordScreen>
 
     _scrollCtrl.addListener(() => _lastInteractionAt = DateTime.now());
     _loadMediaForSelectedDate();
+    if (_calcAerobicCalories) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _recalculateAllAerobicCalories(force: true);
+        }
+      });
+    }
   }
 
   @override
@@ -355,6 +370,7 @@ class _RecordScreenState extends State<RecordScreen>
     }
     _sections.clear();
 
+    _weightController.removeListener(_handleWeightChanged);
     _weightController.dispose();
     _bodyFatController.dispose();
     _waistController.dispose();
@@ -364,6 +380,8 @@ class _RecordScreenState extends State<RecordScreen>
 
     // ★ 重要：リスナー解除は super.dispose() の前に
     SettingsManager.lengthUnitNotifier.removeListener(_onLengthUnitChanged);
+    SettingsManager.aerobicCalorieNotifier
+        .removeListener(_onAerobicCalorieSettingChanged);
 
     super.dispose();
   }
@@ -633,31 +651,41 @@ class _RecordScreenState extends State<RecordScreen>
           section.nameFieldKeys.add(GlobalKey());
           section.satisfactionList.add(partSat[name] as int?);
 
-          if (isAerobic) {
-            final String dist =
-            (rec?.distance
-                ?.trim()
-                .isNotEmpty ?? false)
-                ? rec!.distance!.trim()
-                : (lu?.distance?.trim() ?? '');
-            final String dura =
-            (rec?.duration
-                ?.trim()
-                .isNotEmpty ?? false)
-                ? rec!.duration!.trim()
-                : (lu?.duration?.trim() ?? '');
-            final bool isSug =
-            !(rec?.distance
-                ?.trim()
-                .isNotEmpty == true ||
-                rec?.duration
-                    ?.trim()
-                    .isNotEmpty == true);
-            section.aerobicDistanceCtrls.add(TextEditingController(text: dist));
-            section.aerobicDurationCtrls.add(TextEditingController(text: dura));
-            section.aerobicSuggestFlags.add(isSug);
-            section.setInputDataList.add(<SetInputData>[]);
-          } else {
+        if (isAerobic) {
+          final String dist =
+          (rec?.distance
+              ?.trim()
+              .isNotEmpty ?? false)
+              ? rec!.distance!.trim()
+              : (lu?.distance?.trim() ?? '');
+          final String dura =
+          (rec?.duration
+              ?.trim()
+              .isNotEmpty ?? false)
+              ? rec!.duration!.trim()
+              : (lu?.duration?.trim() ?? '');
+          final bool isSug =
+          !(rec?.distance
+              ?.trim()
+              .isNotEmpty == true ||
+              rec?.duration
+                  ?.trim()
+                  .isNotEmpty == true);
+          section.aerobicDistanceCtrls.add(TextEditingController(text: dist));
+          section.aerobicDurationCtrls.add(TextEditingController(text: dura));
+          section.aerobicSuggestFlags.add(isSug);
+          final String calorieRaw =
+              (rec?.calories?.trim().isNotEmpty ?? false)
+                  ? rec!.calories!.trim()
+                  : '';
+          final bool calSug = !(rec?.calories?.trim().isNotEmpty ?? false);
+          section.aerobicCaloriesCtrls
+              .add(TextEditingController(text: calorieRaw));
+          section.aerobicCalorieSuggestFlags.add(calSug || calorieRaw.isEmpty);
+          section.aerobicCalorieHintVisible.add(false);
+          section.aerobicCalorieHintShown.add(false);
+          section.setInputDataList.add(<SetInputData>[]);
+        } else {
             final int recLen =
             rec == null ? 0 : min(rec.weights.length, rec.reps.length);
             final int luLen =
@@ -1052,9 +1080,12 @@ class _RecordScreenState extends State<RecordScreen>
               setInputDataList: [],
               menuKeys: [],
               nameFieldKeys: [],
+              satisfactionList: [],
               aerobicDistanceCtrls: [],
               aerobicDurationCtrls: [],
               aerobicSuggestFlags: [],
+              aerobicCaloriesCtrls: [],
+              aerobicCalorieSuggestFlags: [],
             ),
       );
 
@@ -1111,6 +1142,15 @@ class _RecordScreenState extends State<RecordScreen>
           section.aerobicDistanceCtrls.add(TextEditingController(text: dist));
           section.aerobicDurationCtrls.add(TextEditingController(text: dura));
           section.aerobicSuggestFlags.add(isSug);
+          final String cal =
+          (rec?.calories?.trim().isNotEmpty ?? false)
+              ? rec!.calories!.trim()
+              : (lu?.calories?.trim() ?? '');
+          final bool calSug = !(rec?.calories?.trim().isNotEmpty == true);
+          section.aerobicCaloriesCtrls.add(TextEditingController(text: cal));
+          section.aerobicCalorieSuggestFlags.add(calSug);
+          section.aerobicCalorieHintVisible.add(false);
+          section.aerobicCalorieHintShown.add(false);
           section.setInputDataList.add(<SetInputData>[]);
         } else {
           final int recLen =
@@ -1176,6 +1216,10 @@ class _RecordScreenState extends State<RecordScreen>
       setState(() {});
     }
     _applyWaistDisplayUnitFromCm();
+
+    if (SettingsManager.enableAerobicCalories) {
+      _recalculateAllAerobicCalories(force: true);
+    }
   }
 
   String _getDateKey(DateTime date) =>
@@ -1197,17 +1241,24 @@ class _RecordScreenState extends State<RecordScreen>
     for (var c in section.aerobicDurationCtrls) {
       c.dispose();
     }
+    for (var c in section.aerobicCaloriesCtrls) {
+      c.dispose();
+    }
     section.menuControllers.clear();
     section.setInputDataList.clear();
     section.aerobicDistanceCtrls.clear();
     section.aerobicDurationCtrls.clear();
     section.aerobicSuggestFlags.clear();
+    section.aerobicCaloriesCtrls.clear();
+    section.aerobicCalorieSuggestFlags.clear();
+    section.aerobicCalorieHintVisible.clear();
+    section.aerobicCalorieHintShown.clear();
     section.nameFieldKeys.clear();
     // 追加
     section.satisfactionList.clear();
   }
 
-  bool _saveAllSectionsData() {
+  bool _saveAllSectionsData({bool showHint = true}) {
     final dateKey = _getDateKey(widget.selectedDate);
     final Map<String, List<MenuData>> allMenusForRecord = {};
     // 追加：満足度保存用（部位→{種目名: 値}）
@@ -1216,7 +1267,8 @@ class _RecordScreenState extends State<RecordScreen>
     bool hasAnyRecordData = false;
     final l10n = AppLocalizations.of(context)!;
 
-    for (final section in _sections) {
+    for (int sec = 0; sec < _sections.length; sec++) {
+      final section = _sections[sec];
       if (section.selectedPart == null) continue;
       final originalPart = _getOriginalPartName(context, section.selectedPart!);
       final isAerobic = section.selectedPart == l10n.aerobicExercise;
@@ -1229,12 +1281,21 @@ class _RecordScreenState extends State<RecordScreen>
         if (name.isEmpty) continue;
 
         if (isAerobic) {
-          final distance = i < section.aerobicDistanceCtrls.length ? section
-              .aerobicDistanceCtrls[i].text : '';
-          final duration = i < section.aerobicDurationCtrls.length ? section
-              .aerobicDurationCtrls[i].text : '';
-          final isSug = i < section.aerobicSuggestFlags.length ? section
-              .aerobicSuggestFlags[i] : true;
+          final distance = i < section.aerobicDistanceCtrls.length
+              ? section.aerobicDistanceCtrls[i].text
+              : '';
+          final duration = i < section.aerobicDurationCtrls.length
+              ? section.aerobicDurationCtrls[i].text
+              : '';
+          final isSug = i < section.aerobicSuggestFlags.length
+              ? section.aerobicSuggestFlags[i]
+              : true;
+          var calorieText = i < section.aerobicCaloriesCtrls.length
+              ? section.aerobicCaloriesCtrls[i].text.trim()
+              : '';
+          var calSug = i < section.aerobicCalorieSuggestFlags.length
+              ? section.aerobicCalorieSuggestFlags[i]
+              : true;
 
           listForLastUsed.add(MenuData(
             name: name,
@@ -1242,19 +1303,46 @@ class _RecordScreenState extends State<RecordScreen>
             reps: const <String>[],
             distance: distance,
             duration: duration,
+            calories: calorieText.isNotEmpty ? calorieText : null,
           ));
 
-          if (!isSug && ((distance
-              .trim()
-              .isNotEmpty) || (duration
-              .trim()
-              .isNotEmpty))) {
+          final double parsedDistance = double.tryParse(distance.replaceAll(',', '')) ?? 0;
+          final double minutes = _parseDurationMinutes(duration.replaceAll(',', ''));
+          final bool hasDistance = parsedDistance > 0;
+          final bool hasDuration = minutes > 0;
+          var hasCalories = calorieText.isNotEmpty;
+
+          final bool shouldAttemptHint = SettingsManager.enableAerobicCalories &&
+              name.isNotEmpty && (hasDistance || hasDuration) && !hasCalories;
+          if (shouldAttemptHint) {
+            _updateCalorieSuggestion(
+              sec,
+              i,
+              force: true,
+              shouldShowHint: showHint,
+            );
+            calorieText = i < section.aerobicCaloriesCtrls.length
+                ? section.aerobicCaloriesCtrls[i].text.trim()
+                : '';
+            calSug = i < section.aerobicCalorieSuggestFlags.length
+                ? section.aerobicCalorieSuggestFlags[i]
+                : true;
+            hasCalories = calorieText.isNotEmpty;
+            if (!showHint && i < section.aerobicCalorieHintVisible.length) {
+              section.aerobicCalorieHintVisible[i] = false;
+            }
+          }
+
+          if ((!isSug && (hasDistance || hasDuration)) ||
+              (!calSug && hasCalories) ||
+              (hasCalories && SettingsManager.enableAerobicCalories)) {
             listForRecord.add(MenuData(
               name: name,
               weights: const <String>[],
               reps: const <String>[],
               distance: distance,
               duration: duration,
+              calories: hasCalories ? calorieText : null,
             ));
             hasAnyRecordData = true;
             lastModifiedPart ??= originalPart;
@@ -1268,7 +1356,7 @@ class _RecordScreenState extends State<RecordScreen>
             repsAll.add(set.repController.text);
           }
           listForLastUsed.add(
-              MenuData(name: name, weights: weightsAll, reps: repsAll));
+              MenuData(name: name, weights: weightsAll, reps: repsAll, calories: null));
 
           final weightsConfirmed = <String>[];
           final repsConfirmed = <String>[];
@@ -1286,9 +1374,10 @@ class _RecordScreenState extends State<RecordScreen>
               repsConfirmed.add(r);
             }
           }
-          if (weightsConfirmed.isNotEmpty || repsConfirmed.isNotEmpty) {
+         if (weightsConfirmed.isNotEmpty || repsConfirmed.isNotEmpty) {
             listForRecord.add(MenuData(
-                name: name, weights: weightsConfirmed, reps: repsConfirmed));
+                name: name, weights: weightsConfirmed, reps: repsConfirmed,
+                calories: null));
             hasAnyRecordData = true;
             lastModifiedPart ??= originalPart;
           }
@@ -1446,6 +1535,323 @@ class _RecordScreenState extends State<RecordScreen>
     return changed;
   }
 
+  double? _currentWeightKg() {
+    final text = _weightController.text.trim();
+    double? value = double.tryParse(text);
+    if (value == null) {
+      final record = widget.recordsBox.get(_getDateKey(widget.selectedDate));
+      if (record?.weight != null) {
+        value = record!.weight;
+      }
+    }
+    if (value == null) return null;
+    if (SettingsManager.currentUnit == 'kg') return value;
+    return value * 0.45359237;
+  }
+
+  double _parseDurationMinutes(String text) {
+    if (text.isEmpty) return 0;
+    final parts = text.split(':');
+    if (parts.length >= 2) {
+      final hours = int.tryParse(parts[0]) ?? 0;
+      final minutes = int.tryParse(parts[1]) ?? 0;
+      return (hours * 60 + minutes).toDouble();
+    }
+    return double.tryParse(text) ?? 0;
+  }
+
+  double? _estimateMet(String name, {double? distanceKm, double? durationMinutes}) {
+    final lower = name.toLowerCase();
+    if (lower.contains('run') || lower.contains('ランニング') || lower.contains('マラソン')) {
+      if (distanceKm != null && distanceKm > 0 && durationMinutes != null && durationMinutes > 0) {
+        final speed = distanceKm / (durationMinutes / 60.0);
+        if (speed < 8.0) return 7.0;
+        if (speed < 12.0) return 9.8;
+        return 11.5;
+      }
+      return 9.8;
+    }
+    if (lower.contains('jog') || lower.contains('ジョギング')) {
+      if (distanceKm != null && distanceKm > 0 && durationMinutes != null && durationMinutes > 0) {
+        final speed = distanceKm / (durationMinutes / 60.0);
+        if (speed < 7.0) return 6.0;
+        if (speed < 9.0) return 7.0;
+        return 9.0;
+      }
+      return 7.0;
+    }
+    if (lower.contains('walk') || lower.contains('ウォーキング') || lower.contains('散歩')) {
+      if (distanceKm != null && distanceKm > 0 && durationMinutes != null && durationMinutes > 0) {
+        final speed = distanceKm / (durationMinutes / 60.0);
+        if (speed < 3.0) return 2.5;
+        if (speed < 5.0) return 3.5;
+        if (speed < 6.5) return 4.3;
+        return 5.0;
+      }
+      return 3.5;
+    }
+    if (lower.contains('cycle') || lower.contains('bike') || lower.contains('サイクリング') || lower.contains('バイク')) {
+      if (distanceKm != null && distanceKm > 0 && durationMinutes != null && durationMinutes > 0) {
+        final speed = distanceKm / (durationMinutes / 60.0);
+        if (speed < 16.0) return 6.8;
+        if (speed < 20.0) return 8.0;
+        if (speed < 25.0) return 10.0;
+        return 12.0;
+      }
+      return 8.0;
+    }
+    if (lower.contains('swim') || lower.contains('水泳') || lower.contains('スイム')) {
+      return 8.0;
+    }
+    if (lower.contains('elliptical') || lower.contains('クロストレーナー') || lower.contains('エリプティカル')) {
+      return 5.5;
+    }
+    if (lower.contains('row') || lower.contains('ローイング')) {
+      return 7.0;
+    }
+    if (lower.contains('rope') || lower.contains('縄跳び')) {
+      return 11.0;
+    }
+    if (lower.contains('dance') || lower.contains('ダンス')) {
+      return 5.5;
+    }
+    if (lower.contains('hike') || lower.contains('登山')) {
+      return 6.0;
+    }
+    if (lower.contains('ski') || lower.contains('スキー')) {
+      return 7.0;
+    }
+    return null;
+  }
+
+  double? _calculateCaloriesFor(int sectionIndex, int menuIndex) {
+    final section = _sections[sectionIndex];
+    if (menuIndex >= section.menuControllers.length) return null;
+    final name = section.menuControllers[menuIndex].text.trim();
+    if (name.isEmpty) return null;
+
+    final durationText = (menuIndex < section.aerobicDurationCtrls.length)
+        ? section.aerobicDurationCtrls[menuIndex].text
+        : '';
+    final double minutes = _parseDurationMinutes(durationText);
+    if (minutes <= 0) return null;
+
+    double? distanceKm;
+    if (menuIndex < section.aerobicDistanceCtrls.length) {
+      final rawDistance = section.aerobicDistanceCtrls[menuIndex].text.trim();
+      if (rawDistance.isNotEmpty) {
+        distanceKm = double.tryParse(rawDistance);
+      }
+    }
+
+    final double? met = _estimateMet(
+      name,
+      distanceKm: distanceKm,
+      durationMinutes: minutes,
+    );
+    if (met == null) return null;
+    final weightKg = _currentWeightKg() ?? 60.0;
+    final double calories = met * weightKg * (minutes / 60.0);
+    if (!calories.isFinite || calories <= 0) return null;
+    return calories;
+  }
+
+  bool _updateCalorieSuggestion(int sectionIndex, int menuIndex,
+      {bool force = false, bool shouldShowHint = false}) {
+    final enabled = SettingsManager.enableAerobicCalories;
+    if (!enabled && !force) return false;
+    if (sectionIndex < 0 || sectionIndex >= _sections.length) return false;
+    final section = _sections[sectionIndex];
+    final l10n = AppLocalizations.of(context)!;
+    if (section.selectedPart != l10n.aerobicExercise) return false;
+    if (menuIndex < 0) return false;
+
+    while (section.aerobicCaloriesCtrls.length <= menuIndex) {
+      section.aerobicCaloriesCtrls.add(TextEditingController());
+      section.aerobicCalorieSuggestFlags.add(true);
+      section.aerobicCalorieHintVisible.add(false);
+      section.aerobicCalorieHintShown.add(false);
+    }
+
+    final controller = section.aerobicCaloriesCtrls[menuIndex];
+    final wasText = controller.text;
+    final bool wasSuggestion = section.aerobicCalorieSuggestFlags[menuIndex];
+
+    final name = (menuIndex < section.menuControllers.length)
+        ? section.menuControllers[menuIndex].text.trim()
+        : '';
+    final distanceText = (menuIndex < section.aerobicDistanceCtrls.length)
+        ? section.aerobicDistanceCtrls[menuIndex].text.trim()
+        : '';
+    final durationText = (menuIndex < section.aerobicDurationCtrls.length)
+        ? section.aerobicDurationCtrls[menuIndex].text.trim()
+        : '';
+    final bool hasName = name.isNotEmpty;
+    final double? parsedDistance = double.tryParse(distanceText.replaceAll(',', ''));
+    final bool hasDistance = parsedDistance != null && parsedDistance > 0;
+    final bool hasDuration = _parseDurationMinutes(durationText.replaceAll(',', '')) > 0;
+
+    if (!force && !wasSuggestion) return false;
+    if (force && !wasSuggestion && controller.text.trim().isNotEmpty) {
+      return false;
+    }
+
+    if (!hasName || (!hasDistance && !hasDuration)) {
+      if (menuIndex < section.aerobicCalorieHintVisible.length) {
+        section.aerobicCalorieHintVisible[menuIndex] = false;
+      }
+      return false;
+    }
+
+    final double? calories = _calculateCaloriesFor(sectionIndex, menuIndex);
+    if (calories == null) {
+      if (shouldShowHint) {
+        _showAerobicFailureHint(sectionIndex, menuIndex,
+            reason: _AerobicFailureReason.noMatch);
+      }
+      return false;
+    }
+    final String newText = calories.round().toString();
+    if (controller.text != newText) {
+      controller.text = newText;
+    }
+    if (menuIndex < section.aerobicCalorieHintVisible.length) {
+      section.aerobicCalorieHintVisible[menuIndex] = false;
+    }
+    section.aerobicCalorieSuggestFlags[menuIndex] = true;
+    return controller.text != wasText;
+  }
+
+  void _showAerobicFailureHint(
+    int sectionIndex,
+    int menuIndex, {
+    _AerobicFailureReason reason = _AerobicFailureReason.noMatch,
+  }) {
+    if (sectionIndex < 0 || sectionIndex >= _sections.length) return;
+    final section = _sections[sectionIndex];
+    while (section.aerobicCalorieHintVisible.length <= menuIndex) {
+      section.aerobicCalorieHintVisible.add(false);
+      section.aerobicCalorieHintShown.add(false);
+    }
+    if (section.aerobicCalorieHintShown[menuIndex]) return;
+    section.aerobicCalorieHintShown[menuIndex] = true;
+    section.aerobicCalorieHintVisible[menuIndex] = true;
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _dismissAerobicFailureHint(int sectionIndex, int menuIndex) {
+    if (sectionIndex < 0 || sectionIndex >= _sections.length) return;
+    final section = _sections[sectionIndex];
+    if (menuIndex < 0 || menuIndex >= section.aerobicCalorieHintVisible.length) {
+      return;
+    }
+    if (!section.aerobicCalorieHintVisible[menuIndex]) return;
+    if (mounted) {
+      setState(() {
+        section.aerobicCalorieHintVisible[menuIndex] = false;
+      });
+    }
+  }
+
+  void _recalculateAllAerobicCalories({bool force = false}) {
+    final enabled = SettingsManager.enableAerobicCalories;
+    if (!enabled && !force) return;
+    bool updated = false;
+    final l10n = AppLocalizations.of(context)!;
+    for (int sec = 0; sec < _sections.length; sec++) {
+      final section = _sections[sec];
+      if (section.selectedPart != l10n.aerobicExercise) continue;
+      for (int menu = 0; menu < section.menuControllers.length; menu++) {
+        updated |= _updateCalorieSuggestion(sec, menu, force: force);
+      }
+    }
+    if (updated && mounted) {
+      setState(() {});
+    }
+  }
+
+  void _handleWeightChanged() {
+    if (!_calcAerobicCalories) return;
+    _recalculateAllAerobicCalories(force: false);
+  }
+
+  void _onAerobicCalorieSettingChanged() {
+    final enabled = SettingsManager.enableAerobicCalories;
+    if (_calcAerobicCalories != enabled && mounted) {
+      setState(() => _calcAerobicCalories = enabled);
+    } else {
+      _calcAerobicCalories = enabled;
+    }
+    bool cleared = false;
+    if (!enabled) {
+      for (final section in _sections) {
+        for (int i = 0; i < section.aerobicCalorieHintVisible.length; i++) {
+          if (section.aerobicCalorieHintVisible[i]) {
+            section.aerobicCalorieHintVisible[i] = false;
+            cleared = true;
+          }
+        }
+      }
+      if (cleared && mounted) {
+        setState(() {});
+      }
+    } else {
+      _recalculateAllAerobicCalories(force: true);
+    }
+  }
+
+  bool _shouldShowCalorieField(SectionData section, int menuIndex) {
+    final l10n = AppLocalizations.of(context)!;
+    if (section.selectedPart != l10n.aerobicExercise) return false;
+    final hasValue = menuIndex < section.aerobicCaloriesCtrls.length
+        ? section.aerobicCaloriesCtrls[menuIndex].text.trim().isNotEmpty
+        : false;
+    return SettingsManager.enableAerobicCalories || hasValue;
+  }
+
+  void _onAerobicFieldChanged(int sectionIndex, int menuIndex) {
+    if (sectionIndex < 0 || sectionIndex >= _sections.length) return;
+    final section = _sections[sectionIndex];
+    if (menuIndex < 0) return;
+    while (section.aerobicCalorieSuggestFlags.length <= menuIndex) {
+      section.aerobicCalorieSuggestFlags.add(true);
+      section.aerobicCalorieHintVisible.add(false);
+      section.aerobicCalorieHintShown.add(false);
+    }
+    section.aerobicCalorieSuggestFlags[menuIndex] = true;
+    if (menuIndex < section.aerobicCalorieHintVisible.length) {
+      section.aerobicCalorieHintVisible[menuIndex] = false;
+    }
+    if (_updateCalorieSuggestion(sectionIndex, menuIndex)) {
+      if (mounted) setState(() {});
+    }
+  }
+
+  void _onCaloriesChanged(int sectionIndex, int menuIndex, String value) {
+    if (sectionIndex < 0 || sectionIndex >= _sections.length) return;
+    final section = _sections[sectionIndex];
+    if (menuIndex < 0 || menuIndex >= section.aerobicCalorieSuggestFlags.length) {
+      return;
+    }
+    final trimmed = value.trim();
+    final bool newSuggestion = trimmed.isEmpty;
+    final bool oldSuggestion = section.aerobicCalorieSuggestFlags[menuIndex];
+    if (oldSuggestion == newSuggestion && !newSuggestion) return;
+    section.aerobicCalorieSuggestFlags[menuIndex] = newSuggestion;
+    if (newSuggestion) {
+      if (_updateCalorieSuggestion(sectionIndex, menuIndex)) {
+        if (mounted) setState(() {});
+      }
+    } else {
+      if (menuIndex < section.aerobicCalorieHintVisible.length) {
+        section.aerobicCalorieHintVisible[menuIndex] = false;
+      }
+      if (mounted) setState(() {});
+    }
+  }
+
   void _addMenuItem(int sectionIndex) {
     final l10n = AppLocalizations.of(context)!;
     final section = _sections[sectionIndex];
@@ -1469,6 +1875,10 @@ class _RecordScreenState extends State<RecordScreen>
         section.aerobicDistanceCtrls.add(TextEditingController());
         section.aerobicDurationCtrls.add(TextEditingController());
         section.aerobicSuggestFlags.add(true);
+        section.aerobicCaloriesCtrls.add(TextEditingController());
+        section.aerobicCalorieSuggestFlags.add(true);
+        section.aerobicCalorieHintVisible.add(false);
+        section.aerobicCalorieHintShown.add(false);
         section.setInputDataList.add(<SetInputData>[]);
       } else {
         final sets = _currentSetCount;
@@ -1490,6 +1900,10 @@ class _RecordScreenState extends State<RecordScreen>
       }
     });
 
+    if (section.selectedPart == l10n.aerobicExercise &&
+        section.aerobicCalorieHintVisible.length >= section.menuControllers.length) {
+      section.aerobicCalorieHintVisible[section.aerobicCalorieHintVisible.length - 1] = false;
+    }
     _touchCard(
         sectionIndex, _sections[sectionIndex].menuControllers.length - 1);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1498,6 +1912,11 @@ class _RecordScreenState extends State<RecordScreen>
             sectionIndex, _sections[sectionIndex].menuControllers.length - 1);
       }
     });
+
+    if (section.selectedPart == l10n.aerobicExercise) {
+      final newIndex = section.menuControllers.length - 1;
+      _updateCalorieSuggestion(sectionIndex, newIndex, force: true);
+    }
   }
 
   void _addOneSetAt(int sectionIndex, int menuIndex) {
@@ -1579,6 +1998,19 @@ class _RecordScreenState extends State<RecordScreen>
       }
       if (section.aerobicSuggestFlags.length > menuIndex) {
         section.aerobicSuggestFlags.removeAt(menuIndex);
+      }
+      if (section.aerobicCaloriesCtrls.length > menuIndex) {
+        section.aerobicCaloriesCtrls[menuIndex].dispose();
+        section.aerobicCaloriesCtrls.removeAt(menuIndex);
+      }
+      if (section.aerobicCalorieSuggestFlags.length > menuIndex) {
+        section.aerobicCalorieSuggestFlags.removeAt(menuIndex);
+      }
+      if (section.aerobicCalorieHintVisible.length > menuIndex) {
+        section.aerobicCalorieHintVisible.removeAt(menuIndex);
+      }
+      if (section.aerobicCalorieHintShown.length > menuIndex) {
+        section.aerobicCalorieHintShown.removeAt(menuIndex);
       }
       if (section.nameFieldKeys.length > menuIndex) {
         section.nameFieldKeys.removeAt(menuIndex);
@@ -2286,7 +2718,7 @@ class _RecordScreenState extends State<RecordScreen>
 
     final trimmed = _trimTrailingEmptySetsForAllMenus(_currentSetCount);
     if (trimmed) setState(() {});
-    final didSave = _saveAllSectionsData();
+    final didSave = _saveAllSectionsData(showHint: false);
 
     if (didSave) {
       _showSavedChipFor(const Duration(milliseconds: 900));
@@ -2868,6 +3300,16 @@ class _RecordScreenState extends State<RecordScreen>
                                     aerobicIsSuggestion: (menuIndex < section.aerobicSuggestFlags.length)
                                         ? section.aerobicSuggestFlags[menuIndex]
                                         : true,
+                                    calorieController: (menuIndex < section.aerobicCaloriesCtrls.length)
+                                        ? section.aerobicCaloriesCtrls[menuIndex]
+                                        : null,
+                                    showCalorieField: _shouldShowCalorieField(section, menuIndex),
+                                    calorieIsSuggestion: (menuIndex < section.aerobicCalorieSuggestFlags.length)
+                                        ? section.aerobicCalorieSuggestFlags[menuIndex]
+                                        : true,
+                                    showAerobicFailureHint: (menuIndex < section.aerobicCalorieHintVisible.length)
+                                        ? section.aerobicCalorieHintVisible[menuIndex]
+                                        : false,
                                     onConfirmAerobic: () {
                                       setState(() {
                                         if (menuIndex < section.aerobicSuggestFlags.length) {
@@ -2875,8 +3317,18 @@ class _RecordScreenState extends State<RecordScreen>
                                         }
                                       });
                                     },
+                                    onAerobicFieldChanged: () =>
+                                        _onAerobicFieldChanged(secIndex, menuIndex),
+                                    onCalorieChanged: (value) =>
+                                        _onCaloriesChanged(secIndex, menuIndex, value),
+                                    onAerobicFailureHintTap: () =>
+                                        _dismissAerobicFailureHint(secIndex, menuIndex),
                                     onAnyFieldFocused: () {},
-                                    onNameChanged: (prevEmpty, nowEmpty) {},
+                                    onNameChanged: (prevEmpty, nowEmpty) {
+                                      if (section.selectedPart == l10n.aerobicExercise) {
+                                        _onAerobicFieldChanged(secIndex, menuIndex);
+                                      }
+                                    },
                                     satisfaction: (menuIndex < section.satisfactionList.length)
                                         ? section.satisfactionList[menuIndex]
                                         : null,
@@ -3328,6 +3780,16 @@ class _RecordScreenState extends State<RecordScreen>
                                                   aerobicIsSuggestion: (menuIndex < section.aerobicSuggestFlags.length)
                                                       ? section.aerobicSuggestFlags[menuIndex]
                                                       : true,
+                                                  calorieController: (menuIndex < section.aerobicCaloriesCtrls.length)
+                                                      ? section.aerobicCaloriesCtrls[menuIndex]
+                                                      : null,
+                                                  showCalorieField: _shouldShowCalorieField(section, menuIndex),
+                                                  calorieIsSuggestion: (menuIndex < section.aerobicCalorieSuggestFlags.length)
+                                                      ? section.aerobicCalorieSuggestFlags[menuIndex]
+                                                      : true,
+                                                  showAerobicFailureHint: (menuIndex < section.aerobicCalorieHintVisible.length)
+                                                      ? section.aerobicCalorieHintVisible[menuIndex]
+                                                      : false,
                                                   onConfirmAerobic: () {
                                                     setState(() {
                                                       if (menuIndex < section
@@ -3335,12 +3797,22 @@ class _RecordScreenState extends State<RecordScreen>
                                                           .length) {
                                                         section
                                                             .aerobicSuggestFlags[menuIndex] =
-                                                        false;
+                                                          false;
                                                       }
                                                     });
                                                   },
+                                                  onAerobicFieldChanged: () =>
+                                                      _onAerobicFieldChanged(secIndex, menuIndex),
+                                                  onCalorieChanged: (value) =>
+                                                      _onCaloriesChanged(secIndex, menuIndex, value),
+                                                  onAerobicFailureHintTap: () =>
+                                                      _dismissAerobicFailureHint(secIndex, menuIndex),
                                                   enabledForInput: false,
-                                                  onNameChanged: (prevEmpty, nowEmpty) {},
+                                    onNameChanged: (prevEmpty, nowEmpty) {
+                                      if (section.selectedPart == l10n.aerobicExercise) {
+                                        _onAerobicFieldChanged(secIndex, menuIndex);
+                                      }
+                                    },
                                                   satisfaction: (menuIndex < section.satisfactionList.length)
                                                       ? section.satisfactionList[menuIndex]
                                                       : null,
@@ -3779,6 +4251,10 @@ class SectionData {
   List<TextEditingController> aerobicDistanceCtrls;
   List<TextEditingController> aerobicDurationCtrls;
   List<bool> aerobicSuggestFlags;
+  List<TextEditingController> aerobicCaloriesCtrls;
+  List<bool> aerobicCalorieSuggestFlags;
+  List<bool> aerobicCalorieHintVisible;
+  List<bool> aerobicCalorieHintShown;
 
   SectionData({
     required this.key,
@@ -3791,6 +4267,10 @@ class SectionData {
     List<TextEditingController>? aerobicDistanceCtrls,
     List<TextEditingController>? aerobicDurationCtrls,
     List<bool>? aerobicSuggestFlags,
+    List<TextEditingController>? aerobicCaloriesCtrls,
+    List<bool>? aerobicCalorieSuggestFlags,
+    List<bool>? aerobicCalorieHintVisible,
+    List<bool>? aerobicCalorieHintShown,
   })
       : satisfactionList = satisfactionList ?? <int?>[],
   // 追加
@@ -3798,7 +4278,12 @@ class SectionData {
             <TextEditingController>[],
         aerobicDurationCtrls = aerobicDurationCtrls ??
             <TextEditingController>[],
-        aerobicSuggestFlags = aerobicSuggestFlags ?? <bool>[];
+        aerobicSuggestFlags = aerobicSuggestFlags ?? <bool>[],
+        aerobicCaloriesCtrls = aerobicCaloriesCtrls ??
+            <TextEditingController>[],
+        aerobicCalorieSuggestFlags = aerobicCalorieSuggestFlags ?? <bool>[],
+        aerobicCalorieHintVisible = aerobicCalorieHintVisible ?? <bool>[],
+        aerobicCalorieHintShown = aerobicCalorieHintShown ?? <bool>[];
 
   factory SectionData.createEmpty(int initialSetCount,
       {required bool shouldPopulateDefaults}) {
@@ -3826,6 +4311,10 @@ class SectionData {
       aerobicDistanceCtrls: [],
       aerobicDurationCtrls: [],
       aerobicSuggestFlags: [],
+      aerobicCaloriesCtrls: [],
+      aerobicCalorieSuggestFlags: [],
+      aerobicCalorieHintVisible: [],
+      aerobicCalorieHintShown: [],
     );
   }
 
@@ -3842,6 +4331,9 @@ class SectionData {
       c.dispose();
     }
     for (var c in aerobicDurationCtrls) {
+      c.dispose();
+    }
+    for (var c in aerobicCaloriesCtrls) {
       c.dispose();
     }
   }
@@ -3873,9 +4365,16 @@ class MenuList extends StatefulWidget {
   final TextEditingController distanceController;
   final TextEditingController durationController;
   final bool aerobicIsSuggestion;
+  final TextEditingController? calorieController;
+  final bool showCalorieField;
+  final bool calorieIsSuggestion;
+  final bool showAerobicFailureHint;
   final VoidCallback? onConfirmAerobic;
   final VoidCallback? onAnyFieldFocused;
   final void Function(bool prevEmpty, bool nowEmpty)? onNameChanged;
+  final VoidCallback? onAerobicFieldChanged;
+  final ValueChanged<String>? onCalorieChanged;
+  final VoidCallback? onAerobicFailureHintTap;
 
   final int? satisfaction;
   final ValueChanged<int?>? onSatisfactionChanged;
@@ -3891,9 +4390,16 @@ class MenuList extends StatefulWidget {
     required this.distanceController,
     required this.durationController,
     this.aerobicIsSuggestion = false,
+    this.calorieController,
+    this.showCalorieField = false,
+    this.calorieIsSuggestion = false,
+    this.showAerobicFailureHint = false,
     this.onConfirmAerobic,
     this.onAnyFieldFocused,
     this.onNameChanged,
+    this.onAerobicFieldChanged,
+    this.onCalorieChanged,
+    this.onAerobicFailureHintTap,
     this.satisfaction,
     this.onSatisfactionChanged,
     this.enabledForInput = true,
@@ -3984,6 +4490,11 @@ class _MenuListState extends State<MenuList> {
 
     // 距離（保存は km、小数）
     final raw = widget.distanceController.text.trim();
+    if (raw.isEmpty) {
+      _kmController.text = '';
+      _mController.text = '';
+      return;
+    }
     final dKm = double.tryParse(raw) ?? 0.0;
     final useImperial = (SettingsManager.currentLengthUnit == 'mi');
     if (useImperial) {
@@ -4004,13 +4515,29 @@ class _MenuListState extends State<MenuList> {
   }
 
   void _updateDurationController() {
-    widget.durationController.text =
-    '${_hourController.text}:${_minAeroCtrl.text}';
+    final hourText = _hourController.text.trim();
+    final minuteText = _minAeroCtrl.text.trim();
+    if (hourText.isEmpty && minuteText.isEmpty) {
+      widget.durationController.text = '';
+    } else {
+      final hh = hourText.isEmpty ? '0' : hourText;
+      final mmRaw = minuteText.isEmpty ? '0' : minuteText;
+      final mm = mmRaw.padLeft(2, '0');
+      widget.durationController.text = '$hh:$mm';
+    }
+    widget.onAerobicFieldChanged?.call();
   }
 
   void _updateDistanceController() {
-    final major = int.tryParse(_kmController.text) ?? 0;
-    final minor = int.tryParse(_mController.text)  ?? 0;
+    final majorRaw = _kmController.text.trim();
+    final minorRaw = _mController.text.trim();
+    if (majorRaw.isEmpty && minorRaw.isEmpty) {
+      widget.distanceController.text = '';
+      widget.onAerobicFieldChanged?.call();
+      return;
+    }
+    final major = int.tryParse(majorRaw) ?? 0;
+    final minor = int.tryParse(minorRaw) ?? 0;
     final useImperial = (SettingsManager.currentLengthUnit == 'mi');
     double dKm;
     if (useImperial) {
@@ -4026,6 +4553,7 @@ class _MenuListState extends State<MenuList> {
 
     // 小数で km を保存（グラフ互換）
     widget.distanceController.text = dKm.toStringAsFixed(3);
+    widget.onAerobicFieldChanged?.call();
   }
 
   Future<void> _openDurationPicker() async {
@@ -4105,6 +4633,7 @@ class _MenuListState extends State<MenuList> {
       _updateDurationController();
       widget.onConfirmAerobic?.call();
     });
+    widget.onAerobicFieldChanged?.call();
   }
 
   // ← _openDurationPicker() の終わりの直後に追加（build() の前）
@@ -4162,6 +4691,41 @@ class _MenuListState extends State<MenuList> {
     );
   }
 
+  Widget _buildAerobicFailureHint(VoidCallback? onTap) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        key: const ValueKey('aerobic-failure-hint'),
+        margin: const EdgeInsets.only(top: 8.0, right: 36.0),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+        decoration: BoxDecoration(
+          color: cs.primary,
+          borderRadius: BorderRadius.circular(14.0),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.info_outline, size: 18, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                l10n.aerobicCalorieUnknownHint,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme
@@ -4179,6 +4743,22 @@ class _MenuListState extends State<MenuList> {
     final bool nameFilled = widget.menuController.text
         .trim()
         .isNotEmpty;
+
+    final TextStyle aerobicLabelStyle = TextStyle(
+      color: colorScheme.onSurfaceVariant,
+      fontSize: 13.0,
+    );
+    final TextStyle aerobicUnitEmphasisStyle = TextStyle(
+      fontFamily: kUiFont,
+      color: colorScheme.onSurfaceVariant,
+      fontSize: 13.0,
+      fontWeight: FontWeight.w700,
+    );
+    final TextStyle aerobicUnitStyle = TextStyle(
+      fontFamily: kUiFont,
+      color: colorScheme.onSurfaceVariant,
+      fontSize: 13.0,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),
@@ -4283,229 +4863,275 @@ class _MenuListState extends State<MenuList> {
               padding: const EdgeInsets.only(left: 10.0),
               child: widget.isAerobic
                   ? Column(
-                children: [
-                  // --- 距離Row ---
-                  Row(
-                    children: [
-                      Text(
-                        l10n.distance,
-                        style: TextStyle(
-                          fontFamily: kUiFont,
-                          color: colorScheme.onSurface,
-                          fontSize: 14.0,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-
-                      // 大きい桁：mi or km
-                      Expanded(
-                        flex: 2,
-                        child: Focus(
-                          onFocusChange: (has) {
-                            notifyFocus(has);
-                            if (has && widget.aerobicIsSuggestion) {
-                              widget.onConfirmAerobic?.call();
-                            }
-                          },
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
-                            child: TextField(
-                              controller: _kmController,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                              textAlign: TextAlign.right,
-                              style: TextStyle(
-                                fontFamily: kUiFont,
-                                color: widget.aerobicIsSuggestion
-                                    ? colorScheme.onSurfaceVariant.withOpacity(0.5)
-                                    : colorScheme.onSurface,
-                              ),
-                              decoration: InputDecoration(
-                                isDense: true,
-                                filled: false,
-                                enabledBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: colorScheme.onSurfaceVariant.withOpacity(0.4),
-                                    width: 1,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6.0),
+                          child: Row(
+                            children: [
+                              Text(l10n.distance, style: aerobicLabelStyle),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                flex: 2,
+                                child: Focus(
+                                  onFocusChange: (has) {
+                                    notifyFocus(has);
+                                    if (has && widget.aerobicIsSuggestion) {
+                                      widget.onConfirmAerobic?.call();
+                                    }
+                                  },
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                    child: TextField(
+                                      controller: _kmController,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                      textAlign: TextAlign.right,
+                                      style: TextStyle(
+                                        fontFamily: kUiFont,
+                                        color: colorScheme.onSurface,
+                                      ),
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        filled: false,
+                                        enabledBorder: UnderlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        focusedBorder: UnderlineInputBorder(
+                                          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                                        hintText: widget.aerobicIsSuggestion ? '0' : null,
+                                        hintStyle: TextStyle(
+                                          fontFamily: kUiFont,
+                                          color: colorScheme.onSurfaceVariant.withOpacity(0.35),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                focusedBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(color: colorScheme.primary, width: 2),
-                                ),
-                                contentPadding:
-                                const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                               ),
-                            ),
+                              Text(
+                                ' ${SettingsManager.currentLengthUnit == "mi" ? "mi" : l10n.km} ',
+                                style: aerobicUnitEmphasisStyle,
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Focus(
+                                  onFocusChange: (has) {
+                                    notifyFocus(has);
+                                    if (has && widget.aerobicIsSuggestion) {
+                                      widget.onConfirmAerobic?.call();
+                                    }
+                                  },
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                    child: TextField(
+                                      controller: _mController,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                      textAlign: TextAlign.right,
+                                      style: TextStyle(
+                                        fontFamily: kUiFont,
+                                        color: colorScheme.onSurface,
+                                      ),
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        filled: false,
+                                        enabledBorder: UnderlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        focusedBorder: UnderlineInputBorder(
+                                          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                                        hintText: widget.aerobicIsSuggestion ? '0' : null,
+                                        hintStyle: TextStyle(
+                                          fontFamily: kUiFont,
+                                          color: colorScheme.onSurfaceVariant.withOpacity(0.35),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                ' ${SettingsManager.currentLengthUnit == "mi" ? "yd" : l10n.m} ',
+                                style: aerobicUnitStyle,
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                      Text(
-                        ' ${ (SettingsManager.currentLengthUnit == "mi") ? "mi" : l10n.km } ',
-                        style: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: 14.0,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      // 小さい桁：yd or m
-                      Expanded(
-                        flex: 2,
-                        child: Focus(
-                          onFocusChange: (has) {
-                            notifyFocus(has);
-                            if (has && widget.aerobicIsSuggestion) {
-                              widget.onConfirmAerobic?.call();
-                            }
-                          },
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
-                            child: TextField(
-                              controller: _mController,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                              textAlign: TextAlign.right,
-                              style: TextStyle(
-                                fontFamily: kUiFont,
-                                color: widget.aerobicIsSuggestion
-                                    ? colorScheme.onSurfaceVariant.withOpacity(0.5)
-                                    : colorScheme.onSurface,
-                              ),
-                              decoration: InputDecoration(
-                                isDense: true,
-                                filled: false,
-                                enabledBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: colorScheme.onSurfaceVariant.withOpacity(0.4),
-                                    width: 1,
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6.0),
+                          child: Row(
+                            children: [
+                              Text(l10n.time, style: aerobicLabelStyle),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                flex: 2,
+                                child: Focus(
+                                  onFocusChange: (has) {
+                                    notifyFocus(has);
+                                    if (has && widget.aerobicIsSuggestion) {
+                                      widget.onConfirmAerobic?.call();
+                                    }
+                                  },
+                                  child: ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                    child: TextField(
+                                      controller: _hourController,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                      textAlign: TextAlign.right,
+                                      style: TextStyle(
+                                        fontFamily: kUiFont,
+                                        color: colorScheme.onSurface,
+                                      ),
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        filled: false,
+                                        enabledBorder: UnderlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        focusedBorder: UnderlineInputBorder(
+                                          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                                        hintText: widget.aerobicIsSuggestion ? '0' : null,
+                                        hintStyle: TextStyle(
+                                          fontFamily: kUiFont,
+                                          color: colorScheme.onSurfaceVariant.withOpacity(0.35),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                focusedBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(color: colorScheme.primary, width: 2),
-                                ),
-                                contentPadding:
-                                const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                               ),
-                            ),
+                              Text(' ${l10n.hour} ', style: aerobicUnitStyle),
+                              Expanded(
+                                flex: 2,
+                                child: Focus(
+                                  onFocusChange: (has) {
+                                    notifyFocus(has);
+                                    if (has && widget.aerobicIsSuggestion) {
+                                      widget.onConfirmAerobic?.call();
+                                    }
+                                  },
+                                  child: ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                    child: TextField(
+                                      controller: _minAeroCtrl,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                      textAlign: TextAlign.right,
+                                      style: TextStyle(
+                                        fontFamily: kUiFont,
+                                        color: colorScheme.onSurface,
+                                      ),
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        filled: false,
+                                        enabledBorder: UnderlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        focusedBorder: UnderlineInputBorder(
+                                          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                                        hintText: widget.aerobicIsSuggestion ? '0' : null,
+                                        hintStyle: TextStyle(
+                                          fontFamily: kUiFont,
+                                          color: colorScheme.onSurfaceVariant.withOpacity(0.35),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Text(' ${l10n.min}', style: aerobicUnitStyle),
+                            ],
                           ),
                         ),
-                      ),
-                      Text(
-                        ' ${ (SettingsManager.currentLengthUnit == "mi") ? "yd" : l10n.m } ',
-                        style: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: 14.0,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-
-                  // --- 距離Row（そのまま） ---
-                  Row(
-                    children: [
-                      Text(
-                        l10n.time,
-                        style: TextStyle(color: colorScheme.onSurface, fontSize: 14.0, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(width: 6),
-
-                      // 時間
-                      Expanded(
-                        flex: 2,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () async {
-                            if (widget.aerobicIsSuggestion) widget.onConfirmAerobic?.call();
-                            FocusScope.of(context).unfocus();
-                            await SystemChannels.textInput.invokeMethod('TextInput.hide');
-                            await _openDurationPicker();
-                          },
-                          child: AbsorbPointer(
-                            child: Focus(
-                              onFocusChange: notifyFocus,
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
-                                child: TextField(
-                                  controller: _hourController,
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                  textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    fontFamily: kUiFont,
-                                    color: widget.aerobicIsSuggestion
-                                        ? colorScheme.onSurfaceVariant.withOpacity(0.5)
-                                        : colorScheme.onSurface,
-                                  ),
-                                  decoration: InputDecoration(
-                                    isDense: true, filled: false,
-                                    enabledBorder: UnderlineInputBorder(
-                                      borderSide: BorderSide(color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
+                        if (widget.showCalorieField && widget.calorieController != null)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(l10n.calorie, style: aerobicLabelStyle),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Focus(
+                                        onFocusChange: notifyFocus,
+                                        child: ConstrainedBox(
+                                          constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                          child: TextField(
+                                            controller: widget.calorieController,
+                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                            inputFormatters: [
+                                              FilteringTextInputFormatter.allow(RegExp(r'[0-9\.]')),
+                                            ],
+                                            textAlign: TextAlign.right,
+                                            style: TextStyle(
+                                              fontFamily: kUiFont,
+                                              color: widget.calorieIsSuggestion
+                                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                                                  : colorScheme.onSurface,
+                                            ),
+                                            decoration: InputDecoration(
+                                              isDense: true,
+                                              filled: false,
+                                              enabledBorder: UnderlineInputBorder(
+                                                borderSide: BorderSide(
+                                                  color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              focusedBorder: UnderlineInputBorder(
+                                                borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                                              ),
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                                            ),
+                                            onChanged: widget.onCalorieChanged,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                    focusedBorder: UnderlineInputBorder(
-                                      borderSide: BorderSide(color: colorScheme.primary, width: 2),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
-                                  ),
+                                    Text(' ${l10n.kcalUnit}', style: aerobicUnitEmphasisStyle),
+                                  ],
                                 ),
-                              ),
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 220),
+                                  child: widget.showAerobicFailureHint
+                                      ? _buildAerobicFailureHint(widget.onAerobicFailureHintTap)
+                                      : const SizedBox.shrink(),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ),
-                      Text(' ${l10n.hour} ', // ★時間ラベル（フォールバックあり）
-                          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
-
-                      // 分
-                      Expanded(
-                        flex: 2,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () async {
-                            if (widget.aerobicIsSuggestion) widget.onConfirmAerobic?.call();
-                            FocusScope.of(context).unfocus();
-                            await SystemChannels.textInput.invokeMethod('TextInput.hide');
-                            await _openDurationPicker();
-                          },
-                          child: AbsorbPointer(
-                            child: Focus(
-                              onFocusChange: notifyFocus,
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
-                                child: TextField(
-                                  controller: _minAeroCtrl,
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                  textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    fontFamily: kUiFont,
-                                    color: widget.aerobicIsSuggestion
-                                        ? colorScheme.onSurfaceVariant.withOpacity(0.5)
-                                        : colorScheme.onSurface,
-                                  ),
-                                  decoration: InputDecoration(
-                                    isDense: true, filled: false,
-                                    enabledBorder: UnderlineInputBorder(
-                                      borderSide: BorderSide(color: colorScheme.onSurfaceVariant.withOpacity(0.4), width: 1),
-                                    ),
-                                    focusedBorder: UnderlineInputBorder(
-                                      borderSide: BorderSide(color: colorScheme.primary, width: 2),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Text(' ${l10n.min}',
-                          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14.0, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ],
-              )
+                      ],
+                    )
                   : Opacity(
                 opacity: nameFilled ? 1.0 : 0.5,
                 child: IgnorePointer(
@@ -4602,6 +5228,7 @@ class _MenuListState extends State<MenuList> {
                                       ],
                                       textAlign: TextAlign.right,
                                       style: TextStyle(
+                                        fontFamily: kUiFont,
                                         color: set.isSuggestion
                                             ? colorScheme.onSurfaceVariant
                                             .withOpacity(0.5)

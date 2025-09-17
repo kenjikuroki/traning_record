@@ -15,6 +15,8 @@ class MenuData extends HiveObject {
   final String? distance; // km
   @HiveField(4)
   final String? duration; // mm:ss
+  @HiveField(5)
+  final String? calories; // kcal
 
   MenuData({
     required this.name,
@@ -22,6 +24,7 @@ class MenuData extends HiveObject {
     required this.reps,
     this.distance,
     this.duration,
+    this.calories,
   });
 
   factory MenuData.fromJson(Map<String, dynamic> json) {
@@ -36,6 +39,7 @@ class MenuData extends HiveObject {
           .toList(),
       distance: json['distance'] as String?,
       duration: json['duration'] as String?,
+      calories: json['calories'] as String?,
     );
   }
 
@@ -46,6 +50,7 @@ class MenuData extends HiveObject {
       'reps': reps,
       'distance': distance,
       'duration': duration,
+      'calories': calories,
     };
   }
 }

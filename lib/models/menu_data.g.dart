@@ -22,13 +22,14 @@ class MenuDataAdapter extends TypeAdapter<MenuData> {
       reps: (fields[2] as List).cast<String>(),
       distance: fields[3] as String?,
       duration: fields[4] as String?,
+      calories: fields[5] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, MenuData obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -38,7 +39,9 @@ class MenuDataAdapter extends TypeAdapter<MenuData> {
       ..writeByte(3)
       ..write(obj.distance)
       ..writeByte(4)
-      ..write(obj.duration);
+      ..write(obj.duration)
+      ..writeByte(5)
+      ..write(obj.calories);
   }
 
   @override

@@ -1220,7 +1220,7 @@ abstract class AppLocalizations {
   /// No description provided for @aerobicCalorieToggle.
   ///
   /// In en, this message translates to:
-  /// **'Auto-calculate calories for cardio'**
+  /// **'Estimate aerobic calories'**
   String get aerobicCalorieToggle;
 
   /// No description provided for @calorie.
@@ -1244,13 +1244,13 @@ abstract class AppLocalizations {
   /// No description provided for @calorieHelpTitle.
   ///
   /// In en, this message translates to:
-  /// **'About the calorie calculation'**
+  /// **'About the calorie estimation'**
   String get calorieHelpTitle;
 
   /// No description provided for @calorieHelpBody.
   ///
   /// In en, this message translates to:
-  /// **'Formula: Energy = MET × 3.5 × weight(kg) ÷ 200 × time(min) − resting metabolism.\n\nMET is chosen by speed [km/h] derived from distance and time (walking vs. running). Resting metabolism uses the Mifflin–St Jeor equation from age, sex, height, and weight, and we show net calories (exercise over baseline).\n\nThis is an estimate. You can overwrite it with a smartwatch reading. Both distance and time are required.'**
+  /// **'Formula: calories = MET × weight(kg) × time(hours).\n\nThe MET value is estimated from the exercise name. Because this is only an approximation, feel free to overwrite it with the reading from your smartwatch or other tracker.'**
   String get calorieHelpBody;
 
   /// No description provided for @dailyCalorieTotal.
@@ -1306,6 +1306,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose or type exercise'**
   String get aerobicPickerTitle;
+
+  /// No description provided for @aerobicCalorieUnknownHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not estimate calories for this exercise name. Please enter the value obtained from another device if available.'**
+  String get aerobicCalorieUnknownHint;
+
+  /// No description provided for @aerobicCalorieInfoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'About Calorie Estimation'**
+  String get aerobicCalorieInfoTitle;
+
+  /// No description provided for @aerobicCalorieInfoBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories are estimated as MET × weight (kg) × time (hours). MET is inferred from the exercise name, distance, and duration.\\n\\nBecause this is only an approximation, please overwrite it with the value obtained from your smartwatch or other tracker if available. Distance or time must be provided for the estimate.\\n\\nEnvironmental conditions and your physical condition affect calorie expenditure. Remember to take breaks and stay hydrated.'**
+  String get aerobicCalorieInfoBody;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

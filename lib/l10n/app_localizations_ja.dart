@@ -590,25 +590,25 @@ class AppLocalizationsJa extends AppLocalizations {
   String get noneLabel => 'なし';
 
   @override
-  String get aerobicCalorieToggle => 'Auto-calculate calories for cardio';
+  String get aerobicCalorieToggle => '有酸素運動のカロリー算出';
 
   @override
-  String get calorie => 'Calories';
+  String get calorie => 'カロリー';
 
   @override
   String get kcalUnit => 'kcal';
 
   @override
-  String get calorieOverrideHint => 'You can edit this value';
+  String get calorieOverrideHint => '必要に応じて編集できます';
 
   @override
-  String get calorieHelpTitle => 'About the calorie calculation';
+  String get calorieHelpTitle => 'カロリー計算について';
 
   @override
-  String get calorieHelpBody => 'Formula: Energy = MET × 3.5 × weight(kg) ÷ 200 × time(min) − resting metabolism.\n\nMET is chosen by speed [km/h] derived from distance and time (walking vs. running). Resting metabolism uses the Mifflin–St Jeor equation from age, sex, height, and weight, and we show net calories (exercise over baseline).\n\nThis is an estimate. You can overwrite it with a smartwatch reading. Both distance and time are required.';
+  String get calorieHelpBody => '計算式: 消費エネルギー = MET × 体重(kg) × 時間(h)。\n\n種目名から推測したMET値で概算しています。スマートウォッチなどで正確な値が分かる場合は、この項目を手入力で上書きしてください。';
 
   @override
-  String get dailyCalorieTotal => 'Total calories';
+  String get dailyCalorieTotal => '総消費カロリー';
 
   @override
   String get chooseFromPresets => 'プリセットを選ぶ';
@@ -633,4 +633,17 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get aerobicPickerTitle => '種目を入力・選択';
+
+  @override
+  String get aerobicCalorieUnknownHint => '不明な種目名のためカロリーを算出できませんでした。スマートウォッチなどで取得した値があれば入力してください。';
+
+  @override
+  String get aerobicCalorieInfoTitle => 'カロリー計算について';
+
+  @override
+  String get aerobicCalorieInfoBody => '''消費カロリー = MET × 体重(kg) × 運動時間(時間) で概算しています。種目名・距離・時間から運動強度(MET)を推定します。
+
+推定値のため、スマートウォッチ等で取得した値があれば上書きしてください。距離や時間が空欄の場合は推定されません。
+
+暑熱環境や体調によって消費量は変動します。休憩と水分補給も心掛けてください。''';
 }

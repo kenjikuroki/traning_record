@@ -164,6 +164,13 @@
   "bodyFatTracking": "体脂肪管理",
   "waistTracking": "ウエスト管理",
   "bmiTracking": "BMI管理",
+  "aerobicCalorieToggle": "有酸素運動のカロリー算出",
+  "calorie": "カロリー",
+  "kcalUnit": "kcal",
+  "calorieOverrideHint": "必要に応じて編集できます",
+  "calorieHelpTitle": "カロリー計算について",
+  "calorieHelpBody": "計算式: 消費エネルギー = MET × 体重(kg) × 時間(h)。\n\n種目名から推測したMET値で概算しています。スマートウォッチなどで正確な値が分かる場合は、この項目を手入力で上書きしてください。",
+  "dailyCalorieTotal": "総消費カロリー",
   "unitCm": "cm",
   "unitFtIn": "ft/in",
   "unitFt": "ft",
@@ -194,5 +201,8 @@
   "presetCycling": "サイクリング",
   "presetExerciseBike": "エアロバイク",
   "presetElliptical": "エリプティカル",
-  "presetRowing": "ローイング"
+  "presetRowing": "ローイング",
+  "aerobicCalorieUnknownHint": "不明な種目名のためカロリーを算出できませんでした。スマートウォッチなどで取得した値があれば入力してください。",
+  "aerobicCalorieInfoTitle": "カロリー計算について",
+  "aerobicCalorieInfoBody": "消費カロリー = MET × 体重(kg) × 運動時間(時間) で概算しています。種目名・距離・時間から運動強度(MET)を推定します。\\n\\n推定値のため、スマートウォッチ等で取得した値があれば上書きしてください。距離や時間が空欄の場合は推定されません。\\n\\n暑熱環境や体調によって消費量は変動します。休憩と水分補給も心掛けてください。"
 }

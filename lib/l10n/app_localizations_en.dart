@@ -590,7 +590,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noneLabel => 'None';
 
   @override
-  String get aerobicCalorieToggle => 'Auto-calculate calories for cardio';
+  String get aerobicCalorieToggle => 'Estimate aerobic calories';
 
   @override
   String get calorie => 'Calories';
@@ -602,10 +602,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calorieOverrideHint => 'You can edit this value';
 
   @override
-  String get calorieHelpTitle => 'About the calorie calculation';
+  String get calorieHelpTitle => 'About the calorie estimation';
 
   @override
-  String get calorieHelpBody => 'Formula: Energy = MET × 3.5 × weight(kg) ÷ 200 × time(min) − resting metabolism.\n\nMET is chosen by speed [km/h] derived from distance and time (walking vs. running). Resting metabolism uses the Mifflin–St Jeor equation from age, sex, height, and weight, and we show net calories (exercise over baseline).\n\nThis is an estimate. You can overwrite it with a smartwatch reading. Both distance and time are required.';
+  String get calorieHelpBody => 'Formula: calories = MET × weight(kg) × time(hours).\n\nThe MET value is estimated from the exercise name. Because this is only an approximation, feel free to overwrite it with the reading from your smartwatch or other tracker.';
 
   @override
   String get dailyCalorieTotal => 'Total calories';
@@ -633,4 +633,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aerobicPickerTitle => 'Choose or type exercise';
+
+  @override
+  String get aerobicCalorieUnknownHint => 'Could not estimate calories for this exercise name. Please enter the value obtained from another device if available.';
+
+  @override
+  String get aerobicCalorieInfoTitle => 'About Calorie Estimation';
+
+  @override
+  String get aerobicCalorieInfoBody => '''Calories are estimated as MET × weight (kg) × time (hours). MET is inferred from the exercise name, distance, and duration.
+
+Because this is only an approximation, please overwrite it with the value obtained from your smartwatch or other tracker if available. Distance or time must be provided for the estimate.
+
+Environmental conditions and your physical condition affect calorie expenditure. Remember to take breaks and stay hydrated.''';
 }

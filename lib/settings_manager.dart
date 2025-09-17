@@ -22,6 +22,7 @@ class SettingsManager {
   static const String _backgroundAssetKey = 'background_asset';
   static const String _showStopwatchTimerKey = 'show_stopwatch_timer'; // true/false
   static const String _showWeightInputKey = 'show_weight_input';       // 体重入力の表示ON/OFF（互換）
+  static const String _aerobicCalorieKey = 'enable_aerobic_calories';
 
   // ===== Notifiers =====
   // 重さ
@@ -47,6 +48,9 @@ class SettingsManager {
   // 体重入力の表示
   static final ValueNotifier<bool> _showWeightInputNotifier =
   ValueNotifier<bool>(true);
+
+  static final ValueNotifier<bool> _aerobicCalorieNotifier =
+      ValueNotifier<bool>(false);
 
   // ===== Initialize =====
   static Future<void> init() async {
@@ -101,6 +105,10 @@ class SettingsManager {
     // 体重入力の表示
     _showWeightInputNotifier.value =
         (box.get(_showWeightInputKey) as bool?) ?? true;
+
+    // 有酸素カロリー算出
+    _aerobicCalorieNotifier.value =
+        (box.get(_aerobicCalorieKey) as bool?) ?? false;
   }
 
   // ===== Getters / Notifiers =====
@@ -158,6 +166,11 @@ class SettingsManager {
   static bool get showWeightInput => _showWeightInputNotifier.value;
   static ValueNotifier<bool> get showWeightInputNotifier =>
       _showWeightInputNotifier;
+
+  /// 有酸素運動のカロリー算出
+  static bool get enableAerobicCalories => _aerobicCalorieNotifier.value;
+  static ValueNotifier<bool> get aerobicCalorieNotifier =>
+      _aerobicCalorieNotifier;
 
   // 互換（旧API名）
   static bool get showStopwatch => showStopwatchTimer;
@@ -223,6 +236,12 @@ class SettingsManager {
     await _ensureBox();
     await _box?.put(_showWeightInputKey, show);
     _showWeightInputNotifier.value = show;
+  }
+
+  static Future<void> setEnableAerobicCalories(bool enable) async {
+    await _ensureBox();
+    await _box?.put(_aerobicCalorieKey, enable);
+    _aerobicCalorieNotifier.value = enable;
   }
 
   // 互換（旧API名）
