@@ -933,7 +933,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
         },
       ),
     );
-    if (mounted) setState(() {});
+    if (!mounted) {
+      return;
+    }
+
+    _photoCache.remove(_dateKey(day));
+
+    setState(() {});
   }
 
   Future<void> _handleAddPressed() {
@@ -1327,7 +1333,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _selectableLine(
               text: '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
+              style: TextStyle(
+                color: colorScheme.onSurface,
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+              ),
             ),
           );
         }
@@ -1336,7 +1346,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _selectableLine(
               text: '${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
+              style: TextStyle(
+                color: colorScheme.onSurface,
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+              ),
             ),
           );
         }
@@ -1345,7 +1359,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _selectableLine(
               text: '${l10n.calorie}: ${m.calories} ${l10n.kcalUnit}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
+              style: TextStyle(
+                color: colorScheme.onSurface,
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+              ),
             ),
           );
         }
@@ -1430,7 +1448,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _selectableLine(
               text: '${i + 1}${l10n.sets}：$detail',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
+              style: TextStyle(
+                color: colorScheme.onSurface,
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+              ),
             ),
           );
         }
@@ -1458,7 +1480,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         Padding(
           padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
           child: Text(
-            l10n.memo,
+            '■${l10n.memo}',
             style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
           ),
         ),
@@ -1494,7 +1516,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             style: TextStyle(
               color: colorScheme.onSurface,
               fontSize: 14,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w400,
             ),
           ),
         );
@@ -1506,7 +1528,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             style: TextStyle(
               color: colorScheme.onSurface,
               fontSize: 14,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w400,
             ),
           ),
         );
@@ -1520,7 +1542,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             style: TextStyle(
               color: colorScheme.onSurface,
               fontSize: 14,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w400,
             ),
           ),
         );
@@ -1532,7 +1554,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             style: TextStyle(
               color: colorScheme.onSurface,
               fontSize: 14,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w400,
             ),
           ),
         );
