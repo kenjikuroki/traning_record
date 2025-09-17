@@ -394,58 +394,6 @@ class _AlbumScreenState extends State<AlbumScreen> {
     );
   }
 
-  Widget _buildTimetreeFab({
-    required bool busy,
-    required Future<void> Function() onPressed,
-  }) {
-    return SizedBox(
-      width: 34,
-      height: 34,
-      child: Material(
-        color: Colors.transparent,
-        shape: const CircleBorder(),
-        child: Ink(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [Color(0xFF2563EB), Color(0xFF3B82F6)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.25),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: busy
-                ? null
-                : () async {
-                    await onPressed();
-                  },
-            splashColor: Colors.white24,
-            child: Center(
-              child: busy
-                  ? const SizedBox(
-                      width: 12,
-                      height: 12,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Icon(Icons.add, color: Colors.white, size: 16),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   // ── ここまで ピルボタン ──
 
   @override
@@ -551,7 +499,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
                   : ListView.builder(
                 padding: EdgeInsets.only(
                   top: 0,
-                  bottom: _inSelection ? 96 : 140,
+                  bottom: _inSelection ? 96 : 120,
                 ),
                     itemCount: _byDate.length,
                     itemBuilder: (ctx, section) {
@@ -655,17 +603,25 @@ class _AlbumScreenState extends State<AlbumScreen> {
           ),
         ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: _inSelection
           ? null
-          : Padding(
-              padding: EdgeInsets.only(
-                bottom: 8 + MediaQuery.of(context).padding.bottom,
-              ),
-              child: _buildTimetreeFab(
-                busy: _captureInProgress,
-                onPressed: _handleAddPressed,
-              ),
+          : FloatingActionButton(
+              heroTag: 'albumAddFab',
+              backgroundColor: const Color(0xFF2563EB),
+              onPressed:
+                  _captureInProgress ? null : () => _handleAddPressed(),
+              child: _captureInProgress
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.add, color: Colors.white),
             ),
       bottomNavigationBar: _inSelection
           ? SafeArea(

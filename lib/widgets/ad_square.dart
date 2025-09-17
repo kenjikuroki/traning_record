@@ -32,10 +32,12 @@ class AdSquare extends StatefulWidget {
   State<AdSquare> createState() => _AdSquareState();
 }
 
-class _AdSquareState extends State<AdSquare> {
+class _AdSquareState extends State<AdSquare> with SingleTickerProviderStateMixin {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
   bool _failedToLoad = false;
+  bool _loading = false;
+  late final AnimationController _placeholderCtrl;
 
   AdSize get _adSize {
     switch (widget.adSize) {
@@ -88,14 +90,33 @@ class _AdSquareState extends State<AdSquare> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _placeholderCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..forward();
+
+    if (!SettingsManager.demoMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_isAdLoaded && !_loading) {
+          _loadAd();
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _bannerAd?.dispose();
+    _placeholderCtrl.dispose();
     super.dispose();
   }
 
   void _loadAd() {
     _failedToLoad = false;
     _isAdLoaded = false;
+    _loading = true;
 
     _bannerAd = BannerAd(
       adUnitId: _resolveAdUnitId(),
@@ -109,6 +130,8 @@ class _AdSquareState extends State<AdSquare> {
           }
           setState(() {
             _isAdLoaded = true;
+            _loading = false;
+            _placeholderCtrl.stop();
           });
         },
         onAdFailedToLoad: (ad, err) {
@@ -117,6 +140,10 @@ class _AdSquareState extends State<AdSquare> {
           setState(() {
             _failedToLoad = true;
             _isAdLoaded = false;
+            _loading = false;
+            _placeholderCtrl
+              ..reset()
+              ..forward();
           });
           debugPrint('AdSquare failed to load: $err');
         },
@@ -125,53 +152,44 @@ class _AdSquareState extends State<AdSquare> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!SettingsManager.demoMode && !_isAdLoaded && !_loading) {
+      _loadAd();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (SettingsManager.demoMode) return const SizedBox.shrink(); // ← 追加
 
     // 成功
-    if (_isAdLoaded && _bannerAd != null) {
-      return SizedBox(
-        width: _bannerAd!.size.width.toDouble(),
-        height: _bannerAd!.size.height.toDouble(),
-        child: AdWidget(ad: _bannerAd!),
-      );
-    }
+    final bool showAd = _isAdLoaded && _bannerAd != null;
+    final s = _expectedSize;
 
-    // プレースホルダー
-    if (widget.showPlaceholder) {
-      final colorScheme = Theme.of(context).colorScheme;
-      final s = _expectedSize;
-      return Container(
-        width: s.width,
-        height: s.height,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainer,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colorScheme.outlineVariant),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              _failedToLoad ? Icons.block : Icons.image_outlined,
-              color: colorScheme.onSurfaceVariant,
-              size: 24,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _failedToLoad ? 'Ad unavailable' : 'Ad loading…',
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return const SizedBox.shrink();
+    return SizedBox(
+      width: s.width,
+      height: s.height,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 320),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        child: showAd
+            ? ClipRRect(
+                key: const ValueKey('square-ad'),
+                borderRadius: BorderRadius.circular(12),
+                child: AdWidget(ad: _bannerAd!),
+              )
+            : (widget.showPlaceholder
+                ? _SquarePlaceholder(
+                    key: const ValueKey('square-placeholder'),
+                    animation: _placeholderCtrl,
+                    failed: _failedToLoad,
+                    size: s,
+                  )
+                : const SizedBox.shrink()),
+      ),
+    );
   }
 
   Size get _expectedSize {
@@ -183,5 +201,107 @@ class _AdSquareState extends State<AdSquare> {
       case AdBoxSize.mediumRectangle:
         return const Size(300, 250);
     }
+  }
+}
+
+class _SquarePlaceholder extends StatelessWidget {
+  final Animation<double> animation;
+  final bool failed;
+  final Size size;
+
+  const _SquarePlaceholder({
+    super.key,
+    required this.animation,
+    required this.failed,
+    required this.size,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final double t = animation.value;
+        const double start = -1.05;
+        const double end = 1.05;
+        final double fadeIn = t < 0.25
+            ? Curves.easeOutCubic.transform(t / 0.25)
+            : 1.0;
+        final double scale = t < 0.25
+            ? 0.94 + 0.06 * Curves.easeOutCubic.transform(t / 0.25)
+            : 1.0;
+
+        final double shimmerPhase = t <= 0.25
+            ? 0.0
+            : ((t - 0.25) / 0.75).clamp(0.0, 1.0);
+        final double shimmerPos = start + (end - start) * shimmerPhase;
+
+        final baseColor = cs.surfaceVariant.withOpacity(0.26);
+        final highlight = Colors.white.withOpacity(0.28);
+
+        return Opacity(
+          opacity: fadeIn,
+          child: Transform.scale(
+            scale: scale,
+            child: Container(
+              width: size.width,
+              height: size.height,
+              decoration: BoxDecoration(
+                color: baseColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: cs.outlineVariant.withOpacity(0.4)),
+              ),
+              child: Stack(
+                children: [
+                  if (shimmerPhase < 0.98)
+                    Align(
+                      alignment: Alignment(shimmerPos, 0),
+                      child: FractionallySizedBox(
+                        widthFactor: 0.24,
+                        heightFactor: 1,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [
+                                highlight.withOpacity(0.0),
+                                highlight,
+                                highlight.withOpacity(0.0),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (failed)
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: cs.onSurfaceVariant,
+                            size: 24,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Ad unavailable',
+                            style: TextStyle(
+                              color: cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

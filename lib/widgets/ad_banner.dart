@@ -13,12 +13,22 @@ class AdBanner extends StatefulWidget {
   State<AdBanner> createState() => _AdBannerState();
 }
 
-class _AdBannerState extends State<AdBanner> {
+class _AdBannerState extends State<AdBanner> with SingleTickerProviderStateMixin {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
   bool _loading = false;
 
   AnchoredAdaptiveBannerAdSize? _anchoredSize; // 端末幅に最適化された高さを取得
+  late final AnimationController _placeholderCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _placeholderCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..forward();
+  }
 
   @override
   void didChangeDependencies() {
@@ -69,6 +79,7 @@ class _AdBannerState extends State<AdBanner> {
             _isAdLoaded = true;
             _bannerAd = ad as BannerAd;
             _loading = false;
+            _placeholderCtrl.stop();
           });
         },
         onAdFailedToLoad: (ad, error) {
@@ -80,6 +91,9 @@ class _AdBannerState extends State<AdBanner> {
               _loading = false;
               _bannerAd = null;
             });
+            _placeholderCtrl
+              ..reset()
+              ..forward();
           }
         },
       ),
@@ -138,6 +152,7 @@ class _AdBannerState extends State<AdBanner> {
   @override
   void dispose() {
     _bannerAd?.dispose();
+    _placeholderCtrl.dispose();
     super.dispose();
   }
 
@@ -147,12 +162,98 @@ class _AdBannerState extends State<AdBanner> {
     final double reservedHeight =
     (_anchoredSize?.height ?? AdSize.banner.height).toDouble();
 
+    final bool showAd = _isAdLoaded && _bannerAd != null;
+
     return SizedBox(
       width: double.infinity,
       height: reservedHeight,
-      child: _isAdLoaded && _bannerAd != null
-          ? AdWidget(ad: _bannerAd!)
-          : const SizedBox.expand(),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 320),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        child: showAd
+            ? ClipRRect(
+                key: const ValueKey('ad'),
+                borderRadius: BorderRadius.circular(12),
+                child: AdWidget(ad: _bannerAd!),
+              )
+            : _AdLoadingPlaceholder(
+                key: const ValueKey('placeholder'),
+                animation: _placeholderCtrl,
+              ),
+      ),
+    );
+  }
+}
+
+class _AdLoadingPlaceholder extends StatelessWidget {
+  final Animation<double> animation;
+
+  const _AdLoadingPlaceholder({super.key, required this.animation});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final double t = animation.value;
+        const double start = -1.05;
+        const double end = 1.05;
+
+        final double progress = t.clamp(0.0, 1.0);
+        final double fadeIn = progress < 0.25
+            ? Curves.easeOutCubic.transform(progress / 0.25)
+            : 1.0;
+        final double scale = progress < 0.25
+            ? 0.94 + 0.06 * Curves.easeOutCubic.transform(progress / 0.25)
+            : 1.0;
+
+        final double shimmerPhase = progress <= 0.25
+            ? 0.0
+            : ((progress - 0.25) / 0.75).clamp(0.0, 1.0);
+        final double current = start + (end - start) * shimmerPhase;
+
+        final baseColor = cs.surfaceVariant.withOpacity(0.26);
+        final highlight = Colors.white.withOpacity(0.28);
+
+        return Opacity(
+          opacity: fadeIn,
+          child: Transform.scale(
+            scale: scale,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(color: baseColor),
+                  if (shimmerPhase < 0.98)
+                    Align(
+                      alignment: Alignment(current, 0),
+                      child: FractionallySizedBox(
+                        widthFactor: 0.24,
+                        heightFactor: 1,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [
+                                highlight.withOpacity(0.0),
+                                highlight,
+                                highlight.withOpacity(0.0),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

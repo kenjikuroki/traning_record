@@ -737,7 +737,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Center(
                 child: AdSquare(
                   adSize: AdBoxSize.largeBanner,
-                  showPlaceholder: false,
                   screenName: 'settings',
                 ),
               ),

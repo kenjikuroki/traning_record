@@ -914,8 +914,8 @@ abstract class AppLocalizations {
   /// No description provided for @results.
   ///
   /// In en, this message translates to:
-  /// **'Results'**
-  String get results;
+  /// **'Records for {date}'**
+  String results(Object date);
 
   /// No description provided for @deleteSelectedConfirmTitle.
   ///

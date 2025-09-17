@@ -1,7 +1,6 @@
 // lib/screens/calendar_screen.dart
 import 'dart:ui';
 import 'dart:io';
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -230,6 +229,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     final isJa = Localizations.localeOf(context).languageCode == 'ja';
     return isJa ? '${hour}時間${min}${l10n.min}' : '${hour}h${min}${l10n.min}';
+  }
+
+  Widget _selectableLine({
+    required String text,
+    EdgeInsets padding = const EdgeInsets.only(left: 8.0, bottom: 6.0),
+    TextStyle? style,
+  }) {
+    return Padding(
+      padding: padding,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: SelectableText(
+          text,
+          textAlign: TextAlign.left,
+          style: style,
+        ),
+      ),
+    );
   }
 
   // 「30:45」→「30分45秒」
@@ -715,7 +732,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final hasMemo = _hasMemoForDate(day);
     final hasWeight = record?.weight != null;
 
-    final bool canShowChips = (showEventsForOutOfMonth || day.month == _focusedDay.month);
+    final bool canShowChips = showEventsForOutOfMonth || day.month == _focusedDay.month || record != null || hasMemo || hasPhoto;
 
     Widget _partChip(String part) {
       final label = _translatePartToLocale(context, part);
@@ -857,43 +874,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (mounted) setState(() {});
   }
 
-  void _handleAddPressed() {
+  Future<void> _handleAddPressed() {
     final day = _selectedDay ?? DateTime.now();
-    unawaited(_openRecordSheet(DateTime(day.year, day.month, day.day)));
-  }
-
-  Widget _buildTimetreeFab({required VoidCallback onTap}) {
-    return SizedBox(
-      width: 34,
-      height: 34,
-      child: Material(
-        color: Colors.transparent,
-        shape: const CircleBorder(),
-        child: Ink(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [Color(0xFF2563EB), Color(0xFF3B82F6)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.25),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onTap,
-            splashColor: Colors.white24,
-            child: const Icon(Icons.add, size: 16, color: Colors.white),
-          ),
-        ),
-      ),
-    );
+    return _openRecordSheet(DateTime(day.year, day.month, day.day));
   }
 
   // 半角→全角数字（0-9）変換
@@ -927,8 +910,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
-    final double bottomInset = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
       backgroundColor: SettingsManager.backgroundAssetNotifier.value.isEmpty
@@ -965,10 +946,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: 8 + bottomInset),
-        child: _buildTimetreeFab(onTap: _handleAddPressed),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'calendarAddFab',
+        backgroundColor: const Color(0xFF2563EB),
+        onPressed: () => _handleAddPressed(),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
 
       // ▼ ここで SettingsManager.waistUnitNotifier を監視して即反映
@@ -1116,9 +1099,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Future<void> _showResultsDialog(BuildContext context, List<Widget> summaryChildren) async {
+  String _formatResultsDate(BuildContext context, DateTime date) {
+    final locale = Localizations.localeOf(context);
+    if (locale.languageCode == 'ja') {
+      return DateFormat('M月d日', locale.toString()).format(date);
+    }
+    return DateFormat.yMMMd(locale.toString()).format(date);
+  }
+
+  Future<void> _showResultsDialog(
+    BuildContext context,
+    List<Widget> summaryChildren,
+    DateTime date,
+  ) async {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
+    final dateLabel = _formatResultsDate(context, date);
 
     await showDialog(
       context: context,
@@ -1136,7 +1132,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    l10n.results,
+                    l10n.results(dateLabel),
                     style: TextStyle(
                       color: cs.onSurface,
                       fontWeight: FontWeight.bold,
@@ -1149,9 +1145,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       maxHeight: MediaQuery.of(ctx).size.height * 0.65,
                     ),
                     child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: summaryChildren,
+                      child: SelectionArea(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: summaryChildren,
+                        ),
                       ),
                     ),
                   ),
@@ -1189,7 +1187,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             Center(
               child: AdSquare(
                 adSize: AdBoxSize.largeBanner,
-                showPlaceholder: false,
                 screenName: 'calendar',
               ),
             ),
@@ -1262,31 +1259,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
         if ((m.distance?.trim().isNotEmpty ?? false)) {
           summaryChildren.add(
-            Padding(
+            _selectableLine(
+              text: '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
-                  textAlign: TextAlign.left,
-                  style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
-                ),
-              ),
+              style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
             ),
           );
         }
         if ((m.duration?.trim().isNotEmpty ?? false)) {
           summaryChildren.add(
-            Padding(
+            _selectableLine(
+              text: '${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}',
-                  textAlign: TextAlign.left,
-                  style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
-                ),
-              ),
+              style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
             ),
           );
         }
@@ -1334,15 +1319,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       for (final m in menuList) {
         summaryChildren.add(
-          Padding(
+          _selectableLine(
+            text: m.name,
             padding: const EdgeInsets.only(bottom: 2.0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                m.name,
-                textAlign: TextAlign.left,
-                style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
-              ),
+            style: TextStyle(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
             ),
           ),
         );
@@ -1352,20 +1335,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
           final wStr = m.weights[i].toString().trim();
           final rStr = m.reps[i].toString().trim();
           if (wStr.isEmpty && rStr.isEmpty) continue;
+
+          final hasWeight = wStr.isNotEmpty;
+          final hasReps = rStr.isNotEmpty;
+          final weightLabel = hasWeight
+              ? '$wStr${unit == "kg" ? l10n.kg : l10n.lbs}'
+              : null;
+          final repsLabel = hasReps ? '$rStr${l10n.reps}' : null;
+
+          String detail;
+          if (hasWeight && hasReps) {
+            detail = '$weightLabel × $repsLabel';
+          } else if (hasWeight) {
+            detail = weightLabel!;
+          } else {
+            detail = repsLabel!;
+          }
+
           summaryChildren.add(
-            Padding(
+            _selectableLine(
+              text: '${i + 1}${l10n.sets}：$detail',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '${i + 1}${l10n.sets}：'
-                      '${wStr.isNotEmpty ? '$wStr${unit == "kg" ? l10n.kg : l10n.lbs}' : '-'}'
-                      ' × '
-                      '${rStr.isNotEmpty ? rStr : '-'}${l10n.reps}',
-                  textAlign: TextAlign.left,
-                  style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
-                ),
-              ),
+              style: TextStyle(color: colorScheme.onSurface, fontSize: 13),
             ),
           );
         }
@@ -1424,30 +1415,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
       if (record?.weight != null) {
         summaryChildren.add(
-          Padding(
-            padding: const EdgeInsets.only(left: 8.0, bottom: 6.0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '${l10n.bodyWeight}: ${record!.weight!.toStringAsFixed(1)} $unit',
-                style: TextStyle(color: colorScheme.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
-                textAlign: TextAlign.left,
-              ),
+          _selectableLine(
+            text: '${l10n.bodyWeight}: ${record!.weight!.toStringAsFixed(1)} $unit',
+            style: TextStyle(
+              color: colorScheme.onSurface,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
         );
       }
       if (bodyFatVal != null) {
         summaryChildren.add(
-          Padding(
-            padding: const EdgeInsets.only(left: 8.0, bottom: 6.0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '${l10n.bodyFatPercentage}: ${bodyFatVal.toStringAsFixed(1)} ${l10n.percentSymbol}',
-                style: TextStyle(color: colorScheme.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
-                textAlign: TextAlign.left,
-              ),
+          _selectableLine(
+            text: '${l10n.bodyFatPercentage}: ${bodyFatVal.toStringAsFixed(1)} ${l10n.percentSymbol}',
+            style: TextStyle(
+              color: colorScheme.onSurface,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
         );
@@ -1456,34 +1441,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final String waistText = '${l10n.waist}: ${_fmtWaist(waistValCm, l10n)}';
 
         summaryChildren.add(
-          Padding(
-            padding: const EdgeInsets.only(left: 8.0, bottom: 6.0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                waistText,
-                style: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.left,
-              ),
+          _selectableLine(
+            text: waistText,
+            style: TextStyle(
+              color: colorScheme.onSurface,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
         );
       }
       if (bmiVal != null) {
         summaryChildren.add(
-          Padding(
-            padding: const EdgeInsets.only(left: 8.0, bottom: 6.0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '${l10n.bmi}: ${bmiVal.toStringAsFixed(1)}',
-                style: TextStyle(color: colorScheme.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
-                textAlign: TextAlign.left,
-              ),
+          _selectableLine(
+            text: '${l10n.bmi}: ${bmiVal.toStringAsFixed(1)}',
+            style: TextStyle(
+              color: colorScheme.onSurface,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
         );
@@ -1510,12 +1485,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
               elevation: 4,
               clipBehavior: Clip.none,
               child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 title: Text(
-                  l10n.results,
+                  l10n.results(_formatResultsDate(context, sel)),
                   style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold),
                 ),
-                onTap: () => _showResultsDialog(context, summaryChildren),
+                onTap: () => _showResultsDialog(context, summaryChildren, sel),
               ),
             ),
           ),

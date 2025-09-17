@@ -427,7 +427,9 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get results => '実績';
+  String results(Object date) {
+    return '$dateの記録';
+  }
 
   @override
   String deleteSelectedConfirmTitle(Object count) {
