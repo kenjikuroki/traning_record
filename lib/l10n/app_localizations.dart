@@ -6,6 +6,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_en.dart';
+import 'app_localizations_es.dart';
+import 'app_localizations_id.dart';
 import 'app_localizations_ja.dart';
 
 // ignore_for_file: type=lint
@@ -92,6 +94,8 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
+    Locale('es'),
+    Locale('id'),
     Locale('ja')
   ];
 
@@ -1322,8 +1326,14 @@ abstract class AppLocalizations {
   /// No description provided for @aerobicCalorieInfoBody.
   ///
   /// In en, this message translates to:
-  /// **'Calories are estimated as MET × weight (kg) × time (hours). MET is inferred from the exercise name, distance, and duration.\\n\\nBecause this is only an approximation, please overwrite it with the value obtained from your smartwatch or other tracker if available. Distance or time must be provided for the estimate.\\n\\nEnvironmental conditions and your physical condition affect calorie expenditure. Remember to take breaks and stay hydrated.'**
+  /// **'Calories are estimated as MET × weight (kg) × time (hours). MET is inferred from the exercise name, distance, and duration.\n\nBecause this is only an approximation, please overwrite it with the value obtained from your smartwatch or other tracker if available. Distance or time must be provided for the estimate.\n\nEnvironmental conditions and your physical condition affect calorie expenditure. Remember to take breaks and stay hydrated.'**
   String get aerobicCalorieInfoBody;
+
+  /// No description provided for @aerobicCalorieWeightRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your body weight in Personal settings to enable calorie estimation.'**
+  String get aerobicCalorieWeightRequired;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
@@ -1335,7 +1345,7 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'ja'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'es', 'id', 'ja'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -1347,6 +1357,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
     case 'en': return AppLocalizationsEn();
+    case 'es': return AppLocalizationsEs();
+    case 'id': return AppLocalizationsId();
     case 'ja': return AppLocalizationsJa();
   }
 

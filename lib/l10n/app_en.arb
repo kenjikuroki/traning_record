@@ -204,5 +204,6 @@
   "aerobicPickerTitle": "Choose or type exercise",
   "aerobicCalorieUnknownHint": "Could not estimate calories for this exercise name. Please enter the value obtained from another device if available.",
   "aerobicCalorieInfoTitle": "About Calorie Estimation",
-  "aerobicCalorieInfoBody": "Calories are estimated as MET × weight (kg) × time (hours). MET is inferred from the exercise name, distance, and duration.\\n\\nBecause this is only an approximation, please overwrite it with the value obtained from your smartwatch or other tracker if available. Distance or time must be provided for the estimate.\\n\\nEnvironmental conditions and your physical condition affect calorie expenditure. Remember to take breaks and stay hydrated."
+  "aerobicCalorieInfoBody": "Calories are estimated as MET × weight (kg) × time (hours). MET is inferred from the exercise name, distance, and duration.\n\nBecause this is only an approximation, please overwrite it with the value obtained from your smartwatch or other tracker if available. Distance or time must be provided for the estimate.\n\nEnvironmental conditions and your physical condition affect calorie expenditure. Remember to take breaks and stay hydrated.",
+  "aerobicCalorieWeightRequired": "Enter your body weight in Personal settings to enable calorie estimation."
 }

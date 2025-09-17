@@ -23,6 +23,7 @@ class SettingsManager {
   static const String _showStopwatchTimerKey = 'show_stopwatch_timer'; // true/false
   static const String _showWeightInputKey = 'show_weight_input';       // 体重入力の表示ON/OFF（互換）
   static const String _aerobicCalorieKey = 'enable_aerobic_calories';
+  static const String _personalWeightKey = 'personal.weightKg';
 
   // ===== Notifiers =====
   // 重さ
@@ -51,6 +52,10 @@ class SettingsManager {
 
   static final ValueNotifier<bool> _aerobicCalorieNotifier =
       ValueNotifier<bool>(false);
+
+  // パーソナル体重（kg）
+  static final ValueNotifier<double?> _personalWeightNotifier =
+      ValueNotifier<double?>(null);
 
   // ===== Initialize =====
   static Future<void> init() async {
@@ -109,6 +114,15 @@ class SettingsManager {
     // 有酸素カロリー算出
     _aerobicCalorieNotifier.value =
         (box.get(_aerobicCalorieKey) as bool?) ?? false;
+
+    final storedWeight = box.get(_personalWeightKey);
+    double? weightKg;
+    if (storedWeight is num) {
+      weightKg = storedWeight.toDouble();
+    } else if (storedWeight is String) {
+      weightKg = double.tryParse(storedWeight);
+    }
+    _personalWeightNotifier.value = weightKg;
   }
 
   // ===== Getters / Notifiers =====
@@ -171,6 +185,11 @@ class SettingsManager {
   static bool get enableAerobicCalories => _aerobicCalorieNotifier.value;
   static ValueNotifier<bool> get aerobicCalorieNotifier =>
       _aerobicCalorieNotifier;
+
+  /// パーソナル体重（kg）
+  static double? get personalWeightKg => _personalWeightNotifier.value;
+  static ValueNotifier<double?> get personalWeightNotifier =>
+      _personalWeightNotifier;
 
   // 互換（旧API名）
   static bool get showStopwatch => showStopwatchTimer;
@@ -242,6 +261,16 @@ class SettingsManager {
     await _ensureBox();
     await _box?.put(_aerobicCalorieKey, enable);
     _aerobicCalorieNotifier.value = enable;
+  }
+
+  static Future<void> setPersonalWeightKg(double? kg) async {
+    await _ensureBox();
+    if (kg == null) {
+      await _box?.delete(_personalWeightKey);
+    } else {
+      await _box?.put(_personalWeightKey, kg);
+    }
+    _personalWeightNotifier.value = kg;
   }
 
   // 互換（旧API名）

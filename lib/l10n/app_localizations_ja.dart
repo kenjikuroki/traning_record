@@ -641,9 +641,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get aerobicCalorieInfoTitle => 'カロリー計算について';
 
   @override
-  String get aerobicCalorieInfoBody => '''消費カロリー = MET × 体重(kg) × 運動時間(時間) で概算しています。種目名・距離・時間から運動強度(MET)を推定します。
+  String get aerobicCalorieInfoBody => '消費カロリー = MET × 体重(kg) × 運動時間(時間) で概算しています。種目名・距離・時間から運動強度(MET)を推定します。\n\n推定値のため、スマートウォッチ等で取得した値があれば上書きしてください。距離や時間が空欄の場合は推定されません。\n\n暑熱環境や体調によって消費量は変動します。休憩と水分補給も心掛けてください。';
 
-推定値のため、スマートウォッチ等で取得した値があれば上書きしてください。距離や時間が空欄の場合は推定されません。
-
-暑熱環境や体調によって消費量は変動します。休憩と水分補給も心掛けてください。''';
+  @override
+  String get aerobicCalorieWeightRequired => 'カロリー算出を有効にするにはパーソナル設定で体重を入力してください。';
 }

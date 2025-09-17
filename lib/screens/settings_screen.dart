@@ -90,6 +90,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _heightCmCtrl = TextEditingController();
   final TextEditingController _heightFtCtrl = TextEditingController();
   final TextEditingController _heightInCtrl = TextEditingController();
+  double? _personalWeightKg;
+  final TextEditingController _personalWeightCtrl = TextEditingController();
   final TextEditingController _birthDateCtrl = TextEditingController();
 
   // 管理トグル（既定OFF）
@@ -143,11 +145,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     _syncHeightControllersFromCm();
 
+    final pw = widget.settingsBox.get('personal.weightKg');
+    if (pw is num) {
+      _personalWeightKg = pw.toDouble();
+    } else if (pw is String) {
+      _personalWeightKg = double.tryParse(pw);
+    }
+    _syncWeightControllerFromKg();
+
     _manageBodyFat =
         (widget.settingsBox.get('manage.bodyFat') as bool?) ?? false;
     _manageWaist = (widget.settingsBox.get('manage.waist') as bool?) ?? false;
     _manageBmi = (widget.settingsBox.get('manage.bmi') as bool?) ?? false;
     _enableAerobicCalories = SettingsManager.enableAerobicCalories;
+
+    if (_enableAerobicCalories && _personalWeightKg == null) {
+      _enableAerobicCalories = false;
+      SettingsManager.setEnableAerobicCalories(false);
+    }
   }
 
   // ========== ヘルパ ==========
@@ -245,7 +260,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _onUnitChanged(String? u) {
     if (u == null) return;
-    setState(() => _selectedUnit = u);
+    setState(() {
+      _selectedUnit = u;
+      _syncWeightControllerFromKg(unitOverride: u);
+    });
     SettingsManager.setUnit(u);
   }
 
@@ -253,6 +271,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (u == null) return;
     setState(() => _selectedDistanceUnit = u);
     SettingsManager.setDistanceUnit(u);
+    _syncHeightControllersFromCm();
   }
 
   // ===== パーソナル設定：ハンドラ =====
@@ -326,6 +345,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _heightInCtrl.text = inch.toStringAsFixed(1);
   }
 
+  void _syncWeightControllerFromKg({String? unitOverride}) {
+    if (_personalWeightKg == null) {
+      _personalWeightCtrl.text = '';
+      return;
+    }
+    final unit = unitOverride ?? _selectedUnit;
+    final display = unit == 'kg'
+        ? _personalWeightKg!
+        : _personalWeightKg! * 2.2046226218;
+    _personalWeightCtrl.text = display.toStringAsFixed(1);
+  }
+
+  void _onPersonalWeightChanged(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      final hadWeight = _personalWeightKg != null;
+      setState(() => _personalWeightKg = null);
+      SettingsManager.setPersonalWeightKg(null);
+      if (hadWeight && _enableAerobicCalories) {
+        _showWeightRequiredSnack();
+        setState(() => _enableAerobicCalories = false);
+        SettingsManager.setEnableAerobicCalories(false);
+      }
+      return;
+    }
+
+    final parsed = double.tryParse(trimmed);
+    if (parsed == null) {
+      return;
+    }
+    final unit = _selectedUnit;
+    final kg = unit == 'kg' ? parsed : parsed * 0.45359237;
+    setState(() => _personalWeightKg = kg);
+    SettingsManager.setPersonalWeightKg(kg);
+  }
+
+  void _showWeightRequiredSnack() {
+    final l10n = AppLocalizations.of(context)!;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(l10n.aerobicCalorieWeightRequired),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+  }
+
   void _setManageBodyFat(bool v) {
     setState(() => _manageBodyFat = v);
     widget.settingsBox.put('manage.bodyFat', v);
@@ -346,6 +413,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _heightCmCtrl.dispose();
     _heightFtCtrl.dispose();
     _heightInCtrl.dispose();
+    _personalWeightCtrl.dispose();
     _birthDateCtrl.dispose();
     super.dispose();
   }
@@ -459,9 +527,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       // 2) 生年月日（1行・TextField風）
                       _rowItem(
                         context,
-                       label: l10n.birthDate,
+                        label: l10n.birthDate,
+                        expandControl: false,
                         control: SizedBox(
-                          width: 200, // 必要なら調整
+                          width: 160,
                           child: TextField(
                             controller: _birthDateCtrl,
                             readOnly: true,
@@ -488,6 +557,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _rowItem(
                         context,
                         label: l10n.height,
+                        expandControl: false,
                         control: LayoutBuilder(
                           builder: (ctx, c) {
                             return Wrap(
@@ -497,7 +567,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               children: [
                                 // ← ここを if/else から三項演算子に変更
                                 // 長さ設定に追従：cm / ft+in を自動切替
-                                (SettingsManager.currentHeightUnit == 'cm')
+                                (_selectedDistanceUnit == 'km')
                                     ? SizedBox(
                                   width: 110,
                                   child: TextField(
@@ -553,6 +623,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 16),
 
+                      _rowItem(
+                        context,
+                        label: l10n.bodyWeight,
+                        expandControl: false,
+                        control: SizedBox(
+                          width: 110,
+                          child: TextField(
+                            controller: _personalWeightCtrl,
+                            keyboardType:
+                                const TextInputType.numberWithOptions(decimal: true),
+                            decoration: InputDecoration(
+                              labelText: _selectedUnit == 'kg'
+                                  ? l10n.kg
+                                  : l10n.lbs,
+                              border: const OutlineInputBorder(),
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 8),
+                            ),
+                            onChanged: _onPersonalWeightChanged,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
                       // 4) 管理トグル（見出しなし・サイズ統一・左詰め）
                       _toggleRow(context, title: l10n.bodyWeightTracking,
                           value: _showWeightInput,
@@ -597,6 +692,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             Switch(
                               value: _enableAerobicCalories,
                               onChanged: (v) {
+                                if (v && _personalWeightKg == null) {
+                                  _showWeightRequiredSnack();
+                                  setState(() => _enableAerobicCalories = false);
+                                  SettingsManager.setEnableAerobicCalories(false);
+                                  return;
+                                }
                                 setState(() => _enableAerobicCalories = v);
                                 SettingsManager.setEnableAerobicCalories(v);
                               },
@@ -1043,7 +1144,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // 左ラベル + 右コントロール（1行）
   Widget _rowItem(BuildContext context,
-      {required String label, required Widget control}) {
+      {required String label,
+      required Widget control,
+      bool expandControl = true}) {
     final cs = Theme
         .of(context)
         .colorScheme;
@@ -1059,7 +1162,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         const SizedBox(width: 8), // 12 → 8 に縮小
-        Expanded(child: control),
+        expandControl ? Expanded(child: control) : control,
       ],
     );
   }
@@ -1157,7 +1260,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           title: Text(l10n.aerobicCalorieInfoTitle),
           content: Text(
-            l10n.aerobicCalorieInfoBody,
+            l10n.aerobicCalorieInfoBody.replaceAll('\\n', '\n'),
             style: const TextStyle(fontSize: 14, height: 1.6),
           ),
           actions: [

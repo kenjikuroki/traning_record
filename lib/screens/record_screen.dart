@@ -263,6 +263,8 @@ class _RecordScreenState extends State<RecordScreen>
     SettingsManager.lengthUnitNotifier.addListener(_onLengthUnitChanged);
     SettingsManager.aerobicCalorieNotifier
         .addListener(_onAerobicCalorieSettingChanged);
+    SettingsManager.personalWeightNotifier
+        .addListener(_onPersonalWeightSettingChanged);
     _weightController.addListener(_handleWeightChanged);
     _calcAerobicCalories = SettingsManager.enableAerobicCalories;
 
@@ -382,6 +384,8 @@ class _RecordScreenState extends State<RecordScreen>
     SettingsManager.lengthUnitNotifier.removeListener(_onLengthUnitChanged);
     SettingsManager.aerobicCalorieNotifier
         .removeListener(_onAerobicCalorieSettingChanged);
+    SettingsManager.personalWeightNotifier
+        .removeListener(_onPersonalWeightSettingChanged);
 
     super.dispose();
   }
@@ -995,7 +999,15 @@ class _RecordScreenState extends State<RecordScreen>
     if (record?.weight != null) {
       _weightController.text = record!.weight.toString();
     } else {
-      _weightController.clear();
+      final personal = SettingsManager.personalWeightKg;
+      if (personal != null) {
+        final display = SettingsManager.currentUnit == 'kg'
+            ? personal
+            : personal * 2.2046226218;
+        _weightController.text = display.toStringAsFixed(1);
+      } else {
+        _weightController.clear();
+      }
     }
 
     // ▼ 追加：固定フィールドがあれば優先表示
@@ -1410,9 +1422,16 @@ class _RecordScreenState extends State<RecordScreen>
     }
 
     double? bodyWeight;
+    double? bodyWeightKgForPersonal;
     if (_weightController.text.isNotEmpty) {
       bodyWeight = double.tryParse(_weightController.text);
-      if (bodyWeight != null) hasAnyRecordData = true;
+      if (bodyWeight != null) {
+        hasAnyRecordData = true;
+        bodyWeightKgForPersonal =
+            (SettingsManager.currentUnit == 'kg')
+                ? bodyWeight
+                : bodyWeight * 0.45359237;
+      }
     }
 
     // ▼ 追加：体脂肪率/ウエストを先に数値化（固定フィールドへ保存するため）
@@ -1460,6 +1479,10 @@ class _RecordScreenState extends State<RecordScreen>
       // 追加
       widget.settingsBox.delete('satisfaction-$dateKey');
       didChangeStorage = had;
+    }
+
+    if (bodyWeightKgForPersonal != null) {
+      SettingsManager.setPersonalWeightKg(bodyWeightKgForPersonal);
     }
     // ───────── 体脂肪/ウエスト/BMI の保存（当日分）─────────
         {
@@ -1537,16 +1560,15 @@ class _RecordScreenState extends State<RecordScreen>
 
   double? _currentWeightKg() {
     final text = _weightController.text.trim();
-    double? value = double.tryParse(text);
-    if (value == null) {
-      final record = widget.recordsBox.get(_getDateKey(widget.selectedDate));
-      if (record?.weight != null) {
-        value = record!.weight;
-      }
+    final parsed = double.tryParse(text);
+    if (parsed != null) {
+      return SettingsManager.currentUnit == 'kg'
+          ? parsed
+          : parsed * 0.45359237;
     }
-    if (value == null) return null;
-    if (SettingsManager.currentUnit == 'kg') return value;
-    return value * 0.45359237;
+
+    final personal = SettingsManager.personalWeightKg;
+    return personal;
   }
 
   double _parseDurationMinutes(String text) {
@@ -1650,7 +1672,10 @@ class _RecordScreenState extends State<RecordScreen>
       durationMinutes: minutes,
     );
     if (met == null) return null;
-    final weightKg = _currentWeightKg() ?? 60.0;
+    final weightKg = _currentWeightKg();
+    if (weightKg == null) {
+      return null;
+    }
     final double calories = met * weightKg * (minutes / 60.0);
     if (!calories.isFinite || calories <= 0) return null;
     return calories;
@@ -1775,6 +1800,12 @@ class _RecordScreenState extends State<RecordScreen>
   void _handleWeightChanged() {
     if (!_calcAerobicCalories) return;
     _recalculateAllAerobicCalories(force: false);
+  }
+
+  void _onPersonalWeightSettingChanged() {
+    if (!_calcAerobicCalories) return;
+    if (_weightController.text.trim().isNotEmpty) return;
+    _recalculateAllAerobicCalories(force: true);
   }
 
   void _onAerobicCalorieSettingChanged() {

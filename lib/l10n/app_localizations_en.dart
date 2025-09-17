@@ -641,9 +641,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aerobicCalorieInfoTitle => 'About Calorie Estimation';
 
   @override
-  String get aerobicCalorieInfoBody => '''Calories are estimated as MET × weight (kg) × time (hours). MET is inferred from the exercise name, distance, and duration.
+  String get aerobicCalorieInfoBody => 'Calories are estimated as MET × weight (kg) × time (hours). MET is inferred from the exercise name, distance, and duration.\n\nBecause this is only an approximation, please overwrite it with the value obtained from your smartwatch or other tracker if available. Distance or time must be provided for the estimate.\n\nEnvironmental conditions and your physical condition affect calorie expenditure. Remember to take breaks and stay hydrated.';
 
-Because this is only an approximation, please overwrite it with the value obtained from your smartwatch or other tracker if available. Distance or time must be provided for the estimate.
-
-Environmental conditions and your physical condition affect calorie expenditure. Remember to take breaks and stay hydrated.''';
+  @override
+  String get aerobicCalorieWeightRequired => 'Enter your body weight in Personal settings to enable calorie estimation.';
 }
