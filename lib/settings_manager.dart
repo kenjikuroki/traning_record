@@ -13,42 +13,45 @@ class SettingsManager {
 
   static Box<dynamic>? _box;
 
-  static bool demoMode = false; // 撮影用に広告非表示（本番では false）
+  static bool demoMode = false; // 撮影中は true。本番は false に戻す
   // ===== Keys =====
-  static const String _unitKey = 'unit_of_weight';            // 'kg' | 'lbs'
-  static const String _lengthUnitKey = 'unit_of_length';      // 'km' | 'mile'
-  static const String _distanceUnitKey = 'unit_of_distance';  // 旧距離キー（互換読み書き）
-  static const String _themeModeKey = 'theme_mode';           // 0: system, 1: light, 2: dark
+  static const String _unitKey = 'unit_of_weight'; // 'kg' | 'lbs'
+  static const String _lengthUnitKey = 'unit_of_length'; // 'km' | 'mile'
+  static const String _distanceUnitKey = 'unit_of_distance'; // 旧距離キー（互換読み書き）
+  static const String _themeModeKey =
+      'theme_mode'; // 0: system, 1: light, 2: dark
   static const String _backgroundAssetKey = 'background_asset';
-  static const String _showStopwatchTimerKey = 'show_stopwatch_timer'; // true/false
-  static const String _showWeightInputKey = 'show_weight_input';       // 体重入力の表示ON/OFF（互換）
+  static const String _showStopwatchTimerKey =
+      'show_stopwatch_timer'; // true/false
+  static const String _showWeightInputKey =
+      'show_weight_input'; // 体重入力の表示ON/OFF（互換）
   static const String _aerobicCalorieKey = 'enable_aerobic_calories';
   static const String _personalWeightKey = 'personal.weightKg';
 
   // ===== Notifiers =====
   // 重さ
   static final ValueNotifier<String> _unitNotifier =
-  ValueNotifier<String>('kg'); // 'kg' | 'lbs'
+      ValueNotifier<String>('kg'); // 'kg' | 'lbs'
 
   // 長さ（距離・身長・ウエスト）
   static final ValueNotifier<String> _lengthUnitNotifier =
-  ValueNotifier<String>('km'); // 'km' | 'mile'
+      ValueNotifier<String>('km'); // 'km' | 'mile'
 
   // テーマ
   static final ValueNotifier<ThemeMode> _themeModeNotifier =
-  ValueNotifier<ThemeMode>(ThemeMode.system);
+      ValueNotifier<ThemeMode>(ThemeMode.system);
 
   // 背景（使っていない場合は空文字）
   static final ValueNotifier<String> _backgroundAssetNotifier =
-  ValueNotifier<String>('');
+      ValueNotifier<String>('');
 
   // ストップウォッチ/タイマー表示
   static final ValueNotifier<bool> _showStopwatchTimerNotifier =
-  ValueNotifier<bool>(true);
+      ValueNotifier<bool>(true);
 
   // 体重入力の表示
   static final ValueNotifier<bool> _showWeightInputNotifier =
-  ValueNotifier<bool>(true);
+      ValueNotifier<bool>(true);
 
   static final ValueNotifier<bool> _aerobicCalorieNotifier =
       ValueNotifier<bool>(false);
@@ -86,9 +89,9 @@ class SettingsManager {
     _unitNotifier.value = (savedWeight == 'lbs') ? 'lbs' : 'kg';
 
     // 長さ（まず新キー、なければ旧distanceキーから互換読み）
-    final String savedLen =
-    ((box.get(_lengthUnitKey)) ?? (box.get(_distanceUnitKey)) ?? 'km')
-    as String;
+    final String savedLen = ((box.get(_lengthUnitKey)) ??
+        (box.get(_distanceUnitKey)) ??
+        'km') as String;
     _lengthUnitNotifier.value = (savedLen == 'mile') ? 'mile' : 'km';
 
     // テーマ

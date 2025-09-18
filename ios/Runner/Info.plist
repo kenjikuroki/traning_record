@@ -2,8 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>$(DEVELOPMENT_LANGUAGE)</string>
+<key>CFBundleDevelopmentRegion</key>
+<string>$(DEVELOPMENT_LANGUAGE)</string>
+<key>CFBundleLocalizations</key>
+<array>
+    <string>en</string>
+    <string>es</string>
+    <string>id</string>
+    <string>ja</string>
+</array>
 
     <!-- アプリ名は全言語で TrainingRecord 固定 -->
     <key>CFBundleDisplayName</key>

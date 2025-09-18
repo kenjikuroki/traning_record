@@ -100,8 +100,8 @@ class _MyAppState extends State<MyApp> {
       ),
     );
     final ThemeData darkTheme = ThemeData(
-      colorScheme:
-      ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
+      colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue, brightness: Brightness.dark),
       useMaterial3: true,
       fontFamily: 'Inter',
       appBarTheme: const AppBarTheme(
@@ -129,10 +129,7 @@ class _MyAppState extends State<MyApp> {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: const [
-            Locale('en', ''),
-            Locale('ja', ''),
-          ],
+          supportedLocales: AppLocalizations.supportedLocales,
 
           // 壁紙の即時反映（背景が変わるたびに再ビルド）
           builder: (context, child) {
