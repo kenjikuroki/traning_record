@@ -11,25 +11,45 @@ class MenuDataAdapter extends TypeAdapter<MenuData> {
   final int typeId = 0;
 
   @override
+  @override
   MenuData read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
+
+    // 後方互換: 旧データでは index 5 が String(calories) の場合がある
+    int? sat;
+    if (fields.containsKey(5)) {
+      final dynamic v5 = fields[5];
+      if (v5 is int) {
+        sat = v5; // 現行: satisfaction が index 5 (int)
+      } else if (v5 is String) {
+        // 旧: index 5 は calories(String)。満足度は index 6 を試す
+        final dynamic v6 = fields[6];
+        sat = (v6 is int) ? v6 : null;
+      } else {
+        sat = null;
+      }
+    } else {
+      final dynamic v6 = fields[6];
+      sat = (v6 is int) ? v6 : null;
+    }
+
     return MenuData(
       name: fields[0] as String,
       weights: (fields[1] as List).cast<String>(),
       reps: (fields[2] as List).cast<String>(),
       distance: fields[3] as String?,
       duration: fields[4] as String?,
-      calories: fields[5] as String?,
+      satisfaction: sat,
     );
   }
 
   @override
   void write(BinaryWriter writer, MenuData obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(6) // ★ 5 → 6 に増加
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -41,7 +61,7 @@ class MenuDataAdapter extends TypeAdapter<MenuData> {
       ..writeByte(4)
       ..write(obj.duration)
       ..writeByte(5)
-      ..write(obj.calories);
+      ..write(obj.satisfaction); // ★追加
   }
 
   @override

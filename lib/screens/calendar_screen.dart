@@ -54,6 +54,7 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
+
   final GlobalKey _kCalendarCard = GlobalKey();
   late DateTime _focusedDay;
   DateTime? _selectedDay;
@@ -124,10 +125,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('${l10n.satisfaction}：',
-            style: TextStyle(color: cs.onSurface, fontSize: 13)),
+        Text(
+          '${l10n.satisfaction}：',
+          style: TextStyle(color: cs.onSurface, fontSize: 13),
+        ),
         const SizedBox(width: 6),
-        Icon(icon, size: 20, color: cs.onSurfaceVariant),
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: cs.surfaceContainer, // record_screen と同じ基調
+            border: Border.all(
+              color: cs.onSurfaceVariant.withOpacity(0.18),
+              width: 1,
+            ),
+          ),
+          child: Icon(
+            icon,
+            size: 22,
+            color: cs.onSurfaceVariant,
+          ),
+        ),
       ],
     );
   }
@@ -974,6 +993,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return s;
   }
 
+
   // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
@@ -1309,9 +1329,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ),
       );
-      final dynamic satAllRaw = widget.settingsBox.get('satisfaction-$selKey');
-      final Map<String, dynamic> satAll = (satAllRaw is Map<String, dynamic>) ? satAllRaw : {};
-
       for (final m in aerobicMenus) {
         summaryChildren.add(
           _selectableLine(
@@ -1368,8 +1385,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           );
         }
 
-        final Map partSat = (satAll['有酸素運動'] is Map) ? satAll['有酸素運動'] as Map : const {};
-        final int? satVal = partSat[m.name] is int ? partSat[m.name] as int : null;
+        final int? satVal = m.satisfaction;
         if (satVal != null) {
           summaryChildren.add(
             Padding(
@@ -1405,10 +1421,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ),
       );
-
-      final dynamic satAllRaw = widget.settingsBox.get('satisfaction-$selKey');
-      final Map<String, dynamic> satAll = (satAllRaw is Map<String, dynamic>) ? satAllRaw : {};
-
       for (final m in menuList) {
         summaryChildren.add(
           _selectableLine(
@@ -1457,8 +1469,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           );
         }
 
-        final Map partSat = (satAll[originalPart] is Map) ? satAll[originalPart] as Map : const {};
-        final int? satVal = partSat[m.name] is int ? partSat[m.name] as int : null;
+        final int? satVal = m.satisfaction;
         if (satVal != null) {
           summaryChildren.add(
             Padding(

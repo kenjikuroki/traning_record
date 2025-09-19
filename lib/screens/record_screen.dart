@@ -632,16 +632,6 @@ class _RecordScreenState extends State<RecordScreen>
         ];
         if (names.isEmpty) names.add('');
 
-// 追加：当日分満足度のマップ
-        final dynamic satAllRaw =
-            widget.settingsBox.get('satisfaction-$dateKey');
-        final Map<String, dynamic> satAll =
-            (satAllRaw is Map<String, dynamic>) ? satAllRaw : {};
-        final Map<String, dynamic> partSat =
-            (satAll[originalPart] is Map<String, dynamic>)
-                ? satAll[originalPart] as Map<String, dynamic>
-                : <String, dynamic>{};
-
         final l10n = AppLocalizations.of(context)!;
         final isAerobic = current == l10n.aerobicExercise;
 
@@ -652,7 +642,8 @@ class _RecordScreenState extends State<RecordScreen>
           section.menuControllers.add(TextEditingController(text: name));
           section.menuKeys.add(GlobalKey());
           section.nameFieldKeys.add(GlobalKey());
-          section.satisfactionList.add(partSat[name] as int?);
+          // 満足度は MenuData から復元（記録優先、なければ LastUsed）
+          section.satisfactionList.add(rec?.satisfaction ?? lu?.satisfaction);
 
           if (isAerobic) {
             final String dist = (rec?.distance?.trim().isNotEmpty ?? false)
@@ -1047,10 +1038,6 @@ class _RecordScreenState extends State<RecordScreen>
     final Map<String, SectionData> tempSectionsMap = {};
     final partsFromRecords = record.menus.keys.toList();
 
-    final dynamic satAllRaw = widget.settingsBox.get('satisfaction-$dateKey');
-    final Map<String, dynamic> satAll =
-        (satAllRaw is Map<String, dynamic>) ? satAllRaw : {};
-
     for (final originalPart in partsFromRecords) {
       final translatedPart = _translatePartToLocale(context, originalPart);
       final l10n = AppLocalizations.of(context)!;
@@ -1089,19 +1076,15 @@ class _RecordScreenState extends State<RecordScreen>
 
       if (names.isEmpty) names.add('');
 
-      final Map<String, dynamic> partSat =
-          (satAll[originalPart] is Map<String, dynamic>)
-              ? satAll[originalPart] as Map<String, dynamic>
-              : {};
-
       for (final name in names) {
+
         final rec = recBy[name];
         final lu = luBy[name];
 
         section.menuControllers.add(TextEditingController(text: name));
         section.menuKeys.add(GlobalKey());
         section.nameFieldKeys.add(GlobalKey());
-        section.satisfactionList.add(partSat[name] as int?);
+        section.satisfactionList.add(rec?.satisfaction ?? lu?.satisfaction);
 
         if (isAerobic) {
           final String dist = (rec?.distance?.trim().isNotEmpty ?? false)
@@ -1230,7 +1213,6 @@ class _RecordScreenState extends State<RecordScreen>
     final dateKey = _getDateKey(widget.selectedDate);
     final Map<String, List<MenuData>> allMenusForRecord = {};
     // 追加：満足度保存用（部位→{種目名: 値}）
-    final Map<String, Map<String, int>> satisfactionToStore = {};
     String? lastModifiedPart;
     bool hasAnyRecordData = false;
     final l10n = AppLocalizations.of(context)!;
@@ -1247,6 +1229,11 @@ class _RecordScreenState extends State<RecordScreen>
       for (int i = 0; i < section.menuControllers.length; i++) {
         final name = section.menuControllers[i].text.trim();
         if (name.isEmpty) continue;
+
+        // 追加：このメニューの満足度（null=未選択）
+        final int? sat = (i < section.satisfactionList.length)
+            ? section.satisfactionList[i]
+            : null;
 
         if (isAerobic) {
           final distance = i < section.aerobicDistanceCtrls.length
@@ -1272,6 +1259,7 @@ class _RecordScreenState extends State<RecordScreen>
             distance: distance,
             duration: duration,
             calories: calorieText.isNotEmpty ? calorieText : null,
+            satisfaction: sat,
           ));
 
           final double parsedDistance =
@@ -1316,6 +1304,7 @@ class _RecordScreenState extends State<RecordScreen>
               distance: distance,
               duration: duration,
               calories: hasCalories ? calorieText : null,
+              satisfaction: sat,
             ));
             hasAnyRecordData = true;
             lastModifiedPart ??= originalPart;
@@ -1329,7 +1318,12 @@ class _RecordScreenState extends State<RecordScreen>
             repsAll.add(set.repController.text);
           }
           listForLastUsed.add(MenuData(
-              name: name, weights: weightsAll, reps: repsAll, calories: null));
+            name: name,
+            weights: weightsAll,
+            reps: repsAll,
+            calories: null,
+            satisfaction: sat,
+          ));
 
           final weightsConfirmed = <String>[];
           final repsConfirmed = <String>[];
@@ -1345,22 +1339,15 @@ class _RecordScreenState extends State<RecordScreen>
           }
           if (weightsConfirmed.isNotEmpty || repsConfirmed.isNotEmpty) {
             listForRecord.add(MenuData(
-                name: name,
-                weights: weightsConfirmed,
-                reps: repsConfirmed,
-                calories: null));
+              name: name,
+              weights: weightsConfirmed,
+              reps: repsConfirmed,
+              calories: null,
+              satisfaction: sat,
+            ));
             hasAnyRecordData = true;
             lastModifiedPart ??= originalPart;
           }
-        }
-
-        // 追加：満足度の収集（このメニューに設定されていれば保存）
-        final int? sat = (i < section.satisfactionList.length)
-            ? section.satisfactionList[i]
-            : null;
-        if (sat != null) {
-          satisfactionToStore.putIfAbsent(
-              originalPart, () => <String, int>{})[name] = sat;
         }
       }
 
@@ -1424,17 +1411,13 @@ class _RecordScreenState extends State<RecordScreen>
       didChangeStorage = true;
 
       widget.settingsBox.put('memo-$dateKey', {'body': memoText});
-      if (satisfactionToStore.isNotEmpty) {
-        widget.settingsBox.put('satisfaction-$dateKey', satisfactionToStore);
-      } else {
-        widget.settingsBox.delete('satisfaction-$dateKey');
-      }
+
     } else {
       final had = widget.recordsBox.containsKey(dateKey);
       widget.recordsBox.delete(dateKey);
       widget.settingsBox.delete('memo-$dateKey');
-      // 追加
-      widget.settingsBox.delete('satisfaction-$dateKey');
+// （削除）満足度は MenuData に保存
+
       didChangeStorage = had;
     }
 

@@ -4,19 +4,14 @@ part 'menu_data.g.dart';
 
 @HiveType(typeId: 0)
 class MenuData extends HiveObject {
-  @HiveField(0)
-  final String name;
-  @HiveField(1)
-  final List<String> weights;
-  @HiveField(2)
-  final List<String> reps;
+  @HiveField(0) final String name;
+  @HiveField(1) final List<String> weights;
+  @HiveField(2) final List<String> reps;
 
-  @HiveField(3)
-  final String? distance; // km
-  @HiveField(4)
-  final String? duration; // mm:ss
-  @HiveField(5)
-  final String? calories; // kcal
+  @HiveField(3) final String? distance;
+  @HiveField(4) final String? duration;
+  @HiveField(5) final String? calories;
+  @HiveField(6) final int? satisfaction; // 追加
 
   MenuData({
     required this.name,
@@ -25,21 +20,17 @@ class MenuData extends HiveObject {
     this.distance,
     this.duration,
     this.calories,
+    this.satisfaction, // 追加
   });
 
   factory MenuData.fromJson(Map<String, dynamic> json) {
     return MenuData(
       name: json['name'] as String,
-      // ← 0 は正しい入力として保持（null のみ空文字に）
-      weights: (json['weights'] as List)
-          .map((e) => e == null ? '' : e.toString())
-          .toList(),
-      reps: (json['reps'] as List)
-          .map((e) => e == null ? '' : e.toString())
-          .toList(),
+      weights: (json['weights'] as List).map((e) => e?.toString() ?? '').toList(),
+      reps: (json['reps'] as List).map((e) => e?.toString() ?? '').toList(),
       distance: json['distance'] as String?,
       duration: json['duration'] as String?,
-      calories: json['calories'] as String?,
+      satisfaction: json['satisfaction'] as int?, // ★追加
     );
   }
 
@@ -50,7 +41,7 @@ class MenuData extends HiveObject {
       'reps': reps,
       'distance': distance,
       'duration': duration,
-      'calories': calories,
+      'satisfaction': satisfaction, // ★追加
     };
   }
 }
