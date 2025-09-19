@@ -966,16 +966,9 @@ class _RecordScreenState extends State<RecordScreen>
     if (record?.weight != null) {
       _weightController.text = record!.weight.toString();
     } else {
-      final personal = SettingsManager.personalWeightKg;
-      if (personal != null) {
-        final display = SettingsManager.currentUnit == 'kg'
-            ? personal
-            : personal * 2.2046226218;
-        _weightController.text = display.toStringAsFixed(1);
-      } else {
-        _weightController.clear();
-      }
+      _weightController.clear();
     }
+
 
     // ▼ 追加：固定フィールドがあれば優先表示
     if (record?.bodyFatPercent != null) {
