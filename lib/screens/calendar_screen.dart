@@ -13,10 +13,10 @@ import '../settings_manager.dart';
 import 'record_screen.dart';
 import 'graph_screen.dart';
 import 'settings_screen.dart';
-import '../widgets/ad_square.dart';
 import '../widgets/coach_bubble.dart';
 import '../routes/slide_up_route.dart';
 import '../widgets/centered_constrained.dart';
+import '../widgets/gradient_fab.dart';
 
 String _fmtWaist(double cm, AppLocalizations l10n) {
   final v = SettingsManager.waistCmToDisplay(cm).toStringAsFixed(1);
@@ -51,6 +51,10 @@ class CalendarScreen extends StatefulWidget {
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
+}
+
+String _dayRecordLabel(DateTime d) {
+  return '${d.month}月${d.day}日の記録';
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
@@ -1034,12 +1038,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ),
       ),
+      // Scaffold の floatingActionButton 一式を丸ごとこれに
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: GradientFAB(
+        onPressed: _handleAddPressed,
+        tooltip: '追加',
         heroTag: 'calendarAddFab',
-        backgroundColor: const Color(0xFF2563EB),
-        onPressed: () => _handleAddPressed(),
-        child: const Icon(Icons.add, color: Colors.white),
+        width: 60,
+        height: 56,
+        borderRadius: 16,
       ),
 
       // ▼ ここで SettingsManager.waistUnitNotifier を監視して即反映
@@ -1066,8 +1073,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             const AdBanner(screenName: 'calendar'),
                             const SizedBox(height: 2),
                             _buildCalendar(context),
-                            const SizedBox(height: 2),
-                            _buildResultsArea(context, selectedRecord),
+                            const SizedBox(height: 2),                 // ここで間隔を狭く
+                            _buildResultsArea(context, selectedRecord) // 左寄せカード、非スクロール
                           ],
                         );
                       },
@@ -1091,14 +1098,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       elevation: 4,
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        // 下の余白を少し詰めて、実画面上の高さを稼ぐ
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
         child: TableCalendar<Object>(
           firstDay: DateTime.utc(2015, 1, 1),
           lastDay: DateTime.utc(2100, 12, 31),
           focusedDay: _focusedDay,
           locale: Localizations.localeOf(context).toString(),
 
-          rowHeight: _rowHeightFor3(context),
+          // ここで高さを少しアップ（12%拡大）
+          rowHeight: _rowHeightFor3(context) * 1.12,
 
           selectedDayPredicate: (day) =>
           _selectedDay != null && _sameDate(day, _selectedDay!),
@@ -1112,8 +1121,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
-            leftChevronIcon: Icon(Icons.chevron_left, color: colorScheme.onSurface),
-            rightChevronIcon: Icon(Icons.chevron_right, color: colorScheme.onSurface),
+            leftChevronIcon:
+            Icon(Icons.chevron_left, color: colorScheme.onSurface),
+            rightChevronIcon:
+            Icon(Icons.chevron_right, color: colorScheme.onSurface),
           ),
 
           calendarStyle: CalendarStyle(
@@ -1174,7 +1185,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               return;
             }
             setState(() {
-              _selectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+              _selectedDay = DateTime(
+                  selectedDay.year, selectedDay.month, selectedDay.day);
               _focusedDay = focusedDay;
             });
           },
@@ -1185,6 +1197,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
       ),
     );
+
   }
 
   String _formatResultsDate(BuildContext context, DateTime date) {
@@ -1258,52 +1271,35 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+// カレンダー直下に出す「◯月◯日の記録」のカード（左寄せ・スクロールしない）
+  // カレンダー直下に出す「◯月◯日の記録」のカード（左寄せ・スクロールしない）
   Widget _buildResultsArea(BuildContext context, DailyRecord? record) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
+    final DateTime sel = _selectedDay ?? _focusedDay ?? DateTime.now();
 
-    final DateTime sel = _selectedDay ?? DateTime.now();
-    final String? memoText = _getMemoTextForDate(sel);
-    final bool hasMemo = memoText != null && memoText.trim().isNotEmpty;
-
-    final bool noData = (record == null || !_hasAnyData(record)) && !hasMemo;
-    if (noData) {
-      return Expanded(
-        child: ListView(
-          padding: const EdgeInsets.only(top: 8.0),
-          children: const [
-            Center(
-              child: AdSquare(
-                adSize: AdBoxSize.largeBanner,
-                screenName: 'calendar',
-              ),
-            ),
-          ],
-        ),
-      );
+    // 何もなければ表示しない
+    if (record == null || !_hasAnyData(record)) {
+      return const SizedBox.shrink();
     }
 
-    final unit = SettingsManager.currentUnit;
-    final String selKey = _dateKey(_selectedDay ?? DateTime.now());
-
+    // ====== ここから “従来のサマリ生成” をメソッド内に集約 ======
     final List<Widget> summaryChildren = [];
 
-    // ===== パーソナル用の素材値 =====
-    final double? bodyFatVal = record?.bodyFatPercent; // %
-    final double? waistValCm = record?.waistCm;        // cm
+    // --- 個人値（体重/体脂肪/ウエスト/BMI） ---
+    final double? bodyFatVal = _safeBodyFat(record);      // %
+    final double? waistValCm = _safeWaist(record);         // cm
     double? bmiVal;
-    if (record?.weight != null) {
-      final w = record!.weight!;
+    if (record.weight != null) {
+      final w = record.weight!;
       final h = _heightMetersFromSettings() ?? _heightMetersFromRecord(record);
       if (h != null && h > 0) {
         bmiVal = _toKg(w) / (h * h);
       }
     }
 
-    bool _menuHasAnyData(m) {
-      final len = (m.weights.length < m.reps.length)
-          ? m.weights.length
-          : m.reps.length;
+    bool _menuHasAnyData(MenuData m) {
+      final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
       for (int i = 0; i < len; i++) {
         final w = m.weights[i].toString().trim();
         final r = m.reps[i].toString().trim();
@@ -1315,17 +1311,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
       return false;
     }
 
-    // ===== 1) 有酸素 =====
+    // --- 有酸素 ---
     final List<MenuData> aerobicMenus =
-        (record?.menus['有酸素運動'] as List<MenuData>?) ?? const <MenuData>[];
-
+        (record.menus['有酸素運動'] as List<MenuData>?) ?? const <MenuData>[];
     if (aerobicMenus.any(_menuHasAnyData)) {
       summaryChildren.add(
         Padding(
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
           child: Text(
             '■${_translatePartToLocale(context, '有酸素運動')}',
-            style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
           ),
         ),
       );
@@ -1334,27 +1329,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _selectableLine(
             text: m.name,
             padding: const EdgeInsets.only(bottom: 2.0),
-            style: TextStyle(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
           ),
         );
-
         final bool hasDistance = _hasPositiveDistanceValue(m.distance);
         final bool hasDuration = _hasPositiveDurationValue(m.duration);
-
         if (hasDistance) {
           summaryChildren.add(
             _selectableLine(
               text: '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(
-                color: colorScheme.onSurface,
-                fontSize: 13,
-                fontWeight: FontWeight.w400,
-              ),
+              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
             ),
           );
         }
@@ -1363,11 +1348,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _selectableLine(
               text: '${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(
-                color: colorScheme.onSurface,
-                fontSize: 13,
-                fontWeight: FontWeight.w400,
-              ),
+              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
             ),
           );
         }
@@ -1376,23 +1357,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _selectableLine(
               text: '${l10n.calorie}: ${m.calories} ${l10n.kcalUnit}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(
-                color: colorScheme.onSurface,
-                fontSize: 13,
-                fontWeight: FontWeight.w400,
-              ),
+              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
             ),
           );
         }
-
-        final int? satVal = m.satisfaction;
-        if (satVal != null) {
+        if (m.satisfaction != null) {
           summaryChildren.add(
             Padding(
               padding: const EdgeInsets.only(left: 8.0, top: 2.0, bottom: 2.0),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: _satisfactionLine(l10n, satVal, colorScheme),
+                child: _satisfactionLine(l10n, m.satisfaction!, cs),
               ),
             ),
           );
@@ -1401,82 +1376,60 @@ class _CalendarScreenState extends State<CalendarScreen> {
       summaryChildren.add(const SizedBox(height: 8));
     }
 
-    // ===== 2) トレーニング（有酸素以外） =====
-    record?.menus.forEach((originalPart, menuList) {
+    // --- 有酸素以外（部位/メニュー名 + 簡易セット表示） ---
+    record.menus.forEach((originalPart, menuList) {
       if (originalPart == '有酸素運動') return;
 
-      bool partHasData = false;
+      bool partHas = false;
       for (final m in menuList) {
-        if (_menuHasAnyData(m)) { partHasData = true; break; }
+        if (_menuHasAnyData(m)) {
+          partHas = true;
+          break;
+        }
       }
-      if (!partHasData) return;
+      if (!partHas) return;
 
-      final partTitle = _translatePartToLocale(context, originalPart);
       summaryChildren.add(
         Padding(
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
           child: Text(
-            '■$partTitle',
-            style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+            '■${_translatePartToLocale(context, originalPart)}',
+            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
           ),
         ),
       );
+
       for (final m in menuList) {
+        if (!_menuHasAnyData(m)) continue;
+
         summaryChildren.add(
           _selectableLine(
             text: m.name,
             padding: const EdgeInsets.only(bottom: 2.0),
-            style: TextStyle(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
           ),
         );
 
-        final setCount = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
-        for (int i = 0; i < setCount; i++) {
-          final wStr = m.weights[i].toString().trim();
-          final rStr = m.reps[i].toString().trim();
-          if (wStr.isEmpty && rStr.isEmpty) continue;
-
-          final hasWeight = wStr.isNotEmpty;
-          final hasReps = rStr.isNotEmpty;
-          final weightLabel = hasWeight
-              ? '$wStr${unit == "kg" ? l10n.kg : l10n.lbs}'
-              : null;
-          final repsLabel = hasReps ? '$rStr${l10n.reps}' : null;
-
-          String detail;
-          if (hasWeight && hasReps) {
-            detail = '$weightLabel × $repsLabel';
-          } else if (hasWeight) {
-            detail = weightLabel!;
-          } else {
-            detail = repsLabel!;
-          }
-
+        final int len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        for (int i = 0; i < len; i++) {
+          final w = m.weights[i].toString().trim();
+          final r = m.reps[i].toString().trim();
+          if (w.isEmpty && r.isEmpty) continue;
           summaryChildren.add(
             _selectableLine(
-              text: '${i + 1}${l10n.sets}：$detail',
+              text: '${i + 1}set: ${w.isEmpty ? '-' : w} × ${r.isEmpty ? '-' : r}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(
-                color: colorScheme.onSurface,
-                fontSize: 13,
-                fontWeight: FontWeight.w400,
-              ),
+              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
             ),
           );
         }
-
-        final int? satVal = m.satisfaction;
-        if (satVal != null) {
+        if (m.satisfaction != null) {
           summaryChildren.add(
             Padding(
               padding: const EdgeInsets.only(left: 8.0, top: 2.0, bottom: 2.0),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: _satisfactionLine(l10n, satVal, colorScheme),
+                child: _satisfactionLine(l10n, m.satisfaction!, cs),
               ),
             ),
           );
@@ -1485,124 +1438,128 @@ class _CalendarScreenState extends State<CalendarScreen> {
       summaryChildren.add(const SizedBox(height: 8));
     });
 
-    // ===== メモ（任意） =====
-    if (hasMemo) {
-      summaryChildren.add(
-        Padding(
-          padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
-          child: Text(
-            '■${l10n.memo}',
-            style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
-          ),
-        ),
-      );
-      summaryChildren.add(
-        Padding(
-          padding: const EdgeInsets.only(left: 8.0, bottom: 4.0),
-          child: Text(
-            memoText!,
-            textAlign: TextAlign.left,
-            style: TextStyle(color: colorScheme.onSurface, fontSize: 14, height: 1.3),
-          ),
-        ),
-      );
-    }
-
-    // ===== 3) パーソナル =====
-    final bool hasPersonal = (record?.weight != null) || (bodyFatVal != null) || (waistValCm != null) || (bmiVal != null);
+    // --- 個人値まとめ（あるものだけ）
+    final hasPersonal = (record.weight != null) || (bodyFatVal != null) || (waistValCm != null) || (bmiVal != null);
     if (hasPersonal) {
       summaryChildren.add(
         Padding(
-          padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
+          padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
           child: Text(
             '■${l10n.personal}',
-            style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
           ),
         ),
       );
-      if (record?.weight != null) {
+      if (record.weight != null) {
+        final unit = SettingsManager.currentUnit;
         summaryChildren.add(
           _selectableLine(
-            text: '${l10n.bodyWeight}: ${record!.weight!.toStringAsFixed(1)} $unit',
-            style: TextStyle(
-              color: colorScheme.onSurface,
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-            ),
+            text: '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(1)} $unit',
+            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
         );
       }
       if (bodyFatVal != null) {
         summaryChildren.add(
           _selectableLine(
-            text: '${l10n.bodyFatPercentage}: ${bodyFatVal.toStringAsFixed(1)} ${l10n.percentSymbol}',
-            style: TextStyle(
-              color: colorScheme.onSurface,
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-            ),
+            text: '${l10n.bodyFat}: ${bodyFatVal!.toStringAsFixed(1)}%',
+            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
         );
       }
       if (waistValCm != null) {
-        final String waistText = '${l10n.waist}: ${_fmtWaist(waistValCm, l10n)}';
-
         summaryChildren.add(
           _selectableLine(
-            text: waistText,
-            style: TextStyle(
-              color: colorScheme.onSurface,
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-            ),
+            text: '${l10n.waist}: ${_fmtWaist(waistValCm!, l10n)}',
+            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
         );
       }
       if (bmiVal != null) {
         summaryChildren.add(
           _selectableLine(
-            text: '${l10n.bmi}: ${bmiVal.toStringAsFixed(1)}',
-            style: TextStyle(
-              color: colorScheme.onSurface,
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-            ),
+            text: 'BMI: ${bmiVal!.toStringAsFixed(1)}',
+            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
         );
       }
-      summaryChildren.add(const SizedBox(height: 8));
     }
 
-    return Expanded(
-      child: ListView(
-        padding: const EdgeInsets.only(top: 0.0),
-        children: [
-          Theme(
-            data: Theme.of(context).copyWith(
-              splashColor: Colors.transparent,
-              highlightColor: Colors.transparent,
-              hoverColor: Colors.transparent,
-              dividerColor: Colors.transparent,
+    // メモ
+    final memo = _getMemoTextForDate(sel);
+    if (memo != null && memo.trim().isNotEmpty) {
+      summaryChildren.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: _selectableLine(
+            text: memo.trim(),
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+            padding: const EdgeInsets.only(left: 4.0, bottom: 0),
+          ),
+        ),
+      );
+    }
+    // ====== サマリ生成ここまで ======
+
+    // FAB と重ならない横幅（右余白+安全マージンで約 96px 確保）
+    final double screenW = MediaQuery.of(context).size.width;
+    final double maxWidth = (screenW - 96).clamp(220.0, screenW);
+
+    const double fabHeight = 56;
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: maxWidth,          // （既存）FABと重ならない幅上限
+            minHeight: fabHeight,
+            maxHeight: fabHeight,        // ← 高さ固定
+          ),
+          child: Card(
+            margin: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+            color: cs.surfaceContainerHighest,
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Theme.of(context).dividerColor),
             ),
-            child: Card(
-              color: colorScheme.surfaceContainerHighest,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.0),
-              ),
-              elevation: 4,
-              clipBehavior: Clip.none,
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                title: Text(
-                  l10n.results(_formatResultsDate(context, sel)),
-                  style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => _showResultsDialog(context, summaryChildren, sel),
+              child: Container(
+                height: fabHeight,                        // ← ここでも明示
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                alignment: Alignment.centerLeft,          // 垂直中央寄せ
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        l10n.results(_formatResultsDate(context, sel)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: cs.onSurface,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.chevron_right, size: 20),
+                  ],
                 ),
-                onTap: () => _showResultsDialog(context, summaryChildren, sel),
               ),
             ),
           ),
-        ],
-      ),
-    );
+        ),
+      );
   }
+
+
+
+
 }

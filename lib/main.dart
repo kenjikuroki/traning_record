@@ -7,6 +7,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:flutter/scheduler.dart' show SchedulerBinding;
 import 'dart:io' show Platform; // ★ 追加
+import 'theme/app_theme.dart';
 
 import 'l10n/app_localizations.dart';
 import 'models/menu_data.dart';
@@ -22,6 +23,7 @@ Future<void> _initAudioSession() async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await _initAudioSession();
 
   await Hive.initFlutter();
 
@@ -87,39 +89,14 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
-    // 未定義エラー回避のためここでテーマを定義
-    final ThemeData lightTheme = ThemeData(
-      colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-      useMaterial3: true,
-      fontFamily: 'Inter',
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.transparent, // ← 透過
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.white, // ← 白字で潰れ防止
-      ),
-    );
-    final ThemeData darkTheme = ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue, brightness: Brightness.dark),
-      useMaterial3: true,
-      fontFamily: 'Inter',
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.white,
-      ),
-    );
-
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: SettingsManager.themeModeNotifier,
       builder: (context, themeMode, _) {
         return MaterialApp(
           title: 'TrainingRecord',
           debugShowCheckedModeBanner: false,
-          theme: lightTheme,
-          darkTheme: darkTheme,
+            theme: appThemeLight(context),
+          darkTheme: appThemeDark(context),
           themeMode: themeMode,
 
           // l10n
