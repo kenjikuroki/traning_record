@@ -229,7 +229,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get defaultSets => 'Default Sets';
 
   @override
-  String get bodyWeight => 'Body weight';
+  String get bodyWeight => 'BW';
 
   @override
   String get bodyWeightTracking => 'Body Weight Tracking';
@@ -645,4 +645,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aerobicCalorieWeightRequired => 'Enter your body weight in Personal settings to enable calorie estimation.';
+
+  @override
+  String get add => 'Add';
+
+  @override
+  String get noRecords => 'No records';
+
+  @override
+  String get editThisDay => 'Edit this day';
+
+  @override
+  String get addOnThisDay => 'Add on this day';
 }

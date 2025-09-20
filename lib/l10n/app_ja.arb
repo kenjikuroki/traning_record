@@ -205,5 +205,9 @@
   "aerobicCalorieUnknownHint": "不明な種目名のためカロリーを算出できませんでした。スマートウォッチなどで取得した値があれば入力してください。",
   "aerobicCalorieInfoTitle": "カロリー計算について",
   "aerobicCalorieInfoBody": "消費カロリー = MET × 体重(kg) × 運動時間(時間) で概算しています。種目名・距離・時間から運動強度(MET)を推定します。\n\n推定値のため、スマートウォッチ等で取得した値があれば上書きしてください。距離や時間が空欄の場合は推定されません。\n\n暑熱環境や体調によって消費量は変動します。休憩と水分補給も心掛けてください。",
-  "aerobicCalorieWeightRequired": "カロリー算出を有効にするにはパーソナル設定で体重を入力してください。"
+  "aerobicCalorieWeightRequired": "カロリー算出を有効にするにはパーソナル設定で体重を入力してください。",
+  "add": "追加",
+  "noRecords": "記録はありません",
+  "editThisDay": "この日を編集",
+  "addOnThisDay": "この日に追加"
 }

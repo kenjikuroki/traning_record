@@ -534,7 +534,7 @@ abstract class AppLocalizations {
   /// No description provided for @bodyWeight.
   ///
   /// In en, this message translates to:
-  /// **'Body weight'**
+  /// **'BW'**
   String get bodyWeight;
 
   /// No description provided for @bodyWeightTracking.
@@ -1334,6 +1334,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter your body weight in Personal settings to enable calorie estimation.'**
   String get aerobicCalorieWeightRequired;
+
+  /// No description provided for @add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
+
+  /// No description provided for @noRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'No records'**
+  String get noRecords;
+
+  /// No description provided for @editThisDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit this day'**
+  String get editThisDay;
+
+  /// No description provided for @addOnThisDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Add on this day'**
+  String get addOnThisDay;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

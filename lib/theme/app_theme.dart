@@ -87,7 +87,7 @@ ThemeData appThemeLight(BuildContext context) {
     cardTheme: CardThemeData(
       color: AppTokens.surfaceLight,
       elevation: 0,
-      margin: const EdgeInsets.all(AppTokens.s16),
+      margin: const EdgeInsets.all(AppTokens.s4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTokens.radiusL),
         side: const BorderSide(color: AppTokens.strokeLight),
@@ -159,7 +159,7 @@ ThemeData appThemeDark(BuildContext context) {
     cardTheme: CardThemeData(
       color: AppTokens.surfaceDark,
       elevation: 0,
-      margin: const EdgeInsets.all(AppTokens.s16),
+      margin: const EdgeInsets.all(AppTokens.s4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTokens.radiusL),
         side: BorderSide(color: Colors.white.withOpacity(0.06)),

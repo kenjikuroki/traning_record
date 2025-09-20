@@ -17,6 +17,7 @@ import '../widgets/coach_bubble.dart';
 import '../routes/slide_up_route.dart';
 import '../widgets/centered_constrained.dart';
 import '../widgets/gradient_fab.dart';
+import '../widgets/big_earning_ad.dart';
 
 String _fmtWaist(double cm, AppLocalizations l10n) {
   final v = SettingsManager.waistCmToDisplay(cm).toStringAsFixed(1);
@@ -53,8 +54,22 @@ class CalendarScreen extends StatefulWidget {
   State<CalendarScreen> createState() => _CalendarScreenState();
 }
 
-String _dayRecordLabel(DateTime d) {
-  return '${d.month}月${d.day}日の記録';
+// 日付のラベルを l10n で作る（context 必須）
+String _dayRecordLabel(BuildContext context, DateTime d) {
+  final l10n = AppLocalizations.of(context)!;
+  return l10n.results(_formatResultsDate(context, d));
+}
+
+// ロケールに合わせた簡易的な日付文字列（intl 不要）
+// ja: "M月d日"、その他: "yyyy/MM/dd"
+String _formatResultsDate(BuildContext context, DateTime d) {
+  final lang = Localizations.localeOf(context).languageCode.toLowerCase();
+  if (lang == 'ja') {
+    return '${d.month}月${d.day}日';
+  }
+  // es / id / en などは共通表記でOK
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${d.year}/${two(d.month)}/${two(d.day)}';
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
@@ -112,6 +127,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
       await widget.settingsBox.put('hint_seen_calendar', true);
     });
 
+  }
+
+  bool _isPastDate(DateTime d) {
+    final DateTime t = DateTime.now();
+    final DateTime a = DateTime(d.year, d.month, d.day);
+    final DateTime b = DateTime(t.year, t.month, t.day);
+    return a.isBefore(b);
   }
 
   Widget _satisfactionLine(AppLocalizations l10n, int value, ColorScheme cs) {
@@ -875,8 +897,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     Widget _photoChip() {
-      final isJa = Localizations.localeOf(context).languageCode == 'ja';
-      final label = isJa ? '写真' : 'Photos';
+      final cs = Theme.of(context).colorScheme;
+      final l10n = AppLocalizations.of(context)!; // l10n
+
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
@@ -884,11 +907,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
           borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
-          label,
+          l10n.photos, // ← '写真' / 'Photos' を l10n に統一
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 10, height: 1.1, color: cs.onPrimaryContainer, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontSize: 10,
+            height: 1.1,
+            color: cs.onPrimaryContainer,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       );
     }
@@ -965,9 +993,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
     setState(() {});
   }
 
-  Future<void> _handleAddPressed() {
-    final day = _selectedDay ?? DateTime.now();
-    return _openRecordSheet(DateTime(day.year, day.month, day.day));
+  Future<void> _handleAddPressed() async {
+    final base = _selectedDay ?? DateTime.now();
+    final DateTime sel = DateTime(base.year, base.month, base.day);
+    final bool isPast = _isPastDate(sel);
+
+    if (isPast) {
+      // 過去日：実績ダイアログ
+      final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
+      final List<Widget> summaryChildren = _buildSummaryChildrenForDate(context, sel, rec);
+      await _showResultsDialog(context, summaryChildren, sel);
+    } else {
+      // 今日以降：記録画面
+      await _openRecordSheet(sel);
+    }
   }
 
   // 半角→全角数字（0-9）変換
@@ -1042,7 +1081,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: GradientFAB(
         onPressed: _handleAddPressed,
-        tooltip: '追加',
+        tooltip: AppLocalizations.of(context)!.add,
         heroTag: 'calendarAddFab',
         width: 60,
         height: 56,
@@ -1073,8 +1112,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             const AdBanner(screenName: 'calendar'),
                             const SizedBox(height: 2),
                             _buildCalendar(context),
-                            const SizedBox(height: 2),                 // ここで間隔を狭く
-                            _buildResultsArea(context, selectedRecord) // 左寄せカード、非スクロール
                           ],
                         );
                       },
@@ -1180,13 +1217,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
           eventLoader: _eventLoader,
 
           onDaySelected: (selectedDay, focusedDay) async {
+            // 2回目タップ判定：すでに選択中の日付をもう一度タップした
             if (_selectedDay != null && _sameDate(selectedDay, _selectedDay!)) {
-              await _openRecordSheet(selectedDay);
+              final DateTime sel = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+              final bool isPast = _isPastDate(sel);
+
+              if (isPast) {
+                // 過去日：実績ダイアログを開く
+                final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
+                final List<Widget> summaryChildren = _buildSummaryChildrenForDate(context, sel, rec);
+                await _showResultsDialog(context, summaryChildren, sel);
+              } else {
+                // 今日以降：記録画面へ
+                await _openRecordSheet(sel);
+              }
               return;
             }
+
+            // 1回目タップ：その日に移動（選択＆フォーカス更新）のみ
             setState(() {
-              _selectedDay = DateTime(
-                  selectedDay.year, selectedDay.month, selectedDay.day);
+              _selectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
               _focusedDay = focusedDay;
             });
           },
@@ -1208,62 +1258,363 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return DateFormat.yMMMd(locale.toString()).format(date);
   }
 
-  Future<void> _showResultsDialog(
-    BuildContext context,
-    List<Widget> summaryChildren,
-    DateTime date,
-  ) async {
+  List<Widget> _buildSummaryChildrenForDate(
+      BuildContext context,
+      DateTime sel,
+      DailyRecord? record,
+      ) {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
-    final dateLabel = _formatResultsDate(context, date);
+    final List<Widget> summaryChildren = [];
 
-    await showDialog(
+    if (record == null || !_hasAnyData(record)) {
+      final memo = _getMemoTextForDate(sel);
+      if (memo != null && memo.trim().isNotEmpty) {
+        summaryChildren.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: _selectableLine(
+              text: memo.trim(),
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+              padding: const EdgeInsets.only(left: 4.0, bottom: 0),
+            ),
+          ),
+        );
+      }
+      return summaryChildren;
+    }
+
+    // ===== ここから“従来のサマリ生成” =====
+
+    // 個人値（体重/体脂肪/ウエスト/BMI）
+    final double? bodyFatVal = _safeBodyFat(record);
+    final double? waistValCm = _safeWaist(record);
+    double? bmiVal;
+    if (record.weight != null) {
+      final w = record.weight!;
+      final h = _heightMetersFromSettings() ?? _heightMetersFromRecord(record);
+      if (h != null && h > 0) {
+        bmiVal = _toKg(w) / (h * h);
+      }
+    }
+
+    bool _menuHasAnyData(MenuData m) {
+      final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+      for (int i = 0; i < len; i++) {
+        final w = m.weights[i].toString().trim();
+        final r = m.reps[i].toString().trim();
+        if (w.isNotEmpty || r.isNotEmpty) return true;
+      }
+      if (_hasPositiveDistanceValue(m.distance)) return true;
+      if (_hasPositiveDurationValue(m.duration)) return true;
+      if ((m.calories?.trim().isNotEmpty ?? false)) return true;
+      return false;
+    }
+
+    // 有酸素
+    final List<MenuData> aerobicMenus =
+        (record.menus['有酸素運動'] as List<MenuData>?) ?? const <MenuData>[];
+    if (aerobicMenus.any(_menuHasAnyData)) {
+      summaryChildren.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
+          child: Text(
+            '■${_translatePartToLocale(context, '有酸素運動')}',
+            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+        ),
+      );
+      for (final m in aerobicMenus) {
+        summaryChildren.add(
+          _selectableLine(
+            text: m.name,
+            padding: const EdgeInsets.only(bottom: 2.0),
+            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
+          ),
+        );
+        final bool hasDistance = _hasPositiveDistanceValue(m.distance);
+        final bool hasDuration = _hasPositiveDurationValue(m.duration);
+        if (hasDistance) {
+          summaryChildren.add(
+            _selectableLine(
+              text: '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+            ),
+          );
+        }
+        if (hasDuration) {
+          summaryChildren.add(
+            _selectableLine(
+              text: '${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}',
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+            ),
+          );
+        }
+        if ((m.calories?.trim().isNotEmpty ?? false)) {
+          summaryChildren.add(
+            _selectableLine(
+              text: '${l10n.calorie}: ${m.calories} ${l10n.kcalUnit}',
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+            ),
+          );
+        }
+        if (m.satisfaction != null) {
+          summaryChildren.add(
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0, top: 2.0, bottom: 2.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _satisfactionLine(l10n, m.satisfaction!, cs),
+              ),
+            ),
+          );
+        }
+      }
+      summaryChildren.add(const SizedBox(height: 8));
+    }
+
+    // 有酸素以外（部位/メニュー名 + 簡易セット表示）
+    record.menus.forEach((originalPart, menuList) {
+      if (originalPart == '有酸素運動') return;
+
+      bool partHas = false;
+      for (final m in menuList) {
+        if (_menuHasAnyData(m)) {
+          partHas = true;
+          break;
+        }
+      }
+      if (!partHas) return;
+
+      summaryChildren.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
+          child: Text(
+            '■${_translatePartToLocale(context, originalPart)}',
+            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+        ),
+      );
+
+      for (final m in menuList) {
+        if (!_menuHasAnyData(m)) continue;
+
+        summaryChildren.add(
+          _selectableLine(
+            text: m.name,
+            padding: const EdgeInsets.only(bottom: 2.0),
+            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
+          ),
+        );
+
+        final int len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        for (int i = 0; i < len; i++) {
+          final w = m.weights[i].toString().trim();
+          final r = m.reps[i].toString().trim();
+          if (w.isEmpty && r.isEmpty) continue;
+          summaryChildren.add(
+            _selectableLine(
+              text: '${i + 1}set: ${w.isEmpty ? '-' : w} × ${r.isEmpty ? '-' : r}',
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+            ),
+          );
+        }
+        if (m.satisfaction != null) {
+          summaryChildren.add(
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0, top: 2.0, bottom: 2.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _satisfactionLine(l10n, m.satisfaction!, cs),
+              ),
+            ),
+          );
+        }
+      }
+      summaryChildren.add(const SizedBox(height: 8));
+    });
+
+    // 個人値まとめ（あるものだけ）
+    final hasPersonal = (record.weight != null) || (bodyFatVal != null) || (waistValCm != null) || (bmiVal != null);
+    if (hasPersonal) {
+      summaryChildren.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
+          child: Text(
+            '■${l10n.personal}',
+            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+        ),
+      );
+      if (record.weight != null) {
+        final unit = SettingsManager.currentUnit;
+        summaryChildren.add(
+          _selectableLine(
+            text: '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(1)} $unit',
+            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+          ),
+        );
+      }
+      if (bodyFatVal != null) {
+        summaryChildren.add(
+          _selectableLine(
+            text: '${l10n.bodyFat}: ${bodyFatVal!.toStringAsFixed(1)}%',
+            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+          ),
+        );
+      }
+      if (waistValCm != null) {
+        summaryChildren.add(
+          _selectableLine(
+            text: '${l10n.waist}: ${_fmtWaist(waistValCm!, l10n)}',
+            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+          ),
+        );
+      }
+      if (bmiVal != null) {
+        summaryChildren.add(
+          _selectableLine(
+            text: 'BMI: ${bmiVal!.toStringAsFixed(1)}',
+            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+          ),
+        );
+      }
+    }
+
+    // メモ
+    final memo = _getMemoTextForDate(sel);
+    if (memo != null && memo.trim().isNotEmpty) {
+      summaryChildren.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: _selectableLine(
+            text: memo.trim(),
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+            padding: const EdgeInsets.only(left: 4.0, bottom: 0),
+          ),
+        ),
+      );
+    }
+
+    return summaryChildren;
+  }
+
+  Future<void> _showResultsDialog(
+      BuildContext context,
+      List<Widget> body,
+      DateTime sel,
+      ) async {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    // 記録の有無（ラベル切替に使用）
+    final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
+    final bool hasRecord = (rec != null) && _hasAnyData(rec);
+
+    await showModalBottomSheet(
       context: context,
-      barrierDismissible: true,
+      isScrollControlled: true,
+      backgroundColor: cs.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (ctx) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        final double maxHeight = MediaQuery.of(ctx).size.height * 0.90;
+        return SafeArea(
+          top: false,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.results(dateLabel),
-                    style: TextStyle(
-                      color: cs.onSurface,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight: MediaQuery.of(ctx).size.height * 0.65,
-                    ),
-                    child: SingleChildScrollView(
-                      child: SelectionArea(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: summaryChildren,
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ヘッダー
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          l10n.results(_formatResultsDate(ctx, sel)),
+                          style: TextStyle(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+
+                // 実績本文（スクロール領域）
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: body.isEmpty
+                          ? [
+                        Text(
+                          '記録はありません',
+                          style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
+                        ),
+                      ]
+                          : body,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      child: Text(l10n.close),
-                    ),
+                ),
+
+                // ↓↓↓ ここが “デカ広告” 領域（動画ネイティブ優先 → バナーMRECに自動フォールバック） ↓↓↓
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  child: BigEarningAd(
+                    // ★本番の広告ユニットIDに差し替えてください
+                    androidNativeUnitId: 'ca-app-pub-3331079517737737/8075628963',
+                    iosNativeUnitId:     'ca-app-pub-3331079517737737/2163497749',
+                    androidBannerUnitId: 'ca-app-pub-3331079517737737/6135915237',
+                    iosBannerUnitId:     'ca-app-pub-3331079517737737/9252979261',
+                    height: 260,
+                    // NativeAd Factory ID（後述のプラットフォーム登録で使うID）
+                    factoryId: 'large_media',
                   ),
-                ],
-              ),
+                ),
+                // ↑↑↑ 広告ここまで ↑↑↑
+
+                const Divider(height: 1),
+
+                // フッター（編集/追加）
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.edit),
+                          label: Text(hasRecord ? l10n.editThisDay : l10n.addOnThisDay),
+                          onPressed: () async {
+                            Navigator.of(ctx).pop();
+                            await _openRecordSheet(sel);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         );

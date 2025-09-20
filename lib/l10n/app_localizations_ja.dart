@@ -645,4 +645,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get aerobicCalorieWeightRequired => 'カロリー算出を有効にするにはパーソナル設定で体重を入力してください。';
+
+  @override
+  String get add => '追加';
+
+  @override
+  String get noRecords => '記録はありません';
+
+  @override
+  String get editThisDay => 'この日を編集';
+
+  @override
+  String get addOnThisDay => 'この日に追加';
 }
