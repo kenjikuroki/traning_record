@@ -612,16 +612,12 @@ class _AlbumScreenState extends State<AlbumScreen> {
       ),
 
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: GradientFAB(
-        onPressed: _handleAddPressed, // 既存の追加ハンドラに合わせる
-        tooltip: l10n.add,
+      floatingActionButton: FloatingActionButton(
         heroTag: 'albumAddFab',
-        width: 60,
-        height: 56,
-        borderRadius: 16,
-        colors: appFabGradient(context), // app_themeの“くすんだ濃色”グラデ
-        // 単色にするなら ↓ を使う
-        // colors: [appFabSolid(context), appFabSolid(context)],
+        tooltip: l10n.add,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        onPressed: _handleAddPressed, // 既存の追加ハンドラをそのまま利用
+        child: const Icon(Icons.add, color: Colors.white),
       ),
 
       bottomNavigationBar: _inSelection

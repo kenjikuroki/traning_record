@@ -4160,7 +4160,7 @@ class _RecordScreenState extends State<RecordScreen>
                 : null,
             child: Ink(
               decoration: BoxDecoration(
-                color: kBrandBlue,
+                color: Theme.of(context).colorScheme.primary,
                 borderRadius: radius,
                 boxShadow: [
                   BoxShadow(
@@ -4171,7 +4171,7 @@ class _RecordScreenState extends State<RecordScreen>
                 ],
               ),
               child: Padding(
-                padding:
+              padding:
                     const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                 child: Text(
                   label,

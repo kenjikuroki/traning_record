@@ -1102,14 +1102,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: FloatingActionButton(
         heroTag: 'calendarFab',
+        backgroundColor: Theme.of(context).colorScheme.primary,
         onPressed: () {
           final day = _selectedDay ?? widget.selectedDate; // 選択日がなければ初期日
-          _openRecordSheet(day); // ※ RecordScreen の必須引数を内部で全て渡す既存メソッド
+          _openRecordSheet(day);
         },
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
-
   }
 
   Widget _buildCalendar(BuildContext context) {
