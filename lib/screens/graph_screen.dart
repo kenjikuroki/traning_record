@@ -2467,19 +2467,17 @@ class _GraphScreenState extends State<GraphScreen> {
           ? null
           : Colors.transparent,
       appBar: AppBar(
-        // カレンダー画面と同じ配置に合わせる（左に16pxの余白）
         automaticallyImplyLeading: false,
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        iconTheme: Theme.of(context).appBarTheme.iconTheme,
-        titleSpacing: 16, // ← これでカレンダーと同じ左寄せ位置
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+        titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle,
         centerTitle: false,
-        title: Text(
-          l10n.graphScreenTitle,
-          style: Theme.of(context).appBarTheme.titleTextStyle,
-        ),
+        titleSpacing: 16,
+        toolbarHeight: 56,
+        title: Text(l10n.graphTitle),
       ),
 
       resizeToAvoidBottomInset: false,

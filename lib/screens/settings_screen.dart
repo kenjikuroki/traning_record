@@ -454,20 +454,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final dateFmt = DateFormat('yyyy-MM-dd');
 
     return Scaffold(
-        appBar: AppBar(
-                  automaticallyImplyLeading: true,
-                  elevation: 0,
-                  scrolledUnderElevation: 0,
-                  surfaceTintColor: Colors.transparent,
-                  backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-                foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
-            titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle,
-            systemOverlayStyle: Theme.of(context).appBarTheme.systemOverlayStyle,
-            title: Text(l10n.settings),
-          ),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+        titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle,
+        centerTitle: false,
+        titleSpacing: 16,
+        toolbarHeight: 56,
+        title: Text(l10n.settings),
+      ),
 
-
-    body: CenteredConstrained(
+      body: CenteredConstrained(
         maxWidth: 760,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),

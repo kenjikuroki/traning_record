@@ -1050,14 +1050,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         elevation: 0,
-        scrolledUnderElevation: 0,            // すりガラス感の元を無効
-        surfaceTintColor: Colors.transparent,  // 追加の着色も無効
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
         titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle,
+        centerTitle: false,
+        titleSpacing: 16,
+        toolbarHeight: 56,
         title: const Text('TrainingRecord'),
-        // flexibleSpace / BackdropFilter / グラデは使わない（カレンダーに合わせる）
       ),
+
 
       // ▼ ここで SettingsManager.waistUnitNotifier を監視して即反映
       // ▼ ここで SettingsManager.waistUnitNotifier を監視して即反映
@@ -1094,7 +1097,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
           );
         },
       ),
+
+      // ▼ 右下のプラス（FAB）を復活：RecordScreen を開く既存メソッドを呼ぶ
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'calendarFab',
+        onPressed: () {
+          final day = _selectedDay ?? widget.selectedDate; // 選択日がなければ初期日
+          _openRecordSheet(day); // ※ RecordScreen の必須引数を内部で全て渡す既存メソッド
+        },
+        child: const Icon(Icons.add),
+      ),
     );
+
   }
 
   Widget _buildCalendar(BuildContext context) {

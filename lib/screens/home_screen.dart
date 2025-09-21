@@ -46,12 +46,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
 
 
 // ▼ ライト：白地に黒文字／ダーク：黒地に白文字
-    final Color navBgColor = colorScheme.primaryContainer;        // ← テーマ連動
-    final Color navFgColor = colorScheme.onPrimaryContainer;      // ← テーマ連動
+    final Color navBgColor = colorScheme.primaryContainer; // ← テーマ連動
+    final Color navFgColor = colorScheme.onPrimaryContainer; // ← テーマ連動
 
 // AppBar と同一の黒グラデ（すりガラスにグレーを足す）
 // Calendar / Album / Graph: 0.58, 0.38, 0.16
@@ -77,8 +79,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-                transitionBuilder: (child, animation) {
+        duration: const Duration(milliseconds: 300),
+        transitionBuilder: (child, animation) {
           return FadeTransition(opacity: animation, child: child);
         },
         child: IndexedStack(
@@ -112,25 +114,38 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-          ),
-      bottomNavigationBar: Container(
-        color: navBgColor,              // ← 外側の Container が下端まで塗る
-        child: SafeArea(                // ← SafeArea は“内側”に
-          top: false,
+      ),
+      bottomNavigationBar: ColoredBox(
+        // ▼ バー“の下”を含めて同色で塗る
+        color: Theme
+            .of(context)
+            .bottomNavigationBarTheme
+            .backgroundColor
+            ?? Theme
+                .of(context)
+                .colorScheme
+                .surface,
+        child: SafeArea(
+          top: false, // 下だけ余白を確保
           child: BottomNavigationBar(
             currentIndex: _currentIndex,
             selectedItemColor: navFgColor,
             unselectedItemColor: navFgColor.withOpacity(0.6),
-            backgroundColor: Colors.transparent, // ← SafeArea内は透過でOK（外側Containerで塗る）
+            // ▼ 背景は透過にして、外側の ColoredBox の色を見せる
+            backgroundColor: Colors.transparent,
             elevation: 0,
             showSelectedLabels: false,
             showUnselectedLabels: false,
             onTap: _onItemTapped,
             items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
-              BottomNavigationBarItem(icon: Icon(Icons.photo_library_outlined), label: 'Album'),
-              BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Graph'),
-              BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.calendar_today), label: 'Calendar'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.photo_library_outlined), label: 'Album'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.bar_chart), label: 'Graph'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.settings), label: 'Settings'),
             ],
           ),
         ),

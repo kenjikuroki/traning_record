@@ -416,16 +416,18 @@ class _AlbumScreenState extends State<AlbumScreen> {
 
       // ぼかしは撤去。カレンダーと同じく透明AppBar＋白文字。
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         elevation: 0,
-        scrolledUnderElevation: 0,               // M3のスクロール時着色を無効
-        surfaceTintColor: Colors.transparent,     // 追加のティントも無効
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
         titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle,
+        centerTitle: false,
+        titleSpacing: 16,
+        toolbarHeight: 56,
         title: Text(
-          _inSelection
-              ? l10n.selectedCount(_selectedPaths.length)
-              : l10n.albumTitle,
+          _inSelection ? l10n.selectedCount(_selectedPaths.length) : l10n.albumTitle,
         ),
         actions: _inSelection
             ? [
@@ -439,7 +441,6 @@ class _AlbumScreenState extends State<AlbumScreen> {
         ]
             : null,
       ),
-
 
       body: Stack(
         children: [

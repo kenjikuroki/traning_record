@@ -4306,32 +4306,15 @@ class _RecordScreenState extends State<RecordScreen>
           appBar: AppBar(
             automaticallyImplyLeading: true,
             elevation: 0,
-            centerTitle: false,      // 他画面と同じく左寄せ
-            titleSpacing: 16,        // 余白を合わせる
-            toolbarHeight: 56,       // 高さを合わせる
-            iconTheme: const IconThemeData(color: Colors.white),
-            title: Text(
-              l10n.settings,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 19,
-              ),
-            ),
-            // すりガラス(BackdropFilter)は使わず、グラデのみ
-            flexibleSpace: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.60),
-                    Colors.black.withOpacity(0.40),
-                    Colors.black.withOpacity(0.18),
-                  ],
-                ),
-              ),
-            ),
+            scrolledUnderElevation: 0,
+            surfaceTintColor: Colors.transparent,
+            backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+            foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+            titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle,
+            centerTitle: false,
+            titleSpacing: 16,
+            toolbarHeight: 56,
+            title: Text(DateFormat('yyyy/MM/dd').format(widget.selectedDate)),
           ),
           body: Stack(
             children: [
