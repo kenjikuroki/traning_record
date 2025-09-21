@@ -2467,36 +2467,21 @@ class _GraphScreenState extends State<GraphScreen> {
           ? null
           : Colors.transparent,
       appBar: AppBar(
+        // カレンダー画面と同じ配置に合わせる（左に16pxの余白）
         automaticallyImplyLeading: false,
-        elevation: 0.0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        iconTheme: Theme.of(context).appBarTheme.iconTheme,
+        titleSpacing: 16, // ← これでカレンダーと同じ左寄せ位置
+        centerTitle: false,
         title: Text(
           l10n.graphScreenTitle,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.58),
-                    Colors.black.withOpacity(0.38),
-                    Colors.black.withOpacity(0.16),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          style: Theme.of(context).appBarTheme.titleTextStyle,
         ),
       ),
+
       resizeToAvoidBottomInset: false,
       body: MediaQuery.removeViewInsets(
         context: context,

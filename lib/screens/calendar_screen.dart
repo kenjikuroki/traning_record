@@ -1,5 +1,5 @@
 // lib/screens/calendar_screen.dart
-import 'dart:ui';
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -18,6 +18,7 @@ import '../routes/slide_up_route.dart';
 import '../widgets/centered_constrained.dart';
 import '../widgets/gradient_fab.dart';
 import '../widgets/big_earning_ad.dart';
+import '../theme/app_theme.dart' as T; // ← 追加：エイリアス T で
 
 String _fmtWaist(double cm, AppLocalizations l10n) {
   final v = SettingsManager.waistCmToDisplay(cm).toStringAsFixed(1);
@@ -1049,43 +1050,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          'TrainingRecord',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.58),
-                    Colors.black.withOpacity(0.38),
-                    Colors.black.withOpacity(0.16),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-      // Scaffold の floatingActionButton 一式を丸ごとこれに
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: GradientFAB(
-        onPressed: _handleAddPressed,
-        tooltip: AppLocalizations.of(context)!.add,
-        heroTag: 'calendarAddFab',
-        width: 60,
-        height: 56,
-        borderRadius: 16,
+        scrolledUnderElevation: 0,            // すりガラス感の元を無効
+        surfaceTintColor: Colors.transparent,  // 追加の着色も無効
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+        titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle,
+        title: const Text('TrainingRecord'),
+        // flexibleSpace / BackdropFilter / グラデは使わない（カレンダーに合わせる）
       ),
 
       // ▼ ここで SettingsManager.waistUnitNotifier を監視して即反映

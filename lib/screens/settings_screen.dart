@@ -258,6 +258,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     SettingsManager.setThemeMode(m);
   }
 
+  Future<void> _onAppColorThemeChanged(int nextIndex) async {
+    final l10n = AppLocalizations.of(context)!;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.settingsThemeConfirmTitle),
+        content: Text(l10n.settingsThemeConfirmMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.no),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.yes),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true) {
+      await SettingsManager.setAppColorThemeIndex(nextIndex);
+      if (mounted) setState(() {}); // 画面再描画して即反映
+    }
+  }
+
   void _onUnitChanged(String? u) {
     if (u == null) return;
     setState(() {
@@ -427,36 +454,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final dateFmt = DateFormat('yyyy-MM-dd');
 
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: true,
-        elevation: 0.0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: Text(
-          l10n.settings,
-          style: const TextStyle(
-              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 19),
-        ),
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.60),
-                    Colors.black.withOpacity(0.40),
-                    Colors.black.withOpacity(0.18),
-                  ],
-                ),
-              ),
-            ),
+        appBar: AppBar(
+                  automaticallyImplyLeading: true,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  surfaceTintColor: Colors.transparent,
+                  backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+                foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+            titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle,
+            systemOverlayStyle: Theme.of(context).appBarTheme.systemOverlayStyle,
+            title: Text(l10n.settings),
           ),
-        ),
-      ),
 
-      body: CenteredConstrained(
+
+    body: CenteredConstrained(
         maxWidth: 760,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
@@ -911,6 +922,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
 
             const SizedBox(height: _kGap),
+
+            // テーマカラー（中間カード：ダークモードと背景の間）
+            Card(
+              color: colorScheme.surfaceContainerHighest,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+              margin: _kCardMargin,
+              child: Padding(
+                padding: _kOuterPad,
+                child: Theme(
+                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    // ※ l10n が未定義でもコンパイルが止まらないよう固定文言にしています
+                    title: const Text('テーマカラー', style: TextStyle(fontWeight: FontWeight.bold)),
+                    childrenPadding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
+                    children: [
+                      RadioListTile<int>(
+                        title: Text(l10n.themeMonotone),
+                        value: 0,
+                        groupValue: SettingsManager.currentAppColorThemeIndex,
+                        onChanged: (v) => v == null ? null : _onAppColorThemeChanged(v),
+                        dense: true,
+                      ),
+                      RadioListTile<int>(
+                        title: Text(l10n.themePurple),
+                        value: 1,
+                        groupValue: SettingsManager.currentAppColorThemeIndex,
+                        onChanged: (v) => v == null ? null : _onAppColorThemeChanged(v),
+                        dense: true,
+                      ),
+                      RadioListTile<int>(
+                        title: Text(l10n.themeBlue),
+                        value: 2,
+                        groupValue: SettingsManager.currentAppColorThemeIndex,
+                        onChanged: (v) => v == null ? null : _onAppColorThemeChanged(v),
+                        dense: true,
+                      ),
+                      RadioListTile<int>(
+                        title: Text(l10n.themeGreen),
+                        value: 3,
+                        groupValue: SettingsManager.currentAppColorThemeIndex,
+                        onChanged: (v) => v == null ? null : _onAppColorThemeChanged(v),
+                        dense: true,
+                      ),
+                      RadioListTile<int>(
+                        title: Text(l10n.themeYellow),
+                        value: 4,
+                        groupValue: SettingsManager.currentAppColorThemeIndex,
+                        onChanged: (v) => v == null ? null : _onAppColorThemeChanged(v),
+                        dense: true,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
 
             // 背景（中間カード）
             Card(

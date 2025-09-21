@@ -100,6 +100,15 @@ class _RecordScreenState extends State<RecordScreen>
   static const Curve _overlayInCurve = Curves.easeOutCubic;
   static const Curve _overlayOutCurve = Curves.easeInCubic;
 
+  Color _fabBg(BuildContext c) =>
+      Theme.of(c).floatingActionButtonTheme.backgroundColor
+          ?? Theme.of(c).colorScheme.primary;
+
+  Color _fabFg(BuildContext c) =>
+      Theme.of(c).floatingActionButtonTheme.foregroundColor
+          ?? Theme.of(c).colorScheme.onPrimary;
+
+
   late final AnimationController _fabCtrl;
 
   // ===== メモ・オーバーレイ（フローティング） =====
@@ -4105,7 +4114,7 @@ class _RecordScreenState extends State<RecordScreen>
               setState(() => _fabOpen = opening);
               opening ? _fabCtrl.forward() : _fabCtrl.reverse();
             },
-      backgroundColor: kBrandBlue,
+      backgroundColor: Theme.of(context).colorScheme.primary,
       child: AnimatedBuilder(
         animation: _fabCtrl,
         builder: (_, __) => Transform.rotate(
@@ -4295,56 +4304,34 @@ class _RecordScreenState extends State<RecordScreen>
               ? null
               : Colors.transparent,
           appBar: AppBar(
-            automaticallyImplyLeading: false,
-            elevation: 0.0,
+            automaticallyImplyLeading: true,
+            elevation: 0,
+            centerTitle: false,      // 他画面と同じく左寄せ
+            titleSpacing: 16,        // 余白を合わせる
+            toolbarHeight: 56,       // 高さを合わせる
             iconTheme: const IconThemeData(color: Colors.white),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-              onPressed: _handleExit,
-              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+            title: Text(
+              l10n.settings,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 19,
+              ),
             ),
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  l10n.recordScreenTitle,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 19.0,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _formatAppBarDate(context),
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-            flexibleSpace: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withOpacity(0.55),
-                        Colors.black.withOpacity(0.35),
-                        Colors.black.withOpacity(0.15),
-                      ],
-                    ),
-                  ),
+            // すりガラス(BackdropFilter)は使わず、グラデのみ
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.60),
+                    Colors.black.withOpacity(0.40),
+                    Colors.black.withOpacity(0.18),
+                  ],
                 ),
               ),
             ),
-            actions: [savedPillArea],
           ),
           body: Stack(
             children: [

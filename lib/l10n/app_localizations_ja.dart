@@ -657,4 +657,28 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get addOnThisDay => 'この日に追加';
+
+  @override
+  String get settingsThemeTitle => 'テーマ選択';
+
+  @override
+  String get settingsThemeConfirmTitle => 'テーマを変更しますか？';
+
+  @override
+  String get settingsThemeConfirmMessage => 'アプリの配色を変更します。よろしいですか？';
+
+  @override
+  String get themeMonotone => 'モノトーン';
+
+  @override
+  String get themePurple => '紫';
+
+  @override
+  String get themeBlue => '青';
+
+  @override
+  String get themeGreen => '緑';
+
+  @override
+  String get themeYellow => '黄色';
 }

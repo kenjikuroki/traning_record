@@ -92,69 +92,74 @@ class _MyAppState extends State<MyApp> {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: SettingsManager.themeModeNotifier,
       builder: (context, themeMode, _) {
-        return MaterialApp(
-          title: 'TrainingRecord',
-          debugShowCheckedModeBanner: false,
-            theme: appThemeLight(context),
-          darkTheme: appThemeDark(context),
-          themeMode: themeMode,
+        return ValueListenableBuilder<int>(
+          valueListenable: SettingsManager.appColorThemeIndexNotifier,
+          builder: (context, themeIdx, __) {
+            return MaterialApp(
+              title: 'TrainingRecord',
+              debugShowCheckedModeBanner: false,
+              theme: appThemeLight(context),
+              darkTheme: appThemeDark(context),
+              themeMode: themeMode,
 
-          // l10n
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: AppLocalizations.supportedLocales,
+              // l10n
+              localizationsDelegates: const [
+                AppLocalizations.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: AppLocalizations.supportedLocales,
 
-          // 壁紙の即時反映（背景が変わるたびに再ビルド）
-          builder: (context, child) {
-            return ValueListenableBuilder<String>(
-              valueListenable: SettingsManager.backgroundAssetNotifier,
-              builder: (context, bg, __) {
-                if (bg.isEmpty) {
-                  return child ?? const SizedBox.shrink();
-                }
-                return Container(
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage(bg),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  child: Theme(
-                    data: Theme.of(context).copyWith(
-                      // ← ここを強化：各所の背景を全面的に透過
-                      scaffoldBackgroundColor: Colors.transparent,
-                      canvasColor: Colors.transparent,
-                      cardColor: Colors.transparent,
-                      dialogBackgroundColor: Colors.transparent,
-                      bottomSheetTheme: const BottomSheetThemeData(
-                        backgroundColor: Colors.transparent,
-                        surfaceTintColor: Colors.transparent,
-                        elevation: 0,
+              // 壁紙の即時反映（背景が変わるたびに再ビルド）
+              builder: (context, child) {
+                return ValueListenableBuilder<String>(
+                  valueListenable: SettingsManager.backgroundAssetNotifier,
+                  builder: (context, bg, __) {
+                    if (bg.isEmpty) {
+                      return child ?? const SizedBox.shrink();
+                    }
+                    return Container(
+                      decoration: BoxDecoration(
+                        image: DecorationImage(
+                          image: AssetImage(bg),
+                          fit: BoxFit.cover,
+                        ),
                       ),
-                    ),
-                    child: child ?? const SizedBox.shrink(),
-                  ),
+                      child: Theme(
+                        data: Theme.of(context).copyWith(
+                          scaffoldBackgroundColor: Colors.transparent,
+                          canvasColor: Colors.transparent,
+                          cardColor: Colors.transparent,
+                          dialogBackgroundColor: Colors.transparent,
+                          bottomSheetTheme: const BottomSheetThemeData(
+                            backgroundColor: Colors.transparent,
+                            surfaceTintColor: Colors.transparent,
+                            elevation: 0,
+                          ),
+                        ),
+                        child: child ?? const SizedBox.shrink(),
+                      ),
+                    );
+                  },
                 );
               },
+
+              // ルート画面（戻るで最小化をブロック）
+              home: PopScope(
+                canPop: false,
+                child: HomeScreen(
+                  recordsBox: widget.recordsBox,
+                  lastUsedMenusBox: widget.lastUsedMenusBox,
+                  settingsBox: widget.settingsBox,
+                  setCountBox: widget.setCountBox,
+                ),
+              ),
             );
           },
-
-          // ルート画面（戻るで最小化をブロック）
-          home: PopScope(
-            canPop: false,
-            child: HomeScreen(
-              recordsBox: widget.recordsBox,
-              lastUsedMenusBox: widget.lastUsedMenusBox,
-              settingsBox: widget.settingsBox,
-              setCountBox: widget.setCountBox,
-            ),
-          ),
         );
       },
     );
   }
 }
+

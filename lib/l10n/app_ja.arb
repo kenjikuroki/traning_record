@@ -209,5 +209,13 @@
   "add": "追加",
   "noRecords": "記録はありません",
   "editThisDay": "この日を編集",
-  "addOnThisDay": "この日に追加"
+  "addOnThisDay": "この日に追加",
+  "settingsThemeTitle": "テーマ選択",
+  "settingsThemeConfirmTitle": "テーマを変更しますか？",
+  "settingsThemeConfirmMessage": "アプリの配色を変更します。よろしいですか？",
+  "themeMonotone": "モノトーン",
+  "themePurple": "紫",
+  "themeBlue": "青",
+  "themeGreen": "緑",
+  "themeYellow": "黄色"
 }

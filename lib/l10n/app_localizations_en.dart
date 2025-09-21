@@ -657,4 +657,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addOnThisDay => 'Add on this day';
+
+  @override
+  String get settingsThemeTitle => 'Theme';
+
+  @override
+  String get settingsThemeConfirmTitle => 'Change theme?';
+
+  @override
+  String get settingsThemeConfirmMessage => 'This will update the app\'s colors. Continue?';
+
+  @override
+  String get themeMonotone => 'Monotone';
+
+  @override
+  String get themePurple => 'Purple';
+
+  @override
+  String get themeBlue => 'Blue';
+
+  @override
+  String get themeGreen => 'Green';
+
+  @override
+  String get themeYellow => 'Yellow';
 }

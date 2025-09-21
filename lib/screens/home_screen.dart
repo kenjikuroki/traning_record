@@ -48,11 +48,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-// ▼ ライト：白地に黒文字／ダーク：黒地に白文字
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color navBgColor = isDark ? Colors.black : Colors.white;
-    final Color navFgColor = isDark ? Colors.white : Colors.black;
 
+// ▼ ライト：白地に黒文字／ダーク：黒地に白文字
+    final Color navBgColor = colorScheme.primaryContainer;        // ← テーマ連動
+    final Color navFgColor = colorScheme.onPrimaryContainer;      // ← テーマ連動
 
 // AppBar と同一の黒グラデ（すりガラスにグレーを足す）
 // Calendar / Album / Graph: 0.58, 0.38, 0.16
@@ -122,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
             currentIndex: _currentIndex,
             selectedItemColor: navFgColor,
             unselectedItemColor: navFgColor.withOpacity(0.6),
-            backgroundColor: Colors.transparent,
+            backgroundColor: Colors.transparent, // ← SafeArea内は透過でOK（外側Containerで塗る）
             elevation: 0,
             showSelectedLabels: false,
             showUnselectedLabels: false,

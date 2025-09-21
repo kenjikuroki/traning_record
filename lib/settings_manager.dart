@@ -20,6 +20,8 @@ class SettingsManager {
   static const String _distanceUnitKey = 'unit_of_distance'; // 旧距離キー（互換読み書き）
   static const String _themeModeKey =
       'theme_mode'; // 0: system, 1: light, 2: dark
+  static const String _appColorThemeKey =
+      'app_color_theme'; // 0:mono,1:purple,2:blue,3:green,4:yellow ← 追加
   static const String _backgroundAssetKey = 'background_asset';
   static const String _showStopwatchTimerKey =
       'show_stopwatch_timer'; // true/false
@@ -40,6 +42,12 @@ class SettingsManager {
   // テーマ
   static final ValueNotifier<ThemeMode> _themeModeNotifier =
       ValueNotifier<ThemeMode>(ThemeMode.system);
+
+  // カラーテーマ（モノトーン／紫／青／緑／黄）← 追加
+  static final ValueNotifier<int> _appColorThemeIndexNotifier =
+  ValueNotifier<int>(0);
+
+
 
   // 背景（使っていない場合は空文字）
   static final ValueNotifier<String> _backgroundAssetNotifier =
@@ -101,6 +109,11 @@ class SettingsManager {
       2 => ThemeMode.dark,
       _ => ThemeMode.system,
     };
+
+    // カラーテーマ ← 追加
+    final int colorIdx = (box.get(_appColorThemeKey, defaultValue: 0) as int);
+    _appColorThemeIndexNotifier.value =
+    (colorIdx < 0 || colorIdx > 4) ? 0 : colorIdx;
 
     // 背景
     _backgroundAssetNotifier.value =
@@ -168,6 +181,12 @@ class SettingsManager {
   /// テーマ
   static ThemeMode get currentThemeMode => _themeModeNotifier.value;
   static ValueNotifier<ThemeMode> get themeModeNotifier => _themeModeNotifier;
+
+  /// カラーテーマ（0:mono,1:purple,2:blue,3:green,4:yellow）← 追加
+  static int get currentAppColorThemeIndex =>
+      _appColorThemeIndexNotifier.value;
+  static ValueNotifier<int> get appColorThemeIndexNotifier =>
+      _appColorThemeIndexNotifier;
 
   /// 背景
   static String get currentBackgroundAsset => _backgroundAssetNotifier.value;
@@ -237,6 +256,14 @@ class SettingsManager {
     };
     await _box?.put(_themeModeKey, idx);
     _themeModeNotifier.value = mode;
+  }
+
+  // カラーテーマの保存 ← 追加
+  static Future<void> setAppColorThemeIndex(int idx) async {
+    final int clamped = idx.clamp(0, 4);
+    await _ensureBox();
+    await _box?.put(_appColorThemeKey, clamped);
+    _appColorThemeIndexNotifier.value = clamped;
   }
 
   /// 背景アセットの保存

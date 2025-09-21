@@ -209,5 +209,13 @@
   "add": "Add",
   "noRecords": "No records",
   "editThisDay": "Edit this day",
-  "addOnThisDay": "Add on this day"
+  "addOnThisDay": "Add on this day",
+  "settingsThemeTitle": "Theme",
+  "settingsThemeConfirmTitle": "Change theme?",
+  "settingsThemeConfirmMessage": "This will update the app's colors. Continue?",
+  "themeMonotone": "Monotone",
+  "themePurple": "Purple",
+  "themeBlue": "Blue",
+  "themeGreen": "Green",
+  "themeYellow": "Yellow"
 }

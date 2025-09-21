@@ -1,6 +1,5 @@
 // lib/screens/album_screen.dart
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -14,6 +13,8 @@ import '../l10n/app_localizations.dart';
 import '../widgets/ad_banner.dart';
 import '../settings_manager.dart';
 import '../widgets/centered_constrained.dart';
+import '../theme/app_theme.dart';       // appFabGradient / appFabSolid
+import '../widgets/gradient_fab.dart';  // カレンダーと同じ見た目のFAB
 
 Future<bool> _ensureAlbumCameraPermission(BuildContext context) async {
   var status = await Permission.camera.status;
@@ -59,9 +60,9 @@ class _AlbumScreenState extends State<AlbumScreen> {
   final Set<String> _selectedPaths = {};
   bool get _inSelection => _selectedPaths.isNotEmpty;
 
-  // 統一マージン（Graphに合わせる）
+  // 統一マージン（Graph/Calendarに合わせる）
   static const double _kOuterPad = 16.0; // 画面の外側
-  static const double _kGap = 12.0;      // AppBar→広告、広告→本文、日付→グリッド など
+  static const double _kGap = 12.0;      // 広告下の余白 等
 
   @override
   void initState() {
@@ -101,7 +102,8 @@ class _AlbumScreenState extends State<AlbumScreen> {
       }
     }
 
-    final sortedKeys = map.keys.toList()..sort((a, b) => b.compareTo(a)); // 新しい日付が上
+    // 日付キーを降順（新しい→古い）
+    final sortedKeys = map.keys.toList()..sort((a, b) => b.compareTo(a));
     final sorted = <String, List<File>>{};
     for (final k in sortedKeys) {
       sorted[k] = map[k]!;
@@ -241,29 +243,6 @@ class _AlbumScreenState extends State<AlbumScreen> {
     });
   }
 
-  Future<void> _handleAddPressed() async {
-    if (_captureInProgress) return;
-    if (!await _ensureAlbumCameraPermission(context)) return;
-    if (!mounted) return;
-
-    setState(() => _captureInProgress = true);
-    try {
-      final shots = await _captureNewShots();
-      if (shots.isEmpty) return;
-
-      for (final shot in shots) {
-        await _saveShotToToday(shot);
-      }
-      if (mounted) {
-        await _loadAll();
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _captureInProgress = false);
-      }
-    }
-  }
-
   Future<List<XFile>> _captureNewShots() async {
     XFile? shot;
     try {
@@ -317,27 +296,59 @@ class _AlbumScreenState extends State<AlbumScreen> {
     await shot.saveTo(savePath);
   }
 
-  Widget _checkBadge(bool selected) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      width: 22,
-      height: 22,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: selected ? Colors.lightBlueAccent : Colors.white.withOpacity(0.85),
-        border: Border.all(
-          color: selected ? Colors.lightBlueAccent : Colors.black38,
-          width: 1,
+  Future<void> _handleAddPressed() async {
+    if (_captureInProgress) return;
+    if (!await _ensureAlbumCameraPermission(context)) return;
+    if (!mounted) return;
+
+    setState(() => _captureInProgress = true);
+    try {
+      final shots = await _captureNewShots();
+      if (shots.isEmpty) return;
+
+      for (final shot in shots) {
+        await _saveShotToToday(shot);
+      }
+      if (mounted) {
+        await _loadAll();
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _captureInProgress = false);
+      }
+    }
+  }
+
+  // 空表示（BackdropFilterは使わない）
+  Widget _centerEmptyMessage(BuildContext context, AppLocalizations l10n) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.28),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.12)),
+          ),
+          child: Text(
+            l10n.albumEmptyMessage,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              height: 1.5,
+              color: Colors.white,
+            ),
+          ),
         ),
       ),
-      child: selected ? const Icon(Icons.check, size: 16, color: Colors.white) : null,
     );
   }
 
-  // ── ここから：＋部位チップ風のピルボタン（濃い色） ──
+  // ピル型アクションボタン（選択時の下部操作用）
   static const Color _kBrandBlueDark = Color(0xFF1D4ED8); // 濃い青
   static const Color _kDangerRedDark = Color(0xFFB91C1C); // 濃い赤
-
   Widget _pillActionButton({
     required IconData icon,
     required String label,
@@ -394,64 +405,52 @@ class _AlbumScreenState extends State<AlbumScreen> {
     );
   }
 
-  // ── ここまで ピルボタン ──
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       backgroundColor: SettingsManager.backgroundAssetNotifier.value.isEmpty
           ? null
           : Colors.transparent, // 壁紙を透過表示
+
+      // ぼかしは撤去。カレンダーと同じく透明AppBar＋白文字。
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        scrolledUnderElevation: 0,               // M3のスクロール時着色を無効
+        surfaceTintColor: Colors.transparent,     // 追加のティントも無効
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+        titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle,
         title: Text(
-          _inSelection ? l10n.selectedCount(_selectedPaths.length) : l10n.albumTitle,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+          _inSelection
+              ? l10n.selectedCount(_selectedPaths.length)
+              : l10n.albumTitle,
         ),
         actions: _inSelection
             ? [
           TextButton(
             onPressed: _clearSelection,
-            child: Text(l10n.clear, style: const TextStyle(color: Colors.white)),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+            ),
+            child: Text(l10n.clear),
           ),
         ]
             : null,
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.58),
-                    Colors.black.withOpacity(0.38),
-                    Colors.black.withOpacity(0.16),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
 
-      // === GraphScreen と同じ構成：Padding(16) -> AdBanner -> SizedBox(12) -> 本文 ===
+
       body: Stack(
         children: [
-          // 背景を暗くするオーバーレイ（レイアウトに影響しない）
+          // 背景を少し暗く（レイアウトに影響しない）
           Positioned.fill(
             child: IgnorePointer(
               child: Container(color: Colors.black.withOpacity(0.70)),
             ),
           ),
 
-          // 既存レイアウト（Graph と同じ間隔：外周16 / 広告下12）
+          // 本文（Graph/Calendarと同じ余白感）
           CenteredConstrained(
             maxWidth: 760,
             padding: const EdgeInsets.all(_kOuterPad),
@@ -464,165 +463,166 @@ class _AlbumScreenState extends State<AlbumScreen> {
                 Expanded(
                   child: _loading
                       ? const Center(child: CircularProgressIndicator())
-                      : _byDate.isEmpty
-                      ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 20),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.28),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                  color: Colors.white.withOpacity(0.12)),
-                            ),
-                            child: Text(
-                              l10n.albumEmptyMessage,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                height: 1.5,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                  : ListView.builder(
-                padding: EdgeInsets.only(
-                  top: 0,
-                  bottom: _inSelection ? 96 : 120,
-                ),
+                      : (_byDate.isEmpty
+                      ? _centerEmptyMessage(context, l10n)
+                      : ListView.builder(
+                    padding:
+                    const EdgeInsets.fromLTRB(12, 8, 12, 12 + 72),
                     itemCount: _byDate.length,
-                    itemBuilder: (ctx, section) {
-                      final dateKey =
-                      _byDate.keys.elementAt(section);
-                      final files = _byDate[dateKey]!;
-                      final dt = DateTime.tryParse('$dateKey 00:00:00');
+                    itemBuilder: (ctx, index) {
+                      // builder内で降順に並べ替えて参照
+                      final entries = _byDate.entries.toList()
+                        ..sort((a, b) => b.key.compareTo(a.key));
+
+                      final dateKey = entries[index].key; // "yyyy-MM-dd"
+                      final files = entries[index].value;
+
+                      final dt =
+                      DateTime.tryParse('$dateKey 00:00:00');
                       final label = dt != null
                           ? DateFormat('yyyy/MM/dd').format(dt)
                           : dateKey;
 
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // 年月日を白文字に
-                            Text(
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 見出し（日付）
+                          Container(
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.fromLTRB(
+                                2, 8, 2, 6),
+                            child: Text(
                               label,
                               style: const TextStyle(
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
                             ),
-                            const SizedBox(height: _kGap),
-
-                            GridView.builder(
-                              padding: EdgeInsets.zero,
-                              itemCount: files.length,
-                              shrinkWrap: true,
-                              physics:
-                              const NeverScrollableScrollPhysics(),
-                              gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                mainAxisSpacing: 6,
-                                crossAxisSpacing: 6,
-                              ),
-                              itemBuilder: (gctx, i) {
-                                final f = files[i];
-                                final selected = _selectedPaths.contains(f.path);
-                                return GestureDetector(
-                                  onTap: () {
-                                    if (_inSelection) {
-                                      _toggleSelect(f);
-                                    } else {
-                                      _openViewer(f);
-                                    }
-                                  },
-                                  onLongPress: () {
-                                    if (_inSelection) {
-                                      _toggleSelect(f);
-                                    } else {
-                                      setState(() {
-                                        _selectedPaths.add(f.path); // 選択モード開始
-                                      });
-                                    }
-                                  },
-                                  child: Stack(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius:
-                                        BorderRadius.circular(10),
-                                        child: Image.file(
-                                          f,
-                                          fit: BoxFit.cover,
-                                        ),
+                          ),
+                          // サムネイルグリッド
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics:
+                            const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              mainAxisSpacing: 6,
+                              crossAxisSpacing: 6,
+                            ),
+                            itemCount: files.length,
+                            itemBuilder: (ctx2, i) {
+                              final f = files[i];
+                              final selected =
+                              _selectedPaths.contains(f.path);
+                              return GestureDetector(
+                                onTap: () {
+                                  if (_inSelection) {
+                                    _toggleSelect(f);
+                                  } else {
+                                    _openViewer(f);
+                                  }
+                                },
+                                onLongPress: () {
+                                  if (_inSelection) {
+                                    _toggleSelect(f);
+                                  } else {
+                                    setState(() {
+                                      _selectedPaths.add(f.path);
+                                    });
+                                  }
+                                },
+                                child: Stack(
+                                  children: [
+                                    // サムネイル
+                                    ClipRRect(
+                                      borderRadius:
+                                      BorderRadius.circular(10),
+                                      child: Image.file(
+                                        f,
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                        height: double.infinity,
                                       ),
-                                      if (selected)
-                                        Positioned.fill(
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              color: Colors.black26,
-                                              borderRadius:
-                                              BorderRadius.circular(10),
+                                    ),
+                                    // 選択中オーバーレイ
+                                    if (selected)
+                                      Positioned.fill(
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.black26,
+                                            borderRadius:
+                                            BorderRadius.circular(
+                                                10),
+                                            border: Border.all(
+                                              color: Colors.white70,
+                                              width: 2,
                                             ),
                                           ),
                                         ),
-                                      if (_inSelection)
-                                        Positioned(
-                                          left: 6,
-                                          top: 6,
-                                          child:
-                                          _checkBadge(selected),
+                                      ),
+                                    // チェックマーク
+                                    if (_inSelection)
+                                      Positioned(
+                                        right: 8,
+                                        top: 8,
+                                        child: Container(
+                                          width: 22,
+                                          height: 22,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: selected
+                                                ? Colors
+                                                .lightGreenAccent
+                                                : Colors.white24,
+                                            border: Border.all(
+                                              color: Colors.white70,
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            selected
+                                                ? Icons.check
+                                                : Icons
+                                                .circle_outlined,
+                                            size: 16,
+                                            color: selected
+                                                ? Colors.black87
+                                                : Colors.white70,
+                                          ),
                                         ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
+                                      ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                        ],
                       );
                     },
-                  ),
-                ),
+                  )),
+                )
               ],
             ),
           ),
         ],
       ),
+
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: _inSelection
-          ? null
-          : FloatingActionButton(
-              heroTag: 'albumAddFab',
-              backgroundColor: const Color(0xFF2563EB),
-              onPressed:
-                  _captureInProgress ? null : () => _handleAddPressed(),
-              child: _captureInProgress
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.4,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Icon(Icons.add, color: Colors.white),
-            ),
+      floatingActionButton: GradientFAB(
+        onPressed: _handleAddPressed, // 既存の追加ハンドラに合わせる
+        tooltip: l10n.add,
+        heroTag: 'albumAddFab',
+        width: 60,
+        height: 56,
+        borderRadius: 16,
+        colors: appFabGradient(context), // app_themeの“くすんだ濃色”グラデ
+        // 単色にするなら ↓ を使う
+        // colors: [appFabSolid(context), appFabSolid(context)],
+      ),
+
       bottomNavigationBar: _inSelection
           ? SafeArea(
         child: Container(

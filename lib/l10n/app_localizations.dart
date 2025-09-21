@@ -1358,6 +1358,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add on this day'**
   String get addOnThisDay;
+
+  /// No description provided for @settingsThemeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get settingsThemeTitle;
+
+  /// No description provided for @settingsThemeConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change theme?'**
+  String get settingsThemeConfirmTitle;
+
+  /// No description provided for @settingsThemeConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will update the app\'s colors. Continue?'**
+  String get settingsThemeConfirmMessage;
+
+  /// No description provided for @themeMonotone.
+  ///
+  /// In en, this message translates to:
+  /// **'Monotone'**
+  String get themeMonotone;
+
+  /// No description provided for @themePurple.
+  ///
+  /// In en, this message translates to:
+  /// **'Purple'**
+  String get themePurple;
+
+  /// No description provided for @themeBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get themeBlue;
+
+  /// No description provided for @themeGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Green'**
+  String get themeGreen;
+
+  /// No description provided for @themeYellow.
+  ///
+  /// In en, this message translates to:
+  /// **'Yellow'**
+  String get themeYellow;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
