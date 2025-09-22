@@ -194,6 +194,9 @@ class _RecordScreenState extends State<RecordScreen>
   final TextEditingController _bodyFatController = TextEditingController();
   // ウエスト入力用 ← 追加
   final TextEditingController _waistController = TextEditingController();
+
+  // パーソナルカード表示フラグ（1枚だけ）
+  bool _showPersonalCard = false;
 // BMI 表示用（null のときは未計算/未設定表示）
   double? _bmiValue;
 // 設定から読む身長(cm)
@@ -1174,7 +1177,14 @@ class _RecordScreenState extends State<RecordScreen>
     if (SettingsManager.enableAerobicCalories) {
       _recalculateAllAerobicCalories(force: true);
     }
-  }
+  
+  
+// 既に値があれば当日パーソナルカードを自動表示
+_showPersonalCard =
+    _weightController.text.trim().isNotEmpty ||
+    _bodyFatController.text.trim().isNotEmpty ||
+    _waistController.text.trim().isNotEmpty;
+}
 
   String _getDateKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -2067,6 +2077,20 @@ class _RecordScreenState extends State<RecordScreen>
     if (!_fabOpen) return;
     _fabOpen = false;
     _fabCtrl.reverse();
+  }
+
+  // 追加：＋パーソナル → カード出現（先頭に表示）
+  void _handleAddPersonal() async {
+    setState(() {
+      _showPersonalCard = true;
+      _closeFabDial();
+    });
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      _scrollIntoView(0, 0);
+    } catch (_) {
+      // ignore
+    }
   }
 
   void _handleAddExercise() {
@@ -3413,7 +3437,7 @@ class _RecordScreenState extends State<RecordScreen>
 
     const Color kBrandBlue = Color(0xFF2563EB);
 
-    final bool showWeight = SettingsManager.showWeightInput;
+    final bool showWeight = _showPersonalCard;
     final bool showBodyFat =
         (widget.settingsBox.get('manage.bodyFat') as bool?) ?? false;
     final bool showWaist =
@@ -4261,6 +4285,9 @@ class _RecordScreenState extends State<RecordScreen>
                   _stagger(2, chipAction(l10n.addMemo, _handleAddMemo)),
                   const SizedBox(height: 8),
                   _stagger(3, chipAction(l10n.addPhoto, _handleAddPhoto)),
+    const SizedBox(height: 8),
+    _stagger(4, chipAction('＋パーソナル', _handleAddPersonal, enabled: !_showPersonalCard)),
+
                   const SizedBox(height: 8),
                 ],
               ),
