@@ -437,7 +437,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get albumEmptyMessage => '記録画面で写真を撮影するとアルバムに表示されます。トレーニングの進捗をアルバムに残そう。';
+  String get albumEmptyMessage => '自撮り写真をアルバムに残してトレーニングの進捗を確認しよう。';
 
   @override
   String get close => '閉じる';
@@ -671,7 +671,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get themeMonotone => 'モノトーン';
 
   @override
-  String get themePurple => '紫';
+  String get themeRed => '赤';
 
   @override
   String get themeBlue => '青';
@@ -681,4 +681,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get themeYellow => '黄色';
+
+  @override
+  String get themeColorTitle => 'テーマカラー';
 }

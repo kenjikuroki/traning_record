@@ -930,7 +930,7 @@ abstract class AppLocalizations {
   /// No description provided for @albumEmptyMessage.
   ///
   /// In en, this message translates to:
-  /// **'Take photos from the Record screen and they will appear here. Keep your training progress in the album.'**
+  /// **'Save your selfies in the album to track your training progress.'**
   String get albumEmptyMessage;
 
   /// No description provided for @close.
@@ -1383,11 +1383,11 @@ abstract class AppLocalizations {
   /// **'Monotone'**
   String get themeMonotone;
 
-  /// No description provided for @themePurple.
+  /// No description provided for @themeRed.
   ///
   /// In en, this message translates to:
-  /// **'Purple'**
-  String get themePurple;
+  /// **'Red'**
+  String get themeRed;
 
   /// No description provided for @themeBlue.
   ///
@@ -1406,6 +1406,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Yellow'**
   String get themeYellow;
+
+  /// No description provided for @themeColorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme color'**
+  String get themeColorTitle;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

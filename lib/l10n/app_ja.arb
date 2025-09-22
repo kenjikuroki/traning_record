@@ -137,7 +137,7 @@
   "clear": "解除",
   "selectedCount": "{count}件選択中",
   "deleteSelectedConfirmTitle": "選択した{count}件を削除しますか？",
-  "albumEmptyMessage": "記録画面で写真を撮影するとアルバムに表示されます。トレーニングの進捗をアルバムに残そう。",
+  "albumEmptyMessage": "自撮り写真をアルバムに残してトレーニングの進捗を確認しよう。",
   "results": "{date}の記録",
   "close": "閉じる",
   "addMemo": "＋メモ",
@@ -214,8 +214,9 @@
   "settingsThemeConfirmTitle": "テーマを変更しますか？",
   "settingsThemeConfirmMessage": "アプリの配色を変更します。よろしいですか？",
   "themeMonotone": "モノトーン",
-  "themePurple": "紫",
+  "themeRed": "赤",
   "themeBlue": "青",
   "themeGreen": "緑",
-  "themeYellow": "黄色"
+  "themeYellow": "黄色",
+  "themeColorTitle": "テーマカラー"
 }

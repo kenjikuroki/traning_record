@@ -78,3 +78,6 @@ flutter:
     - assets/backgrounds/
     - assets/app_icons/
     - assets/sounds/pipi4_880_fast.m4a
+    - assets/calendar/
+    - assets/graph/
+    - assets/album/

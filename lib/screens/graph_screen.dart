@@ -2655,7 +2655,28 @@ class _GraphScreenState extends State<GraphScreen> {
                           // 右側プロット
                           final plotArea = _axisDates.isEmpty
                               ? Center(
-                                  child: Text(
+                            child: Transform.translate(
+                              offset: const Offset(0, -16), // ← 少し上へ（必要なら数値で微調整）
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox.square(
+                                    dimension: MediaQuery.of(context).size.height / 3,
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(24),
+                                      child: Image.asset(
+                                        'assets/graph/hint.png',
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (_, __, ___) => Icon(
+                                          Icons.insights,
+                                          size: 72,
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
                                     l10n.noGraphData,
                                     textAlign: TextAlign.center,
                                     maxLines: 2,
@@ -2667,7 +2688,10 @@ class _GraphScreenState extends State<GraphScreen> {
                                       letterSpacing: 0,
                                     ),
                                   ),
-                                )
+                                ],
+                              ),
+                            ),
+                          )
                               : SizedBox(
                                   height: chartH,
                                   child: SingleChildScrollView(

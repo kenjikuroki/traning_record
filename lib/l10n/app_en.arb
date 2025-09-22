@@ -138,7 +138,7 @@
   "selectedCount": "{count} selected",
   "results": "Records for {date}",
   "deleteSelectedConfirmTitle": "Delete {count} item(s)?",
-  "albumEmptyMessage": "Take photos from the Record screen and they will appear here. Keep your training progress in the album.",
+  "albumEmptyMessage": "Save your selfies in the album to track your training progress.",
   "close": "Close",
   "addMemo": "+ Memo",
   "memo": "Memo",
@@ -214,8 +214,9 @@
   "settingsThemeConfirmTitle": "Change theme?",
   "settingsThemeConfirmMessage": "This will update the app's colors. Continue?",
   "themeMonotone": "Monotone",
-  "themePurple": "Purple",
+  "themeRed": "Red",
   "themeBlue": "Blue",
   "themeGreen": "Green",
-  "themeYellow": "Yellow"
+  "themeYellow": "Yellow",
+  "themeColorTitle": "Theme color"
 }

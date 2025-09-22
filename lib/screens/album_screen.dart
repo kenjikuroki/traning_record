@@ -321,6 +321,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
 
   // 空表示（BackdropFilterは使わない）
   Widget _centerEmptyMessage(BuildContext context, AppLocalizations l10n) {
+    final h = MediaQuery.of(context).size.height;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -331,15 +332,32 @@ class _AlbumScreenState extends State<AlbumScreen> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white.withOpacity(0.12)),
           ),
-          child: Text(
-            l10n.albumEmptyMessage,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              height: 1.5,
-              color: Colors.white,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox.square(
+                dimension: h / 3, // 画面の3分の1
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24), // 角丸
+                  child: Image.asset(
+                    'assets/album/hint2.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                l10n.albumEmptyMessage,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  height: 1.5,
+                  color: Colors.white,
+                ),
+              ),
+            ],
           ),
         ),
       ),

@@ -1,5 +1,6 @@
 // lib/screens/calendar_screen.dart
 
+import 'package:flutter/services.dart' show rootBundle;
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -73,7 +74,60 @@ String _formatResultsDate(BuildContext context, DateTime d) {
   return '${d.year}/${two(d.month)}/${two(d.day)}';
 }
 
+// === 空データ時の画像選択（曜日・特別日付） ===
+// 画像は assets/calendar_empty/ 配下に配置してください（pubspec.yaml 登録が必要）。
+const Map<int, String> _weekdayEmptyAssets = {
+  DateTime.monday:    'assets/calendar/mon.png',
+  DateTime.tuesday:   'assets/calendar/tue.png',
+  DateTime.wednesday: 'assets/calendar/wed.png',
+  DateTime.thursday:  'assets/calendar/thu.png',
+  DateTime.friday:    'assets/calendar/fri.png',
+  DateTime.saturday:  'assets/calendar/sat.png',
+  DateTime.sunday:    'assets/calendar/sun.png',
+};
+
+// 年をまたいで使える特別日（MM-dd）
+const Map<String, String> _specialEmptyAssetsByMonthDay = {
+  // '01-01': 'assets/calendar_empty/newyear.png',
+  // '12-25': 'assets/calendar_empty/xmas.png',
+};
+
+// 固定年月日（yyyy-MM-dd）
+const Map<String, String> _specialEmptyAssetsByDate = {
+  // '2025-09-22': 'assets/calendar_empty/event.png',
+};
+String two(int n) => n.toString().padLeft(2, '0');
+String _emptyStateAssetFor(DateTime d) {
+  final ymd = '${d.year}-${two(d.month)}-${two(d.day)}';
+  final md  = '${two(d.month)}-${two(d.day)}';
+  if (_specialEmptyAssetsByDate.containsKey(ymd)) {
+    return _specialEmptyAssetsByDate[ymd]!;
+  }
+  if (_specialEmptyAssetsByMonthDay.containsKey(md)) {
+    return _specialEmptyAssetsByMonthDay[md]!;
+  }
+  return _weekdayEmptyAssets[d.weekday] ?? 'assets/illustrations/empty/calendar/default.png';
+}
+
+// 空画像の実体解決（存在チェック → default → 無ければ空文字でアイコンフォールバック）
+Future<String> _calendarResolveEmptyAsset(DateTime d) async {
+  final primary = _emptyStateAssetFor(d);
+  try {
+    await rootBundle.load(primary);
+    return primary;
+  } catch (_) {
+    const fallback = 'assets/illustrations/empty/calendar/default.png';
+    try {
+      await rootBundle.load(fallback);
+      return fallback;
+    } catch (_) {
+      return ''; // アイコン表示にフォールバック
+    }
+  }
+}
+
 class _CalendarScreenState extends State<CalendarScreen> {
+  // 空データ用画像の実体解決（存在チェックしてフォールバック）
 
   final GlobalKey _kCalendarCard = GlobalKey();
   late DateTime _focusedDay;
@@ -1546,6 +1600,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 const Divider(height: 1),
 
                 // 実績本文（スクロール領域）
+                // 実績本文（スクロール領域）
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -1553,9 +1608,35 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: body.isEmpty
                           ? [
-                        Text(
-                          '記録はありません',
-                          style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
+                        Center(
+                          child: Column(
+                            children: [
+                              SizedBox.square(
+                                dimension: MediaQuery.of(context).size.height / 3, // 正方形：画面高の約1/3
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(24),         // 角丸
+                                  child: Image.asset(
+                                    _emptyStateAssetFor(sel),
+                                    fit: BoxFit.contain,                            // 画像は切り抜かず収める
+                                    errorBuilder: (_, __, ___) => Image.asset(
+                                      'assets/illustrations/empty/calendar/mon.png',
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => Icon(
+                                        Icons.event_busy,
+                                        size: 72,
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                l10n.noRecords,
+                                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
+                              ),
+                            ],
+                          ),
                         ),
                       ]
                           : body,

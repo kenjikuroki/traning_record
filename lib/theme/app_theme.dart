@@ -7,8 +7,8 @@ Color _seedFromIndex(int idx) {
   switch (idx) {
     case 0: // モノトーン（ニュートラル）
       return const Color(0xFF3F3F3F);
-    case 1: // 紫
-      return const Color(0xFF5B4FD8);
+    case 1: // 赤
+      return const Color(0xFFD64545); // 落ち着いた濃い赤（Seed）
     case 2: // 青
       return const Color(0xFF2F6AD9);
     case 3: // 緑

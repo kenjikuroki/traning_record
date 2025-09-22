@@ -934,9 +934,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Theme(
                   data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                   child: ExpansionTile(
-                    // ※ l10n が未定義でもコンパイルが止まらないよう固定文言にしています
-                    title: const Text('テーマカラー', style: TextStyle(fontWeight: FontWeight.bold)),
-                    childrenPadding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
+                    leading: const Icon(Icons.palette_outlined),                 // ← アイコンの種類/配置を統一
+                    expandedAlignment: Alignment.centerLeft,                     // ← 展開時も左寄せ
+                    tilePadding: const EdgeInsets.symmetric(horizontal: 0),      // ← 高さを合わせる（縦パディング無し）
+                    childrenPadding: EdgeInsets.zero,                            // ← 子の左右/下の余白をゼロに
+                    title: Align(
+                      alignment: Alignment.centerLeft,                           // ← タイトルを左寄せ
+                      child: Text(
+                        l10n.themeColorTitle,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15.0,                                        // ← 背景の行と同サイズ
+                        ),
+                      ),
+                    ),
                     children: [
                       RadioListTile<int>(
                         title: Text(l10n.themeMonotone),
@@ -946,7 +957,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         dense: true,
                       ),
                       RadioListTile<int>(
-                        title: Text(l10n.themePurple),
+                        title: Text(l10n.themeRed),
                         value: 1,
                         groupValue: SettingsManager.currentAppColorThemeIndex,
                         onChanged: (v) => v == null ? null : _onAppColorThemeChanged(v),

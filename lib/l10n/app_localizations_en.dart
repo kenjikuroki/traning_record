@@ -437,7 +437,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get albumEmptyMessage => 'Take photos from the Record screen and they will appear here. Keep your training progress in the album.';
+  String get albumEmptyMessage => 'Save your selfies in the album to track your training progress.';
 
   @override
   String get close => 'Close';
@@ -671,7 +671,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get themeMonotone => 'Monotone';
 
   @override
-  String get themePurple => 'Purple';
+  String get themeRed => 'Red';
 
   @override
   String get themeBlue => 'Blue';
@@ -681,4 +681,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get themeYellow => 'Yellow';
+
+  @override
+  String get themeColorTitle => 'Theme color';
 }
