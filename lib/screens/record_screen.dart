@@ -3445,7 +3445,10 @@ _showPersonalCard =
     final bool showBMI =
         (widget.settingsBox.get('manage.bmi') as bool?) ?? false;
 
-    final bool inputOverlayActive =
+    
+    // 設定：パーソナル機能が全OFFなら＋パーソナルを非表示
+    final bool canShowPersonalButton = SettingsManager.showWeightInput || showBodyFat || showWaist || showBMI;
+final bool inputOverlayActive =
         _memoOverlayVisible || _menuOverlayVisible || _personalOverlayVisible;
     final Widget blurLayer = inputOverlayActive
         ? Positioned.fill(
@@ -4285,8 +4288,10 @@ _showPersonalCard =
                   _stagger(2, chipAction(l10n.addMemo, _handleAddMemo)),
                   const SizedBox(height: 8),
                   _stagger(3, chipAction(l10n.addPhoto, _handleAddPhoto)),
-    const SizedBox(height: 8),
-    _stagger(4, chipAction('＋パーソナル', _handleAddPersonal, enabled: !_showPersonalCard)),
+    if (canShowPersonalButton) ...[
+      const SizedBox(height: 8),
+      _stagger(4, chipAction('＋パーソナル', _handleAddPersonal, enabled: !_showPersonalCard)),
+    ],
 
                   const SizedBox(height: 8),
                 ],
