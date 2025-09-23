@@ -90,6 +90,15 @@ enum _AerobicFailureReason { noMatch }
 
 class _RecordScreenState extends State<RecordScreen>
     with WidgetsBindingObserver, TickerProviderStateMixin {
+// === Interval Timer Keys (per input card) ===
+final Map<String, GlobalKey<ExerciseInputTimerState>> _intervalTimerKeys = {};
+
+GlobalKey<ExerciseInputTimerState> _ensureTimerKey(int secIndex, int menuIndex) {
+  final id = '${secIndex}_${menuIndex}';
+  return _intervalTimerKeys.putIfAbsent(id, () => GlobalKey<ExerciseInputTimerState>());
+}
+
+
   static const Duration _kIdleAutoPause = Duration(hours: 5);
   static const Duration _kHardCap = Duration(hours: 5);
   static const double _bmiNudgeRight = 25.0;
@@ -3275,6 +3284,9 @@ _showPersonalCard =
                                 ),
                               ),
                               const Spacer(),
+                              const SizedBox(width: 12),
+                              Expanded(child: Center(child: ExerciseInputTimer(key: _ensureTimerKey(secIndex, menuIndex)))),
+                              const SizedBox(width: 12),
                               TextButton(
                                 onPressed: (!isAerobic &&
                                         menuIndex <
@@ -3394,7 +3406,8 @@ _showPersonalCard =
                                       });
                                     },
                                     enabledForInput: true,
-                                  ),
+                                  
+  timerKey: _ensureTimerKey(secIndex, menuIndex),),
                                 ),
                               ),
                             ),
@@ -4088,7 +4101,8 @@ final bool inputOverlayActive =
                                                             }
                                                           });
                                                         },
-                                                      ),
+                                                      
+  timerKey: _ensureTimerKey(secIndex, menuIndex),),
                                               ),
                                             ),
                                           );
@@ -5080,6 +5094,7 @@ class MenuList extends StatefulWidget {
   final bool enabledForInput;
 
   const MenuList({
+    required this.timerKey,
     super.key,
     required this.nameFieldKey,
     required this.menuController,
@@ -5103,6 +5118,9 @@ class MenuList extends StatefulWidget {
     this.onSatisfactionChanged,
     this.enabledForInput = true,
   });
+
+  final GlobalKey<ExerciseInputTimerState> timerKey;
+
 
   @override
   State<MenuList> createState() => _MenuListState();
@@ -6026,7 +6044,10 @@ class _MenuListState extends State<MenuList> {
                                         value: set.checked,
                                         onChanged: (set.weightController.text.trim().isNotEmpty ||
                                             set.repController.text.trim().isNotEmpty)
-                                            ? (v) => setState(() { set.checked = v ?? false; })
+                                            ? (v) {
+                                              setState(() { set.checked = v ?? false; });
+                                              if ((v ?? false) == true) { widget.timerKey.currentState?.restart(); }
+                                            }
                                             : null, // ← 両方空なら無効、どちらか入れば有効
                                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                       ),
@@ -6213,6 +6234,58 @@ class _PhotoPreviewPage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+
+// === Interval Timer Widget (top-level) ===
+class ExerciseInputTimer extends StatefulWidget {
+  const ExerciseInputTimer({super.key});
+  @override
+  ExerciseInputTimerState createState() => ExerciseInputTimerState();
+}
+
+class ExerciseInputTimerState extends State<ExerciseInputTimer> {
+  Timer? _ticker;
+  Duration _elapsed = Duration.zero;
+
+  void restart() {
+    _ticker?.cancel();
+    setState(() { _elapsed = Duration.zero; });
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() { _elapsed += const Duration(seconds: 1); });
+    });
+  }
+
+  void reset() {
+    _ticker?.cancel();
+    setState(() { _elapsed = Duration.zero; });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  String _format(Duration d) {
+    final mm = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final ss = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$mm:$ss';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      _format(_elapsed),
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        fontFeatures: [FontFeature.tabularFigures()],
       ),
     );
   }
