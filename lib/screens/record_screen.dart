@@ -1177,8 +1177,8 @@ class _RecordScreenState extends State<RecordScreen>
     if (SettingsManager.enableAerobicCalories) {
       _recalculateAllAerobicCalories(force: true);
     }
-  
-  
+
+
 // 既に値があれば当日パーソナルカードを自動表示
 _showPersonalCard =
     _weightController.text.trim().isNotEmpty ||
@@ -3445,7 +3445,7 @@ _showPersonalCard =
     final bool showBMI =
         (widget.settingsBox.get('manage.bmi') as bool?) ?? false;
 
-    
+
     // 設定：パーソナル機能が全OFFなら＋パーソナルを非表示
     final bool canShowPersonalButton = SettingsManager.showWeightInput || showBodyFat || showWaist || showBMI;
 final bool inputOverlayActive =
@@ -4589,11 +4589,13 @@ class SetInputData {
   TextEditingController weightController;
   TextEditingController repController;
   bool isSuggestion;
+  bool checked; // ← 追加：回の右側チェックボックスの状態
 
   SetInputData({
     required this.weightController,
     required this.repController,
     this.isSuggestion = true,
+    this.checked = false, // ← 追加：既定は未チェック
   });
 
   void dispose() {
@@ -5965,66 +5967,68 @@ class _MenuListState extends State<MenuList> {
                                           fontSize: 13.0,
                                           fontWeight: FontWeight.w700),
                                     ),
+                                    // ...（前略）
                                     Expanded(
                                       child: Focus(
                                         onFocusChange: (has) {
                                           notifyFocus(has);
                                           if (has && set.isSuggestion) {
-                                            setState(
-                                                () => set.isSuggestion = false);
+                                            setState(() => set.isSuggestion = false);
                                           }
                                         },
                                         child: ConstrainedBox(
-                                          constraints: const BoxConstraints(
-                                              minHeight:
-                                                  kUnifiedFieldMinHeight),
+                                          constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                                           child: TextField(
                                             controller: set.repController,
                                             keyboardType: TextInputType.number,
-                                            inputFormatters: [
-                                              FilteringTextInputFormatter
-                                                  .digitsOnly
-                                            ],
+                                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                             textAlign: TextAlign.right,
                                             style: TextStyle(
                                               fontFamily: kUiFont,
                                               color: set.isSuggestion
-                                                  ? colorScheme.onSurfaceVariant
-                                                      .withOpacity(0.5)
+                                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
                                                   : colorScheme.onSurface,
                                             ),
+                                            // ▼「kg」と同じ下線スタイルで固定
                                             decoration: InputDecoration(
                                               isDense: true,
-                                              filled: false,
-                                              enabledBorder:
-                                                  UnderlineInputBorder(
+                                              filled: false, // ← 背景塗りつぶしを明示的に無効
+                                              enabledBorder: UnderlineInputBorder(
                                                 borderSide: BorderSide(
-                                                    color: colorScheme
-                                                        .onSurfaceVariant
-                                                        .withOpacity(0.4),
-                                                    width: 1),
+                                                  color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                                                  width: 1,
+                                                ),
                                               ),
-                                              focusedBorder:
-                                                  UnderlineInputBorder(
+                                              focusedBorder: UnderlineInputBorder(
                                                 borderSide: BorderSide(
-                                                    color: colorScheme.primary,
-                                                    width: 2),
+                                                  color: colorScheme.primary,
+                                                  width: 2,
+                                                ),
                                               ),
-                                              contentPadding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 6,
-                                                      horizontal: 0),
+                                              contentPadding: const EdgeInsets.symmetric(
+                                                vertical: 6,
+                                                horizontal: 0,
+                                              ),
                                             ),
                                           ),
                                         ),
+
                                       ),
                                     ),
-                                    Text(
-                                      ' ${l10n.reps}',
-                                      style: TextStyle(
-                                        fontFamily: kUiFont,
-                                        color: colorScheme.onSurfaceVariant,
-                                        fontSize: 13,
+// ' 回 ' ラベル
+                                    Text(' ${l10n.reps}', /* ... */),
+
+// ✅ チェックボックスは Row の子として “回” の右側に置く
+                                    const SizedBox(width: 6),
+                                    SizedBox(
+                                      height: kUnifiedFieldMinHeight,
+                                      child: Checkbox(
+                                        value: set.checked,
+                                        onChanged: (set.weightController.text.trim().isNotEmpty ||
+                                            set.repController.text.trim().isNotEmpty)
+                                            ? (v) => setState(() { set.checked = v ?? false; })
+                                            : null, // ← 両方空なら無効、どちらか入れば有効
+                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                       ),
                                     ),
                                   ],
