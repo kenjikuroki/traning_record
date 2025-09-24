@@ -2057,21 +2057,38 @@ class _RecordScreenState extends State<RecordScreen>
     });
   }
 
-  void _toggleMenuCollapse(int sectionIndex, int menuIndex,
-      {bool suppressOverlay = false}) {
+  void _toggleMenuCollapse(int sectionIndex, int menuIndex, {bool suppressOverlay = false}) {
     if (sectionIndex < 0 || sectionIndex >= _sections.length) return;
     final section = _sections[sectionIndex];
-    if (menuIndex < 0 || menuIndex >= section.menuCollapsedStates.length) {
-      return;
-    }
+    if (menuIndex < 0 || menuIndex >= section.menuCollapsedStates.length) return;
+
+    // 今の状態を保持：true=折りたたみ中（これから開く）
+    final bool wasCollapsed = section.menuCollapsedStates[menuIndex];
+
     setState(() {
-      section.menuCollapsedStates[menuIndex] =
-          !section.menuCollapsedStates[menuIndex];
-      if (suppressOverlay) {
-        _suppressNextMenuOverlay = true;
-      }
+      section.menuCollapsedStates[menuIndex] = !section.menuCollapsedStates[menuIndex];
+      if (suppressOverlay) _suppressNextMenuOverlay = true;
     });
+
+    // 「開いた」ときだけ自動スクロールして見える位置に合わせる
+    if (wasCollapsed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final ctx = section.menuKeys[menuIndex].currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(
+            ctx,
+            // 末尾カードでも中身がちゃんと見えるように下寄せ
+            alignment: 1.0,
+            alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
   }
+
 
   void _prepareMenuQuickAction(int sectionIndex, int menuIndex) {
     setState(() {
@@ -4704,7 +4721,7 @@ class SectionData {
   String? selectedPart;
   List<TextEditingController> menuControllers;
   List<List<SetInputData>> setInputDataList;
-  List<Key> menuKeys;
+  List<GlobalKey> menuKeys;           // ← GlobalKey に変更
   List<GlobalKey> nameFieldKeys;
   List<bool> menuCollapsedStates;
 
