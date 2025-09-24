@@ -473,6 +473,27 @@ class AppLocalizationsJa extends AppLocalizations {
   String get satisfactionGood => '良い';
 
   @override
+  String get totalVolume => '総ボリューム';
+
+  @override
+  String get totalVolumeCurrent => '今回';
+
+  @override
+  String get totalVolumePrevious => '前回';
+
+  @override
+  String get totalVolumeDifference => '前回比';
+
+  @override
+  String get valueNotAvailable => '--';
+
+  @override
+  String get expandCard => '展開';
+
+  @override
+  String get collapseCard => '折りたたむ';
+
+  @override
   String get hintRecordFirst => 'まずはトレーニングや体重を記録しよう';
 
   @override
@@ -684,4 +705,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get themeColorTitle => 'テーマカラー';
+
+  @override
+  String get totalVolumeLabel => '総ボリューム';
+
+  @override
+  String get previousLabel => '前回';
+
+  @override
+  String get currentLabel => '今回';
 }

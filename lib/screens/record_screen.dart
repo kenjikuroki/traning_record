@@ -91,13 +91,14 @@ enum _AerobicFailureReason { noMatch }
 class _RecordScreenState extends State<RecordScreen>
     with WidgetsBindingObserver, TickerProviderStateMixin {
 // === Interval Timer Keys (per input card) ===
-final Map<String, GlobalKey<ExerciseInputTimerState>> _intervalTimerKeys = {};
+  final Map<String, GlobalKey<ExerciseInputTimerState>> _intervalTimerKeys = {};
 
-GlobalKey<ExerciseInputTimerState> _ensureTimerKey(int secIndex, int menuIndex) {
-  final id = '${secIndex}_${menuIndex}';
-  return _intervalTimerKeys.putIfAbsent(id, () => GlobalKey<ExerciseInputTimerState>());
-}
-
+  GlobalKey<ExerciseInputTimerState> _ensureTimerKey(
+      int secIndex, int menuIndex) {
+    final id = '${secIndex}_${menuIndex}';
+    return _intervalTimerKeys.putIfAbsent(
+        id, () => GlobalKey<ExerciseInputTimerState>());
+  }
 
   static const Duration _kIdleAutoPause = Duration(hours: 5);
   static const Duration _kHardCap = Duration(hours: 5);
@@ -110,13 +111,12 @@ GlobalKey<ExerciseInputTimerState> _ensureTimerKey(int secIndex, int menuIndex) 
   static const Curve _overlayOutCurve = Curves.easeInCubic;
 
   Color _fabBg(BuildContext c) =>
-      Theme.of(c).floatingActionButtonTheme.backgroundColor
-          ?? Theme.of(c).colorScheme.primary;
+      Theme.of(c).floatingActionButtonTheme.backgroundColor ??
+      Theme.of(c).colorScheme.primary;
 
   Color _fabFg(BuildContext c) =>
-      Theme.of(c).floatingActionButtonTheme.foregroundColor
-          ?? Theme.of(c).colorScheme.onPrimary;
-
+      Theme.of(c).floatingActionButtonTheme.foregroundColor ??
+      Theme.of(c).colorScheme.onPrimary;
 
   late final AnimationController _fabCtrl;
 
@@ -206,6 +206,11 @@ GlobalKey<ExerciseInputTimerState> _ensureTimerKey(int secIndex, int menuIndex) 
 
   // パーソナルカード表示フラグ（1枚だけ）
   bool _showPersonalCard = false;
+  bool _personalCollapsed = true;
+  bool _personalSelected = false;
+  bool _suppressNextMenuOverlay = false;
+  int? _skipTapSectionIndex;
+  int? _skipTapMenuIndex;
 // BMI 表示用（null のときは未計算/未設定表示）
   double? _bmiValue;
 // 設定から読む身長(cm)
@@ -990,7 +995,6 @@ GlobalKey<ExerciseInputTimerState> _ensureTimerKey(int secIndex, int menuIndex) 
       _weightController.clear();
     }
 
-
     // ▼ 追加：固定フィールドがあれば優先表示
     if (record?.bodyFatPercent != null) {
       _bodyFatController.text = record!.bodyFatPercent!.toString();
@@ -1066,6 +1070,7 @@ GlobalKey<ExerciseInputTimerState> _ensureTimerKey(int secIndex, int menuIndex) 
           setInputDataList: [],
           menuKeys: [],
           nameFieldKeys: [],
+          menuCollapsedStates: [],
           satisfactionList: [],
           aerobicDistanceCtrls: [],
           aerobicDurationCtrls: [],
@@ -1091,13 +1096,13 @@ GlobalKey<ExerciseInputTimerState> _ensureTimerKey(int secIndex, int menuIndex) 
       if (names.isEmpty) names.add('');
 
       for (final name in names) {
-
         final rec = recBy[name];
         final lu = luBy[name];
 
         section.menuControllers.add(TextEditingController(text: name));
         section.menuKeys.add(GlobalKey());
         section.nameFieldKeys.add(GlobalKey());
+        section.menuCollapsedStates.add(true);
         section.satisfactionList.add(rec?.satisfaction ?? lu?.satisfaction);
 
         if (isAerobic) {
@@ -1187,13 +1192,11 @@ GlobalKey<ExerciseInputTimerState> _ensureTimerKey(int secIndex, int menuIndex) 
       _recalculateAllAerobicCalories(force: true);
     }
 
-
 // 既に値があれば当日パーソナルカードを自動表示
-_showPersonalCard =
-    _weightController.text.trim().isNotEmpty ||
-    _bodyFatController.text.trim().isNotEmpty ||
-    _waistController.text.trim().isNotEmpty;
-}
+    _showPersonalCard = _weightController.text.trim().isNotEmpty ||
+        _bodyFatController.text.trim().isNotEmpty ||
+        _waistController.text.trim().isNotEmpty;
+  }
 
   String _getDateKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -1227,6 +1230,7 @@ _showPersonalCard =
     section.aerobicCalorieHintShown.clear();
     section.nameFieldKeys.clear();
     // 追加
+    section.menuCollapsedStates.clear();
     section.satisfactionList.clear();
   }
 
@@ -1432,7 +1436,6 @@ _showPersonalCard =
       didChangeStorage = true;
 
       widget.settingsBox.put('memo-$dateKey', {'body': memoText});
-
     } else {
       final had = widget.recordsBox.containsKey(dateKey);
       widget.recordsBox.delete(dateKey);
@@ -1886,6 +1889,7 @@ _showPersonalCard =
       section.menuControllers.add(nameCtrl);
       section.menuKeys.add(GlobalKey());
       section.nameFieldKeys.add(GlobalKey());
+      section.menuCollapsedStates.add(true);
 // 追加
       section.satisfactionList.add(null);
 
@@ -2035,6 +2039,9 @@ _showPersonalCard =
       if (section.nameFieldKeys.length > menuIndex) {
         section.nameFieldKeys.removeAt(menuIndex);
       }
+      if (section.menuCollapsedStates.length > menuIndex) {
+        section.menuCollapsedStates.removeAt(menuIndex);
+      }
 // 追加
       if (section.satisfactionList.length > menuIndex) {
         section.satisfactionList.removeAt(menuIndex);
@@ -2050,12 +2057,53 @@ _showPersonalCard =
     });
   }
 
-  void _touchCard(int sectionIndex, int menuIndex) {
+  void _toggleMenuCollapse(int sectionIndex, int menuIndex,
+      {bool suppressOverlay = false}) {
+    if (sectionIndex < 0 || sectionIndex >= _sections.length) return;
+    final section = _sections[sectionIndex];
+    if (menuIndex < 0 || menuIndex >= section.menuCollapsedStates.length) {
+      return;
+    }
+    setState(() {
+      section.menuCollapsedStates[menuIndex] =
+          !section.menuCollapsedStates[menuIndex];
+      if (suppressOverlay) {
+        _suppressNextMenuOverlay = true;
+      }
+    });
+  }
+
+  void _prepareMenuQuickAction(int sectionIndex, int menuIndex) {
     setState(() {
       _currentSectionIndex = sectionIndex;
       _currentMenuIndex = menuIndex;
       _lastInteractionAt = DateTime.now();
       _closeFabDial();
+      _personalSelected = false;
+      _skipTapSectionIndex = sectionIndex;
+      _skipTapMenuIndex = menuIndex;
+      _suppressNextMenuOverlay = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _skipTapSectionIndex = null;
+      _skipTapMenuIndex = null;
+      _suppressNextMenuOverlay = false;
+    });
+  }
+
+  void _touchCard(int sectionIndex, int menuIndex, {bool resetSkip = true}) {
+    setState(() {
+      _currentSectionIndex = sectionIndex;
+      _currentMenuIndex = menuIndex;
+      _lastInteractionAt = DateTime.now();
+      _closeFabDial();
+      _personalSelected = false;
+      if (resetSkip) {
+        _skipTapSectionIndex = null;
+        _skipTapMenuIndex = null;
+        _suppressNextMenuOverlay = false;
+      }
     });
   }
 
@@ -3285,7 +3333,11 @@ _showPersonalCard =
                               ),
                               const Spacer(),
                               const SizedBox(width: 12),
-                              Expanded(child: Center(child: ExerciseInputTimer(key: _ensureTimerKey(secIndex, menuIndex)))),
+                              Expanded(
+                                  child: Center(
+                                      child: ExerciseInputTimer(
+                                          key: _ensureTimerKey(
+                                              secIndex, menuIndex)))),
                               const SizedBox(width: 12),
                               TextButton(
                                 onPressed: (!isAerobic &&
@@ -3406,8 +3458,16 @@ _showPersonalCard =
                                       });
                                     },
                                     enabledForInput: true,
-                                  
-  timerKey: _ensureTimerKey(secIndex, menuIndex),),
+                                    isCollapsed: (menuIndex <
+                                            section.menuCollapsedStates.length)
+                                        ? section.menuCollapsedStates[menuIndex]
+                                        : true,
+                                    onToggleCollapse: () => _toggleMenuCollapse(
+                                        secIndex, menuIndex),
+                                    forceExpanded: true,
+                                    timerKey:
+                                        _ensureTimerKey(secIndex, menuIndex),
+                                  ),
                                 ),
                               ),
                             ),
@@ -3458,10 +3518,10 @@ _showPersonalCard =
     final bool showBMI =
         (widget.settingsBox.get('manage.bmi') as bool?) ?? false;
 
-
     // 設定：パーソナル機能が全OFFなら＋パーソナルを非表示
-    final bool canShowPersonalButton = SettingsManager.showWeightInput || showBodyFat || showWaist || showBMI;
-final bool inputOverlayActive =
+    final bool canShowPersonalButton =
+        SettingsManager.showWeightInput || showBodyFat || showWaist || showBMI;
+    final bool inputOverlayActive =
         _memoOverlayVisible || _menuOverlayVisible || _personalOverlayVisible;
     final Widget blurLayer = inputOverlayActive
         ? Positioned.fill(
@@ -3633,49 +3693,50 @@ final bool inputOverlayActive =
                         child: Card(
                           color: cs.surfaceContainerHighest,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16.0)),
-                          elevation: 1.0,
+                            borderRadius: BorderRadius.circular(16.0),
+                            side: BorderSide(
+                              color: _personalSelected
+                                  ? (isLight ? kBrandBlue : cs.primary)
+                                  : Colors.transparent,
+                              width: _personalSelected ? 1.5 : 0,
+                            ),
+                          ),
+                          elevation: _personalSelected ? 3.0 : 1.0,
+                          shadowColor: _personalSelected
+                              ? (isLight
+                                  ? kBrandBlue.withOpacity(0.35)
+                                  : cs.primary.withOpacity(0.45))
+                              : Colors.black.withOpacity(0.20),
                           child: Stack(
                             children: [
+                              // 全体タップでオーバーレイを開く透明レイヤー
+                              Positioned.fill(
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(16.0),
+                                    onTap: () {
+                                      if (_personalSelected) {
+                                        _openPersonalOverlaySmooth();
+                                      } else {
+                                        setState(() {
+                                          _personalSelected = true;
+                                          _currentSectionIndex = null;
+                                          _currentMenuIndex = null;
+                                          _lastInteractionAt = DateTime.now();
+                                          _closeFabDial();
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
                               // ↓ 先に中身（白いカードなど）
                               Padding(
                                 padding: const EdgeInsets.all(16.0),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // 見出し（下線）
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(
-                                                left: 6.0),
-                                            child: ConstrainedBox(
-                                              constraints: const BoxConstraints(
-                                                  minHeight:
-                                                      kUnifiedFieldMinHeight),
-                                              child: Focus(
-                                                // ← 後述の「編集禁止」もここで
-                                                canRequestFocus: false,
-                                                descendantsAreFocusable: false,
-                                                child: TextField(
-                                                  controller:
-                                                      TextEditingController(
-                                                          text: l10n.personal),
-                                                  readOnly: true,
-                                                  showCursor: false,
-                                                  enableInteractiveSelection:
-                                                      false,
-                                                  decoration: _underlineDec(),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4.0),
-
                                     // ===== 白いカード =====
                                     Container(
                                       margin: const EdgeInsets.symmetric(
@@ -3700,56 +3761,129 @@ final bool inputOverlayActive =
                                         padding: const EdgeInsets.fromLTRB(
                                             6.0, 10.0, 10.0, 10.0),
                                         child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            _metricRow(
-                                                label: l10n.bodyWeight,
-                                                controller: _weightController,
-                                                unit: currentUnit == 'kg'
-                                                    ? l10n.kg
-                                                    : l10n.lbs),
-                                            if ((widget.settingsBox
-                                                        .get('manage.bodyFat')
-                                                    as bool?) ??
-                                                false)
-                                              _metricRow(
-                                                  label: l10n.bodyFat,
-                                                  controller:
-                                                      _bodyFatController,
-                                                  unit: l10n.percentSymbol),
-                                            if ((widget.settingsBox
-                                                        .get('manage.waist')
-                                                    as bool?) ??
-                                                false)
-                                              _metricRow(
-                                                  label: l10n.waist,
-                                                  controller: _waistController,
-                                                  unit: SettingsManager
-                                                          .isWaistInch
-                                                      ? l10n.unitIn
-                                                      : l10n.unitCm),
-                                            if ((widget.settingsBox
-                                                        .get('manage.bmi')
-                                                    as bool?) ??
-                                                false)
-                                              _metricRow(
-                                                  label: l10n.bmi,
-                                                  controller: _bmiCtrl),
+                                            Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              children: [
+                                                Expanded(
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                            bottom: 6.0,
+                                                            right: 4.0),
+                                                    child: SizedBox(
+                                                      width: double.infinity,
+                                                      child: ConstrainedBox(
+                                                        constraints:
+                                                            const BoxConstraints(
+                                                                minHeight:
+                                                                    kUnifiedFieldMinHeight),
+                                                        child: Focus(
+                                                          canRequestFocus:
+                                                              false,
+                                                          descendantsAreFocusable:
+                                                              false,
+                                                          child: TextField(
+                                                            controller:
+                                                                TextEditingController(
+                                                                    text: l10n
+                                                                        .personal),
+                                                            readOnly: true,
+                                                            showCursor: false,
+                                                            enableInteractiveSelection:
+                                                                false,
+                                                            onTap:
+                                                                _openPersonalOverlaySmooth,
+                                                            decoration:
+                                                                _underlineDec(),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                IconButton(
+                                                  onPressed: () => setState(() {
+                                                    _personalCollapsed =
+                                                        !_personalCollapsed;
+                                                  }),
+                                                  tooltip: _personalCollapsed
+                                                      ? l10n.expandCard
+                                                      : l10n.collapseCard,
+                                                  icon: Icon(
+                                                    _personalCollapsed
+                                                        ? Icons
+                                                            .keyboard_arrow_down_rounded
+                                                        : Icons
+                                                            .keyboard_arrow_up_rounded,
+                                                  ),
+                                                  visualDensity:
+                                                      VisualDensity.compact,
+                                                  splashRadius: 20,
+                                                ),
+                                              ],
+                                            ),
+                                            AnimatedCrossFade(
+                                              duration: const Duration(
+                                                  milliseconds: 180),
+                                              sizeCurve: Curves.easeOutCubic,
+                                              crossFadeState: _personalCollapsed
+                                                  ? CrossFadeState.showFirst
+                                                  : CrossFadeState.showSecond,
+                                              firstChild:
+                                                  const SizedBox.shrink(),
+                                              secondChild: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const SizedBox(height: 2),
+                                                  _metricRow(
+                                                      label: l10n.bodyWeight,
+                                                      controller:
+                                                          _weightController,
+                                                      unit: currentUnit == 'kg'
+                                                          ? l10n.kg
+                                                          : l10n.lbs),
+                                                  if ((widget.settingsBox.get(
+                                                              'manage.bodyFat')
+                                                          as bool?) ??
+                                                      false)
+                                                    _metricRow(
+                                                        label: l10n.bodyFat,
+                                                        controller:
+                                                            _bodyFatController,
+                                                        unit:
+                                                            l10n.percentSymbol),
+                                                  if ((widget.settingsBox.get(
+                                                              'manage.waist')
+                                                          as bool?) ??
+                                                      false)
+                                                    _metricRow(
+                                                        label: l10n.waist,
+                                                        controller:
+                                                            _waistController,
+                                                        unit: SettingsManager
+                                                                .isWaistInch
+                                                            ? l10n.unitIn
+                                                            : l10n.unitCm),
+                                                  if ((widget.settingsBox
+                                                              .get('manage.bmi')
+                                                          as bool?) ??
+                                                      false)
+                                                    _metricRow(
+                                                        label: l10n.bmi,
+                                                        controller: _bmiCtrl),
+                                                ],
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ),
                                     ),
                                   ],
-                                ),
-                              ),
-
-                              // ← これを最後に置く（最上面）。白いカードも含めてどこでもタップOK
-                              Positioned.fill(
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(16.0),
-                                    onTap: _openPersonalOverlaySmooth,
-                                  ),
                                 ),
                               ),
                             ],
@@ -3882,29 +4016,53 @@ final bool inputOverlayActive =
                                                   _menuSecIndex == secIndex &&
                                                   _menuMenuIndex == menuIndex;
 
-                                          return GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTap: () {
-                                              _touchCard(secIndex, menuIndex);
-                                              _openMenuOverlaySmooth(
-                                                  secIndex, menuIndex);
-                                            },
-                                            child: Card(
-                                              key: section.menuKeys[menuIndex],
-                                              color: colorScheme.surface,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12.0),
-                                                side: BorderSide(
-                                                    color: borderColor,
-                                                    width:
-                                                        isSelected ? 1.5 : 0),
-                                              ),
-                                              elevation: isSelected ? 3.0 : 0.0,
-                                              shadowColor: glowColor,
-                                              margin:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 8.0),
+                                          return Card(
+                                            key: section.menuKeys[menuIndex],
+                                            color: colorScheme.surface,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12.0),
+                                              side: BorderSide(
+                                                  color: borderColor,
+                                                  width: isSelected ? 1.5 : 0),
+                                            ),
+                                            elevation: isSelected ? 3.0 : 0.0,
+                                            shadowColor: glowColor,
+                                            margin: const EdgeInsets.symmetric(
+                                                vertical: 8.0),
+                                            child: InkWell(
+                                              borderRadius:
+                                                  BorderRadius.circular(12.0),
+                                              splashFactory:
+                                                  NoSplash.splashFactory,
+                                              highlightColor:
+                                                  Colors.transparent,
+                                              onTap: () {
+                                                final bool skipThisTap =
+                                                    (_skipTapSectionIndex ==
+                                                            secIndex &&
+                                                        _skipTapMenuIndex ==
+                                                            menuIndex);
+                                                if (skipThisTap) {
+                                                  _skipTapSectionIndex = null;
+                                                  _skipTapMenuIndex = null;
+                                                  _suppressNextMenuOverlay =
+                                                      false;
+                                                  return;
+                                                }
+                                                final alreadySelected =
+                                                    isSelected;
+                                                _touchCard(secIndex, menuIndex);
+                                                final shouldOpen =
+                                                    alreadySelected &&
+                                                        !_suppressNextMenuOverlay;
+                                                _suppressNextMenuOverlay =
+                                                    false;
+                                                if (shouldOpen) {
+                                                  _openMenuOverlaySmooth(
+                                                      secIndex, menuIndex);
+                                                }
+                                              },
                                               child: Padding(
                                                 padding:
                                                     const EdgeInsets.all(10.0),
@@ -3964,6 +4122,28 @@ final bool inputOverlayActive =
                                                                     .satisfactionList[
                                                                 menuIndex]
                                                             : null,
+                                                        isCollapsed: (menuIndex <
+                                                                section
+                                                                    .menuCollapsedStates
+                                                                    .length)
+                                                            ? section
+                                                                    .menuCollapsedStates[
+                                                                menuIndex]
+                                                            : true,
+                                                        onPrepareAction: () =>
+                                                            _prepareMenuQuickAction(
+                                                                secIndex,
+                                                                menuIndex),
+                                                        onToggleCollapse: () =>
+                                                            _toggleMenuCollapse(
+                                                                secIndex,
+                                                                menuIndex,
+                                                                suppressOverlay:
+                                                                    true),
+                                                        onRemoveMenu: () =>
+                                                            _removeMenuItem(
+                                                                secIndex,
+                                                                menuIndex),
                                                       )
                                                     : MenuList(
                                                         key: (secIndex == 0 &&
@@ -4101,8 +4281,29 @@ final bool inputOverlayActive =
                                                             }
                                                           });
                                                         },
-                                                      
-  timerKey: _ensureTimerKey(secIndex, menuIndex),),
+                                                        isCollapsed: (menuIndex <
+                                                                section
+                                                                    .menuCollapsedStates
+                                                                    .length)
+                                                            ? section
+                                                                    .menuCollapsedStates[
+                                                                menuIndex]
+                                                            : true,
+                                                        onPrepareAction: () =>
+                                                            _prepareMenuQuickAction(
+                                                                secIndex,
+                                                                menuIndex),
+                                                        onToggleCollapse: () =>
+                                                            _toggleMenuCollapse(
+                                                                secIndex,
+                                                                menuIndex,
+                                                                suppressOverlay:
+                                                                    true),
+                                                        timerKey:
+                                                            _ensureTimerKey(
+                                                                secIndex,
+                                                                menuIndex),
+                                                      ),
                                               ),
                                             ),
                                           );
@@ -4212,7 +4413,7 @@ final bool inputOverlayActive =
                 ],
               ),
               child: Padding(
-              padding:
+                padding:
                     const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                 child: Text(
                   label,
@@ -4302,11 +4503,13 @@ final bool inputOverlayActive =
                   _stagger(2, chipAction(l10n.addMemo, _handleAddMemo)),
                   const SizedBox(height: 8),
                   _stagger(3, chipAction(l10n.addPhoto, _handleAddPhoto)),
-    if (canShowPersonalButton) ...[
-      const SizedBox(height: 8),
-      _stagger(4, chipAction('＋パーソナル', _handleAddPersonal, enabled: !_showPersonalCard)),
-    ],
-
+                  if (canShowPersonalButton) ...[
+                    const SizedBox(height: 8),
+                    _stagger(
+                        4,
+                        chipAction('＋パーソナル', _handleAddPersonal,
+                            enabled: !_showPersonalCard)),
+                  ],
                   const SizedBox(height: 8),
                 ],
               ),
@@ -4506,6 +4709,7 @@ class SectionData {
   List<List<SetInputData>> setInputDataList;
   List<Key> menuKeys;
   List<GlobalKey> nameFieldKeys;
+  List<bool> menuCollapsedStates;
 
   // 追加：メニューごとの満足度（2=良い,1=普通,0=悪い,null=未選択）
   List<int?> satisfactionList;
@@ -4525,6 +4729,7 @@ class SectionData {
     required this.setInputDataList,
     required this.menuKeys,
     required this.nameFieldKeys,
+    List<bool>? menuCollapsedStates,
     List<int?>? satisfactionList, // 追加
     List<TextEditingController>? aerobicDistanceCtrls,
     List<TextEditingController>? aerobicDurationCtrls,
@@ -4533,7 +4738,8 @@ class SectionData {
     List<bool>? aerobicCalorieSuggestFlags,
     List<bool>? aerobicCalorieHintVisible,
     List<bool>? aerobicCalorieHintShown,
-  })  : satisfactionList = satisfactionList ?? <int?>[],
+  })  : menuCollapsedStates = menuCollapsedStates ?? <bool>[],
+        satisfactionList = satisfactionList ?? <int?>[],
         // 追加
         aerobicDistanceCtrls =
             aerobicDistanceCtrls ?? <TextEditingController>[],
@@ -4566,6 +4772,7 @@ class SectionData {
           : [],
       menuKeys: shouldPopulateDefaults ? [GlobalKey()] : [],
       nameFieldKeys: shouldPopulateDefaults ? [GlobalKey()] : [],
+      menuCollapsedStates: shouldPopulateDefaults ? [true] : [],
       satisfactionList: shouldPopulateDefaults ? [null] : [],
       // 追加
       aerobicDistanceCtrls: [],
@@ -4616,6 +4823,50 @@ class SetInputData {
     weightController.dispose();
     repController.dispose();
   }
+}
+
+double? calculateTotalVolume(List<SetInputData> sets) {
+  double total = 0;
+  bool hasValue = false;
+  for (final set in sets) {
+    if (!set.checked) {
+      continue;
+    }
+    final weightText = set.weightController.text.trim();
+    final repsText = set.repController.text.trim();
+    if (weightText.isEmpty || repsText.isEmpty) {
+      continue;
+    }
+    final double? weight = double.tryParse(weightText);
+    final double? reps = double.tryParse(repsText);
+    if (weight == null || reps == null) {
+      continue;
+    }
+    hasValue = true;
+    total += weight * reps;
+  }
+  return hasValue ? total : null;
+}
+
+String formatTotalVolumeValue(AppLocalizations l10n, double? volume,
+    {bool withSign = false}) {
+  if (volume == null) {
+    return l10n.valueNotAvailable;
+  }
+  final String unit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
+  final bool isInteger = (volume - volume.truncateToDouble()).abs() < 0.0001;
+  String number = isInteger
+      ? volume.toStringAsFixed(0)
+      : volume
+          .toStringAsFixed(2)
+          .replaceAll(RegExp(r'0+$'), '')
+          .replaceAll(RegExp(r'\.$'), '');
+  if (withSign && volume > 0) {
+    number = '+$number';
+  } else if (withSign && volume == 0) {
+    number = '0';
+  }
+  return '$number $unit';
 }
 
 class _BlurExclusionLayer extends StatefulWidget {
@@ -4732,6 +4983,10 @@ class MenuListPreview extends StatelessWidget {
   final bool showCalorieField;
   final bool showAerobicFailureHint;
   final int? satisfaction;
+  final bool isCollapsed;
+  final VoidCallback onToggleCollapse;
+  final VoidCallback onPrepareAction;
+  final VoidCallback onRemoveMenu;
 
   const MenuListPreview({
     super.key,
@@ -4744,6 +4999,10 @@ class MenuListPreview extends StatelessWidget {
     this.showCalorieField = false,
     this.showAerobicFailureHint = false,
     this.satisfaction,
+    required this.isCollapsed,
+    required this.onToggleCollapse,
+    required this.onPrepareAction,
+    required this.onRemoveMenu,
   });
 
   @override
@@ -5010,6 +5269,77 @@ class MenuListPreview extends StatelessWidget {
       return Column(children: children);
     }
 
+    Widget buildVolumeRow() {
+      if (isAerobic) {
+        return const SizedBox.shrink();
+      }
+
+      Widget buildContent(double? current) {
+        final labelStyle = TextStyle(
+          color: cs.onSurfaceVariant,
+          fontSize: 13.0,
+        );
+        final valueStyle = TextStyle(
+          fontFamily: kUiFont,
+          color: cs.onSurface,
+          fontSize: 13.0,
+        );
+        final String currentText =
+            formatTotalVolumeValue(l10n, current, withSign: false);
+        final String previousText = l10n.valueNotAvailable;
+        final String diffText = l10n.valueNotAvailable;
+
+        Widget volumeText(String label, String value) {
+          return Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: '$label：', style: labelStyle),
+                const TextSpan(text: ' '),
+                TextSpan(text: value, style: valueStyle),
+              ],
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${l10n.totalVolume}：', style: labelStyle),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: [
+                    volumeText(l10n.totalVolumeCurrent, currentText),
+                    volumeText(l10n.totalVolumePrevious, previousText),
+                    volumeText(l10n.totalVolumeDifference, diffText),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      final listenables = <Listenable>[
+        for (final set in setInputDataList) ...[
+          set.weightController,
+          set.repController,
+        ],
+      ];
+      if (listenables.isEmpty) {
+        return buildContent(null);
+      }
+      return AnimatedBuilder(
+        animation: Listenable.merge(listenables),
+        builder: (_, __) =>
+            buildContent(calculateTotalVolume(setInputDataList)),
+      );
+    }
+
     Widget buildSatisfactionRow() {
       final labels = [
         Icons.sentiment_very_dissatisfied,
@@ -5055,15 +5385,86 @@ class MenuListPreview extends StatelessWidget {
       );
     }
 
+    Widget buildBody() {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 12),
+          if (isAerobic) buildAerobicRows() else buildSetRows(),
+          if (!isAerobic) ...[
+            const SizedBox(height: 8),
+            buildVolumeRow(),
+          ],
+          const SizedBox(height: 12),
+          buildSatisfactionRow(),
+          const SizedBox(height: 36),
+        ],
+      );
+    }
+
+    final String toggleTooltip =
+        isCollapsed ? l10n.expandCard : l10n.collapseCard;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        buildMenuName(),
-        const SizedBox(height: 12),
-        if (isAerobic) buildAerobicRows() else buildSetRows(),
-        const SizedBox(height: 12),
-        buildSatisfactionRow(),
-        const SizedBox(height: 36),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: buildMenuName()),
+            IconButton(
+              onPressed: () {
+                onPrepareAction();
+                onToggleCollapse();
+              },
+              tooltip: toggleTooltip,
+              icon: Icon(
+                  isCollapsed
+                      ? Icons.keyboard_arrow_down_rounded
+                      : Icons.keyboard_arrow_up_rounded,
+                  size: 22),
+              visualDensity: VisualDensity.compact,
+              splashRadius: 20,
+            ),
+            IconButton(
+              onPressed: () async {
+                onPrepareAction();
+                final bool? ok = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text(l10n.deleteMenuConfirmationTitle),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: Text(l10n.no),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: Text(l10n.yes),
+                      ),
+                    ],
+                  ),
+                );
+                if (ok == true) {
+                  onRemoveMenu();
+                }
+              },
+              tooltip: l10n.deleteMenuConfirmationTitle,
+              icon: const Icon(Icons.close, size: 18),
+              visualDensity: VisualDensity.compact,
+              splashRadius: 18,
+            ),
+          ],
+        ),
+        AnimatedCrossFade(
+          duration: const Duration(milliseconds: 180),
+          sizeCurve: Curves.easeOutCubic,
+          crossFadeState: isCollapsed
+              ? CrossFadeState.showFirst
+              : CrossFadeState.showSecond,
+          firstChild: const SizedBox.shrink(),
+          secondChild: buildBody(),
+        ),
       ],
     );
   }
@@ -5092,6 +5493,10 @@ class MenuList extends StatefulWidget {
   final int? satisfaction;
   final ValueChanged<int?>? onSatisfactionChanged;
   final bool enabledForInput;
+  final bool isCollapsed;
+  final VoidCallback onToggleCollapse;
+  final bool forceExpanded;
+  final VoidCallback? onPrepareAction;
 
   const MenuList({
     required this.timerKey,
@@ -5117,10 +5522,13 @@ class MenuList extends StatefulWidget {
     this.satisfaction,
     this.onSatisfactionChanged,
     this.enabledForInput = true,
+    this.isCollapsed = true,
+    required this.onToggleCollapse,
+    this.forceExpanded = false,
+    this.onPrepareAction,
   });
 
   final GlobalKey<ExerciseInputTimerState> timerKey;
-
 
   @override
   State<MenuList> createState() => _MenuListState();
@@ -5442,6 +5850,79 @@ class _MenuListState extends State<MenuList> {
     );
   }
 
+  Widget _buildTotalVolumeRow(bool nameFilled) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    Widget content(double? current) {
+      final labelStyle = TextStyle(
+        color: cs.onSurfaceVariant,
+        fontSize: 13.0,
+      );
+      final valueStyle = TextStyle(
+        fontFamily: kUiFont,
+        color: cs.onSurface,
+        fontSize: 13.0,
+      );
+      final String currentText =
+          formatTotalVolumeValue(l10n, current, withSign: false);
+      final String previousText = l10n.valueNotAvailable;
+      final String diffText = l10n.valueNotAvailable;
+
+      Widget volumeText(String label, String value) {
+        return Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: '$label：', style: labelStyle),
+              const TextSpan(text: ' '),
+              TextSpan(text: value, style: valueStyle),
+            ],
+          ),
+        );
+      }
+
+      return Opacity(
+        opacity: nameFilled ? 1.0 : 0.5,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${l10n.totalVolume}：', style: labelStyle),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: [
+                    volumeText(l10n.totalVolumeCurrent, currentText),
+                    volumeText(l10n.totalVolumePrevious, previousText),
+                    volumeText(l10n.totalVolumeDifference, diffText),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final listenables = <Listenable>[
+      for (final set in widget.setInputDataList) ...[
+        set.weightController,
+        set.repController,
+      ],
+    ];
+    if (listenables.isEmpty) {
+      return content(null);
+    }
+    return AnimatedBuilder(
+      animation: Listenable.merge(listenables),
+      builder: (_, __) =>
+          content(calculateTotalVolume(widget.setInputDataList)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -5472,108 +5953,132 @@ class _MenuListState extends State<MenuList> {
       fontSize: 13.0,
     );
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: IgnorePointer(
-        // ★追加：入力可否を一括制御
-        ignoring: !widget.enabledForInput,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            KeyedSubtree(
-              key: widget.nameFieldKey,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Focus(
-                      onFocusChange: notifyFocus,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 8.0),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(
-                              minHeight: kUnifiedFieldMinHeight),
-                          child: TextField(
-                            controller: widget.menuController,
-                            keyboardType: TextInputType.text,
-                            inputFormatters: [
-                              LengthLimitingTextInputFormatter(25)
-                            ],
-                            textAlign: TextAlign.left,
-                            style: TextStyle(
-                              // ← 追加
-                              fontFamily: kUiFont,
-                              color: colorScheme.onSurface,
-                            ),
-                            decoration: InputDecoration(
-                              isDense: true,
-                              hintText: l10n.addExercisePlaceholder,
-                              hintStyle: TextStyle(
-                                  color: colorScheme.onSurfaceVariant
-                                      .withOpacity(0.5)),
-                              filled: false,
-                              enabledBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: colorScheme.onSurfaceVariant
-                                      .withOpacity(0.4),
-                                  width: 1,
-                                ),
-                              ),
-                              focusedBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: colorScheme.primary, width: 2),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 6, horizontal: 0),
-                            ),
-                          ),
+    final bool collapsed = widget.isCollapsed && !widget.forceExpanded;
+
+    final headerRow = KeyedSubtree(
+      key: widget.nameFieldKey,
+      child: Row(
+        children: [
+          Expanded(
+            child: Focus(
+              onFocusChange: notifyFocus,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: ConstrainedBox(
+                  constraints:
+                      const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                  child: TextField(
+                    controller: widget.menuController,
+                    keyboardType: TextInputType.text,
+                    inputFormatters: [
+                      LengthLimitingTextInputFormatter(25),
+                    ],
+                    textAlign: TextAlign.left,
+                    style: TextStyle(
+                      fontFamily: kUiFont,
+                      color: colorScheme.onSurface,
+                    ),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: l10n.addExercisePlaceholder,
+                      hintStyle: TextStyle(
+                        color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                      ),
+                      filled: false,
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                          width: 1,
                         ),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide:
+                            BorderSide(color: colorScheme.primary, width: 2),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 6,
+                        horizontal: 0,
                       ),
                     ),
                   ),
-                  // × ボタン（削除確認ダイアログを出す）
-                  TextButton(
-                    onPressed: () async {
-                      final l10n = AppLocalizations.of(context)!;
-                      final bool? ok = await showDialog<bool>(
-                        context: context, // ← 必須
-                        builder: (ctx) => AlertDialog(
-                          title: Text(l10n.deleteMenuConfirmationTitle),
-                          // 「種目を削除しますか？」
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: Text(l10n.no),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              child: Text(l10n.yes), // 「はい」
-                            ),
-                          ],
-                        ),
-                      );
-
-                      if (ok == true) {
-                        // 親に削除を依頼
-                        widget.removeMenuCallback();
-                      }
-                    },
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(40, 20),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      alignment: Alignment.center,
-                    ),
-                    child: Icon(Icons.close,
-                        color: colorScheme.onSurfaceVariant, size: 16),
-                  )
-                ],
+                ),
               ),
             ),
-            const SizedBox(height: 2.0),
-            Padding(
-              padding: const EdgeInsets.only(left: 10.0),
-              child: widget.isAerobic
-                  ? Column(
+          ),
+          if (!widget.forceExpanded)
+            IconButton(
+              onPressed: () {
+                widget.onPrepareAction?.call();
+                widget.onToggleCollapse();
+              },
+              tooltip: collapsed ? l10n.expandCard : l10n.collapseCard,
+              icon: Icon(
+                collapsed
+                    ? Icons.keyboard_arrow_down_rounded
+                    : Icons.keyboard_arrow_up_rounded,
+                size: 22,
+              ),
+              visualDensity: VisualDensity.compact,
+              splashRadius: 20,
+            ),
+          TextButton(
+            onPressed: () async {
+              widget.onPrepareAction?.call();
+              final l10n = AppLocalizations.of(context)!;
+              final bool? ok = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: Text(l10n.deleteMenuConfirmationTitle),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(l10n.no),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text(l10n.yes),
+                    ),
+                  ],
+                ),
+              );
+
+              if (ok == true) {
+                widget.removeMenuCallback();
+              }
+            },
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(40, 20),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              alignment: Alignment.center,
+            ),
+            child: Icon(
+              Icons.close,
+              color: colorScheme.onSurfaceVariant,
+              size: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6.0),
+    child: collapsed
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [headerRow],
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              headerRow,
+              const SizedBox(height: 2.0),
+              IgnorePointer(
+                ignoring: !widget.enabledForInput,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 10.0),
+                  child: widget.isAerobic
+                      ? Column(
                       children: [
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 6.0),
@@ -5900,11 +6405,7 @@ class _MenuListState extends State<MenuList> {
                           ),
                       ],
                     )
-                  : Opacity(
-                      opacity: nameFilled ? 1.0 : 0.5,
-                      child: IgnorePointer(
-                        ignoring: !nameFilled,
-                        child: Column(
+                      : Column(
                           children: List.generate(
                             min(10, widget.setInputDataList.length),
                             (setIndex) {
@@ -5991,50 +6492,63 @@ class _MenuListState extends State<MenuList> {
                                         onFocusChange: (has) {
                                           notifyFocus(has);
                                           if (has && set.isSuggestion) {
-                                            setState(() => set.isSuggestion = false);
+                                            setState(
+                                                () => set.isSuggestion = false);
                                           }
                                         },
                                         child: ConstrainedBox(
-                                          constraints: const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                                          constraints: const BoxConstraints(
+                                              minHeight:
+                                                  kUnifiedFieldMinHeight),
                                           child: TextField(
                                             controller: set.repController,
                                             keyboardType: TextInputType.number,
-                                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                            inputFormatters: [
+                                              FilteringTextInputFormatter
+                                                  .digitsOnly
+                                            ],
                                             textAlign: TextAlign.right,
                                             style: TextStyle(
                                               fontFamily: kUiFont,
                                               color: set.isSuggestion
-                                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                                                  ? colorScheme.onSurfaceVariant
+                                                      .withOpacity(0.5)
                                                   : colorScheme.onSurface,
                                             ),
                                             // ▼「kg」と同じ下線スタイルで固定
                                             decoration: InputDecoration(
                                               isDense: true,
                                               filled: false, // ← 背景塗りつぶしを明示的に無効
-                                              enabledBorder: UnderlineInputBorder(
+                                              enabledBorder:
+                                                  UnderlineInputBorder(
                                                 borderSide: BorderSide(
-                                                  color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                                                  color: colorScheme
+                                                      .onSurfaceVariant
+                                                      .withOpacity(0.4),
                                                   width: 1,
                                                 ),
                                               ),
-                                              focusedBorder: UnderlineInputBorder(
+                                              focusedBorder:
+                                                  UnderlineInputBorder(
                                                 borderSide: BorderSide(
                                                   color: colorScheme.primary,
                                                   width: 2,
                                                 ),
                                               ),
-                                              contentPadding: const EdgeInsets.symmetric(
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
                                                 vertical: 6,
                                                 horizontal: 0,
                                               ),
                                             ),
                                           ),
                                         ),
-
                                       ),
                                     ),
 // ' 回 ' ラベル
-                                    Text(' ${l10n.reps}', /* ... */),
+                                    Text(
+                                      ' ${l10n.reps}', /* ... */
+                                    ),
 
 // ✅ チェックボックスは Row の子として “回” の右側に置く
                                     const SizedBox(width: 6),
@@ -6042,14 +6556,24 @@ class _MenuListState extends State<MenuList> {
                                       height: kUnifiedFieldMinHeight,
                                       child: Checkbox(
                                         value: set.checked,
-                                        onChanged: (set.weightController.text.trim().isNotEmpty ||
-                                            set.repController.text.trim().isNotEmpty)
+                                        onChanged: (set.weightController.text
+                                                    .trim()
+                                                    .isNotEmpty ||
+                                                set.repController.text
+                                                    .trim()
+                                                    .isNotEmpty)
                                             ? (v) {
-                                              setState(() { set.checked = v ?? false; });
-                                              if ((v ?? false) == true) { widget.timerKey.currentState?.restart(); }
-                                            }
+                                                setState(() {
+                                                  set.checked = v ?? false;
+                                                });
+                                                if ((v ?? false) == true) {
+                                                  widget.timerKey.currentState
+                                                      ?.restart();
+                                                }
+                                              }
                                             : null, // ← 両方空なら無効、どちらか入れば有効
-                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
                                       ),
                                     ),
                                   ],
@@ -6058,56 +6582,13 @@ class _MenuListState extends State<MenuList> {
                             },
                           ),
                         ),
-                      ),
-                    ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding:
-                  const EdgeInsets.only(left: 8.0, right: 8.0, bottom: 2.0),
-              child: Opacity(
-                opacity: nameFilled ? 1.0 : 0.5,
-                child: IgnorePointer(
-                  ignoring: !nameFilled,
-                  child: Row(
-                    children: [
-                      Text(
-                        '${l10n.satisfaction}：',
-                        style: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: 13, // セットのラベルと同じサイズ感
-                          // fontWeight を外して標準の太さに
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildFaceButton(
-                        value: 0,
-                        icon: Icons.sentiment_very_dissatisfied,
-                        tooltip: l10n.satisfactionBad,
-                      ),
-                      const SizedBox(width: 8),
-                      _buildFaceButton(
-                        value: 1,
-                        icon: Icons.sentiment_neutral,
-                        tooltip: l10n.satisfactionOkay,
-                      ),
-                      const SizedBox(width: 8),
-                      _buildFaceButton(
-                        value: 2,
-                        icon: Icons.sentiment_very_satisfied,
-                        tooltip: l10n.satisfactionGood,
-                      ),
-                    ],
-                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
-    );
-  }
+              const SizedBox(height: 40),
+            ],
+          ),
+  );
+}
 }
 
 // ===== Photo preview =====
@@ -6239,8 +6720,6 @@ class _PhotoPreviewPage extends StatelessWidget {
   }
 }
 
-
-
 // === Interval Timer Widget (top-level) ===
 class ExerciseInputTimer extends StatefulWidget {
   const ExerciseInputTimer({super.key});
@@ -6254,16 +6733,22 @@ class ExerciseInputTimerState extends State<ExerciseInputTimer> {
 
   void restart() {
     _ticker?.cancel();
-    setState(() { _elapsed = Duration.zero; });
+    setState(() {
+      _elapsed = Duration.zero;
+    });
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      setState(() { _elapsed += const Duration(seconds: 1); });
+      setState(() {
+        _elapsed += const Duration(seconds: 1);
+      });
     });
   }
 
   void reset() {
     _ticker?.cancel();
-    setState(() { _elapsed = Duration.zero; });
+    setState(() {
+      _elapsed = Duration.zero;
+    });
   }
 
   @override

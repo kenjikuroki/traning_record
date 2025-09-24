@@ -473,6 +473,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get satisfactionGood => 'Good';
 
   @override
+  String get totalVolume => 'Total Volume';
+
+  @override
+  String get totalVolumeCurrent => 'Current';
+
+  @override
+  String get totalVolumePrevious => 'Previous';
+
+  @override
+  String get totalVolumeDifference => 'Difference';
+
+  @override
+  String get valueNotAvailable => '--';
+
+  @override
+  String get expandCard => 'Expand';
+
+  @override
+  String get collapseCard => 'Collapse';
+
+  @override
   String get hintRecordFirst => 'Start by recording a workout or your body weight.';
 
   @override
@@ -684,4 +705,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get themeColorTitle => 'Theme color';
+
+  @override
+  String get totalVolumeLabel => 'Total volume';
+
+  @override
+  String get previousLabel => 'Previous';
+
+  @override
+  String get currentLabel => 'Current';
 }

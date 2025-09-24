@@ -150,6 +150,13 @@
   "satisfactionBad": "Bad",
   "satisfactionOkay": "Okay",
   "satisfactionGood": "Good",
+  "totalVolume": "Total Volume",
+  "totalVolumeCurrent": "Current",
+  "totalVolumePrevious": "Previous",
+  "totalVolumeDifference": "Difference",
+  "valueNotAvailable": "--",
+  "expandCard": "Expand",
+  "collapseCard": "Collapse",
   "hintRecordFirst": "Start by recording a workout or your body weight.",
   "hintGraphSetGoal": "Set your goal.",
   "personalSettingsTitle": "Personal",
@@ -218,5 +225,8 @@
   "themeBlue": "Blue",
   "themeGreen": "Green",
   "themeYellow": "Yellow",
-  "themeColorTitle": "Theme color"
+  "themeColorTitle": "Theme color",
+  "totalVolumeLabel": "Total volume",
+  "previousLabel": "Previous",
+  "currentLabel": "Current"
 }

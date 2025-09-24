@@ -999,6 +999,48 @@ abstract class AppLocalizations {
   /// **'Good'**
   String get satisfactionGood;
 
+  /// No description provided for @totalVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Volume'**
+  String get totalVolume;
+
+  /// No description provided for @totalVolumeCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get totalVolumeCurrent;
+
+  /// No description provided for @totalVolumePrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get totalVolumePrevious;
+
+  /// No description provided for @totalVolumeDifference.
+  ///
+  /// In en, this message translates to:
+  /// **'Difference'**
+  String get totalVolumeDifference;
+
+  /// No description provided for @valueNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'--'**
+  String get valueNotAvailable;
+
+  /// No description provided for @expandCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand'**
+  String get expandCard;
+
+  /// No description provided for @collapseCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get collapseCard;
+
   /// No description provided for @hintRecordFirst.
   ///
   /// In en, this message translates to:
@@ -1412,6 +1454,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Theme color'**
   String get themeColorTitle;
+
+  /// No description provided for @totalVolumeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total volume'**
+  String get totalVolumeLabel;
+
+  /// No description provided for @previousLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get previousLabel;
+
+  /// No description provided for @currentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get currentLabel;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -150,6 +150,13 @@
   "satisfactionBad": "悪い",
   "satisfactionOkay": "普通",
   "satisfactionGood": "良い",
+  "totalVolume": "総ボリューム",
+  "totalVolumeCurrent": "今回",
+  "totalVolumePrevious": "前回",
+  "totalVolumeDifference": "前回比",
+  "valueNotAvailable": "--",
+  "expandCard": "展開",
+  "collapseCard": "折りたたむ",
   "hintRecordFirst": "まずはトレーニングや体重を記録しよう",
   "hintGraphSetGoal": "目標を設定しよう",
   "personalSettingsTitle": "パーソナル設定",
@@ -218,5 +225,8 @@
   "themeBlue": "青",
   "themeGreen": "緑",
   "themeYellow": "黄色",
-  "themeColorTitle": "テーマカラー"
+  "themeColorTitle": "テーマカラー",
+  "totalVolumeLabel": "総ボリューム",
+  "previousLabel": "前回",
+  "currentLabel": "今回"
 }
