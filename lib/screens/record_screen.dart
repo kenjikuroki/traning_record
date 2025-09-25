@@ -1018,6 +1018,237 @@ class _RecordScreenState extends State<RecordScreen>
     setState(() => _personalOverlayVisible = false);
   }
 
+  String _formatOneDecimal(double value) {
+    final String fixed = value.toStringAsFixed(1);
+    return fixed.endsWith('.0') ? fixed.substring(0, fixed.length - 2) : fixed;
+  }
+
+  Future<double?> _showPersonalDecimalPicker({
+    required String title,
+    required int maxInteger,
+    required String? unitLabel,
+    double? initialValue,
+  }) async {
+    FocusScope.of(context).unfocus();
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final material = MaterialLocalizations.of(context);
+
+    double sanitized = initialValue ?? 0.0;
+    if (sanitized.isNaN || sanitized.isInfinite) {
+      sanitized = 0.0;
+    }
+    if (sanitized < 0) {
+      sanitized = 0.0;
+    }
+    final double maxValue = maxInteger + 0.9;
+    if (sanitized > maxValue) {
+      sanitized = maxValue;
+    }
+    sanitized = double.parse(sanitized.toStringAsFixed(1));
+    int intPart = sanitized.toInt();
+    if (intPart < 0) {
+      intPart = 0;
+    } else if (intPart > maxInteger) {
+      intPart = maxInteger;
+    }
+    int decimalPart = ((sanitized - intPart) * 10).round();
+    if (decimalPart < 0) {
+      decimalPart = 0;
+    } else if (decimalPart > 9) {
+      decimalPart = 9;
+    }
+    int tempInt = intPart;
+    int tempDec = decimalPart;
+
+    final intController = FixedExtentScrollController(initialItem: intPart);
+    final decController = FixedExtentScrollController(initialItem: decimalPart);
+
+    final result = await showModalBottomSheet<List<int>>(
+      context: context,
+      backgroundColor: cs.surfaceContainerHighest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      isScrollControlled: true,
+      builder: (ctx) {
+        final String header = (unitLabel == null || unitLabel.isEmpty)
+            ? title
+            : '$title ($unitLabel)';
+        return SafeArea(
+          child: SizedBox(
+            height: 320,
+            child: Column(
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurfaceVariant.withOpacity(0.35),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(
+                  height: 48,
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 12),
+                      Text(
+                        header,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, null),
+                        child: Text(material.cancelButtonLabel),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.pop(ctx, <int>[tempInt, tempDec]),
+                        child: Text(material.okButtonLabel),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: CupertinoPicker(
+                          itemExtent: 36,
+                          useMagnifier: true,
+                          magnification: 1.08,
+                          scrollController: intController,
+                          onSelectedItemChanged: (i) => tempInt = i,
+                          children: [
+                            for (int i = 0; i <= maxInteger; i++)
+                              Center(
+                                child: Text(
+                                  i.toString(),
+                                  style: TextStyle(
+                                    fontFamily: kUiFont,
+                                    color: cs.onSurface,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        color: cs.onSurfaceVariant.withOpacity(0.12),
+                      ),
+                      Expanded(
+                        child: CupertinoPicker(
+                          itemExtent: 36,
+                          useMagnifier: true,
+                          magnification: 1.08,
+                          scrollController: decController,
+                          onSelectedItemChanged: (i) => tempDec = i,
+                          children: [
+                            for (int i = 0; i < 10; i++)
+                              Center(
+                                child: Text(
+                                  '.${i.toString()}',
+                                  style: TextStyle(
+                                    fontFamily: kUiFont,
+                                    color: cs.onSurface,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (result == null) {
+      return null;
+    }
+
+    final int selectedInt = result[0].clamp(0, maxInteger).toInt();
+    final int selectedDec = result[1].clamp(0, 9).toInt();
+    final double computed = selectedInt + selectedDec / 10.0;
+    return double.parse(computed.toStringAsFixed(1));
+  }
+
+  Future<void> _openPersonalWeightPicker() async {
+    final l10n = AppLocalizations.of(context)!;
+    final unitLabel = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
+    final current = double.tryParse(_weightController.text.trim());
+    final picked = await _showPersonalDecimalPicker(
+      title: l10n.bodyWeight,
+      maxInteger: 999,
+      unitLabel: unitLabel,
+      initialValue: current,
+    );
+    if (picked == null) {
+      return;
+    }
+    final String formatted = _formatOneDecimal(picked);
+    if (_weightController.text.trim() == formatted) {
+      return;
+    }
+    _weightController.text = formatted;
+    _updateBmiDisplay();
+  }
+
+  Future<void> _openBodyFatPicker() async {
+    final l10n = AppLocalizations.of(context)!;
+    final current = double.tryParse(_bodyFatController.text.trim());
+    final picked = await _showPersonalDecimalPicker(
+      title: l10n.bodyFat,
+      maxInteger: 99,
+      unitLabel: l10n.percentSymbol,
+      initialValue: current,
+    );
+    if (picked == null) {
+      return;
+    }
+    final String formatted = _formatOneDecimal(picked);
+    if (_bodyFatController.text.trim() == formatted) {
+      return;
+    }
+    _bodyFatController.text = formatted;
+  }
+
+  Future<void> _openWaistPicker() async {
+    final l10n = AppLocalizations.of(context)!;
+    final current = double.tryParse(_waistController.text.trim());
+    final unitLabel = SettingsManager.isWaistInch ? l10n.unitIn : l10n.unitCm;
+    final picked = await _showPersonalDecimalPicker(
+      title: l10n.waist,
+      maxInteger: 999,
+      unitLabel: unitLabel,
+      initialValue: current,
+    );
+    if (picked == null) {
+      return;
+    }
+    final String formatted = _formatOneDecimal(picked);
+    if (_waistController.text.trim() == formatted) {
+      return;
+    }
+    _waistController.text = formatted;
+  }
+
   void _loadInitialSections() {
     final dateKey = _getDateKey(widget.selectedDate);
     final record = widget.recordsBox.get(dateKey);
@@ -2128,16 +2359,19 @@ class _RecordScreenState extends State<RecordScreen>
     });
   }
 
-  void _toggleMenuCollapse(int sectionIndex, int menuIndex, {bool suppressOverlay = false}) {
+  void _toggleMenuCollapse(int sectionIndex, int menuIndex,
+      {bool suppressOverlay = false}) {
     if (sectionIndex < 0 || sectionIndex >= _sections.length) return;
     final section = _sections[sectionIndex];
-    if (menuIndex < 0 || menuIndex >= section.menuCollapsedStates.length) return;
+    if (menuIndex < 0 || menuIndex >= section.menuCollapsedStates.length)
+      return;
 
     // 今の状態を保持：true=折りたたみ中（これから開く）
     final bool wasCollapsed = section.menuCollapsedStates[menuIndex];
 
     setState(() {
-      section.menuCollapsedStates[menuIndex] = !section.menuCollapsedStates[menuIndex];
+      section.menuCollapsedStates[menuIndex] =
+          !section.menuCollapsedStates[menuIndex];
       if (suppressOverlay) _suppressNextMenuOverlay = true;
     });
 
@@ -2159,7 +2393,6 @@ class _RecordScreenState extends State<RecordScreen>
       });
     }
   }
-
 
   void _prepareMenuQuickAction(int sectionIndex, int menuIndex) {
     setState(() {
@@ -2899,10 +3132,9 @@ class _RecordScreenState extends State<RecordScreen>
     // ラベル右側の入力域で「下線 2/3」を実現する版
     Widget underlineField({
       required TextEditingController controller,
-      required List<TextInputFormatter> formatters,
-      required TextInputType keyboardType,
       String? unitSuffix,
       VoidCallback? onChanged,
+      Future<void> Function()? onTap,
     }) {
       final cs = Theme.of(context).colorScheme;
       return LayoutBuilder(
@@ -2923,8 +3155,9 @@ class _RecordScreenState extends State<RecordScreen>
                       const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                   child: TextField(
                     controller: controller,
-                    keyboardType: keyboardType,
-                    inputFormatters: formatters,
+                    readOnly: onTap != null,
+                    showCursor: onTap != null ? false : null,
+                    enableInteractiveSelection: onTap != null ? false : null,
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       fontFamily: kUiFont,
@@ -2946,7 +3179,8 @@ class _RecordScreenState extends State<RecordScreen>
                       contentPadding: const EdgeInsets.symmetric(
                           vertical: 6, horizontal: 0),
                     ),
-                    onChanged: (_) => onChanged?.call(),
+                    onTap: onTap,
+                    onChanged: onTap == null ? (_) => onChanged?.call() : null,
                   ),
                 ),
               ),
@@ -2973,10 +3207,6 @@ class _RecordScreenState extends State<RecordScreen>
         },
       );
     }
-
-    final decimalFmt = <TextInputFormatter>[
-      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-    ];
 
     return Stack(
       children: [
@@ -3085,12 +3315,12 @@ class _RecordScreenState extends State<RecordScreen>
                                       Expanded(
                                         child: underlineField(
                                           controller: _weightController,
-                                          formatters: decimalFmt,
-                                          keyboardType: const TextInputType
-                                              .numberWithOptions(decimal: true),
                                           unitSuffix:
-                                              SettingsManager.currentUnit,
-                                          onChanged: _updateBmiDisplay,
+                                              SettingsManager.currentUnit ==
+                                                      'kg'
+                                                  ? l10n.kg
+                                                  : l10n.lbs,
+                                          onTap: _openPersonalWeightPicker,
                                         ),
                                       ),
                                     ],
@@ -3120,11 +3350,8 @@ class _RecordScreenState extends State<RecordScreen>
                                         Expanded(
                                           child: underlineField(
                                             controller: _bodyFatController,
-                                            formatters: decimalFmt,
-                                            keyboardType: const TextInputType
-                                                .numberWithOptions(
-                                                decimal: true),
                                             unitSuffix: l10n.percentSymbol,
+                                            onTap: _openBodyFatPicker,
                                           ),
                                         ),
                                       ],
@@ -3155,14 +3382,11 @@ class _RecordScreenState extends State<RecordScreen>
                                         Expanded(
                                           child: underlineField(
                                             controller: _waistController,
-                                            formatters: decimalFmt,
-                                            keyboardType: const TextInputType
-                                                .numberWithOptions(
-                                                decimal: true),
                                             unitSuffix:
                                                 SettingsManager.isWaistInch
                                                     ? l10n.unitIn
                                                     : l10n.unitCm,
+                                            onTap: _openWaistPicker,
                                           ),
                                         ),
                                       ],
@@ -3426,8 +3650,7 @@ class _RecordScreenState extends State<RecordScreen>
                                 Expanded(
                                   child: Center(
                                     child: ExerciseInputTimer(
-                                      key: _ensureTimerKey(
-                                          secIndex, menuIndex),
+                                      key: _ensureTimerKey(secIndex, menuIndex),
                                     ),
                                   ),
                                 ),
@@ -3436,8 +3659,7 @@ class _RecordScreenState extends State<RecordScreen>
                                 const SizedBox(width: 12),
                                 TextButton(
                                   onPressed: (menuIndex <
-                                              section
-                                                  .setInputDataList.length &&
+                                              section.setInputDataList.length &&
                                           section.setInputDataList[menuIndex]
                                                   .length <
                                               10)
@@ -4821,7 +5043,7 @@ class SectionData {
   String? selectedPart;
   List<TextEditingController> menuControllers;
   List<List<SetInputData>> setInputDataList;
-  List<GlobalKey> menuKeys;           // ← GlobalKey に変更
+  List<GlobalKey> menuKeys; // ← GlobalKey に変更
   List<GlobalKey> nameFieldKeys;
   List<bool> menuCollapsedStates;
 
@@ -5389,8 +5611,9 @@ class MenuListPreview extends StatelessWidget {
           fontSize: 13.0,
         );
         final double? prevVolume = previousVolume;
-        final double? diffVolume =
-            (current != null && prevVolume != null) ? current - prevVolume : null;
+        final double? diffVolume = (current != null && prevVolume != null)
+            ? current - prevVolume
+            : null;
         final String currentText =
             formatTotalVolumeValue(l10n, current, withSign: false);
         final String previousText =
@@ -5600,8 +5823,7 @@ class MenuListPreview extends StatelessWidget {
     }
 
     Widget buildBody() {
-      final bool showVolume =
-          !isAerobic && SettingsManager.showTotalVolume;
+      final bool showVolume = !isAerobic && SettingsManager.showTotalVolume;
       final bool showSatisfaction = SettingsManager.showSatisfaction;
 
       return Column(
@@ -5763,6 +5985,33 @@ class _MenuListState extends State<MenuList> {
   final TextEditingController _hourController = TextEditingController();
   final TextEditingController _minAeroCtrl = TextEditingController();
 
+  static final List<int> _repPickerValues = [
+    for (int i = 1; i <= 999; i++) i,
+  ];
+
+  static final List<int> _weightIntegerValues = [
+    for (int i = 0; i <= 999; i++) i,
+  ];
+
+  static final List<double> _weightFractionValues = <double>[
+    0.0,
+    0.25,
+    0.5,
+    0.75
+  ];
+
+  String _formatNumber(double value, {int fractionDigits = 2}) {
+    final String fixed = value.toStringAsFixed(fractionDigits);
+    if (!fixed.contains('.')) {
+      return fixed;
+    }
+    String trimmed = fixed.replaceAll(RegExp(r'0+$'), '');
+    if (trimmed.endsWith('.')) {
+      trimmed = trimmed.substring(0, trimmed.length - 1);
+    }
+    return trimmed;
+  }
+
   bool _prevNameEmpty = true; // ← これを追加
 
   // ★追加：単位変更のローカルハンドラ
@@ -5900,18 +6149,42 @@ class _MenuListState extends State<MenuList> {
     widget.onAerobicFieldChanged?.call();
   }
 
-  Future<void> _openDurationPicker() async {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
+  Future<void> _openWeightPicker(SetInputData set) async {
+    FocusScope.of(context).unfocus();
+    final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
+    final material = MaterialLocalizations.of(context);
 
-    final int initHour = int.tryParse(_hourController.text) ?? 0;
-    final int initMin = int.tryParse(_minAeroCtrl.text) ?? 0;
+    double currentValue =
+        double.tryParse(set.weightController.text.trim()) ?? 0.0;
+    if (currentValue < 0) {
+      currentValue = 0.0;
+    }
+    if (currentValue > 999.75) {
+      currentValue = 999.75;
+    }
 
-    Duration current = Duration(hours: initHour, minutes: initMin);
-    Duration temp = current;
+    int initialInt = currentValue.floor().clamp(0, 999);
+    double fractionPart = (currentValue - initialInt).clamp(0.0, 1.0);
+    int initialFraction = 0;
+    double fractionDiff = double.infinity;
+    for (int i = 0; i < _weightFractionValues.length; i++) {
+      final diff = (fractionPart - _weightFractionValues[i]).abs();
+      if (diff < fractionDiff) {
+        fractionDiff = diff;
+        initialFraction = i;
+      }
+    }
 
-    await showModalBottomSheet<void>(
+    int tempInt = initialInt;
+    int tempFraction = initialFraction;
+
+    final integerController =
+        FixedExtentScrollController(initialItem: initialInt);
+    final fractionController =
+        FixedExtentScrollController(initialItem: initialFraction);
+
+    final result = await showModalBottomSheet<List<int>>(
       context: context,
       backgroundColor: cs.surfaceContainerHighest,
       shape: const RoundedRectangleBorder(
@@ -5919,17 +6192,19 @@ class _MenuListState extends State<MenuList> {
       ),
       isScrollControlled: true,
       builder: (ctx) {
+        final unitLabel =
+            SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
         return SafeArea(
           child: SizedBox(
-            height: 260,
+            height: 300,
             child: Column(
               children: [
-                const SizedBox(height: 2),
+                const SizedBox(height: 8),
                 Container(
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: cs.onSurfaceVariant.withOpacity(0.4),
+                    color: cs.onSurfaceVariant.withOpacity(0.35),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -5937,31 +6212,87 @@ class _MenuListState extends State<MenuList> {
                   height: 48,
                   child: Row(
                     children: [
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                       Text(
-                        l10n.time, // 見出しはそのまま
+                        '${l10n.weightUnit} ($unitLabel)',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.onSurface,
+                          color: cs.onSurface,
                         ),
                       ),
                       const Spacer(),
                       TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: Text(
-                            MaterialLocalizations.of(context).okButtonLabel),
+                        onPressed: () => Navigator.pop(ctx, null),
+                        child: Text(material.cancelButtonLabel),
                       ),
-                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.pop(ctx, <int>[tempInt, tempFraction]),
+                        child: Text(material.okButtonLabel),
+                      ),
                     ],
                   ),
                 ),
                 const Divider(height: 1),
                 Expanded(
-                  child: CupertinoTimerPicker(
-                    mode: CupertinoTimerPickerMode.hm, // ★時間・分
-                    initialTimerDuration: current,
-                    onTimerDurationChanged: (d) => temp = d,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: CupertinoPicker(
+                          itemExtent: 36,
+                          useMagnifier: true,
+                          magnification: 1.08,
+                          scrollController: integerController,
+                          onSelectedItemChanged: (i) => tempInt = i,
+                          children: [
+                            for (final value in _weightIntegerValues)
+                              Center(
+                                child: Text(
+                                  value.toString(),
+                                  style: TextStyle(
+                                    fontFamily: kUiFont,
+                                    color: cs.onSurface,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        color: cs.onSurfaceVariant.withOpacity(0.12),
+                      ),
+                      Expanded(
+                        child: CupertinoPicker(
+                          itemExtent: 36,
+                          useMagnifier: true,
+                          magnification: 1.08,
+                          scrollController: fractionController,
+                          onSelectedItemChanged: (i) => tempFraction = i,
+                          children: [
+                            for (final fractionValue in _weightFractionValues)
+                              Center(
+                                child: Text(
+                                  fractionValue == 0
+                                      ? '.00'
+                                      : fractionValue
+                                          .toStringAsFixed(2)
+                                          .substring(1),
+                                  style: TextStyle(
+                                    fontFamily: kUiFont,
+                                    color: cs.onSurface,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -5971,18 +6302,424 @@ class _MenuListState extends State<MenuList> {
       },
     );
 
+    if (!mounted || result == null) {
+      return;
+    }
+
+    final int selectedInt = result[0].clamp(0, 999).toInt();
+    final int fractionIndex =
+        result[1].clamp(0, _weightFractionValues.length - 1).toInt();
+    final double combined = selectedInt + _weightFractionValues[fractionIndex];
+    final String formatted = _formatNumber(combined);
+    if (set.weightController.text.trim() == formatted) {
+      return;
+    }
+
     setState(() {
-      final hh = temp.inHours;
-      final mm = (temp.inMinutes % 60);
-      _hourController.text = hh.toString();
-      _minAeroCtrl.text = mm.toString().padLeft(2, '0');
-      _updateDurationController();
-      widget.onConfirmAerobic?.call();
+      set.weightController.text = formatted;
+      set.isSuggestion = false;
     });
-    widget.onAerobicFieldChanged?.call();
   }
 
-  // ← _openDurationPicker() の終わりの直後に追加（build() の前）
+  Future<void> _openRepsPicker(SetInputData set) async {
+    FocusScope.of(context).unfocus();
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final material = MaterialLocalizations.of(context);
+
+    int initialIndex = 0;
+    final currentText = set.repController.text.trim();
+    if (currentText.isNotEmpty) {
+      final currentValue = int.tryParse(currentText);
+      if (currentValue != null) {
+        initialIndex = currentValue.clamp(1, 999).toInt() - 1;
+      }
+    }
+    int tempIndex = initialIndex;
+
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: cs.surfaceContainerHighest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: SizedBox(
+            height: 300,
+            child: Column(
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurfaceVariant.withOpacity(0.35),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(
+                  height: 48,
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 12),
+                      Text(
+                        l10n.reps,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, null),
+                        child: Text(material.cancelButtonLabel),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, tempIndex),
+                        child: Text(material.okButtonLabel),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: CupertinoPicker(
+                    itemExtent: 36,
+                    useMagnifier: true,
+                    magnification: 1.08,
+                    scrollController: FixedExtentScrollController(
+                      initialItem: initialIndex,
+                    ),
+                    onSelectedItemChanged: (i) => tempIndex = i,
+                    children: [
+                      for (final value in _repPickerValues)
+                        Center(
+                          child: Text(
+                            value.toString(),
+                            style: TextStyle(
+                              fontFamily: kUiFont,
+                              color: cs.onSurface,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || selected == null) {
+      return;
+    }
+
+    final String formatted = _repPickerValues[selected].toString();
+    if (set.repController.text.trim() == formatted) {
+      return;
+    }
+
+    setState(() {
+      set.repController.text = formatted;
+      set.isSuggestion = false;
+    });
+  }
+
+  Future<void> _openDistancePicker() async {
+    FocusScope.of(context).unfocus();
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final material = MaterialLocalizations.of(context);
+    final bool useImperial = !SettingsManager.isMetric;
+
+    final int maxMajor = 999;
+    final int maxMinor = useImperial ? 1759 : 999;
+
+    final parsedMajor = int.tryParse(_kmController.text.trim()) ?? 0;
+    final parsedMinor = int.tryParse(_mController.text.trim()) ?? 0;
+    int major = parsedMajor.clamp(0, maxMajor).toInt();
+    int minor = parsedMinor.clamp(0, maxMinor).toInt();
+    int tempMajor = major;
+    int tempMinor = minor;
+
+    final majorController = FixedExtentScrollController(initialItem: major);
+    final minorController = FixedExtentScrollController(initialItem: minor);
+
+    final result = await showModalBottomSheet<List<int>>(
+      context: context,
+      backgroundColor: cs.surfaceContainerHighest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      isScrollControlled: true,
+      builder: (ctx) {
+        final unitPrimary = useImperial ? 'mi' : l10n.km;
+        final unitSecondary = useImperial ? 'yd' : l10n.m;
+        return SafeArea(
+          child: SizedBox(
+            height: 320,
+            child: Column(
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurfaceVariant.withOpacity(0.35),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(
+                  height: 48,
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 12),
+                      Text(
+                        l10n.distance,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, null),
+                        child: Text(material.cancelButtonLabel),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.pop(ctx, <int>[tempMajor, tempMinor]),
+                        child: Text(material.okButtonLabel),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: CupertinoPicker(
+                          itemExtent: 36,
+                          useMagnifier: true,
+                          magnification: 1.08,
+                          scrollController: majorController,
+                          onSelectedItemChanged: (i) => tempMajor = i,
+                          children: [
+                            for (int i = 0; i <= maxMajor; i++)
+                              Center(
+                                child: Text(
+                                  '$i $unitPrimary',
+                                  style: TextStyle(
+                                    fontFamily: kUiFont,
+                                    color: cs.onSurface,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        color: cs.onSurfaceVariant.withOpacity(0.12),
+                      ),
+                      Expanded(
+                        child: CupertinoPicker(
+                          itemExtent: 36,
+                          useMagnifier: true,
+                          magnification: 1.08,
+                          scrollController: minorController,
+                          onSelectedItemChanged: (i) => tempMinor = i,
+                          children: [
+                            for (int i = 0; i <= maxMinor; i++)
+                              Center(
+                                child: Text(
+                                  '$i $unitSecondary',
+                                  style: TextStyle(
+                                    fontFamily: kUiFont,
+                                    color: cs.onSurface,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || result == null) {
+      return;
+    }
+
+    setState(() {
+      _kmController.text = result[0].toString();
+      _mController.text = result[1].toString();
+      widget.onConfirmAerobic?.call();
+    });
+  }
+
+  Future<void> _openDurationPicker() async {
+    FocusScope.of(context).unfocus();
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final material = MaterialLocalizations.of(context);
+
+    int hour = int.tryParse(_hourController.text.trim()) ?? 0;
+    hour = hour.clamp(0, 999).toInt();
+    int minute = int.tryParse(_minAeroCtrl.text.trim()) ?? 0;
+    minute = minute.clamp(0, 59).toInt();
+    int tempHour = hour;
+    int tempMinute = minute;
+
+    final hourController = FixedExtentScrollController(initialItem: hour);
+    final minuteController = FixedExtentScrollController(initialItem: minute);
+
+    final result = await showModalBottomSheet<List<int>>(
+      context: context,
+      backgroundColor: cs.surfaceContainerHighest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: SizedBox(
+            height: 320,
+            child: Column(
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurfaceVariant.withOpacity(0.35),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(
+                  height: 48,
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 12),
+                      Text(
+                        l10n.time,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, null),
+                        child: Text(material.cancelButtonLabel),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.pop(ctx, <int>[tempHour, tempMinute]),
+                        child: Text(material.okButtonLabel),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: CupertinoPicker(
+                          itemExtent: 36,
+                          useMagnifier: true,
+                          magnification: 1.08,
+                          scrollController: hourController,
+                          onSelectedItemChanged: (i) => tempHour = i,
+                          children: [
+                            for (int i = 0; i <= 999; i++)
+                              Center(
+                                child: Text(
+                                  '$i ${l10n.hour}',
+                                  style: TextStyle(
+                                    fontFamily: kUiFont,
+                                    color: cs.onSurface,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        color: cs.onSurfaceVariant.withOpacity(0.12),
+                      ),
+                      Expanded(
+                        child: CupertinoPicker(
+                          itemExtent: 36,
+                          useMagnifier: true,
+                          magnification: 1.08,
+                          scrollController: minuteController,
+                          onSelectedItemChanged: (i) => tempMinute = i,
+                          children: [
+                            for (int i = 0; i < 60; i++)
+                              Center(
+                                child: Text(
+                                  '${i.toString().padLeft(2, '0')} ${l10n.min}',
+                                  style: TextStyle(
+                                    fontFamily: kUiFont,
+                                    color: cs.onSurface,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || result == null) {
+      return;
+    }
+
+    setState(() {
+      _hourController.text = result[0].toString();
+      _minAeroCtrl.text = result[1].toString().padLeft(2, '0');
+      widget.onConfirmAerobic?.call();
+    });
+  }
+
+  // ← picker helpersの終わり（build() の前）
 
   Widget _buildFaceButton({
     required int value,
@@ -6219,13 +6956,9 @@ class _MenuListState extends State<MenuList> {
                           minHeight: kUnifiedFieldMinHeight),
                       child: TextField(
                         controller: set.weightController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*\.?\d*'),
-                          ),
-                        ],
+                        readOnly: true,
+                        showCursor: false,
+                        enableInteractiveSelection: false,
                         textAlign: TextAlign.right,
                         style: TextStyle(
                           fontFamily: kUiFont,
@@ -6233,10 +6966,9 @@ class _MenuListState extends State<MenuList> {
                               ? colorScheme.onSurfaceVariant.withOpacity(0.5)
                               : colorScheme.onSurface,
                         ),
-                        onChanged: (value) {
-                          if (set.isSuggestion) {
-                            setState(() => set.isSuggestion = false);
-                          }
+                        onTap: () async {
+                          notifyFocus(true);
+                          await _openWeightPicker(set);
                         },
                         decoration: InputDecoration(
                           isDense: true,
@@ -6276,10 +7008,9 @@ class _MenuListState extends State<MenuList> {
                           minHeight: kUnifiedFieldMinHeight),
                       child: TextField(
                         controller: set.repController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly
-                        ],
+                        readOnly: true,
+                        showCursor: false,
+                        enableInteractiveSelection: false,
                         textAlign: TextAlign.right,
                         style: TextStyle(
                           fontFamily: kUiFont,
@@ -6287,10 +7018,9 @@ class _MenuListState extends State<MenuList> {
                               ? colorScheme.onSurfaceVariant.withOpacity(0.5)
                               : colorScheme.onSurface,
                         ),
-                        onChanged: (value) {
-                          if (set.isSuggestion) {
-                            setState(() => set.isSuggestion = false);
-                          }
+                        onTap: () async {
+                          notifyFocus(true);
+                          await _openRepsPicker(set);
                         },
                         decoration: InputDecoration(
                           isDense: true,
@@ -6526,83 +7256,18 @@ class _MenuListState extends State<MenuList> {
                                                   kUnifiedFieldMinHeight),
                                           child: TextField(
                                             controller: _kmController,
-                                            keyboardType: TextInputType.number,
-                                            inputFormatters: [
-                                              FilteringTextInputFormatter
-                                                  .digitsOnly
-                                            ],
+                                            readOnly: true,
+                                            showCursor: false,
+                                            enableInteractiveSelection: false,
                                             textAlign: TextAlign.right,
                                             style: TextStyle(
                                               fontFamily: kUiFont,
                                               color: colorScheme.onSurface,
                                             ),
-                                            decoration: InputDecoration(
-                                              isDense: true,
-                                              filled: false,
-                                              enabledBorder:
-                                                  UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                  color: colorScheme
-                                                      .onSurfaceVariant
-                                                      .withOpacity(0.4),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              focusedBorder:
-                                                  UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                    color: colorScheme.primary,
-                                                    width: 2),
-                                              ),
-                                              contentPadding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 6,
-                                                      horizontal: 0),
-                                              hintText:
-                                                  widget.aerobicIsSuggestion
-                                                      ? '0'
-                                                      : null,
-                                              hintStyle: TextStyle(
-                                                fontFamily: kUiFont,
-                                                color: colorScheme
-                                                    .onSurfaceVariant
-                                                    .withOpacity(0.35),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                    ),
-                                  ),
-                                  Text(
-                                    ' ${useImperialLength ? 'mi' : l10n.km} ',
-                                    style: aerobicUnitEmphasisStyle,
-                                  ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Focus(
-                                        onFocusChange: (has) {
-                                          notifyFocus(has);
-                                          if (has &&
-                                              widget.aerobicIsSuggestion) {
-                                            widget.onConfirmAerobic?.call();
-                                          }
-                                        },
-                                        child: ConstrainedBox(
-                                          constraints: const BoxConstraints(
-                                              minHeight:
-                                                  kUnifiedFieldMinHeight),
-                                          child: TextField(
-                                            controller: _mController,
-                                            keyboardType: TextInputType.number,
-                                            inputFormatters: [
-                                              FilteringTextInputFormatter
-                                                  .digitsOnly
-                                            ],
-                                            textAlign: TextAlign.right,
-                                            style: TextStyle(
-                                              fontFamily: kUiFont,
-                                              color: colorScheme.onSurface,
-                                            ),
+                                            onTap: () async {
+                                              notifyFocus(true);
+                                              await _openDistancePicker();
+                                            },
                                             decoration: InputDecoration(
                                               isDense: true,
                                               filled: false,
@@ -6640,10 +7305,79 @@ class _MenuListState extends State<MenuList> {
                                         ),
                                       ),
                                     ),
-                                  Text(
-                                    ' ${useImperialLength ? 'yd' : l10n.m} ',
-                                    style: aerobicUnitStyle,
-                                  ),
+                                    Text(
+                                      ' ${useImperialLength ? 'mi' : l10n.km} ',
+                                      style: aerobicUnitEmphasisStyle,
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Focus(
+                                        onFocusChange: (has) {
+                                          notifyFocus(has);
+                                          if (has &&
+                                              widget.aerobicIsSuggestion) {
+                                            widget.onConfirmAerobic?.call();
+                                          }
+                                        },
+                                        child: ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                              minHeight:
+                                                  kUnifiedFieldMinHeight),
+                                          child: TextField(
+                                            controller: _mController,
+                                            readOnly: true,
+                                            showCursor: false,
+                                            enableInteractiveSelection: false,
+                                            textAlign: TextAlign.right,
+                                            style: TextStyle(
+                                              fontFamily: kUiFont,
+                                              color: colorScheme.onSurface,
+                                            ),
+                                            onTap: () async {
+                                              notifyFocus(true);
+                                              await _openDistancePicker();
+                                            },
+                                            decoration: InputDecoration(
+                                              isDense: true,
+                                              filled: false,
+                                              enabledBorder:
+                                                  UnderlineInputBorder(
+                                                borderSide: BorderSide(
+                                                  color: colorScheme
+                                                      .onSurfaceVariant
+                                                      .withOpacity(0.4),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              focusedBorder:
+                                                  UnderlineInputBorder(
+                                                borderSide: BorderSide(
+                                                    color: colorScheme.primary,
+                                                    width: 2),
+                                              ),
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 6,
+                                                      horizontal: 0),
+                                              hintText:
+                                                  widget.aerobicIsSuggestion
+                                                      ? '0'
+                                                      : null,
+                                              hintStyle: TextStyle(
+                                                fontFamily: kUiFont,
+                                                color: colorScheme
+                                                    .onSurfaceVariant
+                                                    .withOpacity(0.35),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      ' ${useImperialLength ? 'yd' : l10n.m} ',
+                                      style: aerobicUnitStyle,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -6670,16 +7404,18 @@ class _MenuListState extends State<MenuList> {
                                                   kUnifiedFieldMinHeight),
                                           child: TextField(
                                             controller: _hourController,
-                                            keyboardType: TextInputType.number,
-                                            inputFormatters: [
-                                              FilteringTextInputFormatter
-                                                  .digitsOnly
-                                            ],
+                                            readOnly: true,
+                                            showCursor: false,
+                                            enableInteractiveSelection: false,
                                             textAlign: TextAlign.right,
                                             style: TextStyle(
                                               fontFamily: kUiFont,
                                               color: colorScheme.onSurface,
                                             ),
+                                            onTap: () async {
+                                              notifyFocus(true);
+                                              await _openDurationPicker();
+                                            },
                                             decoration: InputDecoration(
                                               isDense: true,
                                               filled: false,
@@ -6735,16 +7471,18 @@ class _MenuListState extends State<MenuList> {
                                                   kUnifiedFieldMinHeight),
                                           child: TextField(
                                             controller: _minAeroCtrl,
-                                            keyboardType: TextInputType.number,
-                                            inputFormatters: [
-                                              FilteringTextInputFormatter
-                                                  .digitsOnly
-                                            ],
+                                            readOnly: true,
+                                            showCursor: false,
+                                            enableInteractiveSelection: false,
                                             textAlign: TextAlign.right,
                                             style: TextStyle(
                                               fontFamily: kUiFont,
                                               color: colorScheme.onSurface,
                                             ),
+                                            onTap: () async {
+                                              notifyFocus(true);
+                                              await _openDurationPicker();
+                                            },
                                             decoration: InputDecoration(
                                               isDense: true,
                                               filled: false,
