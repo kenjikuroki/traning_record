@@ -707,21 +707,36 @@ class _RecordScreenState extends State<RecordScreen>
               String w = '';
               String r = '';
               bool isSuggestion = true;
+              bool checked = false;
               if (i < recLen) {
                 w = rec!.weights[i];
                 r = rec.reps[i];
                 if (w.trim().isNotEmpty || r.trim().isNotEmpty) {
                   isSuggestion = false;
                 }
+                final checkedList = rec.checkedStates;
+                if (checkedList != null && i < checkedList.length) {
+                  checked = checkedList[i];
+                }
               } else if (i < luLen) {
                 w = lu!.weights[i];
                 r = lu.reps[i];
                 isSuggestion = true;
+                final checkedList = lu.checkedStates;
+                if (checkedList != null && i < checkedList.length) {
+                  checked = checkedList[i];
+                }
+              } else {
+                final checkedList = lu?.checkedStates;
+                if (checkedList != null && i < checkedList.length) {
+                  checked = checkedList[i];
+                }
               }
               row.add(SetInputData(
                 weightController: TextEditingController(text: w),
                 repController: TextEditingController(text: r),
                 isSuggestion: isSuggestion,
+                checked: checked,
               ));
             }
             section.setInputDataList.add(row);
@@ -1139,6 +1154,7 @@ class _RecordScreenState extends State<RecordScreen>
             String w = '';
             String r = '';
             bool isSuggestion = true;
+            bool checked = false;
 
             if (i < recLen) {
               w = rec!.weights[i];
@@ -1146,15 +1162,29 @@ class _RecordScreenState extends State<RecordScreen>
               if (w.trim().isNotEmpty || r.trim().isNotEmpty) {
                 isSuggestion = false;
               }
+              final checkedList = rec.checkedStates;
+              if (checkedList != null && i < checkedList.length) {
+                checked = checkedList[i];
+              }
             } else if (i < luLen) {
               w = lu!.weights[i];
               r = lu.reps[i];
               isSuggestion = true;
+              final checkedList = lu.checkedStates;
+              if (checkedList != null && i < checkedList.length) {
+                checked = checkedList[i];
+              }
+            } else {
+              final checkedList = lu?.checkedStates ?? rec?.checkedStates;
+              if (checkedList != null && i < checkedList.length) {
+                checked = checkedList[i];
+              }
             }
             row.add(SetInputData(
               weightController: TextEditingController(text: w),
               repController: TextEditingController(text: r),
               isSuggestion: isSuggestion,
+              checked: checked,
             ));
           }
           section.setInputDataList.add(row);
@@ -1285,6 +1315,8 @@ class _RecordScreenState extends State<RecordScreen>
             duration: duration,
             calories: calorieText.isNotEmpty ? calorieText : null,
             satisfaction: sat,
+            checkedStates: null,
+            totalVolume: null,
           ));
 
           final double parsedDistance =
@@ -1330,6 +1362,8 @@ class _RecordScreenState extends State<RecordScreen>
               duration: duration,
               calories: hasCalories ? calorieText : null,
               satisfaction: sat,
+              checkedStates: null,
+              totalVolume: null,
             ));
             hasAnyRecordData = true;
             lastModifiedPart ??= originalPart;
@@ -1337,21 +1371,28 @@ class _RecordScreenState extends State<RecordScreen>
         } else {
           final weightsAll = <String>[];
           final repsAll = <String>[];
+          final checkedAll = <bool>[];
           for (int s = 0; s < section.setInputDataList[i].length; s++) {
             final set = section.setInputDataList[i][s];
             weightsAll.add(set.weightController.text);
             repsAll.add(set.repController.text);
+            checkedAll.add(set.checked);
           }
+          final double? totalVolume =
+              calculateTotalVolume(section.setInputDataList[i]);
           listForLastUsed.add(MenuData(
             name: name,
             weights: weightsAll,
             reps: repsAll,
             calories: null,
             satisfaction: sat,
+            checkedStates: checkedAll,
+            totalVolume: totalVolume,
           ));
 
           final weightsConfirmed = <String>[];
           final repsConfirmed = <String>[];
+          final checkedConfirmed = <bool>[];
           for (int s = 0; s < section.setInputDataList[i].length; s++) {
             final set = section.setInputDataList[i][s];
             final w = set.weightController.text;
@@ -1360,6 +1401,7 @@ class _RecordScreenState extends State<RecordScreen>
             if (!set.isSuggestion && hasValue) {
               weightsConfirmed.add(w);
               repsConfirmed.add(r);
+              checkedConfirmed.add(set.checked);
             }
           }
           if (weightsConfirmed.isNotEmpty || repsConfirmed.isNotEmpty) {
@@ -1369,6 +1411,8 @@ class _RecordScreenState extends State<RecordScreen>
               reps: repsConfirmed,
               calories: null,
               satisfaction: sat,
+              checkedStates: checkedConfirmed,
+              totalVolume: totalVolume,
             ));
             hasAnyRecordData = true;
             lastModifiedPart ??= originalPart;
@@ -5096,7 +5140,7 @@ class MenuListPreview extends StatelessWidget {
                         Text(
                           '${index + 1}${l10n.sets}：',
                           style: TextStyle(
-                            color: cs.onSurfaceVariant,
+                            color: cs.onSurface,
                             fontSize: 13.0,
                           ),
                         ),
@@ -5137,7 +5181,7 @@ class MenuListPreview extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13.0),
+                style: TextStyle(color: cs.onSurface, fontSize: 13.0),
               ),
               const SizedBox(width: 6),
               Expanded(child: Row(children: children)),

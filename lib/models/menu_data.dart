@@ -12,6 +12,8 @@ class MenuData extends HiveObject {
   @HiveField(4) final String? duration;
   @HiveField(5) final String? calories;
   @HiveField(6) final int? satisfaction; // 追加
+  @HiveField(7) final List<bool>? checkedStates; // 追加
+  @HiveField(8) final double? totalVolume; // 追加
 
   MenuData({
     required this.name,
@@ -21,6 +23,8 @@ class MenuData extends HiveObject {
     this.duration,
     this.calories,
     this.satisfaction, // 追加
+    this.checkedStates, // 追加
+    this.totalVolume, // 追加
   });
 
   factory MenuData.fromJson(Map<String, dynamic> json) {
@@ -31,6 +35,10 @@ class MenuData extends HiveObject {
       distance: json['distance'] as String?,
       duration: json['duration'] as String?,
       satisfaction: json['satisfaction'] as int?, // ★追加
+      checkedStates: (json['checkedStates'] as List?)
+          ?.map((e) => e == true)
+          .toList(),
+      totalVolume: (json['totalVolume'] as num?)?.toDouble(),
     );
   }
 
@@ -42,6 +50,8 @@ class MenuData extends HiveObject {
       'distance': distance,
       'duration': duration,
       'satisfaction': satisfaction, // ★追加
+      'checkedStates': checkedStates,
+      'totalVolume': totalVolume,
     };
   }
 }
