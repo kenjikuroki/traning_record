@@ -204,6 +204,8 @@ class _RecordScreenState extends State<RecordScreen>
   final TextEditingController _bodyFatController = TextEditingController();
   // ウエスト入力用 ← 追加
   final TextEditingController _waistController = TextEditingController();
+  // BMI 表示用（参照のみ）
+  final TextEditingController _bmiController = TextEditingController();
 
   // パーソナルカード表示フラグ（1枚だけ）
   bool _showPersonalCard = false;
@@ -430,6 +432,7 @@ class _RecordScreenState extends State<RecordScreen>
     _weightController.dispose();
     _bodyFatController.dispose();
     _waistController.dispose();
+    _bmiController.dispose();
     _memoController.dispose();
     _memoOverlayFocus.dispose();
     _menuOverlayFocus.dispose();
@@ -2727,7 +2730,10 @@ class _RecordScreenState extends State<RecordScreen>
   void _updateBmiDisplay() {
     final w = double.tryParse(_weightController.text);
     if (w == null || _heightCm == null || _heightCm == 0) {
-      setState(() => _bmiValue = null);
+      setState(() {
+        _bmiValue = null;
+        _bmiController.text = '';
+      });
       return;
     }
     // lbs の場合は kg に変換
@@ -2735,7 +2741,10 @@ class _RecordScreenState extends State<RecordScreen>
         (SettingsManager.currentUnit == 'lbs') ? (w * 0.45359237) : w;
     final hMeters = (_heightCm! / 100.0);
     final bmi = weightKg / (hMeters * hMeters);
-    setState(() => _bmiValue = bmi);
+    setState(() {
+      _bmiValue = bmi;
+      _bmiController.text = bmi.toStringAsFixed(1);
+    });
   }
 
   bool _recoveringLost = false;
@@ -3201,6 +3210,7 @@ class _RecordScreenState extends State<RecordScreen>
       String? unitSuffix,
       VoidCallback? onChanged,
       Future<void> Function()? onTap,
+      bool readOnly = false,
     }) {
       final cs = Theme.of(context).colorScheme;
       return LayoutBuilder(
@@ -3211,6 +3221,7 @@ class _RecordScreenState extends State<RecordScreen>
           // 単位ぶんを引いた残りの 2/3 を下線に
           final double fieldW =
               ((total - unitReserve) * 4 / 5).clamp(120.0, total - unitReserve);
+          final bool shouldBlockInput = readOnly || onTap != null;
 
           return Row(
             children: [
@@ -3221,9 +3232,10 @@ class _RecordScreenState extends State<RecordScreen>
                       const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                   child: TextField(
                     controller: controller,
-                    readOnly: onTap != null,
-                    showCursor: onTap != null ? false : null,
-                    enableInteractiveSelection: onTap != null ? false : null,
+                    readOnly: shouldBlockInput,
+                    showCursor: shouldBlockInput ? false : null,
+                    enableInteractiveSelection:
+                        shouldBlockInput ? false : null,
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       fontFamily: kUiFont,
@@ -3245,8 +3257,9 @@ class _RecordScreenState extends State<RecordScreen>
                       contentPadding: const EdgeInsets.symmetric(
                           vertical: 6, horizontal: 0),
                     ),
-                    onTap: onTap,
-                    onChanged: onTap == null ? (_) => onChanged?.call() : null,
+                    onTap: onTap ?? (shouldBlockInput ? () {} : null),
+                    onChanged:
+                        shouldBlockInput ? null : (_) => onChanged?.call(),
                   ),
                 ),
               ),
@@ -3458,6 +3471,35 @@ class _RecordScreenState extends State<RecordScreen>
                                       ],
                                     ),
                                   ],
+                                  if (showBMI) ...[
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        SizedBox(
+                                          width: 96,
+                                          child: Align(
+                                            alignment: Alignment.centerRight,
+                                            child: Text(
+                                              l10n.bmi,
+                                              style: TextStyle(
+                                                fontFamily: kUiFont,
+                                                color: cs.onSurface,
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: underlineField(
+                                            controller: _bmiController,
+                                            readOnly: true,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -3645,7 +3687,10 @@ class _RecordScreenState extends State<RecordScreen>
     final bool isAerobic = section.selectedPart == l10n.aerobicExercise;
 
     final double topGap = media.padding.top + kToolbarHeight + 8;
-    final double overlayHeight = media.size.height * 0.4; // メモと同じ高さ
+    final double maxHeight =
+        (media.size.height - topGap - 12).clamp(0.0, media.size.height).toDouble();
+    final double overlayHeight =
+        min(media.size.height * 0.48, maxHeight); // 少し高めにして可視域を拡張
 
     return Stack(
       children: [
