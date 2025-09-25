@@ -709,6 +709,7 @@ class _RecordScreenState extends State<RecordScreen>
               String r = '';
               bool isSuggestion = true;
               bool checked = false;
+
               if (i < recLen) {
                 w = rec!.weights[i];
                 r = rec.reps[i];
@@ -718,12 +719,18 @@ class _RecordScreenState extends State<RecordScreen>
                 final checkedList = rec.checkedStates;
                 if (checkedList != null && i < checkedList.length) {
                   checked = checkedList[i];
+                } else {
+                  checked = true;
+                }
+                if (!checked) {
+                  isSuggestion = true;
                 }
               } else if (i < luLen) {
                 w = lu!.weights[i];
                 r = lu.reps[i];
                 isSuggestion = true;
               }
+
               row.add(SetInputData(
                 weightController: TextEditingController(text: w),
                 repController: TextEditingController(text: r),
@@ -1160,6 +1167,11 @@ class _RecordScreenState extends State<RecordScreen>
               final checkedList = rec.checkedStates;
               if (checkedList != null && i < checkedList.length) {
                 checked = checkedList[i];
+              } else {
+                checked = true;
+              }
+              if (!checked) {
+                isSuggestion = true;
               }
             } else if (i < luLen) {
               w = lu!.weights[i];
@@ -1386,10 +1398,10 @@ class _RecordScreenState extends State<RecordScreen>
             final w = set.weightController.text;
             final r = set.repController.text;
             final hasValue = w.trim().isNotEmpty || r.trim().isNotEmpty;
-            if (!set.isSuggestion && hasValue) {
+            if (set.checked && hasValue) {
               weightsConfirmed.add(w);
               repsConfirmed.add(r);
-              checkedConfirmed.add(set.checked);
+              checkedConfirmed.add(true);
             }
           }
           if (weightsConfirmed.isNotEmpty || repsConfirmed.isNotEmpty) {
@@ -6177,12 +6189,7 @@ class _MenuListState extends State<MenuList> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Focus(
-                    onFocusChange: (has) {
-                      notifyFocus(has);
-                      if (has && set.isSuggestion) {
-                        setState(() => set.isSuggestion = false);
-                      }
-                    },
+                    onFocusChange: notifyFocus,
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(
                           minHeight: kUnifiedFieldMinHeight),
@@ -6202,6 +6209,11 @@ class _MenuListState extends State<MenuList> {
                               ? colorScheme.onSurfaceVariant.withOpacity(0.5)
                               : colorScheme.onSurface,
                         ),
+                        onChanged: (value) {
+                          if (set.isSuggestion) {
+                            setState(() => set.isSuggestion = false);
+                          }
+                        },
                         decoration: InputDecoration(
                           isDense: true,
                           filled: false,
@@ -6234,12 +6246,7 @@ class _MenuListState extends State<MenuList> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Focus(
-                    onFocusChange: (has) {
-                      notifyFocus(has);
-                      if (has && set.isSuggestion) {
-                        setState(() => set.isSuggestion = false);
-                      }
-                    },
+                    onFocusChange: notifyFocus,
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(
                           minHeight: kUnifiedFieldMinHeight),
@@ -6256,6 +6263,11 @@ class _MenuListState extends State<MenuList> {
                               ? colorScheme.onSurfaceVariant.withOpacity(0.5)
                               : colorScheme.onSurface,
                         ),
+                        onChanged: (value) {
+                          if (set.isSuggestion) {
+                            setState(() => set.isSuggestion = false);
+                          }
+                        },
                         decoration: InputDecoration(
                           isDense: true,
                           filled: false,
@@ -6287,7 +6299,9 @@ class _MenuListState extends State<MenuList> {
                             set.repController.text.trim().isNotEmpty)
                         ? (v) {
                             setState(() {
-                              set.checked = v ?? false;
+                              final bool nextChecked = v ?? false;
+                              set.checked = nextChecked;
+                              set.isSuggestion = !nextChecked;
                             });
                             if ((v ?? false) == true) {
                               widget.timerKey.currentState?.restart();
