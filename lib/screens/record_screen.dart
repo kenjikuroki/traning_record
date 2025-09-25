@@ -2278,6 +2278,72 @@ class _RecordScreenState extends State<RecordScreen>
     });
   }
 
+  void _reorderMenuItem(int sectionIndex, int oldIndex, int rawNewIndex) {
+    if (sectionIndex < 0 || sectionIndex >= _sections.length) return;
+    final section = _sections[sectionIndex];
+    if (oldIndex < 0 || oldIndex >= section.menuControllers.length) return;
+    if (rawNewIndex < 0 || rawNewIndex > section.menuControllers.length) return;
+    if (section.menuControllers.isEmpty) return;
+
+    var newIndex = rawNewIndex;
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+    if (newIndex == oldIndex) return;
+
+    int _clampIndex(int index, int lengthInclusive) {
+      if (lengthInclusive < 0) return 0;
+      if (index < 0) return 0;
+      if (index > lengthInclusive) return lengthInclusive;
+      return index;
+    }
+
+    final maxIndex = section.menuControllers.length - 1;
+    newIndex = _clampIndex(newIndex, maxIndex);
+
+    void reorderList<T>(List<T> list) {
+      if (oldIndex >= list.length) return;
+      final item = list.removeAt(oldIndex);
+      final target = _clampIndex(newIndex, list.length);
+      list.insert(target, item);
+    }
+
+    reorderList(section.menuControllers);
+    reorderList(section.setInputDataList);
+    reorderList(section.menuKeys);
+    reorderList(section.nameFieldKeys);
+    reorderList(section.menuCollapsedStates);
+    reorderList(section.satisfactionList);
+    reorderList(section.previousVolumeList);
+    reorderList(section.aerobicDistanceCtrls);
+    reorderList(section.aerobicDurationCtrls);
+    reorderList(section.aerobicSuggestFlags);
+    reorderList(section.aerobicCaloriesCtrls);
+    reorderList(section.aerobicCalorieSuggestFlags);
+    reorderList(section.aerobicCalorieHintVisible);
+    reorderList(section.aerobicCalorieHintShown);
+
+    int _mapIndex(int current) {
+      if (current == oldIndex) return newIndex;
+      if (oldIndex < newIndex) {
+        if (current > oldIndex && current <= newIndex) return current - 1;
+      } else {
+        if (current >= newIndex && current < oldIndex) return current + 1;
+      }
+      return current;
+    }
+
+    if (_currentSectionIndex == sectionIndex && _currentMenuIndex != null) {
+      _currentMenuIndex = _mapIndex(_currentMenuIndex!);
+    }
+
+    if (_menuSecIndex == sectionIndex && _menuMenuIndex != null) {
+      _menuMenuIndex = _mapIndex(_menuMenuIndex!);
+    }
+
+    setState(() {});
+  }
+
   void _removeMenuItem(int sectionIndex, int menuIndex) async {
     // ここでは確認ダイアログを出さない（×ボタン側で既に確認済み）
 
@@ -4312,338 +4378,394 @@ class _RecordScreenState extends State<RecordScreen>
                                   if (section.selectedPart != null)
                                     Column(
                                       children: [
-                                        ...List.generate(
-                                            section.menuControllers.length,
-                                            (menuIndex) {
-                                          final bool isSelected =
-                                              (_currentSectionIndex ==
-                                                      secIndex &&
-                                                  _currentMenuIndex ==
-                                                      menuIndex);
-
-                                          final borderColor = isSelected
-                                              ? (isLight
-                                                  ? kBrandBlue
-                                                  : Colors.white)
-                                              : Colors.transparent;
-                                          final glowColor = isSelected
-                                              ? (isLight
-                                                  ? kBrandBlue.withOpacity(0.45)
-                                                  : Colors.white
-                                                      .withOpacity(0.70))
-                                              : Colors.black.withOpacity(0.20);
-
-                                          final bool isEditingThisOne = true;
-
-                                          return Card(
-                                            key: section.menuKeys[menuIndex],
-                                            color: colorScheme.surface,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12.0),
-                                              side: BorderSide(
-                                                  color: borderColor,
-                                                  width: isSelected ? 1.5 : 0),
-                                            ),
-                                            elevation: isSelected ? 3.0 : 0.0,
-                                            shadowColor: glowColor,
-                                            margin: const EdgeInsets.symmetric(
-                                                vertical: 3.0),
-                                            child: InkWell(
-                                              borderRadius:
-                                                  BorderRadius.circular(12.0),
-                                              splashFactory:
-                                                  NoSplash.splashFactory,
-                                              highlightColor:
-                                                  Colors.transparent,
-                                              onTap: () {
-                                                final bool skipThisTap =
-                                                    (_skipTapSectionIndex ==
-                                                            secIndex &&
-                                                        _skipTapMenuIndex ==
-                                                            menuIndex);
-                                                if (skipThisTap) {
-                                                  _skipTapSectionIndex = null;
-                                                  _skipTapMenuIndex = null;
-                                                  _suppressNextMenuOverlay =
-                                                      false;
-                                                  return;
-                                                }
-                                                final alreadySelected =
-                                                    isSelected;
-                                                _touchCard(secIndex, menuIndex);
-                                                final shouldOpen =
-                                                    alreadySelected &&
-                                                        !_suppressNextMenuOverlay;
-                                                _suppressNextMenuOverlay =
-                                                    false;
-                                                if (shouldOpen) {
-                                                  _openMenuOverlaySmooth(
-                                                      secIndex, menuIndex);
-                                                }
+                                        ReorderableListView.builder(
+                                          key: ValueKey('sec-$secIndex-menus'),
+                                          shrinkWrap: true,
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          padding: EdgeInsets.zero,
+                                          buildDefaultDragHandles: false,
+                                          itemCount:
+                                              section.menuControllers.length,
+                                          proxyDecorator:
+                                              (child, index, animation) {
+                                            return AnimatedBuilder(
+                                              animation: animation,
+                                              builder: (context, childParam) {
+                                                final t = Curves.easeOutCubic
+                                                    .transform(animation.value);
+                                                return Transform.scale(
+                                                  scale: 1.0 + 0.02 * t,
+                                                  child: childParam,
+                                                );
                                               },
+                                              child: Material(
+                                                elevation: 10,
+                                                color: Colors.transparent,
+                                                borderRadius:
+                                                    BorderRadius.circular(12.0),
+                                                child: ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          12.0),
+                                                  child: child,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          onReorder: (oldIndex, newIndex) =>
+                                              _reorderMenuItem(
+                                                  secIndex, oldIndex, newIndex),
+                                          itemBuilder: (context, menuIndex) {
+                                            final bool isSelected =
+                                                (_currentSectionIndex ==
+                                                        secIndex &&
+                                                    _currentMenuIndex ==
+                                                        menuIndex);
+                                            final borderColor = isSelected
+                                                ? (isLight
+                                                    ? kBrandBlue
+                                                    : Colors.white)
+                                                : Colors.transparent;
+                                            final glowColor = isSelected
+                                                ? (isLight
+                                                    ? kBrandBlue
+                                                        .withOpacity(0.45)
+                                                    : Colors.white
+                                                        .withOpacity(0.70))
+                                                : Colors.black
+                                                    .withOpacity(0.20);
+                                            final bool isEditingThisOne = true;
+
+                                            Widget content;
+                                            if (isEditingThisOne) {
+                                              content = MenuListPreview(
+                                                menuController: section
+                                                    .menuControllers[menuIndex],
+                                                setInputDataList:
+                                                    section.setInputDataList[
+                                                        menuIndex],
+                                                isAerobic:
+                                                    section.selectedPart ==
+                                                        l10n.aerobicExercise,
+                                                distanceController: (menuIndex <
+                                                        section
+                                                            .aerobicDistanceCtrls
+                                                            .length)
+                                                    ? section
+                                                            .aerobicDistanceCtrls[
+                                                        menuIndex]
+                                                    : null,
+                                                durationController: (menuIndex <
+                                                        section
+                                                            .aerobicDurationCtrls
+                                                            .length)
+                                                    ? section
+                                                            .aerobicDurationCtrls[
+                                                        menuIndex]
+                                                    : null,
+                                                calorieController: (menuIndex <
+                                                        section
+                                                            .aerobicCaloriesCtrls
+                                                            .length)
+                                                    ? section
+                                                            .aerobicCaloriesCtrls[
+                                                        menuIndex]
+                                                    : null,
+                                                showCalorieField:
+                                                    _shouldShowCalorieField(
+                                                        section, menuIndex),
+                                                showAerobicFailureHint: (menuIndex <
+                                                        section
+                                                            .aerobicCalorieHintVisible
+                                                            .length)
+                                                    ? section
+                                                            .aerobicCalorieHintVisible[
+                                                        menuIndex]
+                                                    : false,
+                                                satisfaction: (menuIndex <
+                                                        section.satisfactionList
+                                                            .length)
+                                                    ? section.satisfactionList[
+                                                        menuIndex]
+                                                    : null,
+                                                previousVolume: (menuIndex <
+                                                        section
+                                                            .previousVolumeList
+                                                            .length)
+                                                    ? section
+                                                            .previousVolumeList[
+                                                        menuIndex]
+                                                    : null,
+                                                isCollapsed: (menuIndex <
+                                                        section
+                                                            .menuCollapsedStates
+                                                            .length)
+                                                    ? section
+                                                            .menuCollapsedStates[
+                                                        menuIndex]
+                                                    : true,
+                                                onPrepareAction: () =>
+                                                    _prepareMenuQuickAction(
+                                                        secIndex, menuIndex),
+                                                onToggleCollapse: () =>
+                                                    _toggleMenuCollapse(
+                                                        secIndex, menuIndex,
+                                                        suppressOverlay: true),
+                                                onRemoveMenu: () =>
+                                                    _removeMenuItem(
+                                                        secIndex, menuIndex),
+                                              );
+                                            } else {
+                                              content = MenuList(
+                                                key: (secIndex == 0 &&
+                                                        menuIndex == 0)
+                                                    ? _kExerciseField
+                                                    : null,
+                                                nameFieldKey: section
+                                                    .nameFieldKeys[menuIndex],
+                                                menuController: section
+                                                    .menuControllers[menuIndex],
+                                                removeMenuCallback: () =>
+                                                    _removeMenuItem(
+                                                        secIndex, menuIndex),
+                                                setInputDataList:
+                                                    section.setInputDataList[
+                                                        menuIndex],
+                                                isAerobic:
+                                                    section.selectedPart ==
+                                                        l10n.aerobicExercise,
+                                                distanceController: (menuIndex <
+                                                        section
+                                                            .aerobicDistanceCtrls
+                                                            .length)
+                                                    ? section
+                                                            .aerobicDistanceCtrls[
+                                                        menuIndex]
+                                                    : TextEditingController(),
+                                                durationController: (menuIndex <
+                                                        section
+                                                            .aerobicDurationCtrls
+                                                            .length)
+                                                    ? section
+                                                            .aerobicDurationCtrls[
+                                                        menuIndex]
+                                                    : TextEditingController(),
+                                                aerobicIsSuggestion: (menuIndex <
+                                                        section
+                                                            .aerobicSuggestFlags
+                                                            .length)
+                                                    ? section
+                                                            .aerobicSuggestFlags[
+                                                        menuIndex]
+                                                    : true,
+                                                calorieController: (menuIndex <
+                                                        section
+                                                            .aerobicCaloriesCtrls
+                                                            .length)
+                                                    ? section
+                                                            .aerobicCaloriesCtrls[
+                                                        menuIndex]
+                                                    : null,
+                                                showCalorieField:
+                                                    _shouldShowCalorieField(
+                                                        section, menuIndex),
+                                                calorieIsSuggestion: (menuIndex <
+                                                        section
+                                                            .aerobicCalorieSuggestFlags
+                                                            .length)
+                                                    ? section
+                                                            .aerobicCalorieSuggestFlags[
+                                                        menuIndex]
+                                                    : true,
+                                                showAerobicFailureHint: (menuIndex <
+                                                        section
+                                                            .aerobicCalorieHintVisible
+                                                            .length)
+                                                    ? section
+                                                            .aerobicCalorieHintVisible[
+                                                        menuIndex]
+                                                    : false,
+                                                onConfirmAerobic: () {
+                                                  setState(() {
+                                                    if (menuIndex <
+                                                        section
+                                                            .aerobicSuggestFlags
+                                                            .length) {
+                                                      section.aerobicSuggestFlags[
+                                                          menuIndex] = false;
+                                                    }
+                                                  });
+                                                },
+                                                onAerobicFieldChanged: () =>
+                                                    _onAerobicFieldChanged(
+                                                        secIndex, menuIndex),
+                                                onCalorieChanged: (value) =>
+                                                    _onCaloriesChanged(secIndex,
+                                                        menuIndex, value),
+                                                onAerobicFailureHintTap: () =>
+                                                    _dismissAerobicFailureHint(
+                                                        secIndex, menuIndex),
+                                                enabledForInput: isSelected,
+                                                onNameChanged:
+                                                    (prevEmpty, nowEmpty) {
+                                                  if (section.selectedPart ==
+                                                      l10n.aerobicExercise) {
+                                                    _onAerobicFieldChanged(
+                                                        secIndex, menuIndex);
+                                                  }
+                                                },
+                                                satisfaction: (menuIndex <
+                                                        section.satisfactionList
+                                                            .length)
+                                                    ? section.satisfactionList[
+                                                        menuIndex]
+                                                    : null,
+                                                onSatisfactionChanged: (v) {
+                                                  setState(() {
+                                                    if (menuIndex <
+                                                        section.satisfactionList
+                                                            .length) {
+                                                      section.satisfactionList[
+                                                          menuIndex] = v;
+                                                    }
+                                                  });
+                                                },
+                                                previousTotalVolume: (menuIndex <
+                                                        section
+                                                            .previousVolumeList
+                                                            .length)
+                                                    ? section
+                                                            .previousVolumeList[
+                                                        menuIndex]
+                                                    : null,
+                                                isCollapsed: (menuIndex <
+                                                        section
+                                                            .menuCollapsedStates
+                                                            .length)
+                                                    ? section
+                                                            .menuCollapsedStates[
+                                                        menuIndex]
+                                                    : true,
+                                                onPrepareAction: () =>
+                                                    _prepareMenuQuickAction(
+                                                        secIndex, menuIndex),
+                                                onToggleCollapse: () =>
+                                                    _toggleMenuCollapse(
+                                                        secIndex, menuIndex,
+                                                        suppressOverlay: true),
+                                                timerKey: _ensureTimerKey(
+                                                    secIndex, menuIndex),
+                                              );
+                                            }
+
+                                            return KeyedSubtree(
+                                              key: section.menuKeys[menuIndex],
                                               child: Padding(
                                                 padding:
-                                                    const EdgeInsets.all(10.0),
-                                                child: isEditingThisOne
-                                                    ? MenuListPreview(
-                                                        menuController: section
-                                                                .menuControllers[
-                                                            menuIndex],
-                                                        setInputDataList: section
-                                                                .setInputDataList[
-                                                            menuIndex],
-                                                        isAerobic: section
-                                                                .selectedPart ==
-                                                            l10n.aerobicExercise,
-                                                        distanceController: (menuIndex <
-                                                                section
-                                                                    .aerobicDistanceCtrls
-                                                                    .length)
-                                                            ? section
-                                                                    .aerobicDistanceCtrls[
-                                                                menuIndex]
-                                                            : null,
-                                                        durationController: (menuIndex <
-                                                                section
-                                                                    .aerobicDurationCtrls
-                                                                    .length)
-                                                            ? section
-                                                                    .aerobicDurationCtrls[
-                                                                menuIndex]
-                                                            : null,
-                                                        calorieController: (menuIndex <
-                                                                section
-                                                                    .aerobicCaloriesCtrls
-                                                                    .length)
-                                                            ? section
-                                                                    .aerobicCaloriesCtrls[
-                                                                menuIndex]
-                                                            : null,
-                                                        showCalorieField:
-                                                            _shouldShowCalorieField(
-                                                                section,
-                                                                menuIndex),
-                                                        showAerobicFailureHint:
-                                                            (menuIndex <
-                                                                    section
-                                                                        .aerobicCalorieHintVisible
-                                                                        .length)
-                                                                ? section
-                                                                        .aerobicCalorieHintVisible[
-                                                                    menuIndex]
-                                                                : false,
-                                                        satisfaction: (menuIndex <
-                                                                section
-                                                                    .satisfactionList
-                                                                    .length)
-                                                            ? section
-                                                                    .satisfactionList[
-                                                                menuIndex]
-                                                            : null,
-                                                        previousVolume: (menuIndex <
-                                                                section
-                                                                    .previousVolumeList
-                                                                    .length)
-                                                            ? section
-                                                                    .previousVolumeList[
-                                                                menuIndex]
-                                                            : null,
-                                                        isCollapsed: (menuIndex <
-                                                                section
-                                                                    .menuCollapsedStates
-                                                                    .length)
-                                                            ? section
-                                                                    .menuCollapsedStates[
-                                                                menuIndex]
-                                                            : true,
-                                                        onPrepareAction: () =>
-                                                            _prepareMenuQuickAction(
-                                                                secIndex,
-                                                                menuIndex),
-                                                        onToggleCollapse: () =>
-                                                            _toggleMenuCollapse(
-                                                                secIndex,
-                                                                menuIndex,
-                                                                suppressOverlay:
-                                                                    true),
-                                                        onRemoveMenu: () =>
-                                                            _removeMenuItem(
-                                                                secIndex,
-                                                                menuIndex),
-                                                      )
-                                                    : MenuList(
-                                                        key: (secIndex == 0 &&
-                                                                menuIndex == 0)
-                                                            ? _kExerciseField
-                                                            : null,
-                                                        nameFieldKey: section
-                                                                .nameFieldKeys[
-                                                            menuIndex],
-                                                        menuController: section
-                                                                .menuControllers[
-                                                            menuIndex],
-                                                        removeMenuCallback:
-                                                            () =>
-                                                                _removeMenuItem(
-                                                                    secIndex,
-                                                                    menuIndex),
-                                                        setInputDataList: section
-                                                                .setInputDataList[
-                                                            menuIndex],
-                                                        isAerobic: section
-                                                                .selectedPart ==
-                                                            l10n.aerobicExercise,
-                                                        distanceController: (menuIndex <
-                                                                section
-                                                                    .aerobicDistanceCtrls
-                                                                    .length)
-                                                            ? section
-                                                                    .aerobicDistanceCtrls[
-                                                                menuIndex]
-                                                            : TextEditingController(),
-                                                        durationController: (menuIndex <
-                                                                section
-                                                                    .aerobicDurationCtrls
-                                                                    .length)
-                                                            ? section
-                                                                    .aerobicDurationCtrls[
-                                                                menuIndex]
-                                                            : TextEditingController(),
-                                                        aerobicIsSuggestion:
-                                                            (menuIndex <
-                                                                    section
-                                                                        .aerobicSuggestFlags
-                                                                        .length)
-                                                                ? section
-                                                                        .aerobicSuggestFlags[
-                                                                    menuIndex]
-                                                                : true,
-                                                        calorieController: (menuIndex <
-                                                                section
-                                                                    .aerobicCaloriesCtrls
-                                                                    .length)
-                                                            ? section
-                                                                    .aerobicCaloriesCtrls[
-                                                                menuIndex]
-                                                            : null,
-                                                        showCalorieField:
-                                                            _shouldShowCalorieField(
-                                                                section,
-                                                                menuIndex),
-                                                        calorieIsSuggestion:
-                                                            (menuIndex <
-                                                                    section
-                                                                        .aerobicCalorieSuggestFlags
-                                                                        .length)
-                                                                ? section
-                                                                        .aerobicCalorieSuggestFlags[
-                                                                    menuIndex]
-                                                                : true,
-                                                        showAerobicFailureHint:
-                                                            (menuIndex <
-                                                                    section
-                                                                        .aerobicCalorieHintVisible
-                                                                        .length)
-                                                                ? section
-                                                                        .aerobicCalorieHintVisible[
-                                                                    menuIndex]
-                                                                : false,
-                                                        onConfirmAerobic: () {
-                                                          setState(() {
-                                                            if (menuIndex <
-                                                                section
-                                                                    .aerobicSuggestFlags
-                                                                    .length) {
-                                                              section.aerobicSuggestFlags[
-                                                                      menuIndex] =
-                                                                  false;
-                                                            }
-                                                          });
-                                                        },
-                                                        onAerobicFieldChanged: () =>
-                                                            _onAerobicFieldChanged(
-                                                                secIndex,
-                                                                menuIndex),
-                                                        onCalorieChanged:
-                                                            (value) =>
-                                                                _onCaloriesChanged(
-                                                                    secIndex,
-                                                                    menuIndex,
-                                                                    value),
-                                                        onAerobicFailureHintTap:
-                                                            () =>
-                                                                _dismissAerobicFailureHint(
-                                                                    secIndex,
-                                                                    menuIndex),
-                                                        enabledForInput: false,
-                                                        onNameChanged:
-                                                            (prevEmpty,
-                                                                nowEmpty) {
-                                                          if (section
-                                                                  .selectedPart ==
-                                                              l10n.aerobicExercise) {
-                                                            _onAerobicFieldChanged(
-                                                                secIndex,
-                                                                menuIndex);
-                                                          }
-                                                        },
-                                                        satisfaction: (menuIndex <
-                                                                section
-                                                                    .satisfactionList
-                                                                    .length)
-                                                            ? section
-                                                                    .satisfactionList[
-                                                                menuIndex]
-                                                            : null,
-                                                        onSatisfactionChanged:
-                                                            (v) {
-                                                          setState(() {
-                                                            if (menuIndex <
-                                                                section
-                                                                    .satisfactionList
-                                                                    .length) {
-                                                              section.satisfactionList[
-                                                                  menuIndex] = v;
-                                                            }
-                                                          });
-                                                        },
-                                                        previousTotalVolume:
-                                                            (menuIndex <
-                                                                    section
-                                                                        .previousVolumeList
-                                                                        .length)
-                                                                ? section
-                                                                        .previousVolumeList[
-                                                                    menuIndex]
-                                                                : null,
-                                                        isCollapsed: (menuIndex <
-                                                                section
-                                                                    .menuCollapsedStates
-                                                                    .length)
-                                                            ? section
-                                                                    .menuCollapsedStates[
-                                                                menuIndex]
-                                                            : true,
-                                                        onPrepareAction: () =>
-                                                            _prepareMenuQuickAction(
-                                                                secIndex,
-                                                                menuIndex),
-                                                        onToggleCollapse: () =>
-                                                            _toggleMenuCollapse(
-                                                                secIndex,
-                                                                menuIndex,
-                                                                suppressOverlay:
-                                                                    true),
-                                                        timerKey:
-                                                            _ensureTimerKey(
-                                                                secIndex,
-                                                                menuIndex),
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 3.0),
+                                                child: Card(
+                                                  color: colorScheme.surface,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12.0),
+                                                    side: BorderSide(
+                                                      color: borderColor,
+                                                      width:
+                                                          isSelected ? 1.5 : 0,
+                                                    ),
+                                                  ),
+                                                  elevation:
+                                                      isSelected ? 3.0 : 0.0,
+                                                  shadowColor: glowColor,
+                                                  margin: EdgeInsets.zero,
+                                                  child: Row(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      ReorderableDragStartListener(
+                                                        index: menuIndex,
+                                                        child: Container(
+                                                          width: 40,
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .only(
+                                                                  top: 16.0,
+                                                                  bottom: 4.0),
+                                                          alignment:
+                                                              AlignmentDirectional
+                                                                  .topCenter,
+                                                          child: Icon(
+                                                            Icons
+                                                                .drag_indicator_rounded,
+                                                            size: 22,
+                                                            color: isSelected
+                                                                ? colorScheme
+                                                                    .primary
+                                                                : colorScheme
+                                                                    .onSurfaceVariant,
+                                                          ),
+                                                        ),
                                                       ),
+                                                      Expanded(
+                                                        child: InkWell(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(
+                                                                      12.0),
+                                                          splashFactory: NoSplash
+                                                              .splashFactory,
+                                                          highlightColor: Colors
+                                                              .transparent,
+                                                          onTap: () {
+                                                            final bool
+                                                                skipThisTap =
+                                                                (_skipTapSectionIndex ==
+                                                                        secIndex &&
+                                                                    _skipTapMenuIndex ==
+                                                                        menuIndex);
+                                                            if (skipThisTap) {
+                                                              _skipTapSectionIndex =
+                                                                  null;
+                                                              _skipTapMenuIndex =
+                                                                  null;
+                                                              _suppressNextMenuOverlay =
+                                                                  false;
+                                                              return;
+                                                            }
+                                                            final alreadySelected =
+                                                                isSelected;
+                                                            _touchCard(secIndex,
+                                                                menuIndex);
+                                                            final shouldOpen =
+                                                                alreadySelected &&
+                                                                    !_suppressNextMenuOverlay;
+                                                            _suppressNextMenuOverlay =
+                                                                false;
+                                                            if (shouldOpen) {
+                                                              _openMenuOverlaySmooth(
+                                                                  secIndex,
+                                                                  menuIndex);
+                                                            }
+                                                          },
+                                                          child: Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .all(10.0),
+                                                            child: content,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                          );
-                                        }),
+                                            );
+                                          },
+                                        ),
                                         const SizedBox(height: 10.0),
                                         const SizedBox.shrink(),
                                       ],
