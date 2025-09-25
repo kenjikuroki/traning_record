@@ -11,6 +11,7 @@ import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../widgets/ad_banner.dart';
 import '../settings_manager.dart';
+import '../utils/training_display_utils.dart';
 import 'record_screen.dart';
 import 'graph_screen.dart';
 import 'settings_screen.dart';
@@ -1348,6 +1349,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (_hasPositiveDistanceValue(m.distance)) return true;
       if (_hasPositiveDurationValue(m.duration)) return true;
       if ((m.calories?.trim().isNotEmpty ?? false)) return true;
+      if (m.totalVolume != null) return true;
       return false;
     }
 
@@ -1451,15 +1453,33 @@ class _CalendarScreenState extends State<CalendarScreen> {
         );
 
         final int len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        final unit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
         for (int i = 0; i < len; i++) {
           final w = m.weights[i].toString().trim();
           final r = m.reps[i].toString().trim();
-          if (w.isEmpty && r.isEmpty) continue;
+          final setDisplay = formatStrengthSetDisplay(
+            l10n: l10n,
+            weight: w,
+            unit: unit,
+            reps: r,
+          );
+          if (setDisplay == '-') continue;
           summaryChildren.add(
             _selectableLine(
-              text: '${i + 1}set: ${w.isEmpty ? '-' : w} × ${r.isEmpty ? '-' : r}',
+              text: '${i + 1}${l10n.sets}：$setDisplay',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+            ),
+          );
+        }
+        if (m.totalVolume != null) {
+          summaryChildren.add(
+            _selectableLine(
+              text:
+                  '${l10n.totalVolumeLabel}：${formatTotalVolumeValue(l10n, m.totalVolume)}',
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+              style:
+                  TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
             ),
           );
         }
@@ -1726,6 +1746,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (_hasPositiveDistanceValue(m.distance)) return true;
       if (_hasPositiveDurationValue(m.duration)) return true;
       if ((m.calories?.trim().isNotEmpty ?? false)) return true;
+      if (m.totalVolume != null) return true;
       return false;
     }
 
@@ -1829,15 +1850,33 @@ class _CalendarScreenState extends State<CalendarScreen> {
         );
 
         final int len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        final unit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
         for (int i = 0; i < len; i++) {
           final w = m.weights[i].toString().trim();
           final r = m.reps[i].toString().trim();
-          if (w.isEmpty && r.isEmpty) continue;
+          final setDisplay = formatStrengthSetDisplay(
+            l10n: l10n,
+            weight: w,
+            unit: unit,
+            reps: r,
+          );
+          if (setDisplay == '-') continue;
           summaryChildren.add(
             _selectableLine(
-              text: '${i + 1}set: ${w.isEmpty ? '-' : w} × ${r.isEmpty ? '-' : r}',
+              text: '${i + 1}${l10n.sets}：$setDisplay',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+            ),
+          );
+        }
+        if (m.totalVolume != null) {
+          summaryChildren.add(
+            _selectableLine(
+              text:
+                  '${l10n.totalVolumeLabel}：${formatTotalVolumeValue(l10n, m.totalVolume)}',
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+              style:
+                  TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
             ),
           );
         }

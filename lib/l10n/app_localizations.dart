@@ -795,6 +795,18 @@ abstract class AppLocalizations {
   /// **'Show Stopwatch/Timer'**
   String get settingsStopwatchTimerVisibility;
 
+  /// No description provided for @recordDisplayOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Display options'**
+  String get recordDisplayOptions;
+
+  /// No description provided for @intervalTimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Interval timer'**
+  String get intervalTimer;
+
   /// No description provided for @settingsDailyMediaCap.
   ///
   /// In en, this message translates to:

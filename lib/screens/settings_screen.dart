@@ -50,6 +50,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // ===== 既存状態 =====
   late bool _showStopwatch; // ストップウォッチ表示
+  late bool _showIntervalTimer;
+  late bool _showTotalVolume;
+  late bool _showSatisfaction;
   late bool _showWeightInput; // 体重管理（※パーソナル設定内に移動）
 
   final List<String> _bodyPartsOriginal = const [
@@ -110,6 +113,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // 既存
     _showWeightInput = SettingsManager.showWeightInput;
     _showStopwatch = SettingsManager.showStopwatch;
+    _showIntervalTimer = SettingsManager.showIntervalTimer;
+    _showTotalVolume = SettingsManager.showTotalVolume;
+    _showSatisfaction = SettingsManager.showSatisfaction;
 
     final Map stored = (widget.settingsBox.get('selectedBodyParts') as Map?) ??
         {};
@@ -730,17 +736,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             const SizedBox(height: _kGap),
 
-            // ─────────────────────────────────
-            // グループ②：ストップウォッチ → 部位 → セット数
-            // （パーソナル設定が最上段になったため、
-            //   ストップウォッチは上辺も直角に変更）
-            // ─────────────────────────────────
-
-            // ① ストップウォッチ/タイマー表示（上辺も直角）
             Card(
               color: colorScheme.surfaceContainerHighest,
               shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.zero),
+                borderRadius: BorderRadius.zero,
+              ),
               margin: _kCardMargin,
               child: Padding(
                 padding: _kOuterPad,
@@ -761,6 +761,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
 
             const SizedBox(height: _kGap),
+
+            // ─────────────────────────────────
+            // グループ②：ストップウォッチ → 部位 → セット数
+            // ─────────────────────────────────
 
             // ② 表示する部位（中間カード：角丸なし）
             Card(
@@ -819,6 +823,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       );
                     }).toList(),
                   ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: _kGap),
+
+            Card(
+              color: colorScheme.surfaceContainerHighest,
+              shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero),
+              margin: _kCardMargin,
+              child: Padding(
+                padding: _kOuterPad,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.tune_outlined),
+                        const SizedBox(width: _kIconGap),
+                        Expanded(
+                          child: Text(
+                            l10n.recordDisplayOptions,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 15.0),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _toggleRow(
+                      context,
+                      title: l10n.intervalTimer,
+                      value: _showIntervalTimer,
+                      onChanged: (v) {
+                        setState(() => _showIntervalTimer = v);
+                        SettingsManager.setShowIntervalTimer(v);
+                      },
+                    ),
+                    _toggleRow(
+                      context,
+                      title: l10n.totalVolumeLabel,
+                      value: _showTotalVolume,
+                      onChanged: (v) {
+                        setState(() => _showTotalVolume = v);
+                        SettingsManager.setShowTotalVolume(v);
+                      },
+                    ),
+                    _toggleRow(
+                      context,
+                      title: l10n.satisfaction,
+                      value: _showSatisfaction,
+                      onChanged: (v) {
+                        setState(() => _showSatisfaction = v);
+                        SettingsManager.setShowSatisfaction(v);
+                      },
+                    ),
+                  ],
                 ),
               ),
             ),

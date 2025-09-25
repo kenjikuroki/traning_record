@@ -29,6 +29,9 @@ class SettingsManager {
       'show_weight_input'; // 体重入力の表示ON/OFF（互換）
   static const String _aerobicCalorieKey = 'enable_aerobic_calories';
   static const String _personalWeightKey = 'personal.weightKg';
+  static const String _showTotalVolumeKey = 'show_total_volume';
+  static const String _showSatisfactionKey = 'show_satisfaction';
+  static const String _showIntervalTimerKey = 'show_interval_timer';
 
   // ===== Notifiers =====
   // 重さ
@@ -56,6 +59,12 @@ class SettingsManager {
   // ストップウォッチ/タイマー表示
   static final ValueNotifier<bool> _showStopwatchTimerNotifier =
       ValueNotifier<bool>(true);
+  static final ValueNotifier<bool> _showTotalVolumeNotifier =
+      ValueNotifier<bool>(false);
+  static final ValueNotifier<bool> _showSatisfactionNotifier =
+      ValueNotifier<bool>(true);
+  static final ValueNotifier<bool> _showIntervalTimerNotifier =
+      ValueNotifier<bool>(false);
 
   // 体重入力の表示
   static final ValueNotifier<bool> _showWeightInputNotifier =
@@ -122,6 +131,12 @@ class SettingsManager {
     // ストップウォッチ/タイマー
     _showStopwatchTimerNotifier.value =
         (box.get(_showStopwatchTimerKey) as bool?) ?? true;
+    _showTotalVolumeNotifier.value =
+        (box.get(_showTotalVolumeKey) as bool?) ?? false;
+    _showSatisfactionNotifier.value =
+        (box.get(_showSatisfactionKey) as bool?) ?? true;
+    _showIntervalTimerNotifier.value =
+        (box.get(_showIntervalTimerKey) as bool?) ?? false;
 
     // 体重入力の表示
     _showWeightInputNotifier.value =
@@ -197,6 +212,18 @@ class SettingsManager {
   static bool get showStopwatchTimer => _showStopwatchTimerNotifier.value;
   static ValueNotifier<bool> get showStopwatchTimerNotifier =>
       _showStopwatchTimerNotifier;
+
+  static bool get showTotalVolume => _showTotalVolumeNotifier.value;
+  static ValueNotifier<bool> get showTotalVolumeNotifier =>
+      _showTotalVolumeNotifier;
+
+  static bool get showSatisfaction => _showSatisfactionNotifier.value;
+  static ValueNotifier<bool> get showSatisfactionNotifier =>
+      _showSatisfactionNotifier;
+
+  static bool get showIntervalTimer => _showIntervalTimerNotifier.value;
+  static ValueNotifier<bool> get showIntervalTimerNotifier =>
+      _showIntervalTimerNotifier;
 
   /// 体重入力の表示
   static bool get showWeightInput => _showWeightInputNotifier.value;
@@ -278,6 +305,24 @@ class SettingsManager {
     await _ensureBox();
     await _box?.put(_showStopwatchTimerKey, show);
     _showStopwatchTimerNotifier.value = show;
+  }
+
+  static Future<void> setShowTotalVolume(bool show) async {
+    await _ensureBox();
+    await _box?.put(_showTotalVolumeKey, show);
+    _showTotalVolumeNotifier.value = show;
+  }
+
+  static Future<void> setShowSatisfaction(bool show) async {
+    await _ensureBox();
+    await _box?.put(_showSatisfactionKey, show);
+    _showSatisfactionNotifier.value = show;
+  }
+
+  static Future<void> setShowIntervalTimer(bool show) async {
+    await _ensureBox();
+    await _box?.put(_showIntervalTimerKey, show);
+    _showIntervalTimerNotifier.value = show;
   }
 
   /// 体重入力の表示設定

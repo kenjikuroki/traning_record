@@ -365,6 +365,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsStopwatchTimerVisibility => 'ストップウォッチ/タイマー表示';
 
   @override
+  String get recordDisplayOptions => '表示項目';
+
+  @override
+  String get intervalTimer => 'インターバルタイマー';
+
+  @override
   String get settingsDailyMediaCap => '1日の写真上限';
 
   @override

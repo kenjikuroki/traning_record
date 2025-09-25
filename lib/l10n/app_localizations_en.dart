@@ -365,6 +365,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsStopwatchTimerVisibility => 'Show Stopwatch/Timer';
 
   @override
+  String get recordDisplayOptions => 'Display options';
+
+  @override
+  String get intervalTimer => 'Interval timer';
+
+  @override
   String get settingsDailyMediaCap => 'Daily photo limit';
 
   @override

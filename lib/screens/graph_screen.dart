@@ -1616,48 +1616,6 @@ class _GraphScreenState extends State<GraphScreen> {
     _saveGoalForCurrentContext();
   }
 
-  // ====== 参考レンジ（黄色の点線） ======
-  List<double>? _referenceRange() {
-    if (_isPersonalContext()) {
-      if (_personalMetric == PersonalMetric.bmi) {
-        final min =
-            (widget.settingsBox.get('bmiRangeMin') as num?)?.toDouble() ?? 18.5;
-        final max =
-            (widget.settingsBox.get('bmiRangeMax') as num?)?.toDouble() ?? 25.0;
-        return [min, max];
-      } else if (_personalMetric == PersonalMetric.bodyFat) {
-        final overrideMin =
-            (widget.settingsBox.get('bodyFatRangeMin') as num?)?.toDouble();
-        final overrideMax =
-            (widget.settingsBox.get('bodyFatRangeMax') as num?)?.toDouble();
-        if (overrideMin != null && overrideMax != null)
-          return [overrideMin, overrideMax];
-        // 性別未設定時の汎用レンジ
-        final gender = _genderFromSettings();
-        switch (gender) {
-          case 'male':
-            return [10.0, 20.0];
-          case 'female':
-            return [20.0, 30.0];
-          default:
-            return [14.0, 24.0];
-        }
-      }
-    }
-    return null;
-  }
-
-  List<HorizontalLine> _referenceLines() {
-    final range = _referenceRange();
-    if (range == null) return const [];
-    return [
-      HorizontalLine(
-          y: range[0], color: Colors.amber, strokeWidth: 2, dashArray: [6, 4]),
-      HorizontalLine(
-          y: range[1], color: Colors.amber, strokeWidth: 2, dashArray: [6, 4]),
-    ];
-  }
-
   Future<int?> _showWheelPicker({
     required String title,
     required List<String> items,
@@ -2553,15 +2511,10 @@ class _GraphScreenState extends State<GraphScreen> {
                                       ),
                                     );
 
-                          // 目標 & 参考レンジ込みの表示レンジ
+                          // 目標値を考慮した表示レンジ
                           double viewMinY = _baseMinY;
                           double viewMaxY = _baseMaxY;
 
-                          final ref = _referenceRange();
-                          if (ref != null) {
-                            viewMinY = min(viewMinY, ref[0]);
-                            viewMaxY = max(viewMaxY, ref[1]);
-                          }
                           if (_goalValue != null) {
                             viewMinY = min(viewMinY, _goalValue!);
                             viewMaxY = max(viewMaxY, _goalValue!);
@@ -2822,9 +2775,6 @@ class _GraphScreenState extends State<GraphScreen> {
                                           ),
                                           extraLinesData: ExtraLinesData(
                                             horizontalLines: <HorizontalLine>[
-                                              // 参考レンジ（黄色点線）
-                                              ..._referenceLines(),
-                                              // 目標
                                               if (_goalValue != null)
                                                 HorizontalLine(
                                                   y: _goalValue!,

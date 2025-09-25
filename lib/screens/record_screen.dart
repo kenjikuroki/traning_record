@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../settings_manager.dart';
+import '../utils/training_display_utils.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/stopwatch_widget.dart';
 import '../widgets/coach_bubble.dart';
@@ -277,6 +278,16 @@ class _RecordScreenState extends State<RecordScreen>
     setState(() {});
   }
 
+  void _onDisplayPreferencesChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  void _onIntervalTimerChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
@@ -289,6 +300,12 @@ class _RecordScreenState extends State<RecordScreen>
 
     WidgetsBinding.instance.addObserver(this);
     SettingsManager.showStopwatchNotifier.addListener(_onShowStopwatchChanged);
+    SettingsManager.showIntervalTimerNotifier
+        .addListener(_onIntervalTimerChanged);
+    SettingsManager.showTotalVolumeNotifier
+        .addListener(_onDisplayPreferencesChanged);
+    SettingsManager.showSatisfactionNotifier
+        .addListener(_onDisplayPreferencesChanged);
 
     // ★追加：単位切替（inch/cm 等）のUI反映
     SettingsManager.lengthUnitNotifier.addListener(_onLengthUnitChanged);
@@ -389,6 +406,12 @@ class _RecordScreenState extends State<RecordScreen>
     _fabCtrl.dispose(); // ← 追加
     SettingsManager.showStopwatchNotifier
         .removeListener(_onShowStopwatchChanged);
+    SettingsManager.showIntervalTimerNotifier
+        .removeListener(_onIntervalTimerChanged);
+    SettingsManager.showTotalVolumeNotifier
+        .removeListener(_onDisplayPreferencesChanged);
+    SettingsManager.showSatisfactionNotifier
+        .removeListener(_onDisplayPreferencesChanged);
     WidgetsBinding.instance.removeObserver(this);
 
     _inactivityTimer?.cancel();
@@ -3397,27 +3420,35 @@ class _RecordScreenState extends State<RecordScreen>
                                 ),
                               ),
                               const Spacer(),
-                              const SizedBox(width: 12),
-                              Expanded(
+                              if (!isAerobic &&
+                                  SettingsManager.showIntervalTimer) ...[
+                                const SizedBox(width: 12),
+                                Expanded(
                                   child: Center(
-                                      child: ExerciseInputTimer(
-                                          key: _ensureTimerKey(
-                                              secIndex, menuIndex)))),
-                              const SizedBox(width: 12),
-                              TextButton(
-                                onPressed: (!isAerobic &&
-                                        menuIndex <
-                                            section.setInputDataList.length &&
-                                        section.setInputDataList[menuIndex]
-                                                .length <
-                                            10)
-                                    ? () {
-                                        HapticFeedback.selectionClick();
-                                        _addOneSetAt(secIndex, menuIndex);
-                                      }
-                                    : null,
-                                child: Text(l10n.addSet),
-                              ),
+                                    child: ExerciseInputTimer(
+                                      key: _ensureTimerKey(
+                                          secIndex, menuIndex),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              if (!isAerobic) ...[
+                                const SizedBox(width: 12),
+                                TextButton(
+                                  onPressed: (menuIndex <
+                                              section
+                                                  .setInputDataList.length &&
+                                          section.setInputDataList[menuIndex]
+                                                  .length <
+                                              10)
+                                      ? () {
+                                          HapticFeedback.selectionClick();
+                                          _addOneSetAt(secIndex, menuIndex);
+                                        }
+                                      : null,
+                                  child: Text(l10n.addSet),
+                                ),
+                              ],
                               const SizedBox(width: 4),
                               TextButton.icon(
                                 onPressed: _saveMenuAndClose,
@@ -4935,27 +4966,6 @@ double? calculateTotalVolume(List<SetInputData> sets) {
   return hasValue ? total : null;
 }
 
-String formatTotalVolumeValue(AppLocalizations l10n, double? volume,
-    {bool withSign = false}) {
-  if (volume == null) {
-    return l10n.valueNotAvailable;
-  }
-  final String unit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
-  final bool isInteger = (volume - volume.truncateToDouble()).abs() < 0.0001;
-  String number = isInteger
-      ? volume.toStringAsFixed(0)
-      : volume
-          .toStringAsFixed(2)
-          .replaceAll(RegExp(r'0+$'), '')
-          .replaceAll(RegExp(r'\.$'), '');
-  if (withSign && volume > 0) {
-    number = '+$number';
-  } else if (withSign && volume == 0) {
-    number = '0';
-  }
-  return '$number $unit';
-}
-
 class _BlurExclusionLayer extends StatefulWidget {
   final List<GlobalKey> exclusionKeys;
   final double sigma;
@@ -5166,6 +5176,12 @@ class MenuListPreview extends StatelessWidget {
                           : cs.onSurface,
                       fontSize: 13.0,
                     );
+                    final display = formatStrengthSetDisplay(
+                      l10n: l10n,
+                      weight: weightText,
+                      unit: unit,
+                      reps: repsText,
+                    );
                     return Row(
                       children: [
                         Text(
@@ -5178,7 +5194,7 @@ class MenuListPreview extends StatelessWidget {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            '${weightText.isEmpty ? '-' : weightText} $unit  /  ${repsText.isEmpty ? '-' : repsText} ${l10n.reps}',
+                            display,
                             style: baseStyle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -5199,10 +5215,9 @@ class MenuListPreview extends StatelessWidget {
       final distance = distanceController;
       final duration = durationController;
       final calorie = calorieController;
-      final unitPrimary =
-          SettingsManager.currentLengthUnit == 'mi' ? 'mi' : l10n.km;
-      final unitSecondary =
-          SettingsManager.currentLengthUnit == 'mi' ? 'yd' : l10n.m;
+      final bool useImperial = !SettingsManager.isMetric;
+      final unitPrimary = useImperial ? 'mi' : l10n.km;
+      final unitSecondary = useImperial ? 'yd' : l10n.m;
 
       Widget valueRow(String label, List<Widget> children) {
         return Padding(
@@ -5241,7 +5256,7 @@ class MenuListPreview extends StatelessWidget {
                     style: TextStyle(fontFamily: kUiFont, color: cs.onSurface))
               ]);
             }
-            if (SettingsManager.currentLengthUnit == 'mi') {
+            if (useImperial) {
               final miles = distKm / 1.609344;
               final totalYd = miles * 1760.0;
               final mi = totalYd ~/ 1760;
@@ -5435,7 +5450,7 @@ class MenuListPreview extends StatelessWidget {
     }
 
     Widget buildCollapsedVolumeRow() {
-      if (isAerobic) {
+      if (isAerobic || !SettingsManager.showTotalVolume) {
         return const SizedBox.shrink();
       }
 
@@ -5483,6 +5498,9 @@ class MenuListPreview extends StatelessWidget {
     }
 
     Widget buildCollapsedSatisfactionRow() {
+      if (!SettingsManager.showSatisfaction) {
+        return const SizedBox.shrink();
+      }
       final int? value = satisfaction;
       if (value == null) {
         return const SizedBox.shrink();
@@ -5582,17 +5600,23 @@ class MenuListPreview extends StatelessWidget {
     }
 
     Widget buildBody() {
+      final bool showVolume =
+          !isAerobic && SettingsManager.showTotalVolume;
+      final bool showSatisfaction = SettingsManager.showSatisfaction;
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 12),
           if (isAerobic) buildAerobicRows() else buildSetRows(),
-          if (!isAerobic) ...[
+          if (showVolume) ...[
             const SizedBox(height: 8),
             buildVolumeRow(),
           ],
-          const SizedBox(height: 12),
-          buildSatisfactionRow(),
+          if (showSatisfaction) ...[
+            const SizedBox(height: 12),
+            buildSatisfactionRow(),
+          ],
           const SizedBox(height: 36),
         ],
       );
@@ -5816,7 +5840,7 @@ class _MenuListState extends State<MenuList> {
       return;
     }
     final dKm = double.tryParse(raw) ?? 0.0;
-    final useImperial = (SettingsManager.currentLengthUnit == 'mi');
+    final useImperial = !SettingsManager.isMetric;
     if (useImperial) {
       // km → mi & yd
       final miles = dKm / 1.609344;
@@ -5858,7 +5882,7 @@ class _MenuListState extends State<MenuList> {
     }
     final major = int.tryParse(majorRaw) ?? 0;
     final minor = int.tryParse(minorRaw) ?? 0;
-    final useImperial = (SettingsManager.currentLengthUnit == 'mi');
+    final useImperial = !SettingsManager.isMetric;
     double dKm;
     if (useImperial) {
       // mi & yd → km（保存は km）
@@ -6325,6 +6349,7 @@ class _MenuListState extends State<MenuList> {
     final l10n = AppLocalizations.of(context)!;
     final String currentUnit = SettingsManager.currentUnit;
     final bool isAerobic = widget.isAerobic;
+    final bool useImperialLength = !SettingsManager.isMetric;
 
     void notifyFocus(bool has) {
       if (has) {
@@ -6546,12 +6571,12 @@ class _MenuListState extends State<MenuList> {
                                             ),
                                           ),
                                         ),
-                                      ),
                                     ),
-                                    Text(
-                                      ' ${SettingsManager.currentLengthUnit == "mi" ? "mi" : l10n.km} ',
-                                      style: aerobicUnitEmphasisStyle,
-                                    ),
+                                  ),
+                                  Text(
+                                    ' ${useImperialLength ? 'mi' : l10n.km} ',
+                                    style: aerobicUnitEmphasisStyle,
+                                  ),
                                     Expanded(
                                       flex: 2,
                                       child: Focus(
@@ -6615,10 +6640,10 @@ class _MenuListState extends State<MenuList> {
                                         ),
                                       ),
                                     ),
-                                    Text(
-                                      ' ${SettingsManager.currentLengthUnit == "mi" ? "yd" : l10n.m} ',
-                                      style: aerobicUnitStyle,
-                                    ),
+                                  Text(
+                                    ' ${useImperialLength ? 'yd' : l10n.m} ',
+                                    style: aerobicUnitStyle,
+                                  ),
                                   ],
                                 ),
                               ),
@@ -6858,11 +6883,15 @@ class _MenuListState extends State<MenuList> {
                             children: [
                               _buildStrengthSetRows(
                                   l10n, colorScheme, currentUnit, notifyFocus),
-                              const SizedBox(height: 12),
-                              _buildTotalVolumeRow(nameFilled),
-                              const SizedBox(height: 12),
-                              _buildSatisfactionControlRow(
-                                  l10n, colorScheme, nameFilled),
+                              if (SettingsManager.showTotalVolume) ...[
+                                const SizedBox(height: 12),
+                                _buildTotalVolumeRow(nameFilled),
+                              ],
+                              if (SettingsManager.showSatisfaction) ...[
+                                const SizedBox(height: 12),
+                                _buildSatisfactionControlRow(
+                                    l10n, colorScheme, nameFilled),
+                              ],
                               const SizedBox(height: 40),
                             ],
                           ),

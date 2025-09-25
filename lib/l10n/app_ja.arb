@@ -116,6 +116,8 @@
   "selectBodyParts": "表示する部位を選択",
   "changeSetCount": "セット数の変更",
   "settingsStopwatchTimerVisibility": "ストップウォッチ/タイマー表示",
+  "recordDisplayOptions": "表示項目",
+  "intervalTimer": "インターバルタイマー",
   "settingsDailyMediaCap": "1日の写真上限",
   "settingsDailyMediaCapDesc": "1日に保存できる写真の上限枚数",
   "settingsDailyMediaCapShort": "写真上限",
