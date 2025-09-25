@@ -668,8 +668,8 @@ class _RecordScreenState extends State<RecordScreen>
           section.menuControllers.add(TextEditingController(text: name));
           section.menuKeys.add(GlobalKey());
           section.nameFieldKeys.add(GlobalKey());
-          // 満足度は MenuData から復元（記録優先、なければ LastUsed）
-          section.satisfactionList.add(rec?.satisfaction ?? lu?.satisfaction);
+          // 満足度は当日の記録がある場合のみ復元
+          section.satisfactionList.add(rec?.satisfaction);
 
           if (isAerobic) {
             final String dist = (rec?.distance?.trim().isNotEmpty ?? false)
@@ -695,6 +695,7 @@ class _RecordScreenState extends State<RecordScreen>
             section.aerobicCalorieHintVisible.add(false);
             section.aerobicCalorieHintShown.add(false);
             section.setInputDataList.add(<SetInputData>[]);
+            section.previousVolumeList.add(lu?.totalVolume ?? rec?.totalVolume);
           } else {
             final int recLen =
                 rec == null ? 0 : min(rec.weights.length, rec.reps.length);
@@ -722,15 +723,6 @@ class _RecordScreenState extends State<RecordScreen>
                 w = lu!.weights[i];
                 r = lu.reps[i];
                 isSuggestion = true;
-                final checkedList = lu.checkedStates;
-                if (checkedList != null && i < checkedList.length) {
-                  checked = checkedList[i];
-                }
-              } else {
-                final checkedList = lu?.checkedStates;
-                if (checkedList != null && i < checkedList.length) {
-                  checked = checkedList[i];
-                }
               }
               row.add(SetInputData(
                 weightController: TextEditingController(text: w),
@@ -740,6 +732,7 @@ class _RecordScreenState extends State<RecordScreen>
               ));
             }
             section.setInputDataList.add(row);
+            section.previousVolumeList.add(lu?.totalVolume ?? rec?.totalVolume);
           }
         }
 
@@ -1087,6 +1080,7 @@ class _RecordScreenState extends State<RecordScreen>
           nameFieldKeys: [],
           menuCollapsedStates: [],
           satisfactionList: [],
+          previousVolumeList: [],
           aerobicDistanceCtrls: [],
           aerobicDurationCtrls: [],
           aerobicSuggestFlags: [],
@@ -1118,7 +1112,7 @@ class _RecordScreenState extends State<RecordScreen>
         section.menuKeys.add(GlobalKey());
         section.nameFieldKeys.add(GlobalKey());
         section.menuCollapsedStates.add(true);
-        section.satisfactionList.add(rec?.satisfaction ?? lu?.satisfaction);
+        section.satisfactionList.add(rec?.satisfaction);
 
         if (isAerobic) {
           final String dist = (rec?.distance?.trim().isNotEmpty ?? false)
@@ -1142,6 +1136,7 @@ class _RecordScreenState extends State<RecordScreen>
           section.aerobicCalorieHintVisible.add(false);
           section.aerobicCalorieHintShown.add(false);
           section.setInputDataList.add(<SetInputData>[]);
+          section.previousVolumeList.add(lu?.totalVolume ?? rec?.totalVolume);
         } else {
           final int recLen =
               rec == null ? 0 : min(rec.weights.length, rec.reps.length);
@@ -1170,15 +1165,6 @@ class _RecordScreenState extends State<RecordScreen>
               w = lu!.weights[i];
               r = lu.reps[i];
               isSuggestion = true;
-              final checkedList = lu.checkedStates;
-              if (checkedList != null && i < checkedList.length) {
-                checked = checkedList[i];
-              }
-            } else {
-              final checkedList = lu?.checkedStates ?? rec?.checkedStates;
-              if (checkedList != null && i < checkedList.length) {
-                checked = checkedList[i];
-              }
             }
             row.add(SetInputData(
               weightController: TextEditingController(text: w),
@@ -1188,6 +1174,7 @@ class _RecordScreenState extends State<RecordScreen>
             ));
           }
           section.setInputDataList.add(row);
+          section.previousVolumeList.add(lu?.totalVolume ?? rec?.totalVolume);
         }
       }
     }
@@ -1262,6 +1249,7 @@ class _RecordScreenState extends State<RecordScreen>
     // 追加
     section.menuCollapsedStates.clear();
     section.satisfactionList.clear();
+    section.previousVolumeList.clear();
   }
 
   bool _saveAllSectionsData({bool showHint = true}) {
@@ -1936,6 +1924,7 @@ class _RecordScreenState extends State<RecordScreen>
       section.menuCollapsedStates.add(true);
 // 追加
       section.satisfactionList.add(null);
+      section.previousVolumeList.add(null);
 
       final isAerobic = section.selectedPart == l10n.aerobicExercise;
       if (isAerobic) {
@@ -2089,6 +2078,9 @@ class _RecordScreenState extends State<RecordScreen>
 // 追加
       if (section.satisfactionList.length > menuIndex) {
         section.satisfactionList.removeAt(menuIndex);
+      }
+      if (section.previousVolumeList.length > menuIndex) {
+        section.previousVolumeList.removeAt(menuIndex);
       }
 
       // カレント選択の整合性
@@ -3518,6 +3510,10 @@ class _RecordScreenState extends State<RecordScreen>
                                         }
                                       });
                                     },
+                                    previousTotalVolume: (menuIndex <
+                                            section.previousVolumeList.length)
+                                        ? section.previousVolumeList[menuIndex]
+                                        : null,
                                     enabledForInput: true,
                                     isCollapsed: (menuIndex <
                                             section.menuCollapsedStates.length)
@@ -4180,6 +4176,14 @@ class _RecordScreenState extends State<RecordScreen>
                                                                     .satisfactionList[
                                                                 menuIndex]
                                                             : null,
+                                                        previousVolume: (menuIndex <
+                                                                section
+                                                                    .previousVolumeList
+                                                                    .length)
+                                                            ? section
+                                                                    .previousVolumeList[
+                                                                menuIndex]
+                                                            : null,
                                                         isCollapsed: (menuIndex <
                                                                 section
                                                                     .menuCollapsedStates
@@ -4339,6 +4343,15 @@ class _RecordScreenState extends State<RecordScreen>
                                                             }
                                                           });
                                                         },
+                                                        previousTotalVolume:
+                                                            (menuIndex <
+                                                                    section
+                                                                        .previousVolumeList
+                                                                        .length)
+                                                                ? section
+                                                                        .previousVolumeList[
+                                                                    menuIndex]
+                                                                : null,
                                                         isCollapsed: (menuIndex <
                                                                 section
                                                                     .menuCollapsedStates
@@ -4771,6 +4784,7 @@ class SectionData {
 
   // 追加：メニューごとの満足度（2=良い,1=普通,0=悪い,null=未選択）
   List<int?> satisfactionList;
+  List<double?> previousVolumeList; // 追加：前回総ボリューム
 
   List<TextEditingController> aerobicDistanceCtrls;
   List<TextEditingController> aerobicDurationCtrls;
@@ -4789,6 +4803,7 @@ class SectionData {
     required this.nameFieldKeys,
     List<bool>? menuCollapsedStates,
     List<int?>? satisfactionList, // 追加
+    List<double?>? previousVolumeList,
     List<TextEditingController>? aerobicDistanceCtrls,
     List<TextEditingController>? aerobicDurationCtrls,
     List<bool>? aerobicSuggestFlags,
@@ -4798,6 +4813,7 @@ class SectionData {
     List<bool>? aerobicCalorieHintShown,
   })  : menuCollapsedStates = menuCollapsedStates ?? <bool>[],
         satisfactionList = satisfactionList ?? <int?>[],
+        previousVolumeList = previousVolumeList ?? <double?>[],
         // 追加
         aerobicDistanceCtrls =
             aerobicDistanceCtrls ?? <TextEditingController>[],
@@ -4832,6 +4848,7 @@ class SectionData {
       nameFieldKeys: shouldPopulateDefaults ? [GlobalKey()] : [],
       menuCollapsedStates: shouldPopulateDefaults ? [true] : [],
       satisfactionList: shouldPopulateDefaults ? [null] : [],
+      previousVolumeList: shouldPopulateDefaults ? [null] : [],
       // 追加
       aerobicDistanceCtrls: [],
       aerobicDurationCtrls: [],
@@ -5041,6 +5058,7 @@ class MenuListPreview extends StatelessWidget {
   final bool showCalorieField;
   final bool showAerobicFailureHint;
   final int? satisfaction;
+  final double? previousVolume;
   final bool isCollapsed;
   final VoidCallback onToggleCollapse;
   final VoidCallback onPrepareAction;
@@ -5057,6 +5075,7 @@ class MenuListPreview extends StatelessWidget {
     this.showCalorieField = false,
     this.showAerobicFailureHint = false,
     this.satisfaction,
+    this.previousVolume,
     required this.isCollapsed,
     required this.onToggleCollapse,
     required this.onPrepareAction,
@@ -5342,10 +5361,15 @@ class MenuListPreview extends StatelessWidget {
           color: cs.onSurface,
           fontSize: 13.0,
         );
+        final double? prevVolume = previousVolume;
+        final double? diffVolume =
+            (current != null && prevVolume != null) ? current - prevVolume : null;
         final String currentText =
             formatTotalVolumeValue(l10n, current, withSign: false);
-        final String previousText = l10n.valueNotAvailable;
-        final String diffText = l10n.valueNotAvailable;
+        final String previousText =
+            formatTotalVolumeValue(l10n, prevVolume, withSign: false);
+        final String diffText =
+            formatTotalVolumeValue(l10n, diffVolume, withSign: true);
 
         Widget volumeText(String label, String value) {
           return Text.rich(
@@ -5652,6 +5676,7 @@ class MenuList extends StatefulWidget {
 
   final int? satisfaction;
   final ValueChanged<int?>? onSatisfactionChanged;
+  final double? previousTotalVolume;
   final bool enabledForInput;
   final bool isCollapsed;
   final VoidCallback onToggleCollapse;
@@ -5681,6 +5706,7 @@ class MenuList extends StatefulWidget {
     this.onAerobicFailureHintTap,
     this.satisfaction,
     this.onSatisfactionChanged,
+    this.previousTotalVolume,
     this.enabledForInput = true,
     this.isCollapsed = true,
     required this.onToggleCollapse,
@@ -6024,10 +6050,15 @@ class _MenuListState extends State<MenuList> {
         color: cs.onSurface,
         fontSize: 13.0,
       );
+      final double? prevVolume = widget.previousTotalVolume;
+      final double? diffVolume =
+          (current != null && prevVolume != null) ? current - prevVolume : null;
       final String currentText =
           formatTotalVolumeValue(l10n, current, withSign: false);
-      final String previousText = l10n.valueNotAvailable;
-      final String diffText = l10n.valueNotAvailable;
+      final String previousText =
+          formatTotalVolumeValue(l10n, prevVolume, withSign: false);
+      final String diffText =
+          formatTotalVolumeValue(l10n, diffVolume, withSign: true);
 
       Widget volumeText(String label, String value) {
         return Text.rich(
