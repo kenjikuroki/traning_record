@@ -2510,15 +2510,21 @@ class _RecordScreenState extends State<RecordScreen>
       {bool suppressOverlay = false}) {
     if (sectionIndex < 0 || sectionIndex >= _sections.length) return;
     final section = _sections[sectionIndex];
-    if (menuIndex < 0 || menuIndex >= section.menuCollapsedStates.length)
-      return;
+    if (menuIndex < 0) return;
+
+    // ★不足分を true（折りたたみ中）で埋める＝安全初期化
+    if (section.menuCollapsedStates.length <= menuIndex) {
+      section.menuCollapsedStates.addAll(
+        List<bool>.filled(menuIndex + 1 - section.menuCollapsedStates.length, true),
+      );
+    }
 
     // 今の状態を保持：true=折りたたみ中（これから開く）
     final bool wasCollapsed = section.menuCollapsedStates[menuIndex];
 
     setState(() {
       section.menuCollapsedStates[menuIndex] =
-          !section.menuCollapsedStates[menuIndex];
+      !section.menuCollapsedStates[menuIndex];
       if (suppressOverlay) _suppressNextMenuOverlay = true;
     });
 
@@ -2530,7 +2536,6 @@ class _RecordScreenState extends State<RecordScreen>
         if (ctx != null) {
           Scrollable.ensureVisible(
             ctx,
-            // 末尾カードでも中身がちゃんと見えるように下寄せ
             alignment: 1.0,
             alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
             duration: const Duration(milliseconds: 250),
@@ -2540,6 +2545,7 @@ class _RecordScreenState extends State<RecordScreen>
       });
     }
   }
+
 
   void _prepareMenuQuickAction(int sectionIndex, int menuIndex) {
     setState(() {
