@@ -867,6 +867,30 @@ abstract class AppLocalizations {
   /// **'You can add up to 10 parts.'**
   String get partLimitReached;
 
+  /// No description provided for @removePersonalCardTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide personal card'**
+  String get removePersonalCardTooltip;
+
+  /// No description provided for @removePartCardTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove part card'**
+  String get removePartCardTooltip;
+
+  /// No description provided for @deletePersonalConfirmationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide personal metrics card?'**
+  String get deletePersonalConfirmationTitle;
+
+  /// No description provided for @deletePartConfirmationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this part card?'**
+  String get deletePartConfirmationTitle;
+
   /// No description provided for @exerciseLimitReached.
   ///
   /// In en, this message translates to:

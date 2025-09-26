@@ -401,6 +401,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get partLimitReached => 'You can add up to 10 parts.';
 
   @override
+  String get removePersonalCardTooltip => 'Hide personal card';
+
+  @override
+  String get removePartCardTooltip => 'Remove part card';
+
+  @override
+  String get deletePersonalConfirmationTitle =>
+      'Hide personal metrics card?';
+
+  @override
+  String get deletePartConfirmationTitle => 'Remove this part card?';
+
+  @override
   String get exerciseLimitReached => 'You can add up to 15 exercises.';
 
   @override

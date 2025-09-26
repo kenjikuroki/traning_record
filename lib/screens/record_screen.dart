@@ -678,14 +678,17 @@ class _RecordScreenState extends State<RecordScreen>
         };
         final Map<String, MenuData> luBy = {for (final m in luList) m.name: m};
 
+        final l10n = AppLocalizations.of(context)!;
+        final bool isAerobic = current == l10n.aerobicExercise;
+
         final List<String> names = [
           ...recList.map((m) => m.name),
           ...luList.where((m) => !recBy.containsKey(m.name)).map((m) => m.name),
         ];
-        if (names.isEmpty) names.add('');
-
-        final l10n = AppLocalizations.of(context)!;
-        final isAerobic = current == l10n.aerobicExercise;
+        if (names.isEmpty) {
+          final int defaultCount = isAerobic ? 3 : 5;
+          names.addAll(List.filled(defaultCount, ''));
+        }
 
         for (final name in names) {
           final rec = recBy[name];
@@ -2281,6 +2284,80 @@ class _RecordScreenState extends State<RecordScreen>
     });
   }
 
+  Future<void> _handleRemoveSection(int sectionIndex) async {
+    if (sectionIndex < 0 || sectionIndex >= _sections.length) {
+      return;
+    }
+
+    final l10n = AppLocalizations.of(context)!;
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deletePartConfirmationTitle),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.no),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.yes),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) {
+      return;
+    }
+
+    if (_menuOverlayVisible && _menuSecIndex == sectionIndex) {
+      setState(() {
+        _menuSlideIn = false;
+      });
+      await Future.delayed(_overlaySlideDuration);
+      if (!mounted) return;
+      setState(() {
+        _menuOverlayVisible = false;
+        _menuSecIndex = null;
+        _menuMenuIndex = null;
+      });
+    }
+
+    await _dismissKeyboardSafely(context);
+    if (!mounted) return;
+
+    final SectionData removedSection = _sections.removeAt(sectionIndex);
+    removedSection.dispose();
+
+    setState(() {
+      _currentSectionIndex = null;
+      _currentMenuIndex = null;
+
+      if (_skipTapSectionIndex != null) {
+        if (_skipTapSectionIndex == sectionIndex) {
+          _skipTapSectionIndex = null;
+          _skipTapMenuIndex = null;
+        } else if (_skipTapSectionIndex! > sectionIndex) {
+          _skipTapSectionIndex = _skipTapSectionIndex! - 1;
+        }
+      }
+
+      if (_menuSecIndex != null) {
+        if (_menuSecIndex == sectionIndex) {
+          _menuSecIndex = null;
+          _menuMenuIndex = null;
+        } else if (_menuSecIndex! > sectionIndex) {
+          _menuSecIndex = _menuSecIndex! - 1;
+        }
+      }
+
+      if (_sections.isEmpty) {
+        _currentSectionIndex = null;
+        _currentMenuIndex = null;
+      }
+    });
+  }
+
   void _reorderMenuItem(int sectionIndex, int oldIndex, int rawNewIndex) {
     if (sectionIndex < 0 || sectionIndex >= _sections.length) return;
     final section = _sections[sectionIndex];
@@ -2538,6 +2615,45 @@ class _RecordScreenState extends State<RecordScreen>
     } catch (_) {
       // ignore
     }
+  }
+
+  Future<void> _handleRemovePersonalCard() async {
+    final l10n = AppLocalizations.of(context)!;
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deletePersonalConfirmationTitle),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.no),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.yes),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) {
+      return;
+    }
+
+    await _dismissKeyboardSafely(context);
+    if (_personalOverlayVisible) {
+      if (!mounted) return;
+      setState(() => _personalSlideIn = false);
+      await Future.delayed(_overlaySlideDuration);
+      if (!mounted) return;
+      setState(() => _personalOverlayVisible = false);
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _showPersonalCard = false;
+      _personalSelected = false;
+      _personalCollapsed = true;
+    });
   }
 
   void _handleAddExercise() {
@@ -3234,8 +3350,7 @@ class _RecordScreenState extends State<RecordScreen>
                     controller: controller,
                     readOnly: shouldBlockInput,
                     showCursor: shouldBlockInput ? false : null,
-                    enableInteractiveSelection:
-                        shouldBlockInput ? false : null,
+                    enableInteractiveSelection: shouldBlockInput ? false : null,
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       fontFamily: kUiFont,
@@ -3687,8 +3802,9 @@ class _RecordScreenState extends State<RecordScreen>
     final bool isAerobic = section.selectedPart == l10n.aerobicExercise;
 
     final double topGap = media.padding.top + kToolbarHeight + 8;
-    final double maxHeight =
-        (media.size.height - topGap - 12).clamp(0.0, media.size.height).toDouble();
+    final double maxHeight = (media.size.height - topGap - 12)
+        .clamp(0.0, media.size.height)
+        .toDouble();
     final double overlayHeight =
         min(media.size.height * 0.48, maxHeight); // 少し高めにして可視域を拡張
 
@@ -4257,6 +4373,19 @@ class _RecordScreenState extends State<RecordScreen>
                                                       VisualDensity.compact,
                                                   splashRadius: 20,
                                                 ),
+                                                IconButton(
+                                                  onPressed:
+                                                      _handleRemovePersonalCard,
+                                                  tooltip: l10n
+                                                      .removePersonalCardTooltip,
+                                                  icon: const Icon(
+                                                    Icons.close,
+                                                    size: 18,
+                                                  ),
+                                                  visualDensity:
+                                                      VisualDensity.compact,
+                                                  splashRadius: 18,
+                                                ),
                                               ],
                                             ),
                                             AnimatedCrossFade(
@@ -4416,6 +4545,17 @@ class _RecordScreenState extends State<RecordScreen>
                                             ),
                                           ),
                                         ),
+                                      ),
+                                      IconButton(
+                                        onPressed: () =>
+                                            _handleRemoveSection(secIndex),
+                                        tooltip: l10n.removePartCardTooltip,
+                                        icon: const Icon(
+                                          Icons.close,
+                                          size: 18,
+                                        ),
+                                        visualDensity: VisualDensity.compact,
+                                        splashRadius: 18,
                                       ),
                                     ],
                                   ),

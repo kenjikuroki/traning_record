@@ -401,6 +401,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get partLimitReached => '部位は10個までしか追加できません。';
 
   @override
+  String get removePersonalCardTooltip => 'パーソナルカードを閉じる';
+
+  @override
+  String get removePartCardTooltip => '部位カードを削除';
+
+  @override
+  String get deletePersonalConfirmationTitle =>
+      'パーソナルカードを閉じますか？';
+
+  @override
+  String get deletePartConfirmationTitle => 'この部位カードを削除しますか？';
+
+  @override
   String get exerciseLimitReached => '種目は15個までしか追加できません。';
 
   @override
