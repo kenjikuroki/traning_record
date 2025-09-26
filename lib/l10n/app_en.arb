@@ -74,6 +74,15 @@
   "customExerciseNameRequired": "Enter an exercise name",
   "customExerciseDuplicate": "This exercise is already registered",
   "customExercisePickerEmpty": "No saved exercises yet. Tap + to add one.",
+  "open": "Open",
+  "removeCustomExercises": "Remove Custom Exercises",
+  "customExerciseRemovalHint": "Delete previously added custom exercises.",
+  "noCustomExercises": "No custom exercises have been added.",
+  "selectExerciseToDelete": "Select exercise to delete",
+  "customExerciseRemoved": "Removed {exerciseName}.",
+  "customExerciseRemoved@placeholders": {
+    "exerciseName": {}
+  },
   "addMenu": "Add Menu",
   "addSet": "+ Set",
   "openAddMenu": "Open add menu",

@@ -1,5 +1,6 @@
 // lib/screens/settings_screen.dart
 import 'dart:ui'; // BackdropFilter 用
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
@@ -447,6 +448,160 @@ class _SettingsScreenState extends State<SettingsScreen> {
     widget.settingsBox.put('manage.bmi', v);
   }
 
+  Map<String, List<String>> _readCustomExercises() {
+    final result = <String, List<String>>{};
+    final dynamic raw = widget.settingsBox.get('customExercisesByPart');
+    if (raw is Map) {
+      raw.forEach((key, value) {
+        if (key is String && value is List) {
+          final entries = value
+              .whereType<String>()
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList();
+          if (entries.isNotEmpty) {
+            result[key] = entries;
+          }
+        }
+      });
+    }
+    return result;
+  }
+
+  Future<void> _openCustomExerciseRemovalPicker() async {
+    final l10n = AppLocalizations.of(context)!;
+    final material = MaterialLocalizations.of(context);
+    final customMap = _readCustomExercises();
+
+    final names = <String>{};
+    for (final list in customMap.values) {
+      names.addAll(list);
+    }
+
+    if (names.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text(l10n.noCustomExercises)),
+        );
+      return;
+    }
+
+    final options = names.toList()..sort();
+    int tempIndex = 0;
+
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetCtx) {
+        final cs = Theme.of(sheetCtx).colorScheme;
+        return SafeArea(
+          child: SizedBox(
+            height: 320,
+            child: Column(
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurfaceVariant.withOpacity(0.35),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(
+                  height: 52,
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 12),
+                      Text(
+                        l10n.selectExerciseToDelete,
+                        style: TextStyle(
+                          color: cs.onSurface,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => Navigator.pop(sheetCtx, null),
+                        child: Text(material.cancelButtonLabel),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.pop(sheetCtx, options[tempIndex]),
+                        child: Text(
+                          l10n.delete,
+                          style: TextStyle(color: cs.error),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: CupertinoPicker(
+                    itemExtent: 36,
+                    useMagnifier: true,
+                    magnification: 1.08,
+                    scrollController:
+                        FixedExtentScrollController(initialItem: tempIndex),
+                    onSelectedItemChanged: (idx) => tempIndex = idx,
+                    children: [
+                      for (final name in options)
+                        Center(
+                          child: Text(
+                            name,
+                            style: TextStyle(
+                              color: cs.onSurface,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (result == null || !mounted) {
+      return;
+    }
+
+    bool changed = false;
+    final updatedMap = <String, List<String>>{};
+    customMap.forEach((part, list) {
+      final filtered = list.where((name) => name != result).toList();
+      if (filtered.length != list.length) {
+        changed = true;
+      }
+      if (filtered.isNotEmpty) {
+        updatedMap[part] = filtered;
+      }
+    });
+
+    if (!changed) {
+      return;
+    }
+
+    await widget.settingsBox.put('customExercisesByPart', updatedMap);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(l10n.customExerciseRemoved(result))),
+      );
+  }
+
   @override
   void dispose() {
     _heightCmCtrl.dispose();
@@ -885,6 +1040,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         setState(() => _showSatisfaction = v);
                         SettingsManager.setShowSatisfaction(v);
                       },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: _kGap),
+
+            Card(
+              color: colorScheme.surfaceContainerHighest,
+              shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero),
+              margin: _kCardMargin,
+              child: Padding(
+                padding: _kOuterPad,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _headerRow(
+                      icon: Icons.delete_outline,
+                      title: l10n.removeCustomExercises,
+                      trailing: TextButton(
+                        onPressed: _openCustomExerciseRemovalPicker,
+                        child: Text(l10n.open),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      l10n.customExerciseRemovalHint,
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 13.0,
+                      ),
                     ),
                   ],
                 ),

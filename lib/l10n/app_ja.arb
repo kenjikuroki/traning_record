@@ -74,6 +74,15 @@
   "customExerciseNameRequired": "種目名を入力してください",
   "customExerciseDuplicate": "この種目は既に登録されています",
   "customExercisePickerEmpty": "登録済みの候補がありません。＋から追加してください。",
+  "open": "開く",
+  "removeCustomExercises": "追加した種目の削除",
+  "customExerciseRemovalHint": "追加済みのカスタム種目を削除します。",
+  "noCustomExercises": "追加された種目はありません。",
+  "selectExerciseToDelete": "削除する種目を選択",
+  "customExerciseRemoved": "{exerciseName}を削除しました。",
+  "customExerciseRemoved@placeholders": {
+    "exerciseName": {}
+  },
   "addMenu": "種目を追加",
   "addSet": "＋セット",
   "openAddMenu": "追加メニューを開く",

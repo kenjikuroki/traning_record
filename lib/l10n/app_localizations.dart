@@ -225,6 +225,12 @@ abstract class AppLocalizations {
   /// **'Open Settings'**
   String get openSettings;
 
+  /// No description provided for @open.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get open;
+
   /// No description provided for @cameraPermissionRequired.
   ///
   /// In en, this message translates to:
@@ -542,6 +548,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No saved exercises yet. Tap + to add one.'**
   String get customExercisePickerEmpty;
+
+  /// No description provided for @removeCustomExercises.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Custom Exercises'**
+  String get removeCustomExercises;
+
+  /// No description provided for @customExerciseRemovalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete previously added custom exercises.'**
+  String get customExerciseRemovalHint;
+
+  /// No description provided for @noCustomExercises.
+  ///
+  /// In en, this message translates to:
+  /// **'No custom exercises have been added.'**
+  String get noCustomExercises;
+
+  /// No description provided for @selectExerciseToDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Select exercise to delete'**
+  String get selectExerciseToDelete;
+
+  /// No description provided for @customExerciseRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed {exerciseName}.'**
+  String customExerciseRemoved(String exerciseName);
 
   /// No description provided for @addMenu.
   ///

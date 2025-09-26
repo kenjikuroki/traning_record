@@ -72,6 +72,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openSettings => 'Open Settings';
 
   @override
+  String get open => 'Open';
+
+  @override
   String get cameraPermissionRequired => 'Please enable camera permission';
 
   @override
@@ -235,6 +238,23 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get customExercisePickerEmpty =>
       'No saved exercises yet. Tap + to add one.';
+
+  @override
+  String get removeCustomExercises => 'Remove Custom Exercises';
+
+  @override
+  String get customExerciseRemovalHint =>
+      'Delete previously added custom exercises.';
+
+  @override
+  String get noCustomExercises => 'No custom exercises have been added.';
+
+  @override
+  String get selectExerciseToDelete => 'Select exercise to delete';
+
+  @override
+  String customExerciseRemoved(String exerciseName) =>
+      'Removed $exerciseName.';
 
   @override
   String get addMenu => 'Add Menu';

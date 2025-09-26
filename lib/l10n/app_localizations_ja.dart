@@ -72,6 +72,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get openSettings => '設定を開く';
 
   @override
+  String get open => '開く';
+
+  @override
   String get cameraPermissionRequired => 'カメラ権限を有効にしてください';
 
   @override
@@ -234,6 +237,22 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get customExercisePickerEmpty =>
       '登録済みの候補がありません。＋から追加してください。';
+
+  @override
+  String get removeCustomExercises => '追加した種目の削除';
+
+  @override
+  String get customExerciseRemovalHint => '追加済みのカスタム種目を削除します。';
+
+  @override
+  String get noCustomExercises => '追加された種目はありません。';
+
+  @override
+  String get selectExerciseToDelete => '削除する種目を選択';
+
+  @override
+  String customExerciseRemoved(String exerciseName) =>
+      '$exerciseNameを削除しました。';
 
   @override
   String get addMenu => '種目を追加';
