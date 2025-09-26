@@ -181,6 +181,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get leg => '足';
 
   @override
+  String get abs => '腹筋';
+
+  @override
+  String get bodyWeightTraining => '自重';
+
+  @override
   String get fullBody => '全身';
 
   @override
@@ -205,10 +211,29 @@ class AppLocalizationsJa extends AppLocalizations {
   String get menuNameHint => '種目名を入力';
 
   @override
-  String get addExercisePlaceholder => '種目を追加';
+  String get addExercisePlaceholder => '種目を選択';
 
   @override
   String get addExercise => '＋種目';
+
+  @override
+  String get addNewExercise => '＋新規';
+
+  @override
+  String get customExerciseDialogTitle => '新規種目を追加';
+
+  @override
+  String get customExerciseNameHint => '種目名を入力';
+
+  @override
+  String get customExerciseNameRequired => '種目名を入力してください';
+
+  @override
+  String get customExerciseDuplicate => 'この種目は既に登録されています';
+
+  @override
+  String get customExercisePickerEmpty =>
+      '登録済みの候補がありません。＋から追加してください。';
 
   @override
   String get addMenu => '種目を追加';

@@ -435,6 +435,18 @@ abstract class AppLocalizations {
   /// **'Leg'**
   String get leg;
 
+  /// No description provided for @abs.
+  ///
+  /// In en, this message translates to:
+  /// **'Abs'**
+  String get abs;
+
+  /// No description provided for @bodyWeightTraining.
+  ///
+  /// In en, this message translates to:
+  /// **'Bodyweight'**
+  String get bodyWeightTraining;
+
   /// No description provided for @fullBody.
   ///
   /// In en, this message translates to:
@@ -494,6 +506,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'+ Exercise'**
   String get addExercise;
+
+  /// No description provided for @addNewExercise.
+  ///
+  /// In en, this message translates to:
+  /// **'Add New Exercise'**
+  String get addNewExercise;
+
+  /// No description provided for @customExerciseDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add New Exercise'**
+  String get customExerciseDialogTitle;
+
+  /// No description provided for @customExerciseNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Running'**
+  String get customExerciseNameHint;
+
+  /// No description provided for @customExerciseNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an exercise name'**
+  String get customExerciseNameRequired;
+
+  /// No description provided for @customExerciseDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'This exercise is already registered'**
+  String get customExerciseDuplicate;
+
+  /// No description provided for @customExercisePickerEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved exercises yet. Tap + to add one.'**
+  String get customExercisePickerEmpty;
 
   /// No description provided for @addMenu.
   ///

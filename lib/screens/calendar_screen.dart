@@ -145,7 +145,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     '背中': Colors.teal,
     '肩': Colors.amber,
     '足': Colors.green,
+    '腹筋': Colors.pink,
     '全身': Colors.orange,
+    '自重': Colors.indigo,
     'その他１': Colors.grey,
     'その他２': Colors.grey,
     'その他３': Colors.grey,
@@ -281,8 +283,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
         return l10n.shoulder;
       case '足':
         return l10n.leg;
+      case '腹筋':
+        return l10n.abs;
       case '全身':
         return l10n.fullBody;
+      case '自重':
+        return l10n.bodyWeightTraining;
       case 'その他１':
         return l10n.other1;
       case 'その他２':

@@ -62,7 +62,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     '背中',
     '肩',
     '足',
+    '腹筋',
     '全身',
+    '自重',
     'その他１',
     'その他２',
     'その他３',
@@ -245,8 +247,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return l10n.shoulder;
       case '足':
         return l10n.leg;
+      case '腹筋':
+        return l10n.abs;
       case '全身':
         return l10n.fullBody;
+      case '自重':
+        return l10n.bodyWeightTraining;
       case 'その他１':
         return l10n.other1;
       case 'その他２':

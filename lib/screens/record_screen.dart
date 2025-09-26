@@ -1,4 +1,5 @@
 // lib/screens/record_screen.dart
+import 'dart:collection';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -8,6 +9,7 @@ import 'dart:math';
 import 'dart:async';
 import 'package:intl/intl.dart';
 import '../l10n/app_localizations.dart';
+import '../models/exercise_catalog.dart';
 import '../models/menu_data.dart';
 import '../settings_manager.dart';
 import '../utils/training_display_utils.dart';
@@ -198,6 +200,8 @@ class _RecordScreenState extends State<RecordScreen>
   bool _fabOpen = false;
 
   bool _calcAerobicCalories = SettingsManager.enableAerobicCalories;
+
+  Map<String, List<String>> _customExercises = {};
 
   final TextEditingController _weightController = TextEditingController();
 
@@ -889,7 +893,9 @@ class _RecordScreenState extends State<RecordScreen>
     if (translatedPart == l10n.back) return '背中';
     if (translatedPart == l10n.shoulder) return '肩';
     if (translatedPart == l10n.leg) return '足';
+    if (translatedPart == l10n.abs) return '腹筋';
     if (translatedPart == l10n.fullBody) return '全身';
+    if (translatedPart == l10n.bodyWeightTraining) return '自重';
     if (translatedPart == l10n.other1) return 'その他１';
     if (translatedPart == l10n.other2) return 'その他２';
     if (translatedPart == l10n.other3) return 'その他３';
@@ -911,8 +917,12 @@ class _RecordScreenState extends State<RecordScreen>
         return l10n.shoulder;
       case '足':
         return l10n.leg;
+      case '腹筋':
+        return l10n.abs;
       case '全身':
         return l10n.fullBody;
+      case '自重':
+        return l10n.bodyWeightTraining;
       case 'その他１':
         return l10n.other1;
       case 'その他２':
@@ -925,6 +935,7 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   void _loadSettingsAndParts() {
+    _loadCustomExercises();
     final l10n = AppLocalizations.of(context)!;
 
     _allBodyParts = [
@@ -934,7 +945,9 @@ class _RecordScreenState extends State<RecordScreen>
       l10n.back,
       l10n.shoulder,
       l10n.leg,
+      l10n.abs,
       l10n.fullBody,
+      l10n.bodyWeightTraining,
       l10n.other1,
       l10n.other2,
       l10n.other3,
@@ -990,6 +1003,305 @@ class _RecordScreenState extends State<RecordScreen>
         _loadInitialSections();
       });
     }
+  }
+
+  void _loadCustomExercises() {
+    final dynamic raw = widget.settingsBox.get('customExercisesByPart');
+    if (raw is Map) {
+      final map = <String, List<String>>{};
+      raw.forEach((key, value) {
+        if (key is String && value is List) {
+          final entries = value
+              .whereType<String>()
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList();
+          if (entries.isNotEmpty) {
+            map[key] = entries;
+          }
+        }
+      });
+      _customExercises = map;
+    } else {
+      _customExercises = {};
+    }
+  }
+
+  Future<void> _saveCustomExercises() async {
+    final map = <String, List<String>>{
+      for (final entry in _customExercises.entries)
+        entry.key: List<String>.from(entry.value),
+    };
+    await widget.settingsBox.put('customExercisesByPart', map);
+  }
+
+  Future<bool> _addCustomExercise(String originalPart, String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return false;
+    final existing = _customExercises[originalPart];
+    if (existing != null && existing.contains(trimmed)) {
+      return false;
+    }
+    final map = Map<String, List<String>>.from(_customExercises);
+    final list = List<String>.from(map[originalPart] ?? const []);
+    list.add(trimmed);
+    map[originalPart] = list;
+    _customExercises = map;
+    await _saveCustomExercises();
+    return true;
+  }
+
+  List<String> _exerciseOptionsForPart(
+    String originalPart, {
+    String? currentName,
+  }) {
+    final options = LinkedHashSet<String>();
+    final trimmedCurrent = currentName?.trim() ?? '';
+    options.addAll(ExerciseCatalog.defaultsFor(originalPart));
+    final customList = _customExercises[originalPart];
+    if (customList != null) {
+      for (final name in customList) {
+        final trimmed = name.trim();
+        if (trimmed.isNotEmpty) {
+          options.add(trimmed);
+        }
+      }
+    }
+    final dynamic rawLastUsed = widget.lastUsedMenusBox.get(originalPart);
+    if (rawLastUsed is List) {
+      for (final item in rawLastUsed) {
+        if (item is MenuData) {
+          final trimmed = item.name.trim();
+          if (trimmed.isNotEmpty) {
+            options.add(trimmed);
+          }
+        } else if (item is String) {
+          final trimmed = item.trim();
+          if (trimmed.isNotEmpty) {
+            options.add(trimmed);
+          }
+        }
+      }
+    }
+    for (final section in _sections) {
+      final selected = section.selectedPart;
+      if (selected == null) continue;
+      if (_getOriginalPartName(context, selected) != originalPart) continue;
+      for (final ctrl in section.menuControllers) {
+        final trimmed = ctrl.text.trim();
+        if (trimmed.isNotEmpty) {
+          options.add(trimmed);
+        }
+      }
+    }
+    if (trimmedCurrent.isNotEmpty && !options.contains(trimmedCurrent)) {
+      options.add(trimmedCurrent);
+    }
+    return options.where((name) => name.isNotEmpty).toList(growable: false);
+  }
+
+  Future<String?> _promptCustomExerciseName(AppLocalizations l10n) async {
+    final material = MaterialLocalizations.of(context);
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _CustomExerciseDialog(
+        l10n: l10n,
+        material: material,
+      ),
+    );
+    if (result == null) {
+      return null;
+    }
+    final trimmed = result.trim();
+    if (trimmed.isEmpty) {
+      showAppSnack(context, l10n.customExerciseNameRequired);
+      return null;
+    }
+    return trimmed;
+  }
+
+  Future<void> _showExercisePicker(int secIndex, int menuIndex) async {
+    if (secIndex < 0 || secIndex >= _sections.length) {
+      return;
+    }
+    final section = _sections[secIndex];
+    if (menuIndex < 0 || menuIndex >= section.menuControllers.length) {
+      return;
+    }
+    final l10n = AppLocalizations.of(context)!;
+    final material = MaterialLocalizations.of(context);
+    final partLabel = section.selectedPart;
+    if (partLabel == null) {
+      showAppSnack(context, l10n.selectTrainingPart);
+      return;
+    }
+    final originalPart = _getOriginalPartName(context, partLabel);
+    final controller = section.menuControllers[menuIndex];
+    List<String> pickerOptions = _exerciseOptionsForPart(
+      originalPart,
+      currentName: controller.text,
+    );
+    int tempIndex = 0;
+    if (pickerOptions.isNotEmpty) {
+      final currentName = controller.text.trim();
+      final found = pickerOptions.indexOf(currentName);
+      if (found >= 0) {
+        tempIndex = found;
+      }
+    }
+
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      isScrollControlled: true,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (sheetCtx, setSheetState) {
+            final cs = Theme.of(sheetCtx).colorScheme;
+
+            Future<void> handleAdd() async {
+              final newName = await _promptCustomExerciseName(l10n);
+              if (newName == null) {
+                if (!sheetCtx.mounted) return;
+                return;
+              }
+              final added = await _addCustomExercise(originalPart, newName);
+              if (!sheetCtx.mounted) return;
+              if (!added) {
+                showAppSnack(context, l10n.customExerciseDuplicate);
+                return;
+              }
+              pickerOptions = _exerciseOptionsForPart(
+                originalPart,
+                currentName: newName,
+              );
+              tempIndex = pickerOptions.indexOf(newName);
+              if (tempIndex < 0) {
+                tempIndex = 0;
+              }
+              if (!sheetCtx.mounted) return;
+              setSheetState(() {});
+            }
+
+            Widget buildPicker() {
+              if (pickerOptions.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Text(
+                      l10n.customExercisePickerEmpty,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                );
+              }
+              if (tempIndex >= pickerOptions.length) {
+                tempIndex = pickerOptions.length - 1;
+              }
+              if (tempIndex < 0) {
+                tempIndex = 0;
+              }
+              return CupertinoPicker(
+                itemExtent: 36,
+                useMagnifier: true,
+                magnification: 1.08,
+                scrollController:
+                    FixedExtentScrollController(initialItem: tempIndex),
+                onSelectedItemChanged: (i) => tempIndex = i,
+                children: [
+                  for (final name in pickerOptions)
+                    Center(
+                      child: Text(
+                        name,
+                        style: TextStyle(
+                          fontFamily: kUiFont,
+                          color: cs.onSurface,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            }
+
+        return SafeArea(
+          child: SizedBox(
+            height: 320,
+            child: Column(
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurfaceVariant.withOpacity(0.35),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(
+                  height: 52,
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 12),
+                      Text(
+                        l10n.selectExercise,
+                        style: TextStyle(
+                          color: cs.onSurface,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: handleAdd,
+                        child: Text(l10n.addNewExercise),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(sheetCtx, null),
+                        child: Text(material.cancelButtonLabel),
+                      ),
+                      TextButton(
+                        onPressed: pickerOptions.isEmpty
+                            ? null
+                            : () => Navigator.pop(
+                                  sheetCtx,
+                                  pickerOptions[tempIndex],
+                                ),
+                        child: Text(material.okButtonLabel),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(child: buildPicker()),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+      },
+    );
+
+    if (!mounted || result == null) {
+      return;
+    }
+    final trimmedResult = result.trim();
+    if (trimmedResult.isEmpty || trimmedResult == controller.text.trim()) {
+      return;
+    }
+    setState(() {
+      controller.text = trimmedResult;
+    });
   }
 
   // === ここから パーソナル・フローティングエディタ ===
@@ -4005,6 +4317,9 @@ class _RecordScreenState extends State<RecordScreen>
                                         _dismissAerobicFailureHint(
                                             secIndex, menuIndex),
                                     onAnyFieldFocused: () {},
+                                    onMenuNameTap: () =>
+                                        _showExercisePicker(
+                                            secIndex, menuIndex),
                                     onNameChanged: (prevEmpty, nowEmpty) {
                                       if (section.selectedPart ==
                                           l10n.aerobicExercise) {
@@ -4832,6 +5147,9 @@ class _RecordScreenState extends State<RecordScreen>
                                                     _dismissAerobicFailureHint(
                                                         secIndex, menuIndex),
                                                 enabledForInput: isSelected,
+                                                onMenuNameTap: () =>
+                                                    _showExercisePicker(
+                                                        secIndex, menuIndex),
                                                 onNameChanged:
                                                     (prevEmpty, nowEmpty) {
                                                   if (section.selectedPart ==
@@ -6274,6 +6592,7 @@ class MenuList extends StatefulWidget {
   final bool showAerobicFailureHint;
   final VoidCallback? onConfirmAerobic;
   final VoidCallback? onAnyFieldFocused;
+  final VoidCallback? onMenuNameTap;
   final void Function(bool prevEmpty, bool nowEmpty)? onNameChanged;
   final VoidCallback? onAerobicFieldChanged;
   final ValueChanged<String>? onCalorieChanged;
@@ -6305,6 +6624,7 @@ class MenuList extends StatefulWidget {
     this.showAerobicFailureHint = false,
     this.onConfirmAerobic,
     this.onAnyFieldFocused,
+    this.onMenuNameTap,
     this.onNameChanged,
     this.onAerobicFieldChanged,
     this.onCalorieChanged,
@@ -6323,6 +6643,56 @@ class MenuList extends StatefulWidget {
 
   @override
   State<MenuList> createState() => _MenuListState();
+}
+
+class _CustomExerciseDialog extends StatefulWidget {
+  final AppLocalizations l10n;
+  final MaterialLocalizations material;
+
+  const _CustomExerciseDialog({
+    required this.l10n,
+    required this.material,
+  });
+
+  @override
+  State<_CustomExerciseDialog> createState() => _CustomExerciseDialogState();
+}
+
+class _CustomExerciseDialogState extends State<_CustomExerciseDialog> {
+  late final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.l10n.customExerciseDialogTitle),
+      content: SizedBox(
+        width: 320,
+        child: TextField(
+          controller: _controller,
+          autofocus: true,
+          inputFormatters: [LengthLimitingTextInputFormatter(40)],
+          decoration:
+              InputDecoration(hintText: widget.l10n.customExerciseNameHint),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: Text(widget.material.cancelButtonLabel),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, _controller.text.trim()),
+          child: Text(widget.material.okButtonLabel),
+        ),
+      ],
+    );
+  }
 }
 
 class _MenuListState extends State<MenuList> {
@@ -7471,15 +7841,21 @@ class _MenuListState extends State<MenuList> {
                       const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
                   child: TextField(
                     controller: widget.menuController,
-                    keyboardType: TextInputType.text,
                     inputFormatters: [
-                      LengthLimitingTextInputFormatter(25),
+                      LengthLimitingTextInputFormatter(40),
                     ],
+                    readOnly: true,
+                    showCursor: false,
+                    enableInteractiveSelection: false,
                     textAlign: TextAlign.left,
                     style: TextStyle(
                       fontFamily: kUiFont,
                       color: colorScheme.onSurface,
                     ),
+                    onTap: () {
+                      notifyFocus(true);
+                      widget.onMenuNameTap?.call();
+                    },
                     decoration: InputDecoration(
                       isDense: true,
                       hintText: l10n.addExercisePlaceholder,

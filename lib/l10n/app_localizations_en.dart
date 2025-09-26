@@ -181,6 +181,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get leg => 'Leg';
 
   @override
+  String get abs => 'Abs';
+
+  @override
+  String get bodyWeightTraining => 'Bodyweight';
+
+  @override
   String get fullBody => 'Full Body';
 
   @override
@@ -205,10 +211,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get menuNameHint => 'Enter menu name';
 
   @override
-  String get addExercisePlaceholder => 'Add exercise';
+  String get addExercisePlaceholder => 'Select exercise';
 
   @override
   String get addExercise => '+ Exercise';
+
+  @override
+  String get addNewExercise => '+ New';
+
+  @override
+  String get customExerciseDialogTitle => 'Add New Exercise';
+
+  @override
+  String get customExerciseNameHint => 'Enter exercise name';
+
+  @override
+  String get customExerciseNameRequired => 'Enter an exercise name';
+
+  @override
+  String get customExerciseDuplicate =>
+      'This exercise is already registered';
+
+  @override
+  String get customExercisePickerEmpty =>
+      'No saved exercises yet. Tap + to add one.';
 
   @override
   String get addMenu => 'Add Menu';

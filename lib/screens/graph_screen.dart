@@ -191,7 +191,9 @@ class _GraphScreenState extends State<GraphScreen> {
     if (translatedPart == l10n.back) return '背中';
     if (translatedPart == l10n.shoulder) return '肩';
     if (translatedPart == l10n.leg) return '足';
+    if (translatedPart == l10n.abs) return '腹筋';
     if (translatedPart == l10n.fullBody) return '全身';
+    if (translatedPart == l10n.bodyWeightTraining) return '自重';
     if (translatedPart == l10n.other1) return 'その他１';
     if (translatedPart == l10n.other2) return 'その他２';
     if (translatedPart == l10n.other3) return 'その他３';
@@ -308,8 +310,12 @@ class _GraphScreenState extends State<GraphScreen> {
         return l10n.shoulder;
       case '足':
         return l10n.leg;
+      case '腹筋':
+        return l10n.abs;
       case '全身':
         return l10n.fullBody;
+      case '自重':
+        return l10n.bodyWeightTraining;
       case 'その他１':
         return l10n.other1;
       case 'その他２':
@@ -428,7 +434,9 @@ class _GraphScreenState extends State<GraphScreen> {
       '背中',
       '肩',
       '足',
+      '腹筋',
       '全身',
+      '自重',
       'その他１',
       'その他２',
       'その他３',
