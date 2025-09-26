@@ -46,9 +46,9 @@ class SettingsManager {
   static final ValueNotifier<ThemeMode> _themeModeNotifier =
       ValueNotifier<ThemeMode>(ThemeMode.system);
 
-  // カラーテーマ（モノトーン／紫／青／緑／黄）← 追加
+  // カラーテーマ（モノトーン／紫／青／緑／黄）← デフォルトは青
   static final ValueNotifier<int> _appColorThemeIndexNotifier =
-  ValueNotifier<int>(0);
+      ValueNotifier<int>(2);
 
 
 
@@ -120,9 +120,9 @@ class SettingsManager {
     };
 
     // カラーテーマ ← 追加
-    final int colorIdx = (box.get(_appColorThemeKey, defaultValue: 0) as int);
+    final int colorIdx = (box.get(_appColorThemeKey, defaultValue: 2) as int);
     _appColorThemeIndexNotifier.value =
-    (colorIdx < 0 || colorIdx > 4) ? 0 : colorIdx;
+        (colorIdx < 0 || colorIdx > 4) ? 2 : colorIdx;
 
     // 背景
     _backgroundAssetNotifier.value =

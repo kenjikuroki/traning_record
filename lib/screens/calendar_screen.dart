@@ -175,7 +175,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (seen) return;
 
       final l10n = AppLocalizations.of(context)!;
-      await CoachBubbleController.showSequence(
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+try {
+  final primary = PrimaryScrollController.maybeOf(context);
+  if (primary != null && primary.hasClients) {
+    await primary.animateTo(
+      primary.position.pixels + 20,
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOutCubic,
+    );
+  }
+} catch (_) {}
+await CoachBubbleController.showSequence(
         context: context,
         anchors: [_kCalendarCard],
         messages: [l10n.hintCalendarTapDate],
@@ -1164,10 +1175,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       floatingActionButton: FloatingActionButton(
         heroTag: 'calendarFab',
         backgroundColor: Theme.of(context).colorScheme.primary,
-        onPressed: () {
-          final day = _selectedDay ?? widget.selectedDate; // 選択日がなければ初期日
-          _openRecordSheet(day);
-        },
+        onPressed: _handleAddPressed,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );

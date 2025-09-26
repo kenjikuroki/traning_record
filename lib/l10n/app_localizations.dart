@@ -225,12 +225,6 @@ abstract class AppLocalizations {
   /// **'Open Settings'**
   String get openSettings;
 
-  /// No description provided for @open.
-  ///
-  /// In en, this message translates to:
-  /// **'Open'**
-  String get open;
-
   /// No description provided for @cameraPermissionRequired.
   ///
   /// In en, this message translates to:
@@ -504,7 +498,7 @@ abstract class AppLocalizations {
   /// No description provided for @addExercisePlaceholder.
   ///
   /// In en, this message translates to:
-  /// **'Add exercise'**
+  /// **'Select exercise'**
   String get addExercisePlaceholder;
 
   /// No description provided for @addExercise.
@@ -516,7 +510,7 @@ abstract class AppLocalizations {
   /// No description provided for @addNewExercise.
   ///
   /// In en, this message translates to:
-  /// **'Add New Exercise'**
+  /// **'+ New'**
   String get addNewExercise;
 
   /// No description provided for @customExerciseDialogTitle.
@@ -528,7 +522,7 @@ abstract class AppLocalizations {
   /// No description provided for @customExerciseNameHint.
   ///
   /// In en, this message translates to:
-  /// **'e.g. Running'**
+  /// **'Enter exercise name'**
   String get customExerciseNameHint;
 
   /// No description provided for @customExerciseNameRequired.
@@ -548,6 +542,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No saved exercises yet. Tap + to add one.'**
   String get customExercisePickerEmpty;
+
+  /// No description provided for @open.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get open;
 
   /// No description provided for @removeCustomExercises.
   ///
@@ -577,7 +577,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Removed {exerciseName}.'**
-  String customExerciseRemoved(String exerciseName);
+  String customExerciseRemoved(Object exerciseName);
 
   /// No description provided for @addMenu.
   ///
@@ -879,12 +879,6 @@ abstract class AppLocalizations {
   /// **'Show Stopwatch/Timer'**
   String get settingsStopwatchTimerVisibility;
 
-  /// No description provided for @recordDisplayOptions.
-  ///
-  /// In en, this message translates to:
-  /// **'Display options'**
-  String get recordDisplayOptions;
-
   /// No description provided for @intervalTimer.
   ///
   /// In en, this message translates to:
@@ -908,6 +902,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Photo limit'**
   String get settingsDailyMediaCapShort;
+
+  /// No description provided for @recordDisplayOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Display options'**
+  String get recordDisplayOptions;
 
   /// No description provided for @background.
   ///
@@ -1592,6 +1592,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Current'**
   String get currentLabel;
+
+  /// No description provided for @hintCalendarGotoRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to open the record screen'**
+  String get hintCalendarGotoRecord;
+
+  /// No description provided for @hintRecordTapExerciseCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the exercise card'**
+  String get hintRecordTapExerciseCard;
+
+  /// No description provided for @hintRecordPickExercise.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select an exercise.'**
+  String get hintRecordPickExercise;
+
+  /// No description provided for @hintRecordCheckbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Check after entering weight and reps.'**
+  String get hintRecordCheckbox;
+
+  /// No description provided for @hintRecordSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap Save when finished.'**
+  String get hintRecordSave;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

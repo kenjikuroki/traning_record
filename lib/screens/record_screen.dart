@@ -179,7 +179,8 @@ class _RecordScreenState extends State<RecordScreen>
   final GlobalKey _kRecordPart = GlobalKey();
   final GlobalKey _kExerciseField = GlobalKey();
   final GlobalKey _kFabKey = GlobalKey();
-  final GlobalKey _kStopwatchArea = GlobalKey();
+    final GlobalKey _kMenuSaveButton = GlobalKey();
+final GlobalKey _kStopwatchArea = GlobalKey();
   final GlobalKey _kAdArea = GlobalKey();
 
   bool _firstBuildDone = false;
@@ -355,7 +356,7 @@ class _RecordScreenState extends State<RecordScreen>
       await CoachBubbleController.showSequence(
         context: context,
         anchors: [_kRecordPart],
-        messages: [l10n.hintRecordSelectPart],
+        messages: [l10n.hintRecordTapExerciseCard],
         semanticsPrefix: l10n.coachBubbleSemantic,
       );
       await box.put('hint_seen_record', true);
@@ -3094,6 +3095,41 @@ class _RecordScreenState extends State<RecordScreen>
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+WidgetsBinding.instance.addPostFrameCallback((_) async {
+  // One-time overlay hint sequence
+  final box = widget.settingsBox;
+  final seenOverlay = box.get('hint_seen_record_overlay') as bool? ?? false;
+  if (!mounted || seenOverlay) return;
+  // wait a short while for elements to layout
+  await Future<void>.delayed(const Duration(milliseconds: 150));
+  final l10n = AppLocalizations.of(context)!;
+  final secIndex2 = _menuSecIndex;
+  final menuIndex2 = _menuMenuIndex;
+  if (secIndex2 == null || menuIndex2 == null) return;
+  if (secIndex2 < 0 || secIndex2 >= _sections.length) return;
+  final section2 = _sections[secIndex2];
+  if (menuIndex2 < 0 || menuIndex2 >= section2.nameFieldKeys.length) return;
+
+  final anchors = <GlobalKey>[
+    section2.nameFieldKeys[menuIndex2],
+    // 近い位置に吹き出しを出すため、チェックボックスの代替としてカード全体のキーを使う
+    if (menuIndex2 < section2.menuKeys.length) section2.menuKeys[menuIndex2],
+    _kMenuSaveButton,
+  ];
+  final messages = <String>[
+    l10n.hintRecordPickExercise,
+    l10n.hintRecordCheckbox,
+    l10n.hintRecordSave,
+  ];
+
+  await CoachBubbleController.showSequence(
+    context: context,
+    anchors: anchors,
+    messages: messages,
+    semanticsPrefix: l10n.coachBubbleSemantic,
+  );
+  await box.put('hint_seen_record_overlay', true);
+});
       if (!mounted) return;
       setState(() => _menuSlideIn = true);
     });
@@ -3112,7 +3148,35 @@ class _RecordScreenState extends State<RecordScreen>
       _menuSecIndex = null;
       _menuMenuIndex = null;
     });
+  
+
+
+Future<void> _maybeShowFabHintAfterSave() async {
+  final box = widget.settingsBox;
+  final seen = box.get('hint_seen_record_fab_after_save') as bool? ?? false;
+  if (seen) return;
+  // wait for FAB to be in the tree
+  final deadline = DateTime.now().add(const Duration(milliseconds: 800));
+  while (DateTime.now().isBefore(deadline)) {
+    if (!mounted) return;
+    if (_kFabKey.currentContext != null) break;
+    await Future<void>.delayed(const Duration(milliseconds: 16));
   }
+  if (!mounted || _kFabKey.currentContext == null) return;
+  final l10n = AppLocalizations.of(context)!;
+  await CoachBubbleController.showSequence(
+    context: context,
+    anchors: [_kFabKey],
+    messages: [l10n.hintRecordFab],
+    semanticsPrefix: l10n.coachBubbleSemantic,
+  );
+  await box.put('hint_seen_record_fab_after_save', true);
+}
+
+  // After overlay closes, show FAB hint once
+  await _maybeShowFabHintAfterSave();
+}
+
 
   Future<Directory> _mediaDirFor(DateTime date) async {
     final base = await getApplicationDocumentsDirectory();
@@ -4234,6 +4298,7 @@ class _RecordScreenState extends State<RecordScreen>
                               ],
                               const SizedBox(width: 4),
                               TextButton.icon(
+  key: _kMenuSaveButton,
   onPressed: _saveMenuAndClose,
   icon: const Icon(Icons.check_rounded),
   label: Text(l10n.save, style: const TextStyle(fontWeight: FontWeight.w700)),

@@ -72,9 +72,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openSettings => 'Open Settings';
 
   @override
-  String get open => 'Open';
-
-  @override
   String get cameraPermissionRequired => 'Please enable camera permission';
 
   @override
@@ -232,19 +229,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get customExerciseNameRequired => 'Enter an exercise name';
 
   @override
-  String get customExerciseDuplicate =>
-      'This exercise is already registered';
+  String get customExerciseDuplicate => 'This exercise is already registered';
 
   @override
-  String get customExercisePickerEmpty =>
-      'No saved exercises yet. Tap + to add one.';
+  String get customExercisePickerEmpty => 'No saved exercises yet. Tap + to add one.';
+
+  @override
+  String get open => 'Open';
 
   @override
   String get removeCustomExercises => 'Remove Custom Exercises';
 
   @override
-  String get customExerciseRemovalHint =>
-      'Delete previously added custom exercises.';
+  String get customExerciseRemovalHint => 'Delete previously added custom exercises.';
 
   @override
   String get noCustomExercises => 'No custom exercises have been added.';
@@ -253,8 +250,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get selectExerciseToDelete => 'Select exercise to delete';
 
   @override
-  String customExerciseRemoved(String exerciseName) =>
-      'Removed $exerciseName.';
+  String customExerciseRemoved(Object exerciseName) {
+    return 'Removed $exerciseName.';
+  }
 
   @override
   String get addMenu => 'Add Menu';
@@ -411,9 +409,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsStopwatchTimerVisibility => 'Show Stopwatch/Timer';
 
   @override
-  String get recordDisplayOptions => 'Display options';
-
-  @override
   String get intervalTimer => 'Interval timer';
 
   @override
@@ -424,6 +419,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDailyMediaCapShort => 'Photo limit';
+
+  @override
+  String get recordDisplayOptions => 'Display options';
 
   @override
   String get background => 'Background';
@@ -453,8 +451,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get removePartCardTooltip => 'Remove part card';
 
   @override
-  String get deletePersonalConfirmationTitle =>
-      'Hide personal metrics card?';
+  String get deletePersonalConfirmationTitle => 'Hide personal metrics card?';
 
   @override
   String get deletePartConfirmationTitle => 'Remove this part card?';
@@ -779,4 +776,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get currentLabel => 'Current';
+
+  @override
+  String get hintCalendarGotoRecord => 'Tap to open the record screen';
+
+  @override
+  String get hintRecordTapExerciseCard => 'Tap the exercise card';
+
+  @override
+  String get hintRecordPickExercise => 'Please select an exercise.';
+
+  @override
+  String get hintRecordCheckbox => 'Check after entering weight and reps.';
+
+  @override
+  String get hintRecordSave => 'Tap Save when finished.';
 }

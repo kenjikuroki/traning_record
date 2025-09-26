@@ -80,8 +80,10 @@
   "noCustomExercises": "No custom exercises have been added.",
   "selectExerciseToDelete": "Select exercise to delete",
   "customExerciseRemoved": "Removed {exerciseName}.",
-  "customExerciseRemoved@placeholders": {
-    "exerciseName": {}
+  "@customExerciseRemoved": {
+    "placeholders": {
+      "exerciseName": {}
+    }
   },
   "addMenu": "Add Menu",
   "addSet": "+ Set",
@@ -251,5 +253,10 @@
   "themeColorTitle": "Theme color",
   "totalVolumeLabel": "Total volume",
   "previousLabel": "Previous",
-  "currentLabel": "Current"
+  "currentLabel": "Current",
+  "hintCalendarGotoRecord": "Tap to open the record screen",
+  "hintRecordTapExerciseCard": "Tap the exercise card",
+  "hintRecordPickExercise": "Please select an exercise.",
+  "hintRecordCheckbox": "Check after entering weight and reps.",
+  "hintRecordSave": "Tap Save when finished."
 }

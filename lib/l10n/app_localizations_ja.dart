@@ -72,9 +72,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get openSettings => '設定を開く';
 
   @override
-  String get open => '開く';
-
-  @override
   String get cameraPermissionRequired => 'カメラ権限を有効にしてください';
 
   @override
@@ -235,8 +232,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get customExerciseDuplicate => 'この種目は既に登録されています';
 
   @override
-  String get customExercisePickerEmpty =>
-      '登録済みの候補がありません。＋から追加してください。';
+  String get customExercisePickerEmpty => '登録済みの候補がありません。＋から追加してください。';
+
+  @override
+  String get open => '開く';
 
   @override
   String get removeCustomExercises => '追加した種目の削除';
@@ -251,8 +250,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get selectExerciseToDelete => '削除する種目を選択';
 
   @override
-  String customExerciseRemoved(String exerciseName) =>
-      '$exerciseNameを削除しました。';
+  String customExerciseRemoved(Object exerciseName) {
+    return '$exerciseNameを削除しました。';
+  }
 
   @override
   String get addMenu => '種目を追加';
@@ -409,9 +409,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsStopwatchTimerVisibility => 'ストップウォッチ/タイマー表示';
 
   @override
-  String get recordDisplayOptions => '表示項目';
-
-  @override
   String get intervalTimer => 'インターバルタイマー';
 
   @override
@@ -422,6 +419,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsDailyMediaCapShort => '写真上限';
+
+  @override
+  String get recordDisplayOptions => '表示項目';
 
   @override
   String get background => '背景';
@@ -451,8 +451,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get removePartCardTooltip => '部位カードを削除';
 
   @override
-  String get deletePersonalConfirmationTitle =>
-      'パーソナルカードを閉じますか？';
+  String get deletePersonalConfirmationTitle => 'パーソナルカードを閉じますか？';
 
   @override
   String get deletePartConfirmationTitle => 'この部位カードを削除しますか？';
@@ -777,4 +776,19 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get currentLabel => '今回';
+
+  @override
+  String get hintCalendarGotoRecord => 'クリックして記録する画面へ';
+
+  @override
+  String get hintRecordTapExerciseCard => '種目カードをタップ';
+
+  @override
+  String get hintRecordPickExercise => '種目を選択してください。';
+
+  @override
+  String get hintRecordCheckbox => '重量と回数を入力したらチェック。';
+
+  @override
+  String get hintRecordSave => '完了したら保存をタップ。';
 }

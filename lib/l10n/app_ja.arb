@@ -251,5 +251,10 @@
   "themeColorTitle": "テーマカラー",
   "totalVolumeLabel": "総ボリューム",
   "previousLabel": "前回",
-  "currentLabel": "今回"
+  "currentLabel": "今回",
+  "hintCalendarGotoRecord": "クリックして記録する画面へ",
+  "hintRecordTapExerciseCard": "種目カードをタップ",
+  "hintRecordPickExercise": "種目を選択してください。",
+  "hintRecordCheckbox": "重量と回数を入力したらチェック。",
+  "hintRecordSave": "完了したら保存をタップ。"
 }
