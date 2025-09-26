@@ -117,6 +117,8 @@ class _AdBannerState extends State<AdBanner> with SingleTickerProviderStateMixin
           return 'ca-app-pub-3331079517737737/2576446816';
         case 'record':
           return 'ca-app-pub-3331079517737737/9588577724';
+        case 'record_menu_overlay':
+          return 'ca-app-pub-3331079517737737/9518673738';
         case 'settings':
           return 'ca-app-pub-3331079517737737/3704893323';
         case 'graph':
@@ -132,6 +134,8 @@ class _AdBannerState extends State<AdBanner> with SingleTickerProviderStateMixin
           return 'ca-app-pub-3331079517737737/1430886104';
         case 'record':
           return 'ca-app-pub-3331079517737737/6962414382';
+        case 'record_menu_overlay':
+          return 'ca-app-pub-3331079517737737/3349399943';
         case 'settings':
           return 'ca-app-pub-3331079517737737/8271626623';
         case 'graph':

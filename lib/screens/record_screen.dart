@@ -12,6 +12,7 @@ import '../models/menu_data.dart';
 import '../settings_manager.dart';
 import '../utils/training_display_utils.dart';
 import '../widgets/ad_banner.dart';
+import '../widgets/big_earning_ad.dart';
 import '../widgets/stopwatch_widget.dart';
 import '../widgets/coach_bubble.dart';
 import 'package:flutter/cupertino.dart';
@@ -3801,12 +3802,8 @@ class _RecordScreenState extends State<RecordScreen>
 
     final bool isAerobic = section.selectedPart == l10n.aerobicExercise;
 
-    final double topGap = media.padding.top + kToolbarHeight + 8;
-    final double maxHeight = (media.size.height - topGap - 12)
-        .clamp(0.0, media.size.height)
-        .toDouble();
-    final double overlayHeight =
-        min(media.size.height * 0.48, maxHeight); // 少し高めにして可視域を拡張
+    final double topGap = 0.0;
+    final double bottomGap = media.padding.bottom + 12;
 
     return Stack(
       children: [
@@ -3827,7 +3824,7 @@ class _RecordScreenState extends State<RecordScreen>
           left: 12,
           right: 12,
           top: topGap,
-          height: overlayHeight,
+          bottom: bottomGap,
           child: AnimatedSlide(
             duration: _overlaySlideDuration,
             curve: _overlayInCurve,
@@ -4020,6 +4017,23 @@ class _RecordScreenState extends State<RecordScreen>
                                 ),
                               ),
                             ),
+                          ),
+                        ),
+
+                        const Divider(height: 1),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                          child: const BigEarningAd(
+                            androidNativeUnitId:
+                                'ca-app-pub-3331079517737737/9518673738',
+                            iosNativeUnitId:
+                                'ca-app-pub-3331079517737737/3349399943',
+                            androidBannerUnitId:
+                                'ca-app-pub-3331079517737737/9588577724',
+                            iosBannerUnitId:
+                                'ca-app-pub-3331079517737737/6962414382',
+                            factoryId: 'large_media',
+                            height: 260,
                           ),
                         ),
                       ],
