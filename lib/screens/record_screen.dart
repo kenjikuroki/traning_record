@@ -3477,9 +3477,24 @@ class _RecordScreenState extends State<RecordScreen>
                               TextButton.icon(
                                 onPressed: _savePersonalAndClose,
                                 icon: const Icon(Icons.check_rounded),
-                                label: Text(l10n.save),
-                                style: TextButton.styleFrom(
-                                    foregroundColor: cs.primary),
+                                label: Text(
+                                  l10n.save,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: Theme.of(context).colorScheme.onSurface, // ← ラベル側で濃色を強制
+                                  ),
+                                ),
+                                style: ButtonStyle(
+                                  // ボタン側も濃色で統一（アイコン含む）
+                                  foregroundColor: MaterialStatePropertyAll(
+                                    Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                  iconColor: MaterialStatePropertyAll(
+                                    Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                  // 押下時の被せ色が薄さに見えないよう完全透明に（任意）
+                                  overlayColor: const MaterialStatePropertyAll(Colors.transparent),
+                                ),
                               ),
                             ],
                           ),
@@ -3720,12 +3735,13 @@ class _RecordScreenState extends State<RecordScreen>
                               ),
                               const Spacer(),
                               TextButton.icon(
-                                onPressed: _saveMemoAndClose,
-                                icon: const Icon(Icons.check_rounded),
-                                label: Text(l10n.save),
-                                style: TextButton.styleFrom(
-                                    foregroundColor: cs.primary),
-                              ),
+  onPressed: _saveMemoAndClose,
+  icon: const Icon(Icons.check_rounded),
+  label: Text(l10n.save, style: const TextStyle(fontWeight: FontWeight.w700)),
+  style: TextButton.styleFrom(
+    foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+  ),
+),
                             ],
                           ),
                         ),
@@ -3898,17 +3914,21 @@ class _RecordScreenState extends State<RecordScreen>
                                           _addOneSetAt(secIndex, menuIndex);
                                         }
                                       : null,
-                                  child: Text(l10n.addSet),
+                                  child: Text(l10n.addSet, style: const TextStyle(fontWeight: FontWeight.w700)),
+  style: TextButton.styleFrom(
+    foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+  ),
                                 ),
                               ],
                               const SizedBox(width: 4),
                               TextButton.icon(
-                                onPressed: _saveMenuAndClose,
-                                icon: const Icon(Icons.check_rounded),
-                                label: Text(l10n.save),
-                                style: TextButton.styleFrom(
-                                    foregroundColor: cs.primary),
-                              ),
+  onPressed: _saveMenuAndClose,
+  icon: const Icon(Icons.check_rounded),
+  label: Text(l10n.save, style: const TextStyle(fontWeight: FontWeight.w700)),
+  style: TextButton.styleFrom(
+    foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+  ),
+),
                             ],
                           ),
                         ),
@@ -7225,10 +7245,13 @@ class _MenuListState extends State<MenuList> {
           child: Row(
             children: [
               Text(
-                '${l10n.satisfaction}：',
-                style: TextStyle(
-                    color: colorScheme.onSurfaceVariant, fontSize: 13),
-              ),
+  '${l10n.satisfaction}：',
+  style: TextStyle(
+    color: colorScheme.onSurfaceVariant,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+  ),
+),
               const SizedBox(width: 8),
               _buildFaceButton(
                 value: 0,
