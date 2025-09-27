@@ -691,9 +691,13 @@ final GlobalKey _kStopwatchArea = GlobalKey();
           ...recList.map((m) => m.name),
           ...luList.where((m) => !recBy.containsKey(m.name)).map((m) => m.name),
         ];
+
+        // 追加要件：最低枚数を保証（筋トレ=7, 有酸素=5）。
+        final int minCount = isAerobic ? 5 : 7;
         if (names.isEmpty) {
-          final int defaultCount = isAerobic ? 3 : 5;
-          names.addAll(List.filled(defaultCount, ''));
+          names.addAll(List.filled(minCount, ''));
+        } else if (names.length < minCount) {
+          names.addAll(List.filled(minCount - names.length, ''));
         }
 
         for (final name in names) {
