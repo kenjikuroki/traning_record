@@ -1622,6 +1622,798 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap Save when finished.'**
   String get hintRecordSave;
+
+  /// No description provided for @exerciseAerobic01.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get exerciseAerobic01;
+
+  /// No description provided for @exerciseAerobic02.
+  ///
+  /// In en, this message translates to:
+  /// **'Walking'**
+  String get exerciseAerobic02;
+
+  /// No description provided for @exerciseAerobic03.
+  ///
+  /// In en, this message translates to:
+  /// **'Treadmill'**
+  String get exerciseAerobic03;
+
+  /// No description provided for @exerciseAerobic04.
+  ///
+  /// In en, this message translates to:
+  /// **'Cycling'**
+  String get exerciseAerobic04;
+
+  /// No description provided for @exerciseAerobic05.
+  ///
+  /// In en, this message translates to:
+  /// **'Stationary Bike'**
+  String get exerciseAerobic05;
+
+  /// No description provided for @exerciseAerobic06.
+  ///
+  /// In en, this message translates to:
+  /// **'Elliptical'**
+  String get exerciseAerobic06;
+
+  /// No description provided for @exerciseAerobic07.
+  ///
+  /// In en, this message translates to:
+  /// **'Rowing Machine'**
+  String get exerciseAerobic07;
+
+  /// No description provided for @exerciseAerobic08.
+  ///
+  /// In en, this message translates to:
+  /// **'Stair Climber'**
+  String get exerciseAerobic08;
+
+  /// No description provided for @exerciseAerobic09.
+  ///
+  /// In en, this message translates to:
+  /// **'Swimming'**
+  String get exerciseAerobic09;
+
+  /// No description provided for @exerciseAerobic10.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump Rope'**
+  String get exerciseAerobic10;
+
+  /// No description provided for @exerciseAerobic11.
+  ///
+  /// In en, this message translates to:
+  /// **'Aerobics'**
+  String get exerciseAerobic11;
+
+  /// No description provided for @exerciseArm01.
+  ///
+  /// In en, this message translates to:
+  /// **'Barbell Curl'**
+  String get exerciseArm01;
+
+  /// No description provided for @exerciseArm02.
+  ///
+  /// In en, this message translates to:
+  /// **'Dumbbell Curl'**
+  String get exerciseArm02;
+
+  /// No description provided for @exerciseArm03.
+  ///
+  /// In en, this message translates to:
+  /// **'Incline Dumbbell Curl'**
+  String get exerciseArm03;
+
+  /// No description provided for @exerciseArm04.
+  ///
+  /// In en, this message translates to:
+  /// **'Cable Curl'**
+  String get exerciseArm04;
+
+  /// No description provided for @exerciseArm05.
+  ///
+  /// In en, this message translates to:
+  /// **'Preacher Curl'**
+  String get exerciseArm05;
+
+  /// No description provided for @exerciseArm06.
+  ///
+  /// In en, this message translates to:
+  /// **'Hammer Curl'**
+  String get exerciseArm06;
+
+  /// No description provided for @exerciseArm07.
+  ///
+  /// In en, this message translates to:
+  /// **'Concentration Curl'**
+  String get exerciseArm07;
+
+  /// No description provided for @exerciseArm08.
+  ///
+  /// In en, this message translates to:
+  /// **'Reverse Curl'**
+  String get exerciseArm08;
+
+  /// No description provided for @exerciseArm09.
+  ///
+  /// In en, this message translates to:
+  /// **'Cable Triceps Pushdown'**
+  String get exerciseArm09;
+
+  /// No description provided for @exerciseArm10.
+  ///
+  /// In en, this message translates to:
+  /// **'Skull Crusher'**
+  String get exerciseArm10;
+
+  /// No description provided for @exerciseArm11.
+  ///
+  /// In en, this message translates to:
+  /// **'Overhead Triceps Extension'**
+  String get exerciseArm11;
+
+  /// No description provided for @exerciseArm12.
+  ///
+  /// In en, this message translates to:
+  /// **'Dumbbell Triceps Kickback'**
+  String get exerciseArm12;
+
+  /// No description provided for @exerciseArm13.
+  ///
+  /// In en, this message translates to:
+  /// **'Cable Overhead Triceps Extension'**
+  String get exerciseArm13;
+
+  /// No description provided for @exerciseArm14.
+  ///
+  /// In en, this message translates to:
+  /// **'Close-grip Bench Press'**
+  String get exerciseArm14;
+
+  /// No description provided for @exerciseArm15.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrist Curl'**
+  String get exerciseArm15;
+
+  /// No description provided for @exerciseChest01.
+  ///
+  /// In en, this message translates to:
+  /// **'Barbell Bench Press'**
+  String get exerciseChest01;
+
+  /// No description provided for @exerciseChest02.
+  ///
+  /// In en, this message translates to:
+  /// **'Incline Bench Press'**
+  String get exerciseChest02;
+
+  /// No description provided for @exerciseChest03.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline Bench Press'**
+  String get exerciseChest03;
+
+  /// No description provided for @exerciseChest04.
+  ///
+  /// In en, this message translates to:
+  /// **'Dumbbell Bench Press'**
+  String get exerciseChest04;
+
+  /// No description provided for @exerciseChest05.
+  ///
+  /// In en, this message translates to:
+  /// **'Incline Dumbbell Press'**
+  String get exerciseChest05;
+
+  /// No description provided for @exerciseChest06.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline Dumbbell Press'**
+  String get exerciseChest06;
+
+  /// No description provided for @exerciseChest07.
+  ///
+  /// In en, this message translates to:
+  /// **'Dumbbell Flye'**
+  String get exerciseChest07;
+
+  /// No description provided for @exerciseChest08.
+  ///
+  /// In en, this message translates to:
+  /// **'Incline Dumbbell Flye'**
+  String get exerciseChest08;
+
+  /// No description provided for @exerciseChest09.
+  ///
+  /// In en, this message translates to:
+  /// **'Cable Crossover'**
+  String get exerciseChest09;
+
+  /// No description provided for @exerciseChest10.
+  ///
+  /// In en, this message translates to:
+  /// **'Pec Deck Flye'**
+  String get exerciseChest10;
+
+  /// No description provided for @exerciseChest11.
+  ///
+  /// In en, this message translates to:
+  /// **'Chest Press'**
+  String get exerciseChest11;
+
+  /// No description provided for @exerciseChest12.
+  ///
+  /// In en, this message translates to:
+  /// **'Smith Machine Bench Press'**
+  String get exerciseChest12;
+
+  /// No description provided for @exerciseChest13.
+  ///
+  /// In en, this message translates to:
+  /// **'Smith Machine Incline Press'**
+  String get exerciseChest13;
+
+  /// No description provided for @exerciseChest14.
+  ///
+  /// In en, this message translates to:
+  /// **'Dips'**
+  String get exerciseChest14;
+
+  /// No description provided for @exerciseChest15.
+  ///
+  /// In en, this message translates to:
+  /// **'Weighted / Machine Push-up'**
+  String get exerciseChest15;
+
+  /// No description provided for @exerciseBack01.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadlift'**
+  String get exerciseBack01;
+
+  /// No description provided for @exerciseBack02.
+  ///
+  /// In en, this message translates to:
+  /// **'Lat Pulldown'**
+  String get exerciseBack02;
+
+  /// No description provided for @exerciseBack03.
+  ///
+  /// In en, this message translates to:
+  /// **'Reverse-grip Lat Pulldown'**
+  String get exerciseBack03;
+
+  /// No description provided for @exerciseBack04.
+  ///
+  /// In en, this message translates to:
+  /// **'Barbell Bent-over Row'**
+  String get exerciseBack04;
+
+  /// No description provided for @exerciseBack05.
+  ///
+  /// In en, this message translates to:
+  /// **'Dumbbell One-arm Row'**
+  String get exerciseBack05;
+
+  /// No description provided for @exerciseBack06.
+  ///
+  /// In en, this message translates to:
+  /// **'Seated Row'**
+  String get exerciseBack06;
+
+  /// No description provided for @exerciseBack07.
+  ///
+  /// In en, this message translates to:
+  /// **'T-bar Row'**
+  String get exerciseBack07;
+
+  /// No description provided for @exerciseBack08.
+  ///
+  /// In en, this message translates to:
+  /// **'Weighted Pull-up'**
+  String get exerciseBack08;
+
+  /// No description provided for @exerciseBack09.
+  ///
+  /// In en, this message translates to:
+  /// **'Assisted Pull-up'**
+  String get exerciseBack09;
+
+  /// No description provided for @exerciseBack10.
+  ///
+  /// In en, this message translates to:
+  /// **'Face Pull'**
+  String get exerciseBack10;
+
+  /// No description provided for @exerciseBack11.
+  ///
+  /// In en, this message translates to:
+  /// **'Shrug'**
+  String get exerciseBack11;
+
+  /// No description provided for @exerciseBack12.
+  ///
+  /// In en, this message translates to:
+  /// **'Cable Straight-arm Pulldown'**
+  String get exerciseBack12;
+
+  /// No description provided for @exerciseBack13.
+  ///
+  /// In en, this message translates to:
+  /// **'Sumo Deadlift'**
+  String get exerciseBack13;
+
+  /// No description provided for @exerciseBack14.
+  ///
+  /// In en, this message translates to:
+  /// **'Romanian Deadlift'**
+  String get exerciseBack14;
+
+  /// No description provided for @exerciseBack15.
+  ///
+  /// In en, this message translates to:
+  /// **'Conventional Deadlift'**
+  String get exerciseBack15;
+
+  /// No description provided for @exerciseShoulder01.
+  ///
+  /// In en, this message translates to:
+  /// **'Barbell Shoulder Press'**
+  String get exerciseShoulder01;
+
+  /// No description provided for @exerciseShoulder02.
+  ///
+  /// In en, this message translates to:
+  /// **'Dumbbell Shoulder Press'**
+  String get exerciseShoulder02;
+
+  /// No description provided for @exerciseShoulder03.
+  ///
+  /// In en, this message translates to:
+  /// **'Smith Machine Shoulder Press'**
+  String get exerciseShoulder03;
+
+  /// No description provided for @exerciseShoulder04.
+  ///
+  /// In en, this message translates to:
+  /// **'Arnold Press'**
+  String get exerciseShoulder04;
+
+  /// No description provided for @exerciseShoulder05.
+  ///
+  /// In en, this message translates to:
+  /// **'Side Raise'**
+  String get exerciseShoulder05;
+
+  /// No description provided for @exerciseShoulder06.
+  ///
+  /// In en, this message translates to:
+  /// **'Rear Raise'**
+  String get exerciseShoulder06;
+
+  /// No description provided for @exerciseShoulder07.
+  ///
+  /// In en, this message translates to:
+  /// **'Front Raise'**
+  String get exerciseShoulder07;
+
+  /// No description provided for @exerciseShoulder08.
+  ///
+  /// In en, this message translates to:
+  /// **'Cable Rear Raise'**
+  String get exerciseShoulder08;
+
+  /// No description provided for @exerciseShoulder09.
+  ///
+  /// In en, this message translates to:
+  /// **'Upright Row'**
+  String get exerciseShoulder09;
+
+  /// No description provided for @exerciseShoulder10.
+  ///
+  /// In en, this message translates to:
+  /// **'Shoulder Press Machine'**
+  String get exerciseShoulder10;
+
+  /// No description provided for @exerciseShoulder11.
+  ///
+  /// In en, this message translates to:
+  /// **'Cable Front Raise'**
+  String get exerciseShoulder11;
+
+  /// No description provided for @exerciseShoulder12.
+  ///
+  /// In en, this message translates to:
+  /// **'Incline Side Raise'**
+  String get exerciseShoulder12;
+
+  /// No description provided for @exerciseShoulder13.
+  ///
+  /// In en, this message translates to:
+  /// **'Dumbbell Shrug'**
+  String get exerciseShoulder13;
+
+  /// No description provided for @exerciseShoulder14.
+  ///
+  /// In en, this message translates to:
+  /// **'Cable Side Raise'**
+  String get exerciseShoulder14;
+
+  /// No description provided for @exerciseShoulder15.
+  ///
+  /// In en, this message translates to:
+  /// **'Face Pull'**
+  String get exerciseShoulder15;
+
+  /// No description provided for @exerciseLeg01.
+  ///
+  /// In en, this message translates to:
+  /// **'Barbell Squat'**
+  String get exerciseLeg01;
+
+  /// No description provided for @exerciseLeg02.
+  ///
+  /// In en, this message translates to:
+  /// **'Front Squat'**
+  String get exerciseLeg02;
+
+  /// No description provided for @exerciseLeg03.
+  ///
+  /// In en, this message translates to:
+  /// **'Leg Press'**
+  String get exerciseLeg03;
+
+  /// No description provided for @exerciseLeg04.
+  ///
+  /// In en, this message translates to:
+  /// **'Leg Extension'**
+  String get exerciseLeg04;
+
+  /// No description provided for @exerciseLeg05.
+  ///
+  /// In en, this message translates to:
+  /// **'Leg Curl'**
+  String get exerciseLeg05;
+
+  /// No description provided for @exerciseLeg06.
+  ///
+  /// In en, this message translates to:
+  /// **'Seated Leg Curl'**
+  String get exerciseLeg06;
+
+  /// No description provided for @exerciseLeg07.
+  ///
+  /// In en, this message translates to:
+  /// **'Romanian Deadlift'**
+  String get exerciseLeg07;
+
+  /// No description provided for @exerciseLeg08.
+  ///
+  /// In en, this message translates to:
+  /// **'Good Morning'**
+  String get exerciseLeg08;
+
+  /// No description provided for @exerciseLeg09.
+  ///
+  /// In en, this message translates to:
+  /// **'Calf Raise'**
+  String get exerciseLeg09;
+
+  /// No description provided for @exerciseLeg10.
+  ///
+  /// In en, this message translates to:
+  /// **'Seated Calf Raise'**
+  String get exerciseLeg10;
+
+  /// No description provided for @exerciseLeg11.
+  ///
+  /// In en, this message translates to:
+  /// **'Hack Squat'**
+  String get exerciseLeg11;
+
+  /// No description provided for @exerciseLeg12.
+  ///
+  /// In en, this message translates to:
+  /// **'Smith Machine Squat'**
+  String get exerciseLeg12;
+
+  /// No description provided for @exerciseLeg13.
+  ///
+  /// In en, this message translates to:
+  /// **'Cable Kickback'**
+  String get exerciseLeg13;
+
+  /// No description provided for @exerciseLeg14.
+  ///
+  /// In en, this message translates to:
+  /// **'Hip Thrust'**
+  String get exerciseLeg14;
+
+  /// No description provided for @exerciseLeg15.
+  ///
+  /// In en, this message translates to:
+  /// **'Stiff-legged Deadlift'**
+  String get exerciseLeg15;
+
+  /// No description provided for @exerciseAbs01.
+  ///
+  /// In en, this message translates to:
+  /// **'Crunch'**
+  String get exerciseAbs01;
+
+  /// No description provided for @exerciseAbs02.
+  ///
+  /// In en, this message translates to:
+  /// **'Sit-up'**
+  String get exerciseAbs02;
+
+  /// No description provided for @exerciseAbs03.
+  ///
+  /// In en, this message translates to:
+  /// **'Leg Raise'**
+  String get exerciseAbs03;
+
+  /// No description provided for @exerciseAbs04.
+  ///
+  /// In en, this message translates to:
+  /// **'Hanging Leg Raise'**
+  String get exerciseAbs04;
+
+  /// No description provided for @exerciseAbs05.
+  ///
+  /// In en, this message translates to:
+  /// **'Ab Roller'**
+  String get exerciseAbs05;
+
+  /// No description provided for @exerciseAbs06.
+  ///
+  /// In en, this message translates to:
+  /// **'Cable Crunch'**
+  String get exerciseAbs06;
+
+  /// No description provided for @exerciseAbs07.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine Crunch'**
+  String get exerciseAbs07;
+
+  /// No description provided for @exerciseAbs08.
+  ///
+  /// In en, this message translates to:
+  /// **'Side Bend'**
+  String get exerciseAbs08;
+
+  /// No description provided for @exerciseAbs09.
+  ///
+  /// In en, this message translates to:
+  /// **'Russian Twist'**
+  String get exerciseAbs09;
+
+  /// No description provided for @exerciseAbs10.
+  ///
+  /// In en, this message translates to:
+  /// **'Bicycle Crunch'**
+  String get exerciseAbs10;
+
+  /// No description provided for @exerciseAbs11.
+  ///
+  /// In en, this message translates to:
+  /// **'V Sit-up'**
+  String get exerciseAbs11;
+
+  /// No description provided for @exerciseAbs12.
+  ///
+  /// In en, this message translates to:
+  /// **'Weighted Plank'**
+  String get exerciseAbs12;
+
+  /// No description provided for @exerciseAbs13.
+  ///
+  /// In en, this message translates to:
+  /// **'Weighted Side Plank'**
+  String get exerciseAbs13;
+
+  /// No description provided for @exerciseAbs14.
+  ///
+  /// In en, this message translates to:
+  /// **'Jackknife Sit-up'**
+  String get exerciseAbs14;
+
+  /// No description provided for @exerciseAbs15.
+  ///
+  /// In en, this message translates to:
+  /// **'Dragon Flag'**
+  String get exerciseAbs15;
+
+  /// No description provided for @exerciseFullBody01.
+  ///
+  /// In en, this message translates to:
+  /// **'Kettlebell Swing'**
+  String get exerciseFullBody01;
+
+  /// No description provided for @exerciseFullBody02.
+  ///
+  /// In en, this message translates to:
+  /// **'Burpee Jump'**
+  String get exerciseFullBody02;
+
+  /// No description provided for @exerciseFullBody03.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean'**
+  String get exerciseFullBody03;
+
+  /// No description provided for @exerciseFullBody04.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean and Press'**
+  String get exerciseFullBody04;
+
+  /// No description provided for @exerciseFullBody05.
+  ///
+  /// In en, this message translates to:
+  /// **'Cable Woodchopper'**
+  String get exerciseFullBody05;
+
+  /// No description provided for @exerciseFullBody06.
+  ///
+  /// In en, this message translates to:
+  /// **'Kettlebell Goblet Squat'**
+  String get exerciseFullBody06;
+
+  /// No description provided for @exerciseFullBody07.
+  ///
+  /// In en, this message translates to:
+  /// **'Medicine Ball Slam'**
+  String get exerciseFullBody07;
+
+  /// No description provided for @exerciseFullBody08.
+  ///
+  /// In en, this message translates to:
+  /// **'Sandbag Shoulder Squat'**
+  String get exerciseFullBody08;
+
+  /// No description provided for @exerciseFullBody09.
+  ///
+  /// In en, this message translates to:
+  /// **'Sled Push'**
+  String get exerciseFullBody09;
+
+  /// No description provided for @exerciseFullBody10.
+  ///
+  /// In en, this message translates to:
+  /// **'Step-up'**
+  String get exerciseFullBody10;
+
+  /// No description provided for @exerciseFullBody11.
+  ///
+  /// In en, this message translates to:
+  /// **'Farmer\'s Walk'**
+  String get exerciseFullBody11;
+
+  /// No description provided for @exerciseFullBody12.
+  ///
+  /// In en, this message translates to:
+  /// **'Medicine Ball Squat Press'**
+  String get exerciseFullBody12;
+
+  /// No description provided for @exerciseFullBody13.
+  ///
+  /// In en, this message translates to:
+  /// **'Circuit Training'**
+  String get exerciseFullBody13;
+
+  /// No description provided for @exerciseFullBody14.
+  ///
+  /// In en, this message translates to:
+  /// **'Burpee Circuit'**
+  String get exerciseFullBody14;
+
+  /// No description provided for @exerciseFullBody15.
+  ///
+  /// In en, this message translates to:
+  /// **'Row and Push Circuit'**
+  String get exerciseFullBody15;
+
+  /// No description provided for @exerciseBodyweight01.
+  ///
+  /// In en, this message translates to:
+  /// **'Push-up'**
+  String get exerciseBodyweight01;
+
+  /// No description provided for @exerciseBodyweight02.
+  ///
+  /// In en, this message translates to:
+  /// **'Narrow Push-up'**
+  String get exerciseBodyweight02;
+
+  /// No description provided for @exerciseBodyweight03.
+  ///
+  /// In en, this message translates to:
+  /// **'Wide Push-up'**
+  String get exerciseBodyweight03;
+
+  /// No description provided for @exerciseBodyweight04.
+  ///
+  /// In en, this message translates to:
+  /// **'Diamond Push-up'**
+  String get exerciseBodyweight04;
+
+  /// No description provided for @exerciseBodyweight05.
+  ///
+  /// In en, this message translates to:
+  /// **'Dips'**
+  String get exerciseBodyweight05;
+
+  /// No description provided for @exerciseBodyweight06.
+  ///
+  /// In en, this message translates to:
+  /// **'Squat'**
+  String get exerciseBodyweight06;
+
+  /// No description provided for @exerciseBodyweight07.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump Squat'**
+  String get exerciseBodyweight07;
+
+  /// No description provided for @exerciseBodyweight08.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulgarian Squat'**
+  String get exerciseBodyweight08;
+
+  /// No description provided for @exerciseBodyweight09.
+  ///
+  /// In en, this message translates to:
+  /// **'Lunge'**
+  String get exerciseBodyweight09;
+
+  /// No description provided for @exerciseBodyweight10.
+  ///
+  /// In en, this message translates to:
+  /// **'Calf Raise'**
+  String get exerciseBodyweight10;
+
+  /// No description provided for @exerciseBodyweight11.
+  ///
+  /// In en, this message translates to:
+  /// **'Crunch'**
+  String get exerciseBodyweight11;
+
+  /// No description provided for @exerciseBodyweight12.
+  ///
+  /// In en, this message translates to:
+  /// **'Leg Raise'**
+  String get exerciseBodyweight12;
+
+  /// No description provided for @exerciseBodyweight13.
+  ///
+  /// In en, this message translates to:
+  /// **'Plank'**
+  String get exerciseBodyweight13;
+
+  /// No description provided for @exerciseBodyweight14.
+  ///
+  /// In en, this message translates to:
+  /// **'Side Plank'**
+  String get exerciseBodyweight14;
+
+  /// No description provided for @exerciseBodyweight15.
+  ///
+  /// In en, this message translates to:
+  /// **'Burpee'**
+  String get exerciseBodyweight15;
+
+  /// No description provided for @bodyweight.
+  ///
+  /// In en, this message translates to:
+  /// **'Bodyweight'**
+  String get bodyweight;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
