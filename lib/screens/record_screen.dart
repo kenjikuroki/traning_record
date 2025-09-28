@@ -1062,8 +1062,7 @@ final GlobalKey _kStopwatchArea = GlobalKey();
   }) {
     final options = LinkedHashSet<String>();
     final trimmedCurrent = currentName?.trim() ?? '';
-    final l10n = AppLocalizations.of(context)!;
-    options.addAll(ExerciseCatalog.defaultsFor(originalPart, l10n: l10n));
+    options.addAll(ExerciseCatalog.defaultsFor(originalPart));
     final customList = _customExercises[originalPart];
     if (customList != null) {
       for (final name in customList) {
@@ -1639,17 +1638,9 @@ final GlobalKey _kStopwatchArea = GlobalKey();
     _showMemo = _memoController.text.trim().isNotEmpty;
 
     if (record == null || record.menus.isEmpty) {
-      // 初期は「未選択のカード1つ」だけ
-      final section = SectionData.createEmpty(
-        _currentSetCount,
-        shouldPopulateDefaults: false,
-      );
-      section.selectedPart = null; // 未選択状態
-
-      _sections.clear();
-      _sections.add(section);
-
-      _currentSectionIndex = 0;
+      _sections.add(SectionData.createEmpty(_currentSetCount,
+          shouldPopulateDefaults: false));
+      _currentSectionIndex = null;
       _currentMenuIndex = null;
       setState(() {});
       return;
