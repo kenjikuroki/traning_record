@@ -693,11 +693,28 @@ final GlobalKey _kStopwatchArea = GlobalKey();
         ];
 
         // 追加要件：最低枚数を保証（筋トレ=7, 有酸素=5）。
-        final int minCount = isAerobic ? 5 : 7;
-        if (names.isEmpty) {
-          names.addAll(List.filled(minCount, ''));
-        } else if (names.length < minCount) {
-          names.addAll(List.filled(minCount - names.length, ''));
+        // 追加要件：初回は「人気3＋補助2」を事前配置（有酸素は人気3）し、その下に空カード2。
+// 既存の記録や直近使用がある場合は従来通りに最低枚数だけ空カードで埋める。
+        if (recList.isEmpty && luList.isEmpty) {
+          final presets = _presetPopularAndAssistNames(originalPart);
+          names.clear();
+          if (isAerobic) {
+            // 有酸素：人気3 + 空2 = 5
+            names.addAll(presets.take(3));
+            names.addAll(List.filled(2, ''));
+          } else {
+            // 筋トレ系：人気3＋補助2 + 空2 = 7
+            names.addAll(presets.take(5));
+            names.addAll(List.filled(2, ''));
+          }
+        } else {
+          // 従来ロジック：最低枚数（有酸素=5, それ以外=7）を空カードで埋める
+          final int minCount = isAerobic ? 5 : 7;
+          if (names.isEmpty) {
+            names.addAll(List.filled(minCount, ''));
+          } else if (names.length < minCount) {
+            names.addAll(List.filled(minCount - names.length, ''));
+          }
         }
 
         for (final name in names) {
@@ -1104,6 +1121,62 @@ final GlobalKey _kStopwatchArea = GlobalKey();
       options.add(trimmedCurrent);
     }
     return options.where((name) => name.isNotEmpty).toList(growable: false);
+  }
+
+  // 人気3＋補助2（有酸素は人気3）のプリセット。
+// originalPart は日本語のオリジナル部位名（例: '胸', '背中', '有酸素運動'）。
+  List<String> _presetPopularAndAssistNames(String originalPart) {
+    switch (originalPart) {
+      case '有酸素運動':
+      // 人気3（+ 下で空2を足す）
+        return ['ランニング', 'ウォーキング', 'エアロバイク'];
+
+      case '腕':
+      // 人気3
+        final popular = ['ダンベルカール', 'バーベルカール', 'ケーブルトライセプスプレスダウン'];
+        // 補助2
+        final assist = ['ハンマーカール', 'スカルクラッシャー'];
+        return [...popular, ...assist];
+
+      case '胸':
+        final popular = ['バーベルベンチプレス', 'ダンベルベンチプレス', 'インクラインベンチプレス'];
+        final assist = ['ケーブルクロスオーバー', 'ダンベルフライ'];
+        return [...popular, ...assist];
+
+      case '背中':
+        final popular = ['ラットプルダウン', 'ダンベルワンハンドロウ', 'チンニング（アシスト）'];
+        final assist = ['シーテッドロウ', 'フェイスプル'];
+        return [...popular, ...assist];
+
+      case '肩':
+        final popular = ['ダンベルショルダープレス', 'サイドレイズ', 'アーノルドプレス'];
+        final assist = ['リアレイズ', 'フロントレイズ'];
+        return [...popular, ...assist];
+
+      case '足':
+        final popular = ['バーベルスクワット', 'レッグプレス', 'ヒップスラスト'];
+        final assist = ['レッグエクステンション', 'レッグカール'];
+        return [...popular, ...assist];
+
+      case '腹筋':
+        final popular = ['クランチ', 'レッグレイズ', 'アブローラー'];
+        final assist = ['ケーブルクランチ', 'バイシクルクランチ'];
+        return [...popular, ...assist];
+
+      case '全身':
+        final popular = ['ケトルベルスイング', 'バーピージャンプ', 'クリーン＆プレス'];
+        final assist = ['ファーマーズウォーク', 'ステップアップ'];
+        return [...popular, ...assist];
+
+      case '自重':
+        final popular = ['腕立て伏せ', 'スクワット', 'プランク'];
+        final assist = ['ディップス', 'ランジ'];
+        return [...popular, ...assist];
+
+    // その他* はプリセットなし（空2のみ後段で付与）
+      default:
+        return const [];
+    }
   }
 
   Future<String?> _promptCustomExerciseName(AppLocalizations l10n) async {
