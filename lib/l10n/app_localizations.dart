@@ -2414,6 +2414,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Bodyweight'**
   String get bodyweight;
+
+  /// No description provided for @welcomeThankYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks for downloading. Have a great training life!'**
+  String get welcomeThankYou;
+
+  /// No description provided for @hintTapPlus.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the “+” at bottom-right to start logging.'**
+  String get hintTapPlus;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

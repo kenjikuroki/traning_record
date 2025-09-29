@@ -100,7 +100,6 @@
   "hintRecordAddExercise": "ここをタップして種目を追加します。",
   "hintRecordChangePart": "ここから部位を追加できます。",
   "hintRecordOpenSettings": "セット数の初期値は設定から変更できます。",
-  "hintRecordFab": "ここから部位・種目・写真・メモを追加できます",
   "hintCalendarTapDate": "記録する日付を選択",
   "hintGraphFavorite": "よく見るデータはお気に入りに登録しよう。",
   "hintGraphChartArea": "記録したデータのグラフが出力されます。",
@@ -253,9 +252,6 @@
   "previousLabel": "前回",
   "currentLabel": "今回",
   "hintCalendarGotoRecord": "クリックして記録する画面へ",
-  "hintRecordTapExerciseCard": "種目カードをタップ",
-  "hintRecordPickExercise": "種目を選択してください。",
-  "hintRecordCheckbox": "重量と回数を入力したらチェック。",
   "hintRecordSave": "完了したら保存をタップ。",
   "exerciseAerobic01": "ランニング",
   "exerciseAerobic02": "ウォーキング",
@@ -396,6 +392,10 @@
   "exerciseBodyweight13": "プランク",
   "exerciseBodyweight14": "サイドプランク",
   "exerciseBodyweight15": "バーピー",
-  "bodyweight": "自重"
-
+  "bodyweight": "自重",
+  "welcomeThankYou": "ダウンロードいただきありがとうございます。良いトレーニングライフをお過ごしください。",
+  "hintTapPlus": "記録を始めるには、右下の「＋」をタップしてください。",
+  "hintRecordTapExerciseCard": "こちらをタップしてトレーニングする部位を選択してください。",
+  "hintRecordPickExercise": "トレーニングする種目をタップするか、新しいカード種目カードを作成してください。",
+  "hintRecordCheckbox": "重量と回数を入力し、チェックボックスにチェックをいれてください"
 }

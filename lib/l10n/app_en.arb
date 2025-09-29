@@ -398,5 +398,8 @@
   "exerciseBodyweight13": "Plank",
   "exerciseBodyweight14": "Side Plank",
   "exerciseBodyweight15": "Burpee",
-  "bodyweight": "Bodyweight"
+  "bodyweight": "Bodyweight",
+  "welcomeThankYou": "Thanks for downloading. Have a great training life!",
+  "hintTapPlus": "Tap the “+” at bottom-right to start logging."
+
 }

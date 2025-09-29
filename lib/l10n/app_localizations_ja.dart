@@ -306,7 +306,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get hintRecordOpenSettings => 'セット数の初期値は設定から変更できます。';
 
   @override
-  String get hintRecordFab => 'ここから部位・種目・写真・メモを追加できます';
+  String get hintRecordFab => '';
 
   @override
   String get hintCalendarTapDate => '記録する日付を選択';
@@ -781,13 +781,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get hintCalendarGotoRecord => 'クリックして記録する画面へ';
 
   @override
-  String get hintRecordTapExerciseCard => '種目カードをタップ';
+  String get hintRecordTapExerciseCard => 'こちらをタップしてトレーニングする部位を選択してください。';
 
   @override
-  String get hintRecordPickExercise => '種目を選択してください。';
+  String get hintRecordPickExercise => 'トレーニングする種目をタップしてください。種目を追加する場合は種目名のないカードをタップして新しいカードを作成してください。';
 
   @override
-  String get hintRecordCheckbox => '重量と回数を入力したらチェック。';
+  String get hintRecordCheckbox => '重量と回数を入力したら右側のチェックボックスにチェックをいれてください';
 
   @override
   String get hintRecordSave => '完了したら保存をタップ。';
@@ -1187,4 +1187,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get bodyweight => '自重';
+
+  @override
+  String get welcomeThankYou => 'ダウンロードいただきありがとうございます。良いトレーニングライフをお過ごしください。';
+
+  @override
+  String get hintTapPlus => '記録を始めるには、右下の「＋」をタップしてください。';
 }

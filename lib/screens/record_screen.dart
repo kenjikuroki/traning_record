@@ -16,7 +16,6 @@ import '../utils/training_display_utils.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/big_earning_ad.dart';
 import '../widgets/stopwatch_widget.dart';
-import '../widgets/coach_bubble.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -353,13 +352,8 @@ final GlobalKey _kStopwatchArea = GlobalKey();
       if (!mounted || _kRecordPart.currentContext == null) return;
 
       final l10n = AppLocalizations.of(context)!;
-      await CoachBubbleController.showSequence(
-        context: context,
-        anchors: [_kRecordPart],
-        messages: [l10n.hintRecordTapExerciseCard],
-        semanticsPrefix: l10n.coachBubbleSemantic,
-      );
-      await box.put('hint_seen_record', true);
+      // (hint removed)
+await box.put('hint_seen_record', true);
     });
 
     _inactivityTimer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -3208,13 +3202,8 @@ WidgetsBinding.instance.addPostFrameCallback((_) async {
     l10n.hintRecordSave,
   ];
 
-  await CoachBubbleController.showSequence(
-    context: context,
-    anchors: anchors,
-    messages: messages,
-    semanticsPrefix: l10n.coachBubbleSemantic,
-  );
-  await box.put('hint_seen_record_overlay', true);
+  // (hint removed)
+await box.put('hint_seen_record_overlay', true);
 });
       if (!mounted) return;
       setState(() => _menuSlideIn = true);
@@ -3250,13 +3239,8 @@ Future<void> _maybeShowFabHintAfterSave() async {
   }
   if (!mounted || _kFabKey.currentContext == null) return;
   final l10n = AppLocalizations.of(context)!;
-  await CoachBubbleController.showSequence(
-    context: context,
-    anchors: [_kFabKey],
-    messages: [l10n.hintRecordFab],
-    semanticsPrefix: l10n.coachBubbleSemantic,
-  );
-  await box.put('hint_seen_record_fab_after_save', true);
+  // (hint removed)
+await box.put('hint_seen_record_fab_after_save', true);
 }
 
   // After overlay closes, show FAB hint once
@@ -4442,12 +4426,7 @@ Future<void> _maybeShowFabHintAfterSave() async {
                                         ? section.aerobicCalorieSuggestFlags[
                                             menuIndex]
                                         : true,
-                                    showAerobicFailureHint: (menuIndex <
-                                            section.aerobicCalorieHintVisible
-                                                .length)
-                                        ? section.aerobicCalorieHintVisible[
-                                            menuIndex]
-                                        : false,
+                                    showAerobicFailureHint: false,
                                     onConfirmAerobic: () {
                                       setState(() {
                                         if (menuIndex <
@@ -5166,14 +5145,7 @@ Future<void> _maybeShowFabHintAfterSave() async {
                                                 showCalorieField:
                                                     _shouldShowCalorieField(
                                                         section, menuIndex),
-                                                showAerobicFailureHint: (menuIndex <
-                                                        section
-                                                            .aerobicCalorieHintVisible
-                                                            .length)
-                                                    ? section
-                                                            .aerobicCalorieHintVisible[
-                                                        menuIndex]
-                                                    : false,
+                                                showAerobicFailureHint: false,
                                                 satisfaction: (menuIndex <
                                                         section.satisfactionList
                                                             .length)
@@ -5269,14 +5241,7 @@ Future<void> _maybeShowFabHintAfterSave() async {
                                                             .aerobicCalorieSuggestFlags[
                                                         menuIndex]
                                                     : true,
-                                                showAerobicFailureHint: (menuIndex <
-                                                        section
-                                                            .aerobicCalorieHintVisible
-                                                            .length)
-                                                    ? section
-                                                            .aerobicCalorieHintVisible[
-                                                        menuIndex]
-                                                    : false,
+                                                showAerobicFailureHint: false,
                                                 onConfirmAerobic: () {
                                                   setState(() {
                                                     if (menuIndex <
@@ -5841,14 +5806,8 @@ Future<void> _maybeShowFabHintAfterSave() async {
 
     if (anchors.isEmpty) return;
 
-    await CoachBubbleController.showSequence(
-      context: context,
-      anchors: anchors,
-      messages: messages,
-      semanticsPrefix: l10n.coachBubbleSemantic,
-    );
-
-    await box.put('hint_seen_record_after_part', true);
+    // (hint removed)
+await box.put('hint_seen_record_after_part', true);
   }
 }
 

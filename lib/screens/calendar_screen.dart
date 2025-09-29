@@ -15,7 +15,6 @@ import '../utils/training_display_utils.dart';
 import 'record_screen.dart';
 import 'graph_screen.dart';
 import 'settings_screen.dart';
-import '../widgets/coach_bubble.dart';
 import '../routes/slide_up_route.dart';
 import '../widgets/centered_constrained.dart';
 import '../widgets/gradient_fab.dart';
@@ -169,33 +168,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       widget.selectedDate.day,
     );
 
-    // CoachBubble（「日付をタップ」のみ）
+    // 初回のみ：中央ウェルカムカード（2ステップ）
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final seen = widget.settingsBox.get('hint_seen_calendar') as bool? ?? false;
       if (seen) return;
 
-      final l10n = AppLocalizations.of(context)!;
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-try {
-  final primary = PrimaryScrollController.maybeOf(context);
-  if (primary != null && primary.hasClients) {
-    await primary.animateTo(
-      primary.position.pixels + 20,
-      duration: const Duration(milliseconds: 120),
-      curve: Curves.easeOutCubic,
-    );
-  }
-} catch (_) {}
-await CoachBubbleController.showSequence(
-        context: context,
-        anchors: [_kCalendarCard],
-        messages: [l10n.hintCalendarTapDate],
-        semanticsPrefix: l10n.coachBubbleSemantic,
-      );
-
+      await _showWelcomeCardSequence(context);
       await widget.settingsBox.put('hint_seen_calendar', true);
     });
-
   }
 
   bool _isPastDate(DateTime d) {
@@ -309,6 +289,98 @@ await CoachBubbleController.showSequence(
       default:
         return part;
     }
+  }
+
+  Future<void> _showWelcomeCardSequence(BuildContext context) async {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+
+    // 記録画面のヒントに合わせた色合い（青背景＋白文字）
+    const Color _hintBlue = Color(0xFF2563EB); // brand-like blue
+    const Color _hintFg = Colors.white;
+
+    int step = 0;
+    bool closed = false;
+
+    await showGeneralDialog(
+      context: context,
+      barrierLabel: 'welcome',
+      barrierDismissible: true,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 360),
+      transitionBuilder: (ctx, anim, secAnim, child) {
+        final curved = CurvedAnimation(
+          parent: anim,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInOutCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.98, end: 1.0).animate(curved),
+            child: child,
+          ),
+        );
+      },
+      pageBuilder: (ctx, a1, a2) {
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            // 自動遷移は無し。タップでのみ進む/閉じる。
+            final String message = (step == 0)
+                ? l10n.welcomeThankYou
+                : l10n.hintTapPlus;
+
+            void nextOrClose() {
+              if (step == 0) {
+                setState(() => step = 1);
+              } else {
+                closed = true;
+                Navigator.of(ctx).pop();
+              }
+            }
+
+            return GestureDetector(
+              onTap: nextOrClose, // 画面外側タップでも進む/閉じる（不要ならこの行を削除）
+              child: Scaffold(
+                backgroundColor: Colors.transparent,
+                body: Center(
+                  child: GestureDetector(
+                    onTap: nextOrClose,                  // カード本体タップで次へ/閉じる
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 560),
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.fromLTRB(24, 22, 24, 22),
+                      decoration: BoxDecoration(
+                        color: _hintBlue,                // ★ 青背景
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.25),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        message,
+                        textAlign: TextAlign.start,
+                        style: const TextStyle(
+                          color: _hintFg,                // ★ 白文字
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   // 「5.3」→「5km300m」

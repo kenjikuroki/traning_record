@@ -1187,4 +1187,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bodyweight => 'Bodyweight';
+
+  @override
+  String get welcomeThankYou => 'Thanks for downloading. Have a great training life!';
+
+  @override
+  String get hintTapPlus => 'Tap the “+” at bottom-right to start logging.';
 }
