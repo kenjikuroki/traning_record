@@ -65,7 +65,10 @@ String _dayRecordLabel(BuildContext context, DateTime d) {
 // ロケールに合わせた簡易的な日付文字列（intl 不要）
 // ja: "M月d日"、その他: "yyyy/MM/dd"
 String _formatResultsDate(BuildContext context, DateTime d) {
-  final lang = Localizations.localeOf(context).languageCode.toLowerCase();
+  final lang = Localizations
+      .localeOf(context)
+      .languageCode
+      .toLowerCase();
   if (lang == 'ja') {
     return '${d.month}月${d.day}日';
   }
@@ -77,13 +80,13 @@ String _formatResultsDate(BuildContext context, DateTime d) {
 // === 空データ時の画像選択（曜日・特別日付） ===
 // 画像は assets/calendar_empty/ 配下に配置してください（pubspec.yaml 登録が必要）。
 const Map<int, String> _weekdayEmptyAssets = {
-  DateTime.monday:    'assets/calendar/mon.png',
-  DateTime.tuesday:   'assets/calendar/tue.png',
+  DateTime.monday: 'assets/calendar/mon.png',
+  DateTime.tuesday: 'assets/calendar/tue.png',
   DateTime.wednesday: 'assets/calendar/wed.png',
-  DateTime.thursday:  'assets/calendar/thu.png',
-  DateTime.friday:    'assets/calendar/fri.png',
-  DateTime.saturday:  'assets/calendar/sat.png',
-  DateTime.sunday:    'assets/calendar/sun.png',
+  DateTime.thursday: 'assets/calendar/thu.png',
+  DateTime.friday: 'assets/calendar/fri.png',
+  DateTime.saturday: 'assets/calendar/sat.png',
+  DateTime.sunday: 'assets/calendar/sun.png',
 };
 
 // 年をまたいで使える特別日（MM-dd）
@@ -96,17 +99,20 @@ const Map<String, String> _specialEmptyAssetsByMonthDay = {
 const Map<String, String> _specialEmptyAssetsByDate = {
   // '2025-09-22': 'assets/calendar_empty/event.png',
 };
+
 String two(int n) => n.toString().padLeft(2, '0');
+
 String _emptyStateAssetFor(DateTime d) {
   final ymd = '${d.year}-${two(d.month)}-${two(d.day)}';
-  final md  = '${two(d.month)}-${two(d.day)}';
+  final md = '${two(d.month)}-${two(d.day)}';
   if (_specialEmptyAssetsByDate.containsKey(ymd)) {
     return _specialEmptyAssetsByDate[ymd]!;
   }
   if (_specialEmptyAssetsByMonthDay.containsKey(md)) {
     return _specialEmptyAssetsByMonthDay[md]!;
   }
-  return _weekdayEmptyAssets[d.weekday] ?? 'assets/illustrations/empty/calendar/default.png';
+  return _weekdayEmptyAssets[d.weekday] ??
+      'assets/illustrations/empty/calendar/default.png';
 }
 
 // 空画像の実体解決（存在チェック → default → 無ければ空文字でアイコンフォールバック）
@@ -161,7 +167,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
 
-    _focusedDay = DateTime(widget.selectedDate.year, widget.selectedDate.month, 1);
+    _focusedDay =
+        DateTime(widget.selectedDate.year, widget.selectedDate.month, 1);
     _selectedDay = DateTime(
       widget.selectedDate.year,
       widget.selectedDate.month,
@@ -170,7 +177,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     // 初回のみ：中央ウェルカムカード（2ステップ）
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final seen = widget.settingsBox.get('hint_seen_calendar') as bool? ?? false;
+      final seen = widget.settingsBox.get('hint_seen_calendar') as bool? ??
+          false;
       if (seen) return;
 
       await _showWelcomeCardSequence(context);
@@ -228,7 +236,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // ---------- Helpers ----------
   String _dateKey(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day
+          .toString()
+          .padLeft(2, '0')}';
 
   bool _sameDate(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
@@ -236,13 +246,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _hasAnyTrainingData(DailyRecord r) {
     for (final entry in r.menus.entries) {
       for (final m in entry.value) {
-        final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        final len = (m.weights.length < m.reps.length) ? m.weights.length : m
+            .reps.length;
         for (var i = 0; i < len; i++) {
           final w = m.weights[i].toString().trim();
           final p = m.reps[i].toString().trim();
           if (w.isNotEmpty || p.isNotEmpty) return true;
         }
-        if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
+        if ((m.distance
+            ?.trim()
+            .isNotEmpty ?? false) || (m.duration
+            ?.trim()
+            .isNotEmpty ?? false)) {
           return true;
         }
       }
@@ -345,14 +360,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 backgroundColor: Colors.transparent,
                 body: Center(
                   child: GestureDetector(
-                    onTap: nextOrClose,                  // カード本体タップで次へ/閉じる
+                    onTap: nextOrClose, // カード本体タップで次へ/閉じる
                     behavior: HitTestBehavior.opaque,
                     child: Container(
                       constraints: const BoxConstraints(maxWidth: 560),
                       margin: const EdgeInsets.symmetric(horizontal: 20),
                       padding: const EdgeInsets.fromLTRB(24, 22, 24, 22),
                       decoration: BoxDecoration(
-                        color: _hintBlue,                // ★ 青背景
+                        color: _hintBlue, // ★ 青背景
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
@@ -366,7 +381,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         message,
                         textAlign: TextAlign.start,
                         style: const TextStyle(
-                          color: _hintFg,                // ★ 白文字
+                          color: _hintFg, // ★ 白文字
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           height: 1.5,
@@ -393,8 +408,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (dKm == null || dKm <= 0) return '-';
 
     final useImperial =
-        (SettingsManager.currentLengthUnit == 'mi' || SettingsManager.currentLengthUnit == 'mile') ||
-        SettingsManager.isWaistInch;
+        (SettingsManager.currentLengthUnit == 'mi' ||
+            SettingsManager.currentLengthUnit == 'mile') ||
+            SettingsManager.isWaistInch;
 
     if (useImperial) {
       final miles = dKm / 1.609344;
@@ -415,7 +431,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  String _formatDurationHM(BuildContext context, String? raw, AppLocalizations l10n) {
+  String _formatDurationHM(BuildContext context, String? raw,
+      AppLocalizations l10n) {
     if (raw == null) return '-';
     final normalized = raw.replaceAll(',', '').trim();
     if (normalized.isEmpty) return '-';
@@ -442,7 +459,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     if (hour == 0 && min == 0 && sec == 0) return '-';
 
-    final isJa = Localizations.localeOf(context).languageCode == 'ja';
+    final isJa = Localizations
+        .localeOf(context)
+        .languageCode == 'ja';
     final buffer = StringBuffer();
     if (hour > 0) {
       buffer.write(isJa ? '${hour}時間' : '${hour}h');
@@ -500,7 +519,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // 「30:45」→「30分45秒」
   String _formatDuration(String? raw, AppLocalizations l10n) {
-    if (raw == null || raw.trim().isEmpty) return '-';
+    if (raw == null || raw
+        .trim()
+        .isEmpty) return '-';
     final parts = raw.split(':');
     final min = (parts.isNotEmpty && parts[0].isNotEmpty) ? parts[0] : '0';
     final sec = (parts.length > 1 && parts[1].isNotEmpty) ? parts[1] : '0';
@@ -517,7 +538,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // settingsBox からウエスト単位を推測（カスタム保存との互換用）
   String _waistUnitPref() {
-    for (final k in ['waistUnit', 'lengthUnit', 'unitLength', 'personal.lengthUnit']) {
+    for (final k in [
+      'waistUnit',
+      'lengthUnit',
+      'unitLength',
+      'personal.lengthUnit'
+    ]) {
       final v = widget.settingsBox.get(k);
       if (v is String) {
         final s = v.toLowerCase();
@@ -553,14 +579,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (pg is String) {
       final s = pg.toLowerCase();
       if (s.startsWith('male') || s == 'm' || s.contains('男')) return 'male';
-      if (s.startsWith('female') || s == 'f' || s.contains('女')) return 'female';
+      if (s.startsWith('female') || s == 'f' || s.contains('女'))
+        return 'female';
     }
     for (final k in ['user_gender', 'gender', 'sex', '性別']) {
       final v = widget.settingsBox.get(k);
       if (v is String) {
         final s = v.toLowerCase();
-        if (s.contains('male') || s.contains('man') || s == 'm' || s.contains('男')) return 'male';
-        if (s.contains('female') || s.contains('woman') || s == 'f' || s.contains('女')) return 'female';
+        if (s.contains('male') || s.contains('man') || s == 'm' ||
+            s.contains('男')) return 'male';
+        if (s.contains('female') || s.contains('woman') || s == 'f' ||
+            s.contains('女')) return 'female';
       } else if (v is int) {
         if (v == 0) return 'male';
         if (v == 1) return 'female';
@@ -576,12 +605,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       try {
         final dynamic v = switch (name) {
           'bodyFatPercent' => dyn.bodyFatPercent,
-          'bodyFat'        => dyn.bodyFat,
-          'fatPercent'     => dyn.fatPercent,
-          'waistCm'        => dyn.waistCm,
-          'waist'          => dyn.waist,
-          'waist_cm'       => dyn.waist_cm,
-          _                => null,
+          'bodyFat' => dyn.bodyFat,
+          'fatPercent' => dyn.fatPercent,
+          'waistCm' => dyn.waistCm,
+          'waist' => dyn.waist,
+          'waist_cm' => dyn.waist_cm,
+          _ => null,
         };
         if (v == null) continue;
         if (v is num) return v.toDouble();
@@ -595,7 +624,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   String _bmiRangeText() => '18.5〜24.9';
-  String _bodyFatRangeText(String gender) => gender == 'male' ? '10〜20' : '20〜30';
+
+  String _bodyFatRangeText(String gender) =>
+      gender == 'male' ? '10〜20' : '20〜30';
+
   String _waistStdText(String gender) => gender == 'male' ? '85' : '90';
 
   // 体脂肪率（よくあるキー名の取りこぼし防止）
@@ -656,7 +688,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final d = double.tryParse(phc);
       if (d != null && d > 0) return d / 100.0;
     }
-    for (final key in ['height_cm', 'user_height_cm', '身長cm', '身長', 'height']) {
+    for (final key in [
+      'height_cm',
+      'user_height_cm',
+      '身長cm',
+      '身長',
+      'height'
+    ]) {
       final v = widget.settingsBox.get(key);
       if (v == null) continue;
       if (v is num && v > 0) return v.toDouble() / 100.0;
@@ -728,20 +766,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return null;
   }
 
-  double _toKg(double w) => (SettingsManager.currentUnit == 'kg') ? w : (w * 0.45359237);
+  double _toKg(double w) =>
+      (SettingsManager.currentUnit == 'kg') ? w : (w * 0.45359237);
 
 // --- 距離表示用 ---
   double _kmToDisplay(double km) =>
       (SettingsManager.currentLengthUnit == 'mile') ? km * 0.6213711922 : km;
+
   String _distanceUnitLabel(AppLocalizations l10n) =>
       (SettingsManager.currentLengthUnit == 'mile') ? l10n.mile : l10n.km;
 
   Map<String, double>? _standardsForGender(String gender) {
-    final bmiMin = (widget.settingsBox.get('bmiRangeMin') as num?)?.toDouble() ?? 18.5;
-    final bmiMax = (widget.settingsBox.get('bmiRangeMax') as num?)?.toDouble() ?? 25.0;
-    double bfMin = (widget.settingsBox.get('bodyFatRangeMin') as num?)?.toDouble() ??
+    final bmiMin = (widget.settingsBox.get('bmiRangeMin') as num?)
+        ?.toDouble() ?? 18.5;
+    final bmiMax = (widget.settingsBox.get('bmiRangeMax') as num?)
+        ?.toDouble() ?? 25.0;
+    double bfMin = (widget.settingsBox.get('bodyFatRangeMin') as num?)
+        ?.toDouble() ??
         (gender == 'male' ? 10.0 : 20.0);
-    double bfMax = (widget.settingsBox.get('bodyFatRangeMax') as num?)?.toDouble() ??
+    double bfMax = (widget.settingsBox.get('bodyFatRangeMax') as num?)
+        ?.toDouble() ??
         (gender == 'male' ? 20.0 : 30.0);
     double waistStd;
     final keyGender = gender == 'male' ? 'waistStdMaleCm' : 'waistStdFemaleCm';
@@ -750,7 +794,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       waistStd = gVal.toDouble();
     } else {
       final anyVal = widget.settingsBox.get('waistStdCm');
-      waistStd = (anyVal is num) ? anyVal.toDouble() : (gender == 'male' ? 85.0 : 90.0);
+      waistStd =
+      (anyVal is num) ? anyVal.toDouble() : (gender == 'male' ? 85.0 : 90.0);
     }
     return {
       'bmiMin': bmiMin,
@@ -811,17 +856,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return null;
   }
 
-  double? _scanRecordMaps(dynamic r, List<String> mapProps, List<String> tokenVariants) {
+  double? _scanRecordMaps(dynamic r, List<String> mapProps,
+      List<String> tokenVariants) {
     for (final prop in mapProps) {
       try {
         final dynamic m = switch (prop) {
-          'extras'      => (r as dynamic).extras,
-          'extra'       => (r as dynamic).extra,
-          'metrics'     => (r as dynamic).metrics,
-          'personal'    => (r as dynamic).personal,
-          'stats'       => (r as dynamic).stats,
-          'attributes'  => (r as dynamic).attributes,
-          _             => null,
+          'extras' => (r as dynamic).extras,
+          'extra' => (r as dynamic).extra,
+          'metrics' => (r as dynamic).metrics,
+          'personal' => (r as dynamic).personal,
+          'stats' => (r as dynamic).stats,
+          'attributes' => (r as dynamic).attributes,
+          _ => null,
         };
         if (m is Map) {
           for (final entry in m.entries) {
@@ -848,7 +894,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     r.menus.forEach((part, menuList) {
       bool has = false;
       for (final m in menuList) {
-        final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        final len = (m.weights.length < m.reps.length) ? m.weights.length : m
+            .reps.length;
         for (int i = 0; i < len; i++) {
           final w = m.weights[i].toString().trim();
           final p = m.reps[i].toString().trim();
@@ -857,10 +904,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
             break;
           }
         }
-        if ((m.distance?.trim().isNotEmpty ?? false) || (m.duration?.trim().isNotEmpty ?? false)) {
+        if ((m.distance
+            ?.trim()
+            .isNotEmpty ?? false) || (m.duration
+            ?.trim()
+            .isNotEmpty ?? false)) {
           has = true;
         }
-        if (m.calories?.trim().isNotEmpty ?? false) {
+        if (m.calories
+            ?.trim()
+            .isNotEmpty ?? false) {
           has = true;
         }
         if (has) break;
@@ -888,21 +941,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
     try {
       final dyn = rec as dynamic;
       final note = dyn?.note as String?;
-      if (note != null && note.trim().isNotEmpty) return note;
+      if (note != null && note
+          .trim()
+          .isNotEmpty) return note;
     } catch (_) {}
 
     final m = widget.settingsBox.get('memo-$key');
     if (m is Map) {
       final body = (m['body'] as String?) ?? (m['title'] as String?);
-      if (body != null && body.trim().isNotEmpty) return body;
-    } else if (m is String && m.trim().isNotEmpty) {
+      if (body != null && body
+          .trim()
+          .isNotEmpty) return body;
+    } else if (m is String && m
+        .trim()
+        .isNotEmpty) {
       return m;
     }
     return null;
   }
 
   bool _hasMemoForDate(DateTime day) =>
-      (_getMemoTextForDate(day)?.trim().isNotEmpty ?? false);
+      (_getMemoTextForDate(day)
+          ?.trim()
+          .isNotEmpty ?? false);
 
   // ====== 写真有無の判定（キャッシュ＆遅延ロード） ======
   Future<bool> _checkPhotosForDate(DateTime date) async {
@@ -914,7 +975,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       for (final e in list) {
         if (e is! File) continue;
         final p = e.path.toLowerCase();
-        if (p.endsWith('.jpg') || p.endsWith('.jpeg') || p.endsWith('.png') || p.endsWith('.heic')) {
+        if (p.endsWith('.jpg') || p.endsWith('.jpeg') || p.endsWith('.png') ||
+            p.endsWith('.heic')) {
           return true;
         }
       }
@@ -954,7 +1016,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // 最大3ボックス（日付下：体重+部位の合計）の行高を算出
   double _rowHeightFor3(BuildContext context) {
     const double topPad = 6.0;
-    final double dayFont = Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14.0;
+    final double dayFont = Theme
+        .of(context)
+        .textTheme
+        .bodyMedium
+        ?.fontSize ?? 14.0;
     final double dayLine = dayFont * 1.2;
 
     const double chipFont = 10.0;
@@ -971,25 +1037,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // セル描画
   Widget _buildDayCell(BuildContext context, DateTime day,
       {required Color textColor, bool selected = false, bool showEventsForOutOfMonth = false}) {
-    final cs = Theme.of(context).colorScheme;
+    final cs = Theme
+        .of(context)
+        .colorScheme;
 
     _ensurePhotoFlag(day);
     final bool hasPhoto = _photoCache[_dateKey(day)] ?? false;
 
     final record = widget.recordsBox.get(_dateKey(day));
-    final partsAll = (record == null) ? <String>[] : _partsWithDataForDay(record);
+    final partsAll = (record == null) ? <String>[] : _partsWithDataForDay(
+        record);
 
     final strengthParts = partsAll.where((p) => p != '有酸素運動').toList();
     final hasAerobic = partsAll.contains('有酸素運動');
     final hasMemo = _hasMemoForDate(day);
     final hasWeight = record?.weight != null;
 
-    final bool canShowChips = showEventsForOutOfMonth || day.month == _focusedDay.month || record != null || hasMemo || hasPhoto;
+    final bool canShowChips = showEventsForOutOfMonth ||
+        day.month == _focusedDay.month || record != null || hasMemo || hasPhoto;
 
     Widget _partChip(String part) {
       final label = _translatePartToLocale(context, part);
       final boxColor = _colorForPart(part, cs);
-      final textOnBox = ThemeData.estimateBrightnessForColor(boxColor) == Brightness.dark
+      final textOnBox = ThemeData.estimateBrightnessForColor(boxColor) ==
+          Brightness.dark
           ? Colors.white
           : Colors.black87;
       return Container(
@@ -1003,25 +1074,32 @@ class _CalendarScreenState extends State<CalendarScreen> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 10, height: 1.1, color: textOnBox, fontWeight: FontWeight.w600),
+          style: TextStyle(fontSize: 10,
+              height: 1.1,
+              color: textOnBox,
+              fontWeight: FontWeight.w600),
         ),
       );
     }
 
-    Widget _memoChip() => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: cs.tertiaryContainer,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        AppLocalizations.of(context)!.memo,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 10, height: 1.1, color: cs.onTertiaryContainer, fontWeight: FontWeight.w700),
-      ),
-    );
+    Widget _memoChip() =>
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: cs.tertiaryContainer,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            AppLocalizations.of(context)!.memo,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 10,
+                height: 1.1,
+                color: cs.onTertiaryContainer,
+                fontWeight: FontWeight.w700),
+          ),
+        );
 
     Widget _weightChip() {
       final l10n = AppLocalizations.of(context)!;
@@ -1036,13 +1114,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 10, height: 1.1, color: cs.onSecondaryContainer, fontWeight: FontWeight.w700),
+          style: TextStyle(fontSize: 10,
+              height: 1.1,
+              color: cs.onSecondaryContainer,
+              fontWeight: FontWeight.w700),
         ),
       );
     }
 
     Widget _photoChip() {
-      final cs = Theme.of(context).colorScheme;
+      final cs = Theme
+          .of(context)
+          .colorScheme;
       final l10n = AppLocalizations.of(context)!; // l10n
 
       return Container(
@@ -1093,7 +1176,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _dayLabelTop(context, day, textColor: dayNumberColor, selected: selected),
+            _dayLabelTop(
+                context, day, textColor: dayNumberColor, selected: selected),
             if (chips.isNotEmpty) const SizedBox(height: 2),
             for (int i = 0; i < chips.length; i++)
               Padding(
@@ -1110,13 +1194,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Future<void> _openRecordSheet(DateTime day) async {
     await Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => RecordScreen(
-          selectedDate: day,
-          recordsBox: widget.recordsBox,
-          lastUsedMenusBox: widget.lastUsedMenusBox,
-          settingsBox: widget.settingsBox,
-          setCountBox: widget.setCountBox,
-        ),
+        pageBuilder: (_, __, ___) =>
+            RecordScreen(
+              selectedDate: day,
+              recordsBox: widget.recordsBox,
+              lastUsedMenusBox: widget.lastUsedMenusBox,
+              settingsBox: widget.settingsBox,
+              setCountBox: widget.setCountBox,
+            ),
         transitionDuration: const Duration(milliseconds: 260),
         reverseTransitionDuration: const Duration(milliseconds: 220),
         transitionsBuilder: (_, animation, __, child) {
@@ -1146,7 +1231,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (isPast) {
       // 過去日：実績ダイアログ
       final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
-      final List<Widget> summaryChildren = _buildSummaryChildrenForDate(context, sel, rec);
+      final List<Widget> summaryChildren = _buildSummaryChildrenForDate(
+          context, sel, rec);
       await _showResultsDialog(context, summaryChildren, sel);
     } else {
       // 今日以降：記録画面
@@ -1185,7 +1271,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
 
     return Scaffold(
       backgroundColor: SettingsManager.backgroundAssetNotifier.value.isEmpty
@@ -1196,9 +1284,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
-        titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle,
+        backgroundColor: Theme
+            .of(context)
+            .appBarTheme
+            .backgroundColor,
+        foregroundColor: Theme
+            .of(context)
+            .appBarTheme
+            .foregroundColor,
+        titleTextStyle: Theme
+            .of(context)
+            .appBarTheme
+            .titleTextStyle,
         centerTitle: false,
         titleSpacing: 16,
         toolbarHeight: 56,
@@ -1224,7 +1321,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     return ValueListenableBuilder<Box<DailyRecord>>(
                       valueListenable: widget.recordsBox.listenable(),
                       builder: (context, box, _) {
-                        final selectedRecord = box.get(_dateKey(_selectedDay ?? DateTime.now()));
+                        final selectedRecord = box.get(
+                            _dateKey(_selectedDay ?? DateTime.now()));
                         return Column(
                           children: [
                             const AdBanner(screenName: 'calendar'),
@@ -1246,7 +1344,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: FloatingActionButton(
         heroTag: 'calendarFab',
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: Theme
+            .of(context)
+            .colorScheme
+            .primary,
         onPressed: _handleAddPressed,
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -1254,7 +1355,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildCalendar(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
 
     return Card(
       key: _kCalendarCard,
@@ -1303,7 +1406,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
           calendarBuilders: CalendarBuilders<Object>(
             defaultBuilder: (context, day, focusedDay) {
-              final cs = Theme.of(context).colorScheme;
+              final cs = Theme
+                  .of(context)
+                  .colorScheme;
               return _buildDayCell(
                 context,
                 day,
@@ -1312,7 +1417,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
               );
             },
             outsideBuilder: (context, day, focusedDay) {
-              final cs = Theme.of(context).colorScheme;
+              final cs = Theme
+                  .of(context)
+                  .colorScheme;
               return _buildDayCell(
                 context,
                 day,
@@ -1322,7 +1429,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
               );
             },
             todayBuilder: (context, day, focusedDay) {
-              final cs = Theme.of(context).colorScheme;
+              final cs = Theme
+                  .of(context)
+                  .colorScheme;
               return _buildDayCell(
                 context,
                 day,
@@ -1331,7 +1440,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
               );
             },
             selectedBuilder: (context, day, focusedDay) {
-              final cs = Theme.of(context).colorScheme;
+              final cs = Theme
+                  .of(context)
+                  .colorScheme;
               return _buildDayCell(
                 context,
                 day,
@@ -1346,24 +1457,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
           onDaySelected: (selectedDay, focusedDay) async {
             // 2回目タップ判定：すでに選択中の日付をもう一度タップした
             if (_selectedDay != null && _sameDate(selectedDay, _selectedDay!)) {
-              final DateTime sel = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
-              final bool isPast = _isPastDate(sel);
+              final DateTime sel = DateTime(
+                  selectedDay.year, selectedDay.month, selectedDay.day);
+// 日付に関わらず、2回目タップで実績ダイアログを表示
+              final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
+              final List<Widget> summaryChildren = _buildSummaryChildrenForDate(
+                  context, sel, rec);
+              await _showResultsDialog(context, summaryChildren, sel);
 
-              if (isPast) {
-                // 過去日：実績ダイアログを開く
-                final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
-                final List<Widget> summaryChildren = _buildSummaryChildrenForDate(context, sel, rec);
-                await _showResultsDialog(context, summaryChildren, sel);
-              } else {
-                // 今日以降：記録画面へ
-                await _openRecordSheet(sel);
-              }
               return;
             }
 
             // 1回目タップ：その日に移動（選択＆フォーカス更新）のみ
             setState(() {
-              _selectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+              _selectedDay = DateTime(
+                  selectedDay.year, selectedDay.month, selectedDay.day);
               _focusedDay = focusedDay;
             });
           },
@@ -1374,7 +1482,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
       ),
     );
-
   }
 
   String _formatResultsDate(BuildContext context, DateTime date) {
@@ -1385,18 +1492,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return DateFormat.yMMMd(locale.toString()).format(date);
   }
 
-  List<Widget> _buildSummaryChildrenForDate(
-      BuildContext context,
+  List<Widget> _buildSummaryChildrenForDate(BuildContext context,
       DateTime sel,
-      DailyRecord? record,
-      ) {
-    final cs = Theme.of(context).colorScheme;
+      DailyRecord? record,) {
+    final cs = Theme
+        .of(context)
+        .colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final List<Widget> summaryChildren = [];
 
     if (record == null || !_hasAnyData(record)) {
       final memo = _getMemoTextForDate(sel);
-      if (memo != null && memo.trim().isNotEmpty) {
+      if (memo != null && memo
+          .trim()
+          .isNotEmpty) {
         summaryChildren.add(
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
@@ -1426,7 +1535,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     bool _menuHasAnyData(MenuData m) {
-      final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+      final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps
+          .length;
       for (int i = 0; i < len; i++) {
         final w = m.weights[i].toString().trim();
         final r = m.reps[i].toString().trim();
@@ -1434,7 +1544,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
       if (_hasPositiveDistanceValue(m.distance)) return true;
       if (_hasPositiveDurationValue(m.duration)) return true;
-      if ((m.calories?.trim().isNotEmpty ?? false)) return true;
+      if ((m.calories
+          ?.trim()
+          .isNotEmpty ?? false)) return true;
       if (m.totalVolume != null) return true;
       return false;
     }
@@ -1448,7 +1560,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
           child: Text(
             '■${_translatePartToLocale(context, '有酸素運動')}',
-            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+            style: TextStyle(
+                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
           ),
         ),
       );
@@ -1457,7 +1570,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _selectableLine(
             text: m.name,
             padding: const EdgeInsets.only(bottom: 2.0),
-            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
+            style: TextStyle(
+                color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
           ),
         );
         final bool hasDistance = _hasPositiveDistanceValue(m.distance);
@@ -1467,25 +1581,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _selectableLine(
               text: '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+              style: TextStyle(color: cs.onSurface,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400),
             ),
           );
         }
         if (hasDuration) {
           summaryChildren.add(
             _selectableLine(
-              text: '${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}',
+              text: '${l10n.time}: ${_formatDurationHM(
+                  context, m.duration, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+              style: TextStyle(color: cs.onSurface,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400),
             ),
           );
         }
-        if ((m.calories?.trim().isNotEmpty ?? false)) {
+        if ((m.calories
+            ?.trim()
+            .isNotEmpty ?? false)) {
           summaryChildren.add(
             _selectableLine(
               text: '${l10n.calorie}: ${m.calories} ${l10n.kcalUnit}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+              style: TextStyle(color: cs.onSurface,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400),
             ),
           );
         }
@@ -1522,7 +1645,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
           child: Text(
             '■${_translatePartToLocale(context, originalPart)}',
-            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+            style: TextStyle(
+                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
           ),
         ),
       );
@@ -1534,11 +1658,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _selectableLine(
             text: m.name,
             padding: const EdgeInsets.only(bottom: 2.0),
-            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
+            style: TextStyle(
+                color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
           ),
         );
 
-        final int len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        final int len = (m.weights.length < m.reps.length)
+            ? m.weights.length
+            : m.reps.length;
         final unit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
         for (int i = 0; i < len; i++) {
           final w = m.weights[i].toString().trim();
@@ -1554,7 +1681,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _selectableLine(
               text: '${i + 1}${l10n.sets}：$setDisplay',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+              style: TextStyle(color: cs.onSurface,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400),
             ),
           );
         }
@@ -1562,10 +1691,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
           summaryChildren.add(
             _selectableLine(
               text:
-                  '${l10n.totalVolumeLabel}：${formatTotalVolumeValue(l10n, m.totalVolume)}',
+              '${l10n.totalVolumeLabel}：${formatTotalVolumeValue(
+                  l10n, m.totalVolume)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style:
-                  TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+              TextStyle(color: cs.onSurface,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400),
             ),
           );
         }
@@ -1585,14 +1717,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
 
     // 個人値まとめ（あるものだけ）
-    final hasPersonal = (record.weight != null) || (bodyFatVal != null) || (waistValCm != null) || (bmiVal != null);
+    final hasPersonal = (record.weight != null) || (bodyFatVal != null) ||
+        (waistValCm != null) || (bmiVal != null);
     if (hasPersonal) {
       summaryChildren.add(
         Padding(
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
           child: Text(
             '■${l10n.personal}',
-            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+            style: TextStyle(
+                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
           ),
         ),
       );
@@ -1600,7 +1734,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final unit = SettingsManager.currentUnit;
         summaryChildren.add(
           _selectableLine(
-            text: '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(1)} $unit',
+            text: '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(
+                1)} $unit',
             style: TextStyle(color: cs.onSurface, fontSize: 13),
             padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
@@ -1637,7 +1772,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     // メモ
     final memo = _getMemoTextForDate(sel);
-    if (memo != null && memo.trim().isNotEmpty) {
+    if (memo != null && memo
+        .trim()
+        .isNotEmpty) {
       summaryChildren.add(
         Padding(
           padding: const EdgeInsets.only(top: 8.0),
@@ -1653,12 +1790,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return summaryChildren;
   }
 
-  Future<void> _showResultsDialog(
-      BuildContext context,
+  Future<void> _showResultsDialog(BuildContext context,
       List<Widget> body,
-      DateTime sel,
-      ) async {
-    final cs = Theme.of(context).colorScheme;
+      DateTime sel,) async {
+    final cs = Theme
+        .of(context)
+        .colorScheme;
     final l10n = AppLocalizations.of(context)!;
 
     // 記録の有無（ラベル切替に使用）
@@ -1673,7 +1810,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
-        final double maxHeight = MediaQuery.of(ctx).size.height * 0.90;
+        final double maxHeight = MediaQuery
+            .of(ctx)
+            .size
+            .height * 0.90;
         return SafeArea(
           top: false,
           child: ConstrainedBox(
@@ -1718,28 +1858,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           child: Column(
                             children: [
                               SizedBox.square(
-                                dimension: MediaQuery.of(context).size.height / 3, // 正方形：画面高の約1/3
+                                dimension: MediaQuery
+                                    .of(context)
+                                    .size
+                                    .height / 3, // 正方形：画面高の約1/3
                                 child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(24),         // 角丸
+                                  borderRadius: BorderRadius.circular(24), // 角丸
                                   child: Image.asset(
                                     _emptyStateAssetFor(sel),
-                                    fit: BoxFit.contain,                            // 画像は切り抜かず収める
-                                    errorBuilder: (_, __, ___) => Image.asset(
-                                      'assets/illustrations/empty/calendar/mon.png',
-                                      fit: BoxFit.contain,
-                                      errorBuilder: (_, __, ___) => Icon(
-                                        Icons.event_busy,
-                                        size: 72,
-                                        color: cs.onSurfaceVariant,
-                                      ),
-                                    ),
+                                    fit: BoxFit.contain, // 画像は切り抜かず収める
+                                    errorBuilder: (_, __, ___) =>
+                                        Image.asset(
+                                          'assets/illustrations/empty/calendar/mon.png',
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (_, __, ___) =>
+                                              Icon(
+                                                Icons.event_busy,
+                                                size: 72,
+                                                color: cs.onSurfaceVariant,
+                                              ),
+                                        ),
                                   ),
                                 ),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 l10n.noRecords,
-                                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
+                                style: TextStyle(
+                                    color: cs.onSurfaceVariant, fontSize: 14),
                               ),
                             ],
                           ),
@@ -1757,9 +1903,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   child: BigEarningAd(
                     // ★本番の広告ユニットIDに差し替えてください
                     androidNativeUnitId: 'ca-app-pub-3331079517737737/8075628963',
-                    iosNativeUnitId:     'ca-app-pub-3331079517737737/2163497749',
+                    iosNativeUnitId: 'ca-app-pub-3331079517737737/2163497749',
                     androidBannerUnitId: 'ca-app-pub-3331079517737737/6135915237',
-                    iosBannerUnitId:     'ca-app-pub-3331079517737737/9252979261',
+                    iosBannerUnitId: 'ca-app-pub-3331079517737737/9252979261',
                     height: 260,
                     // NativeAd Factory ID（後述のプラットフォーム登録で使うID）
                     factoryId: 'large_media',
@@ -1777,7 +1923,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       Expanded(
                         child: ElevatedButton.icon(
                           icon: const Icon(Icons.edit),
-                          label: Text(hasRecord ? l10n.editThisDay : l10n.addOnThisDay),
+                          label: Text(
+                              hasRecord ? l10n.editThisDay : l10n.addOnThisDay),
                           onPressed: () async {
                             Navigator.of(ctx).pop();
                             await _openRecordSheet(sel);
@@ -1798,7 +1945,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 // カレンダー直下に出す「◯月◯日の記録」のカード（左寄せ・スクロールしない）
   // カレンダー直下に出す「◯月◯日の記録」のカード（左寄せ・スクロールしない）
   Widget _buildResultsArea(BuildContext context, DailyRecord? record) {
-    final cs = Theme.of(context).colorScheme;
+    final cs = Theme
+        .of(context)
+        .colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final DateTime sel = _selectedDay ?? _focusedDay ?? DateTime.now();
 
@@ -1811,8 +1960,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final List<Widget> summaryChildren = [];
 
     // --- 個人値（体重/体脂肪/ウエスト/BMI） ---
-    final double? bodyFatVal = _safeBodyFat(record);      // %
-    final double? waistValCm = _safeWaist(record);         // cm
+    final double? bodyFatVal = _safeBodyFat(record); // %
+    final double? waistValCm = _safeWaist(record); // cm
     double? bmiVal;
     if (record.weight != null) {
       final w = record.weight!;
@@ -1823,7 +1972,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     bool _menuHasAnyData(MenuData m) {
-      final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+      final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps
+          .length;
       for (int i = 0; i < len; i++) {
         final w = m.weights[i].toString().trim();
         final r = m.reps[i].toString().trim();
@@ -1831,7 +1981,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
       if (_hasPositiveDistanceValue(m.distance)) return true;
       if (_hasPositiveDurationValue(m.duration)) return true;
-      if ((m.calories?.trim().isNotEmpty ?? false)) return true;
+      if ((m.calories
+          ?.trim()
+          .isNotEmpty ?? false)) return true;
       if (m.totalVolume != null) return true;
       return false;
     }
@@ -1845,7 +1997,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
           child: Text(
             '■${_translatePartToLocale(context, '有酸素運動')}',
-            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+            style: TextStyle(
+                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
           ),
         ),
       );
@@ -1854,7 +2007,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _selectableLine(
             text: m.name,
             padding: const EdgeInsets.only(bottom: 2.0),
-            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
+            style: TextStyle(
+                color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
           ),
         );
         final bool hasDistance = _hasPositiveDistanceValue(m.distance);
@@ -1864,25 +2018,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _selectableLine(
               text: '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+              style: TextStyle(color: cs.onSurface,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400),
             ),
           );
         }
         if (hasDuration) {
           summaryChildren.add(
             _selectableLine(
-              text: '${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}',
+              text: '${l10n.time}: ${_formatDurationHM(
+                  context, m.duration, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+              style: TextStyle(color: cs.onSurface,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400),
             ),
           );
         }
-        if ((m.calories?.trim().isNotEmpty ?? false)) {
+        if ((m.calories
+            ?.trim()
+            .isNotEmpty ?? false)) {
           summaryChildren.add(
             _selectableLine(
               text: '${l10n.calorie}: ${m.calories} ${l10n.kcalUnit}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+              style: TextStyle(color: cs.onSurface,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400),
             ),
           );
         }
@@ -1919,7 +2082,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
           child: Text(
             '■${_translatePartToLocale(context, originalPart)}',
-            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+            style: TextStyle(
+                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
           ),
         ),
       );
@@ -1931,11 +2095,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _selectableLine(
             text: m.name,
             padding: const EdgeInsets.only(bottom: 2.0),
-            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
+            style: TextStyle(
+                color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
           ),
         );
 
-        final int len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
+        final int len = (m.weights.length < m.reps.length)
+            ? m.weights.length
+            : m.reps.length;
         final unit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
         for (int i = 0; i < len; i++) {
           final w = m.weights[i].toString().trim();
@@ -1951,7 +2118,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _selectableLine(
               text: '${i + 1}${l10n.sets}：$setDisplay',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+              style: TextStyle(color: cs.onSurface,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400),
             ),
           );
         }
@@ -1959,10 +2128,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
           summaryChildren.add(
             _selectableLine(
               text:
-                  '${l10n.totalVolumeLabel}：${formatTotalVolumeValue(l10n, m.totalVolume)}',
+              '${l10n.totalVolumeLabel}：${formatTotalVolumeValue(
+                  l10n, m.totalVolume)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style:
-                  TextStyle(color: cs.onSurface, fontSize: 13, fontWeight: FontWeight.w400),
+              TextStyle(color: cs.onSurface,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400),
             ),
           );
         }
@@ -1982,14 +2154,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
 
     // --- 個人値まとめ（あるものだけ）
-    final hasPersonal = (record.weight != null) || (bodyFatVal != null) || (waistValCm != null) || (bmiVal != null);
+    final hasPersonal = (record.weight != null) || (bodyFatVal != null) ||
+        (waistValCm != null) || (bmiVal != null);
     if (hasPersonal) {
       summaryChildren.add(
         Padding(
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
           child: Text(
             '■${l10n.personal}',
-            style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+            style: TextStyle(
+                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
           ),
         ),
       );
@@ -1997,7 +2171,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final unit = SettingsManager.currentUnit;
         summaryChildren.add(
           _selectableLine(
-            text: '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(1)} $unit',
+            text: '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(
+                1)} $unit',
             style: TextStyle(color: cs.onSurface, fontSize: 13),
             padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
@@ -2034,7 +2209,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     // メモ
     final memo = _getMemoTextForDate(sel);
-    if (memo != null && memo.trim().isNotEmpty) {
+    if (memo != null && memo
+        .trim()
+        .isNotEmpty) {
       summaryChildren.add(
         Padding(
           padding: const EdgeInsets.only(top: 8.0),
@@ -2049,60 +2226,63 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // ====== サマリ生成ここまで ======
 
     // FAB と重ならない横幅（右余白+安全マージンで約 96px 確保）
-    final double screenW = MediaQuery.of(context).size.width;
+    final double screenW = MediaQuery
+        .of(context)
+        .size
+        .width;
     final double maxWidth = (screenW - 96).clamp(220.0, screenW);
 
     const double fabHeight = 56;
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: maxWidth,          // （既存）FABと重ならない幅上限
-            minHeight: fabHeight,
-            maxHeight: fabHeight,        // ← 高さ固定
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: maxWidth, // （既存）FABと重ならない幅上限
+          minHeight: fabHeight,
+          maxHeight: fabHeight, // ← 高さ固定
+        ),
+        child: Card(
+          margin: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+          color: cs.surfaceContainerHighest,
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Theme
+                .of(context)
+                .dividerColor),
           ),
-          child: Card(
-            margin: const EdgeInsets.fromLTRB(8, 0, 8, 0),
-            color: cs.surfaceContainerHighest,
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: Theme.of(context).dividerColor),
-            ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: () => _showResultsDialog(context, summaryChildren, sel),
-              child: Container(
-                height: fabHeight,                        // ← ここでも明示
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                alignment: Alignment.centerLeft,          // 垂直中央寄せ
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        l10n.results(_formatResultsDate(context, sel)),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: cs.onSurface,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => _showResultsDialog(context, summaryChildren, sel),
+            child: Container(
+              height: fabHeight, // ← ここでも明示
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              alignment: Alignment.centerLeft, // 垂直中央寄せ
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      l10n.results(_formatResultsDate(context, sel)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.chevron_right, size: 20),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.chevron_right, size: 20),
+                ],
               ),
             ),
           ),
         ),
-      );
+      ),
+    );
   }
-
-
 
 
 }
