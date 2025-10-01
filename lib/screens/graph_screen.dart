@@ -127,6 +127,7 @@ class _GraphScreenState extends State<GraphScreen> {
   static const String _prefGraphMode = 'graph_display_mode';
   static const String _prefAeroMetric = 'graph_aero_metric';
   static const String _prefPersonalMetric = 'graph_personal_metric';
+  static const String _prefPersonalMetricKey = 'graph_personal_metric_key';
 
   // UI寸法
   static const double _kControlHeight = 40.0;
@@ -159,9 +160,11 @@ class _GraphScreenState extends State<GraphScreen> {
   String? _selectedPart;
   List<String> _menusForPart = [];
   String? _selectedMenu;
+  final Map<String, String> _favoriteDisplayToKey = {};
   DisplayMode _displayMode = DisplayMode.day;
   AerobicMetric _aeroMetric = AerobicMetric.distance;
   PersonalMetric _personalMetric = PersonalMetric.weight;
+  String _selectedPersonalMetricKey = 'personal:weight';
   bool _isFavorite = false;
 
   // series
@@ -201,6 +204,45 @@ class _GraphScreenState extends State<GraphScreen> {
     return translatedPart;
   }
 
+  static const Map<PersonalMetric, String> _kPersonalMetricKeys = {
+    PersonalMetric.weight: 'personal:weight',
+    PersonalMetric.bodyFat: 'personal:bodyFat',
+    PersonalMetric.bmi: 'personal:bmi',
+    PersonalMetric.waist: 'personal:waist',
+  };
+
+  PersonalMetric? _personalMetricFromKey(String? key) {
+    if (key == null) return null;
+    switch (key) {
+      case 'personal:weight':
+      case 'personal:bodyWeight':
+        return PersonalMetric.weight;
+      case 'personal:bodyFat':
+        return PersonalMetric.bodyFat;
+      case 'personal:bmi':
+        return PersonalMetric.bmi;
+      case 'personal:waist':
+        return PersonalMetric.waist;
+    }
+    return null;
+  }
+
+  String _personalMetricKey(PersonalMetric metric) {
+    return _kPersonalMetricKeys[metric]!;
+  }
+
+  String _normalizedFavoriteEntry(AppLocalizations l10n, String entry) {
+    if (entry.startsWith('menu:')) return entry;
+    final metric =
+        _personalMetricFromKey(entry) ?? _metricFromDisplay(l10n, entry);
+    if (metric != null) {
+      return _personalMetricKey(metric);
+    }
+    final fallbackMetric =
+        _personalMetricFromKey(_selectedPersonalMetricKey) ?? _personalMetric;
+    return _personalMetricKey(fallbackMetric);
+  }
+
   String _personalMetricLabel(AppLocalizations l10n) {
     // l10n に waist が無い場合は 'ウエスト' でフォールバック
     final waistLabel = (() {
@@ -210,7 +252,9 @@ class _GraphScreenState extends State<GraphScreen> {
         return 'ウエスト';
       }
     })();
-    switch (_personalMetric) {
+    final metric =
+        _personalMetricFromKey(_selectedPersonalMetricKey) ?? _personalMetric;
+    switch (metric) {
       case PersonalMetric.weight:
         return l10n.bodyWeight;
       case PersonalMetric.bodyFat:
@@ -231,24 +275,26 @@ class _GraphScreenState extends State<GraphScreen> {
         return 'ウエスト';
       }
     })();
-    if (label == l10n.bodyWeight) return PersonalMetric.weight;
+    if (label.startsWith('personal:')) {
+      final metric = _personalMetricFromKey(label);
+      if (metric != null) return metric;
+    }
+    if (label.startsWith('menu:')) {
+      return null;
+    }
+    if (label == l10n.bodyWeight || label == 'personal:bodyWeight') {
+      return PersonalMetric.weight;
+    }
     if (label == l10n.bodyFatPercentage) return PersonalMetric.bodyFat;
     if (label == 'BMI') return PersonalMetric.bmi;
     if (label == waistLabel) return PersonalMetric.waist;
+    final fallback = _personalMetricFromKey(_selectedPersonalMetricKey);
+    if (fallback != null) return fallback;
     return null;
   }
 
   String _favoriteKeyForPersonalMetric(PersonalMetric m) {
-    switch (m) {
-      case PersonalMetric.weight:
-        return 'personal:bodyWeight';
-      case PersonalMetric.bodyFat:
-        return 'personal:bodyFat';
-      case PersonalMetric.bmi:
-        return 'personal:bmi';
-      case PersonalMetric.waist:
-        return 'personal:waist';
-    }
+    return _personalMetricKey(m);
   }
 
   String _displayNameFromFavoriteKey(AppLocalizations l10n, String key) {
@@ -261,6 +307,7 @@ class _GraphScreenState extends State<GraphScreen> {
     })();
     if (key == l10n.bodyWeight || key == 'personal:bodyWeight')
       return l10n.bodyWeight;
+    if (key == 'personal:weight') return l10n.bodyWeight;
     if (key == 'personal:bodyFat') return l10n.bodyFatPercentage;
     if (key == 'personal:bmi') return 'BMI';
     if (key == 'personal:waist') return waistLabel;
@@ -286,6 +333,7 @@ class _GraphScreenState extends State<GraphScreen> {
     if (picked == null) return;
     setState(() {
       _personalMetric = PersonalMetric.values[picked];
+      _selectedPersonalMetricKey = _personalMetricKey(_personalMetric);
       _saveGraphPrefs();
       _loadPersonalData();
       _loadGoalForCurrentContext();
@@ -418,12 +466,35 @@ class _GraphScreenState extends State<GraphScreen> {
       _aeroMetric = AerobicMetric.values[savedAeroIdx];
     }
 
-    final int? savedPersIdx =
-        widget.settingsBox.get(_prefPersonalMetric) as int?;
-    if (savedPersIdx != null &&
-        savedPersIdx >= 0 &&
-        savedPersIdx < PersonalMetric.values.length) {
-      _personalMetric = PersonalMetric.values[savedPersIdx];
+    PersonalMetric? savedPersonalMetric;
+    final dynamic rawPersonalKey =
+        widget.settingsBox.get(_prefPersonalMetricKey);
+    if (rawPersonalKey is String) {
+      savedPersonalMetric =
+          _personalMetricFromKey(rawPersonalKey) ??
+          _metricFromDisplay(l10n, rawPersonalKey);
+      if (savedPersonalMetric != null) {
+        _selectedPersonalMetricKey =
+            _personalMetricKey(savedPersonalMetric);
+      }
+    }
+
+    if (savedPersonalMetric == null) {
+      final int? savedPersIdx =
+          widget.settingsBox.get(_prefPersonalMetric) as int?;
+      if (savedPersIdx != null &&
+          savedPersIdx >= 0 &&
+          savedPersIdx < PersonalMetric.values.length) {
+        savedPersonalMetric = PersonalMetric.values[savedPersIdx];
+      }
+    }
+
+    if (savedPersonalMetric != null) {
+      _personalMetric = savedPersonalMetric;
+      _selectedPersonalMetricKey = _personalMetricKey(_personalMetric);
+    } else {
+      _personalMetric = PersonalMetric.weight;
+      _selectedPersonalMetricKey = _personalMetricKey(_personalMetric);
     }
 
     // 部位（パーソナル/お気に入りはここに含めない）
@@ -486,6 +557,7 @@ class _GraphScreenState extends State<GraphScreen> {
     if (translatedPart == l10n.personal) {
       _menusForPart = [];
       _selectedMenu = null;
+      _favoriteDisplayToKey.clear();
       _loadPersonalData();
       _checkIfFavorite();
       _saveGraphPrefs();
@@ -495,15 +567,28 @@ class _GraphScreenState extends State<GraphScreen> {
     }
 
     _menusForPart.clear();
+    _favoriteDisplayToKey.clear();
 
     if (translatedPart == l10n.favorites) {
       final dynamic rawFavorites = widget.settingsBox.get('favorites');
       if (rawFavorites is List) {
         final l = rawFavorites.whereType<String>().toList();
-        _menusForPart = l
-            .map((k) => _displayNameFromFavoriteKey(l10n, k))
-            .toSet()
-            .toList(); // 重複除去
+        final displays = <String>[];
+        final updatedFavorites = <String>[];
+        bool migrated = false;
+        for (final key in l) {
+          final normalized = _normalizedFavoriteEntry(l10n, key);
+          final display = _displayNameFromFavoriteKey(l10n, normalized);
+          displays.add(display);
+          _favoriteDisplayToKey[display] = normalized;
+          updatedFavorites.add(normalized);
+          if (normalized != key) migrated = true;
+        }
+        _menusForPart = displays.toSet().toList(); // 重複除去
+        if (migrated) {
+          widget.settingsBox
+              .put('favorites', updatedFavorites.toSet().toList());
+        }
       }
     } else {
       final originalPartName = _getOriginalPartName(context, translatedPart);
@@ -524,10 +609,19 @@ class _GraphScreenState extends State<GraphScreen> {
 
     // FavoritesでPersonalを選んだ場合は_current metric を同期
     if (translatedPart == l10n.favorites && _selectedMenu != null) {
-      final m = _metricFromDisplay(l10n, _selectedMenu!);
-      if (m != null && m != _personalMetric) {
+      final display = _selectedMenu!;
+      final rawKey = _favoriteDisplayToKey[display] ?? display;
+      final m = _personalMetricFromKey(rawKey) ??
+          _metricFromDisplay(l10n, rawKey);
+      if (m != null) {
+        final key = _personalMetricKey(m);
+        final changed =
+            m != _personalMetric || _selectedPersonalMetricKey != key;
         _personalMetric = m;
-        _saveGraphPrefs();
+        _selectedPersonalMetricKey = key;
+        if (changed) {
+          _saveGraphPrefs();
+        }
       }
     }
 
@@ -562,10 +656,19 @@ class _GraphScreenState extends State<GraphScreen> {
 
     // Favorites上でPersonal表示名が選ばれていたら _personalMetric を合わせる
     if (_selectedPart == l10n.favorites && _selectedMenu != null) {
-      final m = _metricFromDisplay(l10n, _selectedMenu!);
-      if (m != null && m != _personalMetric) {
+      final display = _selectedMenu!;
+      final rawKey = _favoriteDisplayToKey[display] ?? display;
+      final m = _personalMetricFromKey(rawKey) ??
+          _metricFromDisplay(l10n, rawKey);
+      if (m != null) {
+        final key = _personalMetricKey(m);
+        final changed =
+            m != _personalMetric || _selectedPersonalMetricKey != key;
         _personalMetric = m;
-        _saveGraphPrefs();
+        _selectedPersonalMetricKey = key;
+        if (changed) {
+          _saveGraphPrefs();
+        }
       }
     }
 
@@ -618,8 +721,14 @@ class _GraphScreenState extends State<GraphScreen> {
   bool _isPersonalContext() {
     final l10n = AppLocalizations.of(context)!;
     if (_selectedPart == l10n.personal) return true;
-    if (_selectedPart == l10n.favorites && _selectedMenu != null) {
-      return _metricFromDisplay(l10n, _selectedMenu!) != null;
+    if (_selectedPart == l10n.favorites) {
+      if (_selectedMenu != null) {
+        final display = _selectedMenu!;
+        final rawKey = _favoriteDisplayToKey[display] ?? display;
+        if (rawKey.startsWith('personal:')) return true;
+        if (_metricFromDisplay(l10n, rawKey) != null) return true;
+      }
+      if (_selectedPersonalMetricKey.startsWith('personal:')) return true;
     }
     return false;
   }
@@ -911,6 +1020,13 @@ class _GraphScreenState extends State<GraphScreen> {
     final Iterable records = widget.recordsBox.toMap().values;
     final Map<DateTime, double> map = {};
     final heightM = _heightMetersFromSettings();
+    final metric =
+        _personalMetricFromKey(_selectedPersonalMetricKey) ?? _personalMetric;
+    _personalMetric = metric;
+    final key = _personalMetricKey(metric);
+    if (_selectedPersonalMetricKey != key) {
+      _selectedPersonalMetricKey = key;
+    }
 
     if (_displayMode == DisplayMode.day) {
       for (final r in records) {
@@ -918,17 +1034,17 @@ class _GraphScreenState extends State<GraphScreen> {
           final dr = r as dynamic;
           final day = DateTime(dr.date.year, dr.date.month, dr.date.day);
           double? v;
-          switch (_personalMetric) {
-            case PersonalMetric.weight:
+          switch (key) {
+            case 'personal:weight':
               {
                 final wKg = _safeWeightKg(dr);
                 if (wKg != null) v = _kgToUser(wKg); // ← 週もユーザー単位で表示
                 break;
               }
-            case PersonalMetric.bodyFat:
+            case 'personal:bodyFat':
               v = _safeBodyFat(dr);
               break;
-            case PersonalMetric.bmi:
+            case 'personal:bmi':
               {
                 final wKg = _safeWeightKg(dr);
                 final h =
@@ -936,12 +1052,14 @@ class _GraphScreenState extends State<GraphScreen> {
                 if (wKg != null && h != null && h > 0) v = wKg / (h * h);
                 break;
               }
-            case PersonalMetric.waist:
+            case 'personal:waist':
               {
                 final w = _safeWaist(dr); // 保存は cm
                 if (w != null) v = _waistToUser(w); // ← 週も cm / in に変換
                 break;
               }
+            default:
+              break;
           }
           if (v != null) map[day] = v;
         } catch (_) {}
@@ -954,21 +1072,22 @@ class _GraphScreenState extends State<GraphScreen> {
           final dr = r as dynamic;
           final day = DateTime(dr.date.year, dr.date.month, dr.date.day);
           final weekStart = day.subtract(Duration(days: day.weekday - 1));
-          final key = DateTime(weekStart.year, weekStart.month, weekStart.day);
+          final weekKey =
+              DateTime(weekStart.year, weekStart.month, weekStart.day);
 
           double? v;
-          switch (_personalMetric) {
-            case PersonalMetric.weight:
+          switch (key) {
+            case 'personal:weight':
               {
                 // まず kg で安全取得 → 表示単位へ変換
                 final wKg = _safeWeightKg(dr);
                 if (wKg != null) v = _kgToUser(wKg);
                 break;
               }
-            case PersonalMetric.bodyFat:
+            case 'personal:bodyFat':
               v = _safeBodyFat(dr);
               break;
-            case PersonalMetric.bmi:
+            case 'personal:bmi':
               {
                 final wKg = _safeWeightKg(dr);
                 final h =
@@ -976,16 +1095,18 @@ class _GraphScreenState extends State<GraphScreen> {
                 if (wKg != null && h != null && h > 0) v = wKg / (h * h);
                 break;
               }
-            case PersonalMetric.waist:
+            case 'personal:waist':
               {
                 // 保存は cm 想定 → 表示単位へ変換
                 final w = _safeWaist(dr);
                 if (w != null) v = _waistToUser(w);
                 break;
               }
+            default:
+              break;
           }
 
-          if (v != null) wk.putIfAbsent(key, () => []).add(v);
+          if (v != null) wk.putIfAbsent(weekKey, () => []).add(v);
         } catch (_) {}
       }
 
@@ -1305,18 +1426,24 @@ class _GraphScreenState extends State<GraphScreen> {
     if (_isStrengthContext()) {
       _yLabelStep = 5.0; // kg / lbs ともに 5 刻み
     } else if (_isPersonalContext()) {
-      switch (_personalMetric) {
-        case PersonalMetric.weight:
+      final personalKey = _personalMetricKey(
+          _personalMetricFromKey(_selectedPersonalMetricKey) ??
+              _personalMetric);
+      switch (personalKey) {
+        case 'personal:weight':
           _yLabelStep = (SettingsManager.currentUnit == 'kg') ? 0.5 : 1.0;
           break;
-        case PersonalMetric.bodyFat:
+        case 'personal:bodyFat':
           _yLabelStep = 1.0; // 1%
           break;
-        case PersonalMetric.bmi:
+        case 'personal:bmi':
           _yLabelStep = 1.0;
           break;
-        case PersonalMetric.waist:
+        case 'personal:waist':
           _yLabelStep = _isMetricLength ? 1.0 : 0.5; // cm:1.0 / in:0.5
+          break;
+        default:
+          _yLabelStep = 1.0;
           break;
       }
     } else {
@@ -1435,15 +1562,20 @@ class _GraphScreenState extends State<GraphScreen> {
           return '${l10n.min}/${_distanceUnit(l10n)}'; // 分/km or 分/mi
       }
     } else if (_isPersonalContext()) {
-      switch (_personalMetric) {
-        case PersonalMetric.weight:
+      final personalKey = _personalMetricKey(
+          _personalMetricFromKey(_selectedPersonalMetricKey) ??
+              _personalMetric);
+      switch (personalKey) {
+        case 'personal:weight':
           return SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
-        case PersonalMetric.bodyFat:
+        case 'personal:bodyFat':
           return l10n.percentSymbol;
-        case PersonalMetric.bmi:
+        case 'personal:bmi':
           return ''; // 単位なし
-        case PersonalMetric.waist:
+        case 'personal:waist':
           return _waistUnit(l10n); // cm / in
+        default:
+          return '';
       }
     }
     return SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
@@ -1460,16 +1592,21 @@ class _GraphScreenState extends State<GraphScreen> {
           return '${_formatMinToMMSS(y)} ${l10n.min}/${_distanceUnit(l10n)}';
       }
     } else if (_isPersonalContext()) {
-      switch (_personalMetric) {
-        case PersonalMetric.weight:
+      final personalKey = _personalMetricKey(
+          _personalMetricFromKey(_selectedPersonalMetricKey) ??
+              _personalMetric);
+      switch (personalKey) {
+        case 'personal:weight':
           final u = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
           return '${y.toStringAsFixed(1)} $u';
-        case PersonalMetric.bodyFat:
+        case 'personal:bodyFat':
           return '${y.toStringAsFixed(1)} ${l10n.percentSymbol}';
-        case PersonalMetric.bmi:
+        case 'personal:bmi':
           return y.toStringAsFixed(1);
-        case PersonalMetric.waist:
+        case 'personal:waist':
           return '${y.toStringAsFixed(1)} ${_waistUnit(l10n)}';
+        default:
+          return y.toStringAsFixed(1);
       }
     }
     final u = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
@@ -1482,7 +1619,9 @@ class _GraphScreenState extends State<GraphScreen> {
     String? key;
 
     if (_isPersonalContext()) {
-      key = _favoriteKeyForPersonalMetric(_personalMetric);
+      key = _favoriteKeyForPersonalMetric(
+          _personalMetricFromKey(_selectedPersonalMetricKey) ??
+              _personalMetric);
     } else if (_selectedMenu != null) {
       key = 'menu:${_selectedMenu!}';
     }
@@ -1497,10 +1636,11 @@ class _GraphScreenState extends State<GraphScreen> {
         ? rawFavorites.whereType<String>().toList()
         : <String>[];
 
-    // 後方互換：体重のみ旧形式 '体重' もOK
-    final legacyHit = (_personalMetric == PersonalMetric.weight)
-        ? favs.contains(l10n.bodyWeight)
-        : false;
+    bool legacyHit = false;
+    if (key == 'personal:weight') {
+      legacyHit = favs.contains('personal:bodyWeight') ||
+          favs.contains(l10n.bodyWeight);
+    }
 
     _isFavorite = favs.contains(key) || legacyHit;
   }
@@ -1512,8 +1652,11 @@ class _GraphScreenState extends State<GraphScreen> {
     String display;
 
     if (_isPersonalContext()) {
-      key = _favoriteKeyForPersonalMetric(_personalMetric);
-      display = _personalMetricLabel(l10n);
+      final metric =
+          _personalMetricFromKey(_selectedPersonalMetricKey) ??
+              _personalMetric;
+      key = _favoriteKeyForPersonalMetric(metric);
+      display = _displayNameFromFavoriteKey(l10n, key);
     } else if (_selectedMenu != null) {
       key = 'menu:${_selectedMenu!}';
       display = _selectedMenu!;
@@ -1528,8 +1671,11 @@ class _GraphScreenState extends State<GraphScreen> {
 
     // 後方互換整理：体重のみ旧 '体重' を除去
     favorites.removeWhere((e) => e == null);
-    if (key == 'personal:bodyWeight' && favorites.contains(l10n.bodyWeight)) {
-      favorites.remove(l10n.bodyWeight);
+    if (key == 'personal:weight') {
+      favorites.remove('personal:bodyWeight');
+      if (favorites.contains(l10n.bodyWeight)) {
+        favorites.remove(l10n.bodyWeight);
+      }
     }
 
     final willAdd = !favorites.contains(key);
@@ -1555,12 +1701,15 @@ class _GraphScreenState extends State<GraphScreen> {
     widget.settingsBox.put(_prefGraphMode, _displayMode.index);
     widget.settingsBox.put(_prefAeroMetric, _aeroMetric.index);
     widget.settingsBox.put(_prefPersonalMetric, _personalMetric.index);
+    widget.settingsBox.put(
+        _prefPersonalMetricKey, _selectedPersonalMetricKey);
   }
 
   String _goalStorageKey() {
     String ctx;
     if (_isPersonalContext()) {
-      ctx = 'personal_${_personalMetric.name}';
+      final key = _selectedPersonalMetricKey;
+      ctx = 'personal_${key.replaceFirst('personal:', '')}';
     } else if (_isAerobicContext()) {
       ctx = 'aero_${_aeroMetric.name}_${_selectedMenu ?? ''}';
     } else if (_isStrengthContext()) {
@@ -1867,8 +2016,12 @@ class _GraphScreenState extends State<GraphScreen> {
 
     // PERSONAL
     if (_isPersonalContext()) {
-      switch (_personalMetric) {
-        case PersonalMetric.weight:
+      final metric =
+          _personalMetricFromKey(_selectedPersonalMetricKey) ??
+              _personalMetric;
+      final personalKey = _personalMetricKey(metric);
+      switch (personalKey) {
+        case 'personal:weight':
           {
             final isKg = SettingsManager.currentUnit == 'kg';
             final step = isKg ? 0.5 : 1.0;
@@ -1900,7 +2053,7 @@ class _GraphScreenState extends State<GraphScreen> {
             }
             return;
           }
-        case PersonalMetric.bodyFat:
+        case 'personal:bodyFat':
           {
             final v = await _showNumberPicker(
               title: l10n.bodyFatPercentage,
@@ -1920,7 +2073,7 @@ class _GraphScreenState extends State<GraphScreen> {
             }
             return;
           }
-        case PersonalMetric.bmi:
+        case 'personal:bmi':
           {
             final v = await _showNumberPicker(
               title: 'BMI',
@@ -1939,7 +2092,7 @@ class _GraphScreenState extends State<GraphScreen> {
             }
             return;
           }
-        case PersonalMetric.waist:
+        case 'personal:waist':
           {
             final waistLabel = (() {
               try {
@@ -1973,6 +2126,8 @@ class _GraphScreenState extends State<GraphScreen> {
             }
             return;
           }
+        default:
+          return;
       }
     }
 
@@ -2088,18 +2243,24 @@ class _GraphScreenState extends State<GraphScreen> {
     }
 
     if (_isPersonalContext()) {
-      switch (_personalMetric) {
-        case PersonalMetric.weight:
+      final metric =
+          _personalMetricFromKey(_selectedPersonalMetricKey) ??
+              _personalMetric;
+      final personalKey = _personalMetricKey(metric);
+      switch (personalKey) {
+        case 'personal:weight':
           {
             final u = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
             return '${_goalValue!.toStringAsFixed(1)} $u';
           }
-        case PersonalMetric.bodyFat:
+        case 'personal:bodyFat':
           return '${_goalValue!.toStringAsFixed(1)} ${l10n.percentSymbol}';
-        case PersonalMetric.bmi:
+        case 'personal:bmi':
           return _goalValue!.toStringAsFixed(1);
-        case PersonalMetric.waist:
+        case 'personal:waist':
           return '${_goalValue!.toStringAsFixed(1)} ${_waistUnit(l10n)}';
+        default:
+          return _goalValue!.toStringAsFixed(1);
       }
     }
 
@@ -2144,9 +2305,15 @@ class _GraphScreenState extends State<GraphScreen> {
       _selectedMenu = value;
 
       // FavoritesでPersonal表示名ならメトリックを同期
-      final m = _metricFromDisplay(l10n, value);
-      if (_selectedPart == l10n.favorites && m != null) {
-        _personalMetric = m;
+      if (_selectedPart == l10n.favorites) {
+        final rawKey = _favoriteDisplayToKey[value] ?? value;
+        final m =
+            _personalMetricFromKey(rawKey) ?? _metricFromDisplay(l10n, rawKey);
+        if (m != null) {
+          final key = _personalMetricKey(m);
+          _personalMetric = m;
+          _selectedPersonalMetricKey = key;
+        }
       }
 
       _saveGraphPrefs();
