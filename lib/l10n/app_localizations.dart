@@ -1460,6 +1460,11 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Today\'s meal total'**
   String get mealTotalToday;
+  /// No description provided for @mealDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove all meals?'**
+  String get mealDeleteConfirmTitle;
 
   /// No description provided for @addMealItem.
   ///

@@ -206,6 +206,7 @@
   "mealItem": "メニュー",
   "mealSubtotal": "小計",
   "mealTotalToday": "本日の食事合計",
+  "mealDeleteConfirmTitle": "食事を削除しますか？",
   "addMealItem": "＋メニュー",
   "bmrTitle": "基礎代謝：",
   "bmrTitleShort": "基礎代謝",

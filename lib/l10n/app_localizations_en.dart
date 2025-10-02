@@ -712,6 +712,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mealTotalToday => 'Today\'s meal total';
 
   @override
+  String get mealDeleteConfirmTitle => 'Remove all meals?';
+
+  @override
   String get addMealItem => '+ Menu';
 
   @override

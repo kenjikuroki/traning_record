@@ -712,6 +712,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get mealTotalToday => '本日の食事合計';
 
   @override
+  String get mealDeleteConfirmTitle => '食事を削除しますか？';
+
+  @override
   String get addMealItem => '＋メニュー';
 
   @override

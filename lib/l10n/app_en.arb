@@ -232,6 +232,7 @@
   "mealItem": "Menu",
   "mealSubtotal": "Subtotal",
   "mealTotalToday": "Today's meal total",
+  "mealDeleteConfirmTitle": "Remove all meals?",
   "addMealItem": "+ Menu",
   "bmrTitle": "BMR:",
   "bmrTitleShort": "BMR",

@@ -162,9 +162,10 @@ class _RecordScreenState extends State<RecordScreen>
 
   bool _weightFocused = false;
 
-  // 共通の下線InputDecoration（見出しやメトリクスで使い回し）
-  InputDecoration _underlineDec() {
-    final cs = Theme.of(context).colorScheme;
+  InputDecoration _underlineDec([BuildContext? ctx]) {
+    // State の context をフォールバックに使う
+    final c  = ctx ?? context;
+    final cs = Theme.of(c).colorScheme;
     return InputDecoration(
       isDense: true,
       filled: false,
@@ -859,71 +860,94 @@ class _RecordScreenState extends State<RecordScreen>
 
     final picked = await showModalBottomSheet<String>(
       context: context,
+      useRootNavigator: false,
       backgroundColor: cs.surfaceContainerHighest,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (ctx) {
-        return SizedBox(
-          height: 260,
-          child: Column(
-            children: [
-              const SizedBox(height: 2),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: cs.onSurfaceVariant.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              SizedBox(
-                height: 48,
-                child: Row(
+      builder: (sheetCtx) {
+        return InheritedTheme.captureAll(
+          context,
+          Material(
+            color: Colors.transparent,
+            child: SafeArea(
+              top: false,
+              child: SizedBox(
+                height: 260,
+                child: Column(
                   children: [
-                    const SizedBox(width: 8),
-                    Text(AppLocalizations.of(context)!.selectTrainingPart,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        )),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, null),
-                      child: Text(
-                          MaterialLocalizations.of(context).cancelButtonLabel),
+                    const SizedBox(height: 2),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(sheetCtx)
+                            .colorScheme
+                            .onSurfaceVariant
+                            .withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, parts[temp]),
-                      child:
-                          Text(MaterialLocalizations.of(context).okButtonLabel),
+                    SizedBox(
+                      height: 48,
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 8),
+                          Text(
+                            AppLocalizations.of(sheetCtx)!.selectTrainingPart,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Theme.of(sheetCtx).colorScheme.onSurface,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => Navigator.pop(sheetCtx, null),
+                            child: Text(
+                              MaterialLocalizations.of(sheetCtx)
+                                  .cancelButtonLabel,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.pop(sheetCtx, parts[temp]),
+                            child: Text(
+                              MaterialLocalizations.of(sheetCtx).okButtonLabel,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: CupertinoPicker(
+                        itemExtent: 36,
+                        scrollController:
+                            FixedExtentScrollController(initialItem: initial),
+                        onSelectedItemChanged: (i) => temp = i,
+                        children: parts
+                            .map(
+                              (p) => Center(
+                                child: Text(
+                                  p,
+                                  style: TextStyle(
+                                    color: Theme.of(sheetCtx)
+                                        .colorScheme
+                                        .onSurface,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
                     ),
                   ],
                 ),
               ),
-              const Divider(height: 1),
-              Expanded(
-                child: CupertinoPicker(
-                  itemExtent: 36,
-                  scrollController:
-                      FixedExtentScrollController(initialItem: initial),
-                  onSelectedItemChanged: (i) => temp = i,
-                  children: parts
-                      .map((p) => Center(
-                            child: Text(
-                              p,
-                              style: TextStyle(
-                                color: cs.onSurface,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ))
-                      .toList(),
-                ),
-              ),
-            ],
+            ),
           ),
         );
       },
@@ -1207,13 +1231,12 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   Future<String?> _promptCustomExerciseName(AppLocalizations l10n) async {
-    final material = MaterialLocalizations.of(context);
     final result = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => _CustomExerciseDialog(
         l10n: l10n,
-        material: material,
+        material: MaterialLocalizations.of(ctx),
       ),
     );
     if (result == null) {
@@ -1259,26 +1282,31 @@ class _RecordScreenState extends State<RecordScreen>
 
     final result = await showModalBottomSheet<String>(
       context: context,
+      useRootNavigator: false,
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       isScrollControlled: true,
       builder: (sheetCtx) {
-        return StatefulBuilder(
-          builder: (sheetCtx, setSheetState) {
-            final cs = Theme.of(sheetCtx).colorScheme;
+        return InheritedTheme.captureAll(
+          context,
+          StatefulBuilder(
+            builder: (stateCtx, setSheetState) {
+            final cs = Theme.of(stateCtx).colorScheme;
+            final sheetL10n = AppLocalizations.of(stateCtx)!;
+            final sheetMaterial = MaterialLocalizations.of(stateCtx);
 
             Future<void> handleAdd() async {
-              final newName = await _promptCustomExerciseName(l10n);
+              final newName = await _promptCustomExerciseName(sheetL10n);
               if (newName == null) {
-                if (!sheetCtx.mounted) return;
+                if (!stateCtx.mounted) return;
                 return;
               }
               final added = await _addCustomExercise(originalPart, newName);
-              if (!sheetCtx.mounted) return;
+              if (!stateCtx.mounted) return;
               if (!added) {
-                showAppSnack(context, l10n.customExerciseDuplicate);
+                showAppSnack(stateCtx, sheetL10n.customExerciseDuplicate);
                 return;
               }
               pickerOptions = _exerciseOptionsForPart(
@@ -1289,7 +1317,7 @@ class _RecordScreenState extends State<RecordScreen>
               if (tempIndex < 0) {
                 tempIndex = 0;
               }
-              if (!sheetCtx.mounted) return;
+              if (!stateCtx.mounted) return;
               setSheetState(() {});
             }
 
@@ -1299,7 +1327,7 @@ class _RecordScreenState extends State<RecordScreen>
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
                     child: Text(
-                      l10n.customExercisePickerEmpty,
+                      sheetL10n.customExercisePickerEmpty,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: cs.onSurfaceVariant,
@@ -1359,7 +1387,7 @@ class _RecordScreenState extends State<RecordScreen>
                         children: [
                           const SizedBox(width: 12),
                           Text(
-                            l10n.selectExercise,
+                            sheetL10n.selectExercise,
                             style: TextStyle(
                               color: cs.onSurface,
                               fontWeight: FontWeight.w700,
@@ -1369,20 +1397,20 @@ class _RecordScreenState extends State<RecordScreen>
                           const Spacer(),
                           TextButton(
                             onPressed: handleAdd,
-                            child: Text(l10n.addNewExercise),
+                            child: Text(sheetL10n.addNewExercise),
                           ),
                           TextButton(
-                            onPressed: () => Navigator.pop(sheetCtx, null),
-                            child: Text(material.cancelButtonLabel),
+                            onPressed: () => Navigator.pop(stateCtx, null),
+                            child: Text(sheetMaterial.cancelButtonLabel),
                           ),
                           TextButton(
                             onPressed: pickerOptions.isEmpty
                                 ? null
                                 : () => Navigator.pop(
-                                      sheetCtx,
+                                      stateCtx,
                                       pickerOptions[tempIndex],
                                     ),
-                            child: Text(material.okButtonLabel),
+                            child: Text(sheetMaterial.okButtonLabel),
                           ),
                         ],
                       ),
@@ -1393,7 +1421,8 @@ class _RecordScreenState extends State<RecordScreen>
                 ),
               ),
             );
-          },
+            },
+          ),
         );
       },
     );
@@ -1457,7 +1486,6 @@ class _RecordScreenState extends State<RecordScreen>
     FocusScope.of(context).unfocus();
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final material = MaterialLocalizations.of(context);
 
     double sanitized = initialValue ?? 0.0;
     if (sanitized.isNaN || sanitized.isInfinite) {
@@ -1491,114 +1519,126 @@ class _RecordScreenState extends State<RecordScreen>
 
     final result = await showModalBottomSheet<List<int>>(
       context: context,
+      useRootNavigator: false,
       backgroundColor: cs.surfaceContainerHighest,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       isScrollControlled: true,
-      builder: (ctx) {
-        final String header = (unitLabel == null || unitLabel.isEmpty)
-            ? title
-            : '$title ($unitLabel)';
-        return SafeArea(
-          child: SizedBox(
-            height: 320,
-            child: Column(
-              children: [
-                const SizedBox(height: 8),
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: cs.onSurfaceVariant.withOpacity(0.35),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                SizedBox(
-                  height: 48,
-                  child: Row(
+      builder: (sheetCtx) {
+        return InheritedTheme.captureAll(
+          context,
+          Builder(
+            builder: (modalCtx) {
+              final modalCs = Theme.of(modalCtx).colorScheme;
+              final modalMaterial = MaterialLocalizations.of(modalCtx);
+              final String header = (unitLabel == null || unitLabel.isEmpty)
+                  ? title
+                  : '$title ($unitLabel)';
+              return SafeArea(
+                child: SizedBox(
+                  height: 320,
+                  child: Column(
                     children: [
-                      const SizedBox(width: 12),
-                      Text(
-                        header,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, null),
-                        child: Text(material.cancelButtonLabel),
-                      ),
-                      TextButton(
-                        onPressed: () =>
-                            Navigator.pop(ctx, <int>[tempInt, tempDec]),
-                        child: Text(material.okButtonLabel),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                Expanded(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: CupertinoPicker(
-                          itemExtent: 36,
-                          useMagnifier: true,
-                          magnification: 1.08,
-                          scrollController: intController,
-                          onSelectedItemChanged: (i) => tempInt = i,
-                          children: [
-                            for (int i = 0; i <= maxInteger; i++)
-                              Center(
-                                child: Text(
-                                  i.toString(),
-                                  style: TextStyle(
-                                    fontFamily: kUiFont,
-                                    color: cs.onSurface,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
+                      const SizedBox(height: 8),
                       Container(
-                        width: 1,
-                        color: cs.onSurfaceVariant.withOpacity(0.12),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: modalCs.onSurfaceVariant.withOpacity(0.35),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
-                      Expanded(
-                        child: CupertinoPicker(
-                          itemExtent: 36,
-                          useMagnifier: true,
-                          magnification: 1.08,
-                          scrollController: decController,
-                          onSelectedItemChanged: (i) => tempDec = i,
+                      SizedBox(
+                        height: 48,
+                        child: Row(
                           children: [
-                            for (int i = 0; i < 10; i++)
-                              Center(
-                                child: Text(
-                                  '.${i.toString()}',
-                                  style: TextStyle(
-                                    fontFamily: kUiFont,
-                                    color: cs.onSurface,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                            const SizedBox(width: 12),
+                            Text(
+                              header,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: modalCs.onSurface,
                               ),
+                            ),
+                            const Spacer(),
+                            TextButton(
+                              onPressed: () => Navigator.pop(modalCtx, null),
+                              child: Text(modalMaterial.cancelButtonLabel),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(
+                                modalCtx,
+                                <int>[tempInt, tempDec],
+                              ),
+                              child: Text(modalMaterial.okButtonLabel),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: CupertinoPicker(
+                                itemExtent: 36,
+                                useMagnifier: true,
+                                magnification: 1.08,
+                                scrollController: intController,
+                                onSelectedItemChanged: (i) => tempInt = i,
+                                children: [
+                                  for (int i = 0; i <= maxInteger; i++)
+                                    Center(
+                                      child: Text(
+                                        i.toString(),
+                                        style: TextStyle(
+                                          fontFamily: kUiFont,
+                                          color: modalCs.onSurface,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              color: modalCs.onSurfaceVariant.withOpacity(0.12),
+                            ),
+                            Expanded(
+                              child: CupertinoPicker(
+                                itemExtent: 36,
+                                useMagnifier: true,
+                                magnification: 1.08,
+                                scrollController: decController,
+                                onSelectedItemChanged: (i) => tempDec = i,
+                                children: [
+                                  for (int i = 0; i < 10; i++)
+                                    Center(
+                                      child: Text(
+                                        '.${i.toString()}',
+                                        style: TextStyle(
+                                          fontFamily: kUiFont,
+                                          color: modalCs.onSurface,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
         );
       },
@@ -1740,7 +1780,6 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   Future<MealCategory?> _showMealCategoryPicker({MealCategory? current}) async {
-    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     return showModalBottomSheet<MealCategory>(
       context: context,
@@ -1749,6 +1788,7 @@ class _RecordScreenState extends State<RecordScreen>
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx)!;
         return SafeArea(
           top: false,
           child: Column(
@@ -1890,162 +1930,188 @@ class _RecordScreenState extends State<RecordScreen>
       return;
     }
 
-    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
     await showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: false,
       isScrollControlled: true,
       backgroundColor: cs.surfaceContainerHighest,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, modalSetState) {
-            if (cardIndex < 0 || cardIndex >= _mealCards.length) {
-              return const SizedBox.shrink();
-            }
+      builder: (sheetCtx) {
+        final sheetL10n = AppLocalizations.of(sheetCtx)!;
+        final sheetCs = Theme.of(sheetCtx).colorScheme;
+        return InheritedTheme.captureAll(
+          sheetCtx,
+          Material(
+            color: Colors.transparent,
+            child: SafeArea(
+              top: false,
+              child: FractionallySizedBox(
+                heightFactor: 0.85,
+                child: StatefulBuilder(
+                  builder: (modalCtx, modalSetState) {
+                    if (cardIndex < 0 || cardIndex >= _mealCards.length) {
+                      return const SizedBox.shrink();
+                    }
 
-            final card = _mealCards[cardIndex];
-            final controllers = _mealControllers[cardIndex];
-            final media = MediaQuery.of(ctx);
-            final bottomInset = media.viewInsets.bottom;
-            final safeBottom = media.padding.bottom;
+                    final card = _mealCards[cardIndex];
+                    final controllers = _mealControllers[cardIndex];
+                    final media = MediaQuery.of(modalCtx);
+                    final bottomInset = media.viewInsets.bottom;
+                    final safeBottom = media.padding.bottom;
 
-            return FractionallySizedBox(
-              heightFactor: 0.85,
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: bottomInset),
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
-                        child: Row(
-                          children: [
-                            Text(
-                              _mealCategoryLabel(card.category, l10n),
-                              style: TextStyle(
-                                color: cs.onSurface,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
-                              ),
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: bottomInset),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
+                            child: Row(
+                              children: [
+                                Text(
+                                  _mealCategoryLabel(card.category, sheetL10n),
+                                  style: TextStyle(
+                                    color: sheetCs.onSurface,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const Spacer(),
+                                TextButton(
+                                  onPressed: () {
+                                    modalSetState(() {
+                                      _addMealItemRow(cardIndex);
+                                    });
+                                  },
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: sheetCs.primary,
+                                    textStyle: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  child: Text(sheetL10n.addMealItem),
+                                ),
+                                IconButton(
+                                  onPressed: () => Navigator.of(sheetCtx).pop(),
+                                  icon: Icon(
+                                    Icons.close,
+                                    color: sheetCs.onSurfaceVariant,
+                                  ),
+                                  splashRadius: 20,
+                                ),
+                              ],
                             ),
-                            const Spacer(),
-                            TextButton(
-                              onPressed: () {
-                                setState(() {
-                                  _addMealItemRow(cardIndex);
-                                });
-                                modalSetState(() {});
+                          ),
+                          const Divider(height: 1),
+                          Expanded(
+                            child: ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                              itemCount: controllers.length,
+                              itemBuilder: (_, rowIndex) {
+                                final row = controllers[rowIndex];
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Expanded(
+                                        child: TextField(
+                                          controller: row.nameController,
+                                          decoration: _underlineDec(modalCtx).copyWith(
+                                            labelText: sheetL10n.mealItem,
+                                            hintText: null,
+                                          ),
+                                          onChanged: (value) {
+                                            _onMealNameChanged(
+                                              cardIndex,
+                                              rowIndex,
+                                              value,
+                                            );
+                                            modalSetState(() {});
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      SizedBox(
+                                        width: 110,
+                                        child: TextField(
+                                          controller: row.kcalController,
+                                          decoration: _underlineDec(modalCtx).copyWith(
+                                            hintText: '_____kcal',
+                                          ),
+                                          keyboardType: const TextInputType.numberWithOptions(
+                                            signed: false,
+                                            decimal: true,
+                                          ),
+                                          onChanged: (value) {
+                                            _onMealKcalChanged(
+                                              cardIndex,
+                                              rowIndex,
+                                              value,
+                                            );
+                                            modalSetState(() {});
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
                               },
-                              style: TextButton.styleFrom(
-                                foregroundColor: cs.primary,
-                                textStyle: const TextStyle(
-                                    fontWeight: FontWeight.w700),
-                              ),
-                              child: Text(l10n.addMealItem),
                             ),
-                            IconButton(
-                              onPressed: () => Navigator.of(ctx).pop(),
-                              icon: Icon(
-                                Icons.close,
-                                color: cs.onSurfaceVariant,
-                              ),
-                              splashRadius: 20,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Divider(height: 1),
-                      Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                          itemCount: controllers.length,
-                          itemBuilder: (context, rowIndex) {
-                            final row = controllers[rowIndex];
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: row.nameController,
-                                      decoration: _underlineDec().copyWith(
-                                        labelText: l10n.mealItem,
-                                        hintText: l10n.mealInputHint,
-                                      ),
-                                      onChanged: (value) {
-                                        _onMealNameChanged(
-                                            cardIndex, rowIndex, value);
-                                        modalSetState(() {});
-                                      },
+                          ),
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(20, 8, 20, 16 + safeBottom),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${sheetL10n.mealSubtotal}: ${_formatKcalDisplay(card.subtotalKcal)} ${sheetL10n.kcalUnit}',
+                                  style: TextStyle(
+                                    color: sheetCs.onSurface,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${sheetL10n.mealTotalToday}: ${_formatKcalDisplay(_totalMealKcal)} ${sheetL10n.kcalUnit}',
+                                  style: TextStyle(
+                                    color: sheetCs.onSurfaceVariant,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  height: 60,
+                                  child: Builder(
+                                    builder: (_) => const AdBanner(
+                                      screenName: 'record',
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
-                                  SizedBox(
-                                    width: 110,
-                                    child: TextField(
-                                      controller: row.kcalController,
-                                      decoration: _underlineDec().copyWith(
-                                        labelText: l10n.kcalUnit,
-                                      ),
-                                      keyboardType:
-                                          const TextInputType.numberWithOptions(
-                                        signed: false,
-                                        decimal: true,
-                                      ),
-                                      onChanged: (value) {
-                                        _onMealKcalChanged(
-                                            cardIndex, rowIndex, value);
-                                        modalSetState(() {});
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      Padding(
-                        padding:
-                            EdgeInsets.fromLTRB(20, 8, 20, 16 + safeBottom),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${l10n.mealSubtotal}: ${_formatKcalDisplay(card.subtotalKcal)} ${l10n.kcalUnit}',
-                              style: TextStyle(
-                                color: cs.onSurface,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${l10n.mealTotalToday}: ${_formatKcalDisplay(_totalMealKcal)} ${l10n.kcalUnit}',
-                              style: TextStyle(
-                                color: cs.onSurfaceVariant,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
   }
+
 
   void _toggleMealCollapse(int index) {
     if (index < 0 || index >= _mealCollapsed.length) {
@@ -2091,19 +2157,63 @@ class _RecordScreenState extends State<RecordScreen>
     _recalculateMealTotals();
   }
 
+  void _removeAllMealCards() {
+    setState(_resetMealState);
+  }
+
+  Future<void> _confirmRemoveAllMealCards(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          title: Text(l10n.mealDeleteConfirmTitle),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: Text(
+                l10n.no,
+                style: TextStyle(color: cs.primary),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(true),
+              child: Text(
+                l10n.yes,
+                style: TextStyle(color: cs.primary),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    if (ok == true) {
+      _removeAllMealCards();
+    }
+  }
+
   void _onMealNameChanged(int cardIndex, int itemIndex, String value) {
-    setState(() {
-      _mealCards[cardIndex].items[itemIndex].name = value;
-    });
+    if (cardIndex < 0 || cardIndex >= _mealCards.length) {
+      return;
+    }
+    if (itemIndex < 0 || itemIndex >= _mealCards[cardIndex].items.length) {
+      return;
+    }
+    _mealCards[cardIndex].items[itemIndex].name = value;
   }
 
   void _onMealKcalChanged(int cardIndex, int itemIndex, String value) {
     final trimmed = value.trim();
     final parsed = trimmed.isEmpty ? null : double.tryParse(trimmed);
-    setState(() {
-      _mealCards[cardIndex].items[itemIndex].kcal = parsed;
-      _recalculateMealTotals();
-    });
+    if (cardIndex < 0 || cardIndex >= _mealCards.length) {
+      return;
+    }
+    if (itemIndex < 0 || itemIndex >= _mealCards[cardIndex].items.length) {
+      return;
+    }
+    _mealCards[cardIndex].items[itemIndex].kcal = parsed;
+    _recalculateMealTotals();
   }
 
   void _recalculateMealTotals() {
@@ -3760,55 +3870,22 @@ class _RecordScreenState extends State<RecordScreen>
   Future<void> _handleAddMeal() async {
     _closeFabDial();
 
-    // 初回は4つ（朝・昼・夜・間食）を一括で追加して、入力シートは開かない
-    if (_mealCards.isEmpty) {
-      setState(() {
-        _addMealCard(MealCategory.morning);
-        _addMealCard(MealCategory.noon);
-        _addMealCard(MealCategory.evening);
-        _addMealCard(MealCategory.snack);
-      });
+    if (_mealCards.isNotEmpty) {
       return;
     }
 
-    // 2回目以降は従来どおりカテゴリーを選択して追加
-    final category = await _showMealCategoryPicker();
-    if (!mounted || category == null) return;
-
-    final newIndex = _mealCards.length;
     setState(() {
-      _addMealCard(category);
+      _addMealCard(MealCategory.morning);
+      _addMealCard(MealCategory.noon);
+      _addMealCard(MealCategory.evening);
+      _addMealCard(MealCategory.snack);
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _openMealInputSheet(newIndex);
-    });
-  }
-
-  Future<void> _confirmRemoveMealCard(int index) async {
-    final l10n = AppLocalizations.of(context)!;
-    final bool? ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.delete),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.delete),
-          ),
-        ],
-      ),
-    );
-    if (ok == true && mounted) {
-      setState(() {
-        _removeMealCard(index);
-      });
+    await Future.delayed(const Duration(milliseconds: 50));
+    if (!mounted) {
+      return;
     }
+    _openMealInputSheet(0);
   }
 
   // === ここからメモ・フローティングエディタ ===
@@ -4239,20 +4316,42 @@ class _RecordScreenState extends State<RecordScreen>
     Widget buildPreviewBody() {
       final children = <Widget>[];
       if (summaryItems.isEmpty) {
-        children.add(
-          Padding(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 8.0, vertical: 6.0),
-            child: Text(
-              l10n.mealEmptyNotice,
-              style: TextStyle(
-                fontFamily: kUiFont,
-                color: cs.onSurfaceVariant,
-                fontSize: 13.0,
+        for (var i = 0; i < 3; i++) {
+          children.add(
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 8.0, vertical: 6.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      '＿＿＿＿',
+                      style: TextStyle(
+                        fontFamily: kUiFont,
+                        color: cs.onSurfaceVariant,
+                        fontSize: 13.0,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '＿＿＿kcal',
+                    style: TextStyle(
+                      fontFamily: kUiFont,
+                      color: cs.onSurfaceVariant,
+                      fontSize: 13.0,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        );
+          );
+        }
       } else {
         for (var i = 0; i < summaryItems.length; i++) {
           final item = summaryItems[i];
@@ -4376,8 +4475,7 @@ class _RecordScreenState extends State<RecordScreen>
                 borderRadius: BorderRadius.circular(12.0),
                 splashFactory: NoSplash.splashFactory,
                 highlightColor: Colors.transparent,
-                onTap: () => _toggleMealCollapse(index),
-                onLongPress: () => _openMealInputSheet(index),
+                onTap: () => _openMealInputSheet(index),
                 child: Padding(
                   padding: const EdgeInsets.all(10.0),
                   child: Column(
@@ -4424,13 +4522,6 @@ class _RecordScreenState extends State<RecordScreen>
                             ),
                             visualDensity: VisualDensity.compact,
                             splashRadius: 20,
-                          ),
-                          IconButton(
-                            onPressed: () => _confirmRemoveMealCard(index),
-                            tooltip: l10n.delete,
-                            icon: const Icon(Icons.close, size: 18),
-                            visualDensity: VisualDensity.compact,
-                            splashRadius: 18,
                           ),
                         ],
                       ),
@@ -6522,20 +6613,29 @@ class _RecordScreenState extends State<RecordScreen>
                                       child: Row(
                                         children: [
                                           Expanded(
-                                            child: Text(
+                                          child: Text(
                                               l10n.meal,
                                               style: TextStyle(
                                                 fontFamily: kUiFont,
-                                                color:
-                                                    colorScheme.onSurface,
+                                                color: colorScheme.onSurface,
                                                 fontSize: 15.0,
                                                 fontWeight: FontWeight.w700,
                                               ),
-                                              overflow:
-                                                  TextOverflow.ellipsis,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
-                                          const Icon(Icons.expand_more, size: 22),
+                                          IconButton(
+                                            onPressed: () =>
+                                                _confirmRemoveAllMealCards(context),
+                                            tooltip: l10n.delete,
+                                            icon: const Icon(Icons.close),
+                                            iconSize: 18,
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints
+                                                .tightFor(width: 36, height: 36),
+                                            visualDensity: VisualDensity.compact,
+                                            splashRadius: 18,
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -6756,6 +6856,8 @@ class _RecordScreenState extends State<RecordScreen>
       );
     }
 
+    final hasMealCards = _mealCards.isNotEmpty;
+
     final dial = Positioned(
       right: 16,
       bottom: dialBottom,
@@ -6776,7 +6878,13 @@ class _RecordScreenState extends State<RecordScreen>
                   const SizedBox(height: 8),
                   _stagger(1, chipAction(l10n.addPart, _handleAddPart)),
                   const SizedBox(height: 8),
-                  _stagger(2, chipAction(l10n.mealAdd, _handleAddMeal)),
+                  _stagger(
+                      2,
+                      chipAction(
+                        l10n.mealAdd,
+                        _handleAddMeal,
+                        enabled: !hasMealCards,
+                      )),
                   const SizedBox(height: 8),
                   _stagger(3, chipAction(l10n.addMemo, _handleAddMemo)),
                   const SizedBox(height: 8),
