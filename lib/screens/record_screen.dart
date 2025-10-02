@@ -194,8 +194,8 @@ class _RecordScreenState extends State<RecordScreen>
   final GlobalKey _kRecordPart = GlobalKey();
   final GlobalKey _kExerciseField = GlobalKey();
   final GlobalKey _kFabKey = GlobalKey();
-    final GlobalKey _kMenuSaveButton = GlobalKey();
-final GlobalKey _kStopwatchArea = GlobalKey();
+  final GlobalKey _kMenuSaveButton = GlobalKey();
+  final GlobalKey _kStopwatchArea = GlobalKey();
   final GlobalKey _kAdArea = GlobalKey();
 
   bool _firstBuildDone = false;
@@ -221,16 +221,20 @@ final GlobalKey _kStopwatchArea = GlobalKey();
 
   final List<MealCardState> _mealCards = [];
   final List<List<_MealRowControllers>> _mealControllers = [];
+  final List<bool> _mealCollapsed = [];
   double _totalMealKcal = 0;
 
   final TextEditingController _weightController = TextEditingController();
 
   // 体脂肪入力用
   final TextEditingController _bodyFatController = TextEditingController();
+
   // ウエスト入力用 ← 追加
   final TextEditingController _waistController = TextEditingController();
+
   // BMI 表示用（参照のみ）
   final TextEditingController _bmiController = TextEditingController();
+
   // 基礎代謝入力用
   final TextEditingController _bmrController = TextEditingController();
 
@@ -241,8 +245,10 @@ final GlobalKey _kStopwatchArea = GlobalKey();
   bool _suppressNextMenuOverlay = false;
   int? _skipTapSectionIndex;
   int? _skipTapMenuIndex;
+
 // BMI 表示用（null のときは未計算/未設定表示）
   double? _bmiValue;
+
 // 設定から読む身長(cm)
   double? _heightCm;
 
@@ -376,7 +382,7 @@ final GlobalKey _kStopwatchArea = GlobalKey();
 
       final l10n = AppLocalizations.of(context)!;
       // (hint removed)
-await box.put('hint_seen_record', true);
+      await box.put('hint_seen_record', true);
     });
 
     _inactivityTimer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -1149,11 +1155,11 @@ await box.put('hint_seen_record', true);
   List<String> _presetPopularAndAssistNames(String originalPart) {
     switch (originalPart) {
       case '有酸素運動':
-      // 人気3（+ 下で空2を足す）
+        // 人気3（+ 下で空2を足す）
         return ['ランニング', 'ウォーキング', 'エアロバイク'];
 
       case '腕':
-      // 人気3
+        // 人気3
         final popular = ['ダンベルカール', 'バーベルカール', 'ケーブルトライセプスプレスダウン'];
         // 補助2
         final assist = ['ハンマーカール', 'スカルクラッシャー'];
@@ -1194,7 +1200,7 @@ await box.put('hint_seen_record', true);
         final assist = ['ディップス', 'ランジ'];
         return [...popular, ...assist];
 
-    // その他* はプリセットなし（空2のみ後段で付与）
+      // その他* はプリセットなし（空2のみ後段で付与）
       default:
         return const [];
     }
@@ -1333,62 +1339,62 @@ await box.put('hint_seen_record', true);
               );
             }
 
-        return SafeArea(
-          child: SizedBox(
-            height: 320,
-            child: Column(
-              children: [
-                const SizedBox(height: 8),
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: cs.onSurfaceVariant.withOpacity(0.35),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+            return SafeArea(
+              child: SizedBox(
+                height: 320,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: cs.onSurfaceVariant.withOpacity(0.35),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 52,
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 12),
+                          Text(
+                            l10n.selectExercise,
+                            style: TextStyle(
+                              color: cs.onSurface,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: handleAdd,
+                            child: Text(l10n.addNewExercise),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(sheetCtx, null),
+                            child: Text(material.cancelButtonLabel),
+                          ),
+                          TextButton(
+                            onPressed: pickerOptions.isEmpty
+                                ? null
+                                : () => Navigator.pop(
+                                      sheetCtx,
+                                      pickerOptions[tempIndex],
+                                    ),
+                            child: Text(material.okButtonLabel),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Expanded(child: buildPicker()),
+                  ],
                 ),
-                SizedBox(
-                  height: 52,
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 12),
-                      Text(
-                        l10n.selectExercise,
-                        style: TextStyle(
-                          color: cs.onSurface,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: handleAdd,
-                        child: Text(l10n.addNewExercise),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(sheetCtx, null),
-                        child: Text(material.cancelButtonLabel),
-                      ),
-                      TextButton(
-                        onPressed: pickerOptions.isEmpty
-                            ? null
-                            : () => Navigator.pop(
-                                  sheetCtx,
-                                  pickerOptions[tempIndex],
-                                ),
-                        child: Text(material.okButtonLabel),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                Expanded(child: buildPicker()),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
-      },
-    );
       },
     );
 
@@ -1670,7 +1676,8 @@ await box.put('hint_seen_record', true);
 
   Future<void> _openBmrPicker() async {
     final l10n = AppLocalizations.of(context)!;
-    final current = double.tryParse(_bmrController.text.trim().replaceAll(',', ''));
+    final current =
+        double.tryParse(_bmrController.text.trim().replaceAll(',', ''));
     final picked = await _showPersonalDecimalPicker(
       title: l10n.bmrTitleShort,
       maxInteger: 9999,
@@ -1701,6 +1708,7 @@ await box.put('hint_seen_record', true);
   void _resetMealState() {
     _disposeMealControllers();
     _mealCards.clear();
+    _mealCollapsed.clear();
     _totalMealKcal = 0;
   }
 
@@ -1806,8 +1814,7 @@ await box.put('hint_seen_record', true);
         final category =
             _mealCategoryFromString((map['category'] as String?) ?? 'morning');
         final itemsRaw = map['items'];
-        final List<dynamic> itemList =
-            (itemsRaw is List) ? itemsRaw : const [];
+        final List<dynamic> itemList = (itemsRaw is List) ? itemsRaw : const [];
         final items = <MealItem>[];
         final controllers = <_MealRowControllers>[];
         for (final item in itemList) {
@@ -1845,6 +1852,7 @@ await box.put('hint_seen_record', true);
         );
         _mealCards.add(card);
         _mealControllers.add(controllers);
+        _mealCollapsed.add(true);
       }
       _recalculateMealTotals();
     } catch (_) {
@@ -1859,8 +1867,8 @@ await box.put('hint_seen_record', true);
 
   void _addMealCard(MealCategory category) {
     final items = List<MealItem>.generate(3, (_) => MealItem());
-    final controllers =
-        List<_MealRowControllers>.generate(3, (_) => _createMealRowControllers());
+    final controllers = List<_MealRowControllers>.generate(
+        3, (_) => _createMealRowControllers());
     final card = MealCardState(
       category: category,
       items: items,
@@ -1868,6 +1876,7 @@ await box.put('hint_seen_record', true);
     );
     _mealCards.add(card);
     _mealControllers.add(controllers);
+    _mealCollapsed.add(true);
     _recalculateMealTotals();
   }
 
@@ -1934,8 +1943,8 @@ await box.put('hint_seen_record', true);
                               },
                               style: TextButton.styleFrom(
                                 foregroundColor: cs.primary,
-                                textStyle:
-                                    const TextStyle(fontWeight: FontWeight.w700),
+                                textStyle: const TextStyle(
+                                    fontWeight: FontWeight.w700),
                               ),
                               child: Text(l10n.addMealItem),
                             ),
@@ -2003,7 +2012,8 @@ await box.put('hint_seen_record', true);
                         ),
                       ),
                       Padding(
-                        padding: EdgeInsets.fromLTRB(20, 8, 20, 16 + safeBottom),
+                        padding:
+                            EdgeInsets.fromLTRB(20, 8, 20, 16 + safeBottom),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -2037,12 +2047,47 @@ await box.put('hint_seen_record', true);
     );
   }
 
+  void _toggleMealCollapse(int index) {
+    if (index < 0 || index >= _mealCollapsed.length) {
+      return;
+    }
+    setState(() {
+      _mealCollapsed[index] = !_mealCollapsed[index];
+    });
+  }
+
+  void _reorderMealCards(int oldIndex, int newIndex) {
+    if (oldIndex < 0 || oldIndex >= _mealCards.length) {
+      return;
+    }
+    if (newIndex < 0 || newIndex > _mealCards.length) {
+      return;
+    }
+    if (oldIndex == newIndex) {
+      return;
+    }
+    setState(() {
+      if (newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+      final card = _mealCards.removeAt(oldIndex);
+      final controllers = _mealControllers.removeAt(oldIndex);
+      final collapsed = _mealCollapsed.removeAt(oldIndex);
+      _mealCards.insert(newIndex, card);
+      _mealControllers.insert(newIndex, controllers);
+      _mealCollapsed.insert(newIndex, collapsed);
+    });
+  }
+
   void _removeMealCard(int index) {
     final controllers = _mealControllers.removeAt(index);
     for (final c in controllers) {
       c.dispose();
     }
     _mealCards.removeAt(index);
+    if (index >= 0 && index < _mealCollapsed.length) {
+      _mealCollapsed.removeAt(index);
+    }
     _recalculateMealTotals();
   }
 
@@ -2113,7 +2158,10 @@ await box.put('hint_seen_record', true);
     final heightCm = _heightCmFromSettingsBox();
     final birthDate = _birthDateFromSettings();
     final gender = _genderForBmr();
-    if (weightKg == null || heightCm == null || birthDate == null || gender == null) {
+    if (weightKg == null ||
+        heightCm == null ||
+        birthDate == null ||
+        gender == null) {
       return null;
     }
     final age = _ageFromBirth(birthDate);
@@ -2703,8 +2751,10 @@ await box.put('hint_seen_record', true);
         menus: allMenusForRecord,
         lastModifiedPart: lastModifiedPart,
         weight: bodyWeight,
-        bodyFatPercent: bodyFatVal, // 追加
-        waistCm: waistVal, // 追加
+        bodyFatPercent: bodyFatVal,
+        // 追加
+        waistCm: waistVal,
+        // 追加
         meals: mealsPayload.isEmpty ? null : mealsPayload,
         bmr: bmrManual,
       );
@@ -3518,7 +3568,8 @@ await box.put('hint_seen_record', true);
     // ★不足分を true（折りたたみ中）で埋める＝安全初期化
     if (section.menuCollapsedStates.length <= menuIndex) {
       section.menuCollapsedStates.addAll(
-        List<bool>.filled(menuIndex + 1 - section.menuCollapsedStates.length, true),
+        List<bool>.filled(
+            menuIndex + 1 - section.menuCollapsedStates.length, true),
       );
     }
 
@@ -3527,7 +3578,7 @@ await box.put('hint_seen_record', true);
 
     setState(() {
       section.menuCollapsedStates[menuIndex] =
-      !section.menuCollapsedStates[menuIndex];
+          !section.menuCollapsedStates[menuIndex];
       if (suppressOverlay) _suppressNextMenuOverlay = true;
     });
 
@@ -3548,7 +3599,6 @@ await box.put('hint_seen_record', true);
       });
     }
   }
-
 
   void _prepareMenuQuickAction(int sectionIndex, int menuIndex) {
     setState(() {
@@ -3710,8 +3760,19 @@ await box.put('hint_seen_record', true);
   Future<void> _handleAddMeal() async {
     _closeFabDial();
 
-    final category = await _showMealCategoryPicker();
+    // 初回は4つ（朝・昼・夜・間食）を一括で追加して、入力シートは開かない
+    if (_mealCards.isEmpty) {
+      setState(() {
+        _addMealCard(MealCategory.morning);
+        _addMealCard(MealCategory.noon);
+        _addMealCard(MealCategory.evening);
+        _addMealCard(MealCategory.snack);
+      });
+      return;
+    }
 
+    // 2回目以降は従来どおりカテゴリーを選択して追加
+    final category = await _showMealCategoryPicker();
     if (!mounted || category == null) return;
 
     final newIndex = _mealCards.length;
@@ -3828,36 +3889,39 @@ await box.put('hint_seen_record', true);
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-WidgetsBinding.instance.addPostFrameCallback((_) async {
-  // One-time overlay hint sequence
-  final box = widget.settingsBox;
-  final seenOverlay = box.get('hint_seen_record_overlay') as bool? ?? false;
-  if (!mounted || seenOverlay) return;
-  // wait a short while for elements to layout
-  await Future<void>.delayed(const Duration(milliseconds: 150));
-  final l10n = AppLocalizations.of(context)!;
-  final secIndex2 = _menuSecIndex;
-  final menuIndex2 = _menuMenuIndex;
-  if (secIndex2 == null || menuIndex2 == null) return;
-  if (secIndex2 < 0 || secIndex2 >= _sections.length) return;
-  final section2 = _sections[secIndex2];
-  if (menuIndex2 < 0 || menuIndex2 >= section2.nameFieldKeys.length) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        // One-time overlay hint sequence
+        final box = widget.settingsBox;
+        final seenOverlay =
+            box.get('hint_seen_record_overlay') as bool? ?? false;
+        if (!mounted || seenOverlay) return;
+        // wait a short while for elements to layout
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+        final l10n = AppLocalizations.of(context)!;
+        final secIndex2 = _menuSecIndex;
+        final menuIndex2 = _menuMenuIndex;
+        if (secIndex2 == null || menuIndex2 == null) return;
+        if (secIndex2 < 0 || secIndex2 >= _sections.length) return;
+        final section2 = _sections[secIndex2];
+        if (menuIndex2 < 0 || menuIndex2 >= section2.nameFieldKeys.length)
+          return;
 
-  final anchors = <GlobalKey>[
-    section2.nameFieldKeys[menuIndex2],
-    // 近い位置に吹き出しを出すため、チェックボックスの代替としてカード全体のキーを使う
-    if (menuIndex2 < section2.menuKeys.length) section2.menuKeys[menuIndex2],
-    _kMenuSaveButton,
-  ];
-  final messages = <String>[
-    l10n.hintRecordPickExercise,
-    l10n.hintRecordCheckbox,
-    l10n.hintRecordSave,
-  ];
+        final anchors = <GlobalKey>[
+          section2.nameFieldKeys[menuIndex2],
+          // 近い位置に吹き出しを出すため、チェックボックスの代替としてカード全体のキーを使う
+          if (menuIndex2 < section2.menuKeys.length)
+            section2.menuKeys[menuIndex2],
+          _kMenuSaveButton,
+        ];
+        final messages = <String>[
+          l10n.hintRecordPickExercise,
+          l10n.hintRecordCheckbox,
+          l10n.hintRecordSave,
+        ];
 
-  // (hint removed)
-await box.put('hint_seen_record_overlay', true);
-});
+        // (hint removed)
+        await box.put('hint_seen_record_overlay', true);
+      });
       if (!mounted) return;
       setState(() => _menuSlideIn = true);
     });
@@ -3876,30 +3940,27 @@ await box.put('hint_seen_record_overlay', true);
       _menuSecIndex = null;
       _menuMenuIndex = null;
     });
-  
 
+    Future<void> _maybeShowFabHintAfterSave() async {
+      final box = widget.settingsBox;
+      final seen = box.get('hint_seen_record_fab_after_save') as bool? ?? false;
+      if (seen) return;
+      // wait for FAB to be in the tree
+      final deadline = DateTime.now().add(const Duration(milliseconds: 800));
+      while (DateTime.now().isBefore(deadline)) {
+        if (!mounted) return;
+        if (_kFabKey.currentContext != null) break;
+        await Future<void>.delayed(const Duration(milliseconds: 16));
+      }
+      if (!mounted || _kFabKey.currentContext == null) return;
+      final l10n = AppLocalizations.of(context)!;
+      // (hint removed)
+      await box.put('hint_seen_record_fab_after_save', true);
+    }
 
-Future<void> _maybeShowFabHintAfterSave() async {
-  final box = widget.settingsBox;
-  final seen = box.get('hint_seen_record_fab_after_save') as bool? ?? false;
-  if (seen) return;
-  // wait for FAB to be in the tree
-  final deadline = DateTime.now().add(const Duration(milliseconds: 800));
-  while (DateTime.now().isBefore(deadline)) {
-    if (!mounted) return;
-    if (_kFabKey.currentContext != null) break;
-    await Future<void>.delayed(const Duration(milliseconds: 16));
+    // After overlay closes, show FAB hint once
+    await _maybeShowFabHintAfterSave();
   }
-  if (!mounted || _kFabKey.currentContext == null) return;
-  final l10n = AppLocalizations.of(context)!;
-  // (hint removed)
-await box.put('hint_seen_record_fab_after_save', true);
-}
-
-  // After overlay closes, show FAB hint once
-  await _maybeShowFabHintAfterSave();
-}
-
 
   Future<Directory> _mediaDirFor(DateTime date) async {
     final base = await getApplicationDocumentsDirectory();
@@ -4156,30 +4217,72 @@ await box.put('hint_seen_record_fab_after_save', true);
     final cs = theme.colorScheme;
     final card = _mealCards[index];
     final categoryLabel = _mealCategoryLabel(card.category, l10n);
-
     final summaryItems = card.items.where((item) {
       final hasName = item.name.trim().isNotEmpty;
       final hasKcal = (item.kcal ?? 0) > 0;
       return hasName || hasKcal;
     }).toList();
+    final bool isCollapsed =
+        (index < _mealCollapsed.length) ? _mealCollapsed[index] : true;
+    final bool isExpanded = !isCollapsed;
+    final bool isLight = theme.brightness == Brightness.light;
+    const Color kBrandBlue = Color(0xFF2563EB);
+    final borderColor =
+        isExpanded ? (isLight ? kBrandBlue : Colors.white) : Colors.transparent;
+    final shadowColor = isExpanded
+        ? (isLight
+            ? kBrandBlue.withOpacity(0.45)
+            : Colors.white.withOpacity(0.70))
+        : Colors.black.withOpacity(0.20);
+    final handleColor = isExpanded ? cs.primary : cs.onSurfaceVariant;
 
-    Widget buildSummaryRows() {
+    Widget buildPreviewBody() {
+      final children = <Widget>[];
       if (summaryItems.isEmpty) {
-        return const SizedBox.shrink();
-      }
-      return Column(
-        children: [
-          for (final item in summaryItems)
+        children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 8.0, vertical: 6.0),
+            child: Text(
+              l10n.mealEmptyNotice,
+              style: TextStyle(
+                fontFamily: kUiFont,
+                color: cs.onSurfaceVariant,
+                fontSize: 13.0,
+              ),
+            ),
+          ),
+        );
+      } else {
+        for (var i = 0; i < summaryItems.length; i++) {
+          final item = summaryItems[i];
+          final name = item.name.trim().isEmpty ? '—' : item.name.trim();
+          final kcalText = (item.kcal == null || item.kcal! <= 0)
+              ? '—'
+              : '${_formatKcalDisplay(item.kcal!)} ${l10n.kcalUnit}';
+          children.add(
             Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 8.0, vertical: 6.0),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  Text(
+                    '${i + 1}.',
+                    style: TextStyle(
+                      fontFamily: kUiFont,
+                      color: cs.onSurfaceVariant,
+                      fontSize: 13.0,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      item.name.trim().isEmpty ? '—' : item.name.trim(),
+                      name,
                       style: TextStyle(
+                        fontFamily: kUiFont,
                         color: cs.onSurface,
-                        fontSize: 14,
+                        fontSize: 13.0,
                         fontWeight: FontWeight.w600,
                       ),
                       maxLines: 1,
@@ -4188,116 +4291,164 @@ await box.put('hint_seen_record_fab_after_save', true);
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    (item.kcal == null || item.kcal! <= 0)
-                        ? '—'
-                        : '${_formatKcalDisplay(item.kcal!)} ${l10n.kcalUnit}',
+                    kcalText,
                     style: TextStyle(
-                      color: cs.onSurfaceVariant,
-                      fontSize: 13,
+                      fontFamily: kUiFont,
+                      color: cs.onSurface,
+                      fontSize: 13.0,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
             ),
-        ],
+          );
+        }
+      }
+
+      children.addAll([
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: 8.0, vertical: 6.0),
+          child: Text(
+            '${l10n.mealSubtotal}: ${_formatKcalDisplay(card.subtotalKcal)} ${l10n.kcalUnit}',
+            style: TextStyle(
+              fontFamily: kUiFont,
+              color: cs.onSurface,
+              fontSize: 13.0,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: 8.0, vertical: 2.0),
+          child: Text(
+            '${l10n.mealTotalToday}: ${_formatKcalDisplay(_totalMealKcal)} ${l10n.kcalUnit}',
+            style: TextStyle(
+              fontFamily: kUiFont,
+              color: cs.onSurfaceVariant,
+              fontSize: 13.0,
+            ),
+          ),
+        ),
+      ]);
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
       );
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.symmetric(vertical: 3.0),
       child: Card(
         margin: EdgeInsets.zero,
-        color: cs.surfaceContainerHighest,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-        elevation: 1.0,
-        child: InkWell(
-          onTap: () => _openMealInputSheet(index),
-          borderRadius: BorderRadius.circular(16.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: theme.brightness == Brightness.light
-                  ? cs.surface
-                  : cs.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(16.0),
+        color: cs.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          side: BorderSide(
+            color: borderColor,
+            width: isExpanded ? 1.5 : 0,
+          ),
+        ),
+        elevation: isExpanded ? 3.0 : 0.0,
+        shadowColor: shadowColor,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ReorderableDragStartListener(
+              index: index,
+              child: Container(
+                width: 40,
+                padding: const EdgeInsets.only(top: 16.0, bottom: 4.0),
+                alignment: AlignmentDirectional.topCenter,
+                child: Icon(
+                  Icons.drag_indicator_rounded,
+                  size: 22,
+                  color: handleColor,
+                ),
+              ),
             ),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    OutlinedButton(
-                      onPressed: () async {
-                        final selected = await _showMealCategoryPicker(
-                          current: card.category,
-                        );
-                        if (selected == null || !mounted) return;
-                        if (selected == card.category) return;
-                        setState(() {
-                          card.category = selected;
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: cs.onSurface,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        side: BorderSide(color: cs.outlineVariant),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+            Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12.0),
+                splashFactory: NoSplash.splashFactory,
+                highlightColor: Colors.transparent,
+                onTap: () => _toggleMealCollapse(index),
+                onLongPress: () => _openMealInputSheet(index),
+                child: Padding(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Text(
-                            categoryLabel,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          Expanded(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onLongPress: () async {
+                                final selected = await _showMealCategoryPicker(
+                                  current: card.category,
+                                );
+                                if (selected == null || !mounted) return;
+                                if (selected == card.category) return;
+                                setState(() {
+                                  card.category = selected;
+                                });
+                              },
+                              child: Text(
+                                categoryLabel,
+                                style: TextStyle(
+                                  fontFamily: kUiFont,
+                                  color: cs.onSurface,
+                                  fontSize: 15.0,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.expand_more_rounded,
-                            size: 18,
-                            color: cs.onSurfaceVariant,
+                          IconButton(
+                            onPressed: () => _toggleMealCollapse(index),
+                            tooltip: isCollapsed
+                                ? l10n.expandCard
+                                : l10n.collapseCard,
+                            icon: Icon(
+                              isCollapsed
+                                  ? Icons.keyboard_arrow_down_rounded
+                                  : Icons.keyboard_arrow_up_rounded,
+                              size: 22,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                            splashRadius: 20,
+                          ),
+                          IconButton(
+                            onPressed: () => _confirmRemoveMealCard(index),
+                            tooltip: l10n.delete,
+                            icon: const Icon(Icons.close, size: 18),
+                            visualDensity: VisualDensity.compact,
+                            splashRadius: 18,
                           ),
                         ],
                       ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () => _confirmRemoveMealCard(index),
-                      tooltip: l10n.delete,
-                      icon: const Icon(Icons.close, size: 18),
-                      visualDensity: VisualDensity.compact,
-                      splashRadius: 18,
-                    ),
-                  ],
-                ),
-                if (summaryItems.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  buildSummaryRows(),
-                ],
-                const SizedBox(height: 8),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-                Text(
-                  '${l10n.mealSubtotal}: ${_formatKcalDisplay(card.subtotalKcal)} ${l10n.kcalUnit}',
-                  style: TextStyle(
-                    color: cs.onSurface,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                      AnimatedCrossFade(
+                        duration: const Duration(milliseconds: 180),
+                        sizeCurve: Curves.easeOutCubic,
+                        crossFadeState: isCollapsed
+                            ? CrossFadeState.showFirst
+                            : CrossFadeState.showSecond,
+                        firstChild: const SizedBox.shrink(),
+                        secondChild: buildPreviewBody(),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${l10n.mealTotalToday}: ${_formatKcalDisplay(_totalMealKcal)} ${l10n.kcalUnit}',
-                  style: TextStyle(
-                    color: cs.onSurfaceVariant,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -4739,7 +4890,9 @@ await box.put('hint_seen_record_fab_after_save', true);
                                   l10n.save,
                                   style: TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    color: Theme.of(context).colorScheme.onSurface, // ← ラベル側で濃色を強制
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface, // ← ラベル側で濃色を強制
                                   ),
                                 ),
                                 style: ButtonStyle(
@@ -4751,7 +4904,8 @@ await box.put('hint_seen_record_fab_after_save', true);
                                     Theme.of(context).colorScheme.onSurface,
                                   ),
                                   // 押下時の被せ色が薄さに見えないよう完全透明に（任意）
-                                  overlayColor: const MaterialStatePropertyAll(Colors.transparent),
+                                  overlayColor: const MaterialStatePropertyAll(
+                                      Colors.transparent),
                                 ),
                               ),
                             ],
@@ -5039,13 +5193,17 @@ await box.put('hint_seen_record_fab_after_save', true);
                               ),
                               const Spacer(),
                               TextButton.icon(
-  onPressed: _saveMemoAndClose,
-  icon: const Icon(Icons.check_rounded),
-  label: Text(l10n.save, style: const TextStyle(fontWeight: FontWeight.w700)),
-  style: TextButton.styleFrom(
-    foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
-  ),
-),
+                                onPressed: _saveMemoAndClose,
+                                icon: const Icon(Icons.check_rounded),
+                                label: Text(l10n.save,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w700)),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -5218,22 +5376,30 @@ await box.put('hint_seen_record_fab_after_save', true);
                                           _addOneSetAt(secIndex, menuIndex);
                                         }
                                       : null,
-                                  child: Text(l10n.addSet, style: const TextStyle(fontWeight: FontWeight.w700)),
-  style: TextButton.styleFrom(
-    foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
-  ),
+                                  child: Text(l10n.addSet,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700)),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
                                 ),
                               ],
                               const SizedBox(width: 4),
                               TextButton.icon(
-  key: _kMenuSaveButton,
-  onPressed: _saveMenuAndClose,
-  icon: const Icon(Icons.check_rounded),
-  label: Text(l10n.save, style: const TextStyle(fontWeight: FontWeight.w700)),
-  style: TextButton.styleFrom(
-    foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
-  ),
-),
+                                key: _kMenuSaveButton,
+                                onPressed: _saveMenuAndClose,
+                                icon: const Icon(Icons.check_rounded),
+                                label: Text(l10n.save,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w700)),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -5305,9 +5471,8 @@ await box.put('hint_seen_record_fab_after_save', true);
                                         _dismissAerobicFailureHint(
                                             secIndex, menuIndex),
                                     onAnyFieldFocused: () {},
-                                    onMenuNameTap: () =>
-                                        _showExercisePicker(
-                                            secIndex, menuIndex),
+                                    onMenuNameTap: () => _showExercisePicker(
+                                        secIndex, menuIndex),
                                     onNameChanged: (prevEmpty, nowEmpty) {
                                       if (section.selectedPart ==
                                           l10n.aerobicExercise) {
@@ -5413,8 +5578,11 @@ await box.put('hint_seen_record_fab_after_save', true);
         (widget.settingsBox.get('manage.bmr') as bool?) ?? false;
 
 // 設定：パーソナル機能が全OFFなら＋パーソナルを非表示
-    final bool canShowPersonalButton =
-        SettingsManager.showWeightInput || showBodyFat || showWaist || showBMI || showBmr;
+    final bool canShowPersonalButton = SettingsManager.showWeightInput ||
+        showBodyFat ||
+        showWaist ||
+        showBMI ||
+        showBmr;
     final bool inputOverlayActive =
         _memoOverlayVisible || _menuOverlayVisible || _personalOverlayVisible;
     final Widget blurLayer = inputOverlayActive
@@ -5777,8 +5945,7 @@ await box.put('hint_seen_record_fab_after_save', true);
                                                         controller: _bmiCtrl),
                                                   if (showBmr) ...[
                                                     _metricRow(
-                                                      label:
-                                                          l10n.bmrTitleShort,
+                                                      label: l10n.bmrTitleShort,
                                                       controller:
                                                           _bmrController,
                                                       unit: l10n.kcalUnit,
@@ -5786,8 +5953,7 @@ await box.put('hint_seen_record_fab_after_save', true);
                                                     Padding(
                                                       padding:
                                                           const EdgeInsets.only(
-                                                              left: 98,
-                                                              top: 4),
+                                                              left: 98, top: 4),
                                                       child: Text(
                                                         _formattedBmrDifference(
                                                             l10n),
@@ -6317,7 +6483,116 @@ await box.put('hint_seen_record_fab_after_save', true);
                     final int mealStart = sectionCount;
                     final int mealEnd = mealStart + mealCount;
                     if (bodyIdx >= mealStart && bodyIdx < mealEnd) {
-                      return _buildMealCard(bodyIdx - mealStart);
+                      if (_mealCards.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      if (bodyIdx == mealStart) {
+                        final l10n = AppLocalizations.of(context)!;
+                        return Padding(
+                          padding: EdgeInsets.zero,
+                          child: Card(
+                            color: colorScheme.surfaceContainerHighest,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16.0)),
+                            elevation: 1.0,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    constraints: const BoxConstraints(
+                                        minHeight: kUnifiedFieldMinHeight),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.surfaceContainer,
+                                      borderRadius:
+                                          BorderRadius.circular(22.0),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color:
+                                              Colors.black.withOpacity(0.04),
+                                          blurRadius: 3.0,
+                                          offset: const Offset(0, 1),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 8, horizontal: 20),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              l10n.meal,
+                                              style: TextStyle(
+                                                fontFamily: kUiFont,
+                                                color:
+                                                    colorScheme.onSurface,
+                                                fontSize: 15.0,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                              overflow:
+                                                  TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const Icon(Icons.expand_more, size: 22),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4.0),
+                                  ReorderableListView.builder(
+                                    key: const ValueKey(
+                                        'meal-cards-reorderable'),
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    padding: EdgeInsets.zero,
+                                    buildDefaultDragHandles: false,
+                                    itemCount: _mealCards.length,
+                                    proxyDecorator:
+                                        (child, index, animation) {
+                                      return AnimatedBuilder(
+                                        animation: animation,
+                                        builder: (context, childParam) {
+                                          final t = Curves.easeOutCubic
+                                              .transform(animation.value);
+                                          return Transform.scale(
+                                            scale: 1.0 + 0.02 * t,
+                                            child: childParam,
+                                          );
+                                        },
+                                        child: Material(
+                                          elevation: 10,
+                                          color: Colors.transparent,
+                                          borderRadius:
+                                              BorderRadius.circular(12.0),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(
+                                                12.0),
+                                            child: child,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    onReorder: _reorderMealCards,
+                                    itemBuilder: (context, mealIndex) {
+                                      return KeyedSubtree(
+                                        key: ValueKey(
+                                            _mealCards[mealIndex]),
+                                        child: _buildMealCard(mealIndex),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 10.0),
+                                  const SizedBox.shrink(),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
                     }
 
                     final int memoIndex = mealEnd;
@@ -6693,7 +6968,7 @@ await box.put('hint_seen_record_fab_after_save', true);
     if (anchors.isEmpty) return;
 
     // (hint removed)
-await box.put('hint_seen_record_after_part', true);
+    await box.put('hint_seen_record_after_part', true);
   }
 }
 
@@ -8611,13 +8886,13 @@ class _MenuListState extends State<MenuList> {
           child: Row(
             children: [
               Text(
-  '${l10n.satisfaction}：',
-  style: TextStyle(
-    color: colorScheme.onSurfaceVariant,
-    fontSize: 13,
-    fontWeight: FontWeight.w700,
-  ),
-),
+                '${l10n.satisfaction}：',
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(width: 8),
               _buildFaceButton(
                 value: 0,
