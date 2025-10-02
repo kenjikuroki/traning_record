@@ -10,6 +10,7 @@ import 'dart:async';
 import 'package:intl/intl.dart';
 import '../l10n/app_localizations.dart';
 import '../models/exercise_catalog.dart';
+import '../models/meal.dart';
 import '../models/menu_data.dart';
 import '../settings_manager.dart';
 import '../utils/training_display_utils.dart';
@@ -61,6 +62,21 @@ void showAppSnack(
           : null,
     ),
   );
+}
+
+class _MealRowControllers {
+  _MealRowControllers({
+    required this.nameController,
+    required this.kcalController,
+  });
+
+  final TextEditingController nameController;
+  final TextEditingController kcalController;
+
+  void dispose() {
+    nameController.dispose();
+    kcalController.dispose();
+  }
 }
 
 const double kUnifiedFieldMinHeight = 36.0;
@@ -203,6 +219,10 @@ final GlobalKey _kStopwatchArea = GlobalKey();
 
   Map<String, List<String>> _customExercises = {};
 
+  final List<MealCardState> _mealCards = [];
+  final List<List<_MealRowControllers>> _mealControllers = [];
+  double _totalMealKcal = 0;
+
   final TextEditingController _weightController = TextEditingController();
 
   // 体脂肪入力用
@@ -211,6 +231,8 @@ final GlobalKey _kStopwatchArea = GlobalKey();
   final TextEditingController _waistController = TextEditingController();
   // BMI 表示用（参照のみ）
   final TextEditingController _bmiController = TextEditingController();
+  // 基礎代謝入力用
+  final TextEditingController _bmrController = TextEditingController();
 
   // パーソナルカード表示フラグ（1枚だけ）
   bool _showPersonalCard = false;
@@ -320,6 +342,7 @@ final GlobalKey _kStopwatchArea = GlobalKey();
         .addListener(_onAerobicCalorieSettingChanged);
     SettingsManager.personalWeightNotifier
         .addListener(_onPersonalWeightSettingChanged);
+    SettingsManager.manageBmrNotifier.addListener(_onBmrToggleChanged);
     _weightController.addListener(_handleWeightChanged);
     _calcAerobicCalories = SettingsManager.enableAerobicCalories;
 
@@ -422,6 +445,8 @@ await box.put('hint_seen_record', true);
     _setCountSub?.cancel();
     _scrollDebounce?.cancel();
 
+    _resetMealState();
+
     _scrollCtrl.dispose();
     for (var section in _sections) {
       section.dispose();
@@ -433,6 +458,7 @@ await box.put('hint_seen_record', true);
     _bodyFatController.dispose();
     _waistController.dispose();
     _bmiController.dispose();
+    _bmrController.dispose();
     _memoController.dispose();
     _memoOverlayFocus.dispose();
     _menuOverlayFocus.dispose();
@@ -443,6 +469,7 @@ await box.put('hint_seen_record', true);
         .removeListener(_onAerobicCalorieSettingChanged);
     SettingsManager.personalWeightNotifier
         .removeListener(_onPersonalWeightSettingChanged);
+    SettingsManager.manageBmrNotifier.removeListener(_onBmrToggleChanged);
 
     super.dispose();
   }
@@ -1641,9 +1668,537 @@ await box.put('hint_seen_record', true);
     _waistController.text = formatted;
   }
 
+  Future<void> _openBmrPicker() async {
+    final l10n = AppLocalizations.of(context)!;
+    final current = double.tryParse(_bmrController.text.trim().replaceAll(',', ''));
+    final picked = await _showPersonalDecimalPicker(
+      title: l10n.bmrTitleShort,
+      maxInteger: 9999,
+      unitLabel: l10n.kcalUnit,
+      initialValue: current,
+    );
+    if (picked == null) {
+      return;
+    }
+    final String formatted = _formatOneDecimal(picked);
+    if (_bmrController.text.trim() == formatted) {
+      return;
+    }
+    setState(() {
+      _bmrController.text = formatted;
+    });
+  }
+
+  void _disposeMealControllers() {
+    for (final list in _mealControllers) {
+      for (final controllers in list) {
+        controllers.dispose();
+      }
+    }
+    _mealControllers.clear();
+  }
+
+  void _resetMealState() {
+    _disposeMealControllers();
+    _mealCards.clear();
+    _totalMealKcal = 0;
+  }
+
+  MealCategory _mealCategoryFromString(String value) {
+    switch (value) {
+      case 'noon':
+        return MealCategory.noon;
+      case 'evening':
+        return MealCategory.evening;
+      case 'snack':
+        return MealCategory.snack;
+      case 'morning':
+      default:
+        return MealCategory.morning;
+    }
+  }
+
+  String _mealCategoryLabel(MealCategory category, AppLocalizations l10n) {
+    switch (category) {
+      case MealCategory.morning:
+        return l10n.mealMorning;
+      case MealCategory.noon:
+        return l10n.mealNoon;
+      case MealCategory.evening:
+        return l10n.mealEvening;
+      case MealCategory.snack:
+        return l10n.mealSnack;
+    }
+  }
+
+  Future<MealCategory?> _showMealCategoryPicker({MealCategory? current}) async {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    return showModalBottomSheet<MealCategory>(
+      context: context,
+      backgroundColor: cs.surfaceContainerHighest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 16),
+              Text(
+                l10n.mealCategory,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...MealCategory.values.map(
+                (cat) {
+                  final selected = current == cat;
+                  return ListTile(
+                    dense: true,
+                    title: Text(
+                      _mealCategoryLabel(cat, l10n),
+                      style: TextStyle(color: cs.onSurface),
+                    ),
+                    trailing: selected
+                        ? Icon(Icons.check_rounded, color: cs.primary)
+                        : null,
+                    onTap: () => Navigator.of(ctx).pop(cat),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  _MealRowControllers _createMealRowControllers({
+    String name = '',
+    double? kcal,
+  }) {
+    return _MealRowControllers(
+      nameController: TextEditingController(text: name),
+      kcalController: TextEditingController(
+        text: kcal == null ? '' : _formatKcalInput(kcal),
+      ),
+    );
+  }
+
+  void _loadMealCardsFromRecord(DailyRecord? record) {
+    _resetMealState();
+    final raw = record?.meals;
+    if (raw == null || raw.isEmpty) {
+      return;
+    }
+
+    try {
+      for (final entry in raw) {
+        if (entry is! Map) continue;
+        final map = entry.cast<String, dynamic>();
+        final category =
+            _mealCategoryFromString((map['category'] as String?) ?? 'morning');
+        final itemsRaw = map['items'];
+        final List<dynamic> itemList =
+            (itemsRaw is List) ? itemsRaw : const [];
+        final items = <MealItem>[];
+        final controllers = <_MealRowControllers>[];
+        for (final item in itemList) {
+          if (item is! Map) continue;
+          final itemMap = item.cast<String, dynamic>();
+          final name = itemMap['name']?.toString() ?? '';
+          double? kcal;
+          final rawKcal = itemMap['kcal'];
+          if (rawKcal is num) {
+            kcal = rawKcal.toDouble();
+          } else if (rawKcal is String) {
+            kcal = double.tryParse(rawKcal);
+          }
+          items.add(MealItem(name: name, kcal: kcal));
+          controllers.add(
+            _createMealRowControllers(name: name, kcal: kcal),
+          );
+        }
+        while (items.length < 3) {
+          items.add(MealItem());
+          controllers.add(_createMealRowControllers());
+        }
+        final subtotalRaw = map['subtotal'];
+        double subtotal = 0;
+        if (subtotalRaw is num) {
+          subtotal = subtotalRaw.toDouble();
+        } else if (subtotalRaw is String) {
+          subtotal = double.tryParse(subtotalRaw) ?? 0;
+        }
+
+        final card = MealCardState(
+          category: category,
+          items: items,
+          subtotalKcal: subtotal,
+        );
+        _mealCards.add(card);
+        _mealControllers.add(controllers);
+      }
+      _recalculateMealTotals();
+    } catch (_) {
+      _resetMealState();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final l10n = AppLocalizations.of(context)!;
+        showAppSnack(context, l10n.mealRestoreFailed);
+      });
+    }
+  }
+
+  void _addMealCard(MealCategory category) {
+    final items = List<MealItem>.generate(3, (_) => MealItem());
+    final controllers =
+        List<_MealRowControllers>.generate(3, (_) => _createMealRowControllers());
+    final card = MealCardState(
+      category: category,
+      items: items,
+      subtotalKcal: 0,
+    );
+    _mealCards.add(card);
+    _mealControllers.add(controllers);
+    _recalculateMealTotals();
+  }
+
+  void _addMealItemRow(int cardIndex) {
+    _mealCards[cardIndex].items.add(MealItem());
+    _mealControllers[cardIndex].add(_createMealRowControllers());
+  }
+
+  Future<void> _openMealInputSheet(int cardIndex) async {
+    if (cardIndex < 0 || cardIndex >= _mealCards.length) {
+      return;
+    }
+
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: cs.surfaceContainerHighest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, modalSetState) {
+            if (cardIndex < 0 || cardIndex >= _mealCards.length) {
+              return const SizedBox.shrink();
+            }
+
+            final card = _mealCards[cardIndex];
+            final controllers = _mealControllers[cardIndex];
+            final media = MediaQuery.of(ctx);
+            final bottomInset = media.viewInsets.bottom;
+            final safeBottom = media.padding.bottom;
+
+            return FractionallySizedBox(
+              heightFactor: 0.85,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: bottomInset),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
+                        child: Row(
+                          children: [
+                            Text(
+                              _mealCategoryLabel(card.category, l10n),
+                              style: TextStyle(
+                                color: cs.onSurface,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const Spacer(),
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _addMealItemRow(cardIndex);
+                                });
+                                modalSetState(() {});
+                              },
+                              style: TextButton.styleFrom(
+                                foregroundColor: cs.primary,
+                                textStyle:
+                                    const TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                              child: Text(l10n.addMealItem),
+                            ),
+                            IconButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              icon: Icon(
+                                Icons.close,
+                                color: cs.onSurfaceVariant,
+                              ),
+                              splashRadius: 20,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      Expanded(
+                        child: ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                          itemCount: controllers.length,
+                          itemBuilder: (context, rowIndex) {
+                            final row = controllers[rowIndex];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: row.nameController,
+                                      decoration: _underlineDec().copyWith(
+                                        labelText: l10n.mealItem,
+                                        hintText: l10n.mealInputHint,
+                                      ),
+                                      onChanged: (value) {
+                                        _onMealNameChanged(
+                                            cardIndex, rowIndex, value);
+                                        modalSetState(() {});
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  SizedBox(
+                                    width: 110,
+                                    child: TextField(
+                                      controller: row.kcalController,
+                                      decoration: _underlineDec().copyWith(
+                                        labelText: l10n.kcalUnit,
+                                      ),
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                        signed: false,
+                                        decimal: true,
+                                      ),
+                                      onChanged: (value) {
+                                        _onMealKcalChanged(
+                                            cardIndex, rowIndex, value);
+                                        modalSetState(() {});
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(20, 8, 20, 16 + safeBottom),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${l10n.mealSubtotal}: ${_formatKcalDisplay(card.subtotalKcal)} ${l10n.kcalUnit}',
+                              style: TextStyle(
+                                color: cs.onSurface,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${l10n.mealTotalToday}: ${_formatKcalDisplay(_totalMealKcal)} ${l10n.kcalUnit}',
+                              style: TextStyle(
+                                color: cs.onSurfaceVariant,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _removeMealCard(int index) {
+    final controllers = _mealControllers.removeAt(index);
+    for (final c in controllers) {
+      c.dispose();
+    }
+    _mealCards.removeAt(index);
+    _recalculateMealTotals();
+  }
+
+  void _onMealNameChanged(int cardIndex, int itemIndex, String value) {
+    setState(() {
+      _mealCards[cardIndex].items[itemIndex].name = value;
+    });
+  }
+
+  void _onMealKcalChanged(int cardIndex, int itemIndex, String value) {
+    final trimmed = value.trim();
+    final parsed = trimmed.isEmpty ? null : double.tryParse(trimmed);
+    setState(() {
+      _mealCards[cardIndex].items[itemIndex].kcal = parsed;
+      _recalculateMealTotals();
+    });
+  }
+
+  void _recalculateMealTotals() {
+    double total = 0;
+    for (final card in _mealCards) {
+      double subtotal = 0;
+      for (final item in card.items) {
+        final kcal = item.kcal;
+        if (kcal != null && kcal > 0) {
+          subtotal += kcal;
+        }
+      }
+      card.subtotalKcal = subtotal;
+      total += subtotal;
+    }
+    _totalMealKcal = total;
+  }
+
+  List<Map<String, dynamic>> _serializeMeals() {
+    final result = <Map<String, dynamic>>[];
+    for (final card in _mealCards) {
+      result.add({
+        'category': card.category.name,
+        'items': [
+          for (final item in card.items)
+            {
+              'name': item.name,
+              'kcal': item.kcal,
+            }
+        ],
+        'subtotal': card.subtotalKcal,
+      });
+    }
+    return result;
+  }
+
+  String _formatKcalDisplay(double value) {
+    final locale = Localizations.localeOf(context).toString();
+    final formatter = NumberFormat('#,##0', locale);
+    return formatter.format(value.round());
+  }
+
+  String _formatKcalInput(double value) {
+    if (value == value.roundToDouble()) {
+      return value.toStringAsFixed(0);
+    }
+    return value.toStringAsFixed(1);
+  }
+
+  double? _calculateBmr() {
+    final weightKg = _currentWeightKg() ?? SettingsManager.personalWeightKg;
+    final heightCm = _heightCmFromSettingsBox();
+    final birthDate = _birthDateFromSettings();
+    final gender = _genderForBmr();
+    if (weightKg == null || heightCm == null || birthDate == null || gender == null) {
+      return null;
+    }
+    final age = _ageFromBirth(birthDate);
+    if (age == null) return null;
+    final base = 10 * weightKg + 6.25 * heightCm - 5 * age;
+    final offset = gender == 'male' ? 5 : -161;
+    final result = base + offset;
+    if (!result.isFinite) return null;
+    return result;
+  }
+
+  double? _heightCmFromSettingsBox() {
+    final candidates = [
+      widget.settingsBox.get('personal.heightCm'),
+      widget.settingsBox.get('height_cm'),
+      widget.settingsBox.get('heightCm'),
+      widget.settingsBox.get('user_height_cm'),
+      widget.settingsBox.get('height'),
+    ];
+    for (final value in candidates) {
+      if (value is num) return value.toDouble();
+      if (value is String) {
+        final parsed = double.tryParse(value);
+        if (parsed != null) return parsed;
+      }
+    }
+
+    final personalMeters = widget.settingsBox.get('personal.heightM');
+    if (personalMeters is num) return personalMeters.toDouble() * 100;
+    if (personalMeters is String) {
+      final parsed = double.tryParse(personalMeters);
+      if (parsed != null) return parsed * 100;
+    }
+
+    final meters = widget.settingsBox.get('height_m');
+    if (meters is num) return meters.toDouble() * 100;
+    if (meters is String) {
+      final parsed = double.tryParse(meters);
+      if (parsed != null) return parsed * 100;
+    }
+
+    return null;
+  }
+
+  DateTime? _birthDateFromSettings() {
+    final stored = widget.settingsBox.get('personal.birthDate');
+    if (stored is DateTime) return stored;
+    if (stored is String) {
+      return DateTime.tryParse(stored);
+    }
+    return null;
+  }
+
+  String? _genderForBmr() {
+    final candidates = [
+      widget.settingsBox.get('personal.gender'),
+      widget.settingsBox.get('gender'),
+    ];
+    for (final value in candidates) {
+      if (value is String) {
+        final lower = value.toLowerCase();
+        if (lower.contains('male') || lower.contains('男')) return 'male';
+        if (lower.contains('female') || lower.contains('女')) return 'female';
+      }
+    }
+    return null;
+  }
+
+  int? _ageFromBirth(DateTime birthDate) {
+    final now = DateTime.now();
+    int age = now.year - birthDate.year;
+    final hadBirthday = (now.month > birthDate.month) ||
+        (now.month == birthDate.month && now.day >= birthDate.day);
+    if (!hadBirthday) {
+      age -= 1;
+    }
+    if (age < 0) return null;
+    return age;
+  }
+
   void _loadInitialSections() {
     final dateKey = _getDateKey(widget.selectedDate);
     final record = widget.recordsBox.get(dateKey);
+
+    _loadMealCardsFromRecord(record);
 
     for (var s in _sections) {
       s.dispose();
@@ -1688,6 +2243,18 @@ await box.put('hint_seen_record', true);
 
     // 体重(と身長)から BMI を初期計算
     _updateBmiDisplay();
+
+    final savedBmr = record?.bmr;
+    if (savedBmr != null) {
+      _bmrController.text = _formatKcalInput(savedBmr);
+    } else {
+      final autoBmr = _calculateBmr();
+      if (autoBmr != null) {
+        _bmrController.text = _formatKcalInput(autoBmr);
+      } else {
+        _bmrController.clear();
+      }
+    }
 
     String? recoveredNote;
     try {
@@ -1925,6 +2492,11 @@ await box.put('hint_seen_record', true);
     String? lastModifiedPart;
     bool hasAnyRecordData = false;
     final l10n = AppLocalizations.of(context)!;
+    final mealsPayload = _serializeMeals();
+
+    if (mealsPayload.isNotEmpty) {
+      hasAnyRecordData = true;
+    }
 
     for (int sec = 0; sec < _sections.length; sec++) {
       final section = _sections[sec];
@@ -2101,6 +2673,16 @@ await box.put('hint_seen_record', true);
       }
     }
 
+    double? bmrManual;
+    final String rawBmr = _bmrController.text.trim().replaceAll(',', '');
+    if (rawBmr.isNotEmpty) {
+      final parsed = double.tryParse(rawBmr);
+      if (parsed != null) {
+        bmrManual = parsed;
+        hasAnyRecordData = true;
+      }
+    }
+
     // ▼ 追加：体脂肪率/ウエストを先に数値化（固定フィールドへ保存するため）
     final String rawBf = _bodyFatController.text.trim();
     final double? bodyFatVal = rawBf.isEmpty ? null : double.tryParse(rawBf);
@@ -2123,6 +2705,8 @@ await box.put('hint_seen_record', true);
         weight: bodyWeight,
         bodyFatPercent: bodyFatVal, // 追加
         waistCm: waistVal, // 追加
+        meals: mealsPayload.isEmpty ? null : mealsPayload,
+        bmr: bmrManual,
       );
 
       try {
@@ -2230,6 +2814,27 @@ await box.put('hint_seen_record', true);
 
     final personal = SettingsManager.personalWeightKg;
     return personal;
+  }
+
+  double? _currentBmrValue() {
+    final raw = _bmrController.text.trim();
+    if (raw.isNotEmpty) {
+      final cleaned = raw.replaceAll(',', '');
+      final parsed = double.tryParse(cleaned);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+    return _calculateBmr();
+  }
+
+  String _formattedBmrDifference(AppLocalizations l10n) {
+    final bmr = _currentBmrValue();
+    if (bmr == null) {
+      return '${l10n.bmrDiffShort}: —';
+    }
+    final diff = bmr - _totalMealKcal;
+    return '${l10n.bmrDiffShort}: ${_formatKcalDisplay(diff)} ${l10n.kcalUnit}';
   }
 
   double _parseDurationMinutes(String text) {
@@ -2519,6 +3124,11 @@ await box.put('hint_seen_record', true);
     } else {
       _recalculateAllAerobicCalories(force: true);
     }
+  }
+
+  void _onBmrToggleChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   bool _shouldShowCalorieField(SectionData section, int menuIndex) {
@@ -3097,6 +3707,49 @@ await box.put('hint_seen_record', true);
     await _openMemoOverlaySmooth();
   }
 
+  Future<void> _handleAddMeal() async {
+    _closeFabDial();
+
+    final category = await _showMealCategoryPicker();
+
+    if (!mounted || category == null) return;
+
+    final newIndex = _mealCards.length;
+    setState(() {
+      _addMealCard(category);
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _openMealInputSheet(newIndex);
+    });
+  }
+
+  Future<void> _confirmRemoveMealCard(int index) async {
+    final l10n = AppLocalizations.of(context)!;
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.delete),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted) {
+      setState(() {
+        _removeMealCard(index);
+      });
+    }
+  }
+
   // === ここからメモ・フローティングエディタ ===
 
   Future<void> _openMemoOverlaySmooth() async {
@@ -3493,6 +4146,163 @@ await box.put('hint_seen_record_fab_after_save', true);
   }
 
   // ===== メモ：プレビュー（タップでフローティング編集へ） =====
+  Widget _buildMealCard(int index) {
+    if (index < 0 || index >= _mealCards.length) {
+      return const SizedBox.shrink();
+    }
+
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final card = _mealCards[index];
+    final categoryLabel = _mealCategoryLabel(card.category, l10n);
+
+    final summaryItems = card.items.where((item) {
+      final hasName = item.name.trim().isNotEmpty;
+      final hasKcal = (item.kcal ?? 0) > 0;
+      return hasName || hasKcal;
+    }).toList();
+
+    Widget buildSummaryRows() {
+      if (summaryItems.isEmpty) {
+        return const SizedBox.shrink();
+      }
+      return Column(
+        children: [
+          for (final item in summaryItems)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.name.trim().isEmpty ? '—' : item.name.trim(),
+                      style: TextStyle(
+                        color: cs.onSurface,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    (item.kcal == null || item.kcal! <= 0)
+                        ? '—'
+                        : '${_formatKcalDisplay(item.kcal!)} ${l10n.kcalUnit}',
+                    style: TextStyle(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Card(
+        margin: EdgeInsets.zero,
+        color: cs.surfaceContainerHighest,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+        elevation: 1.0,
+        child: InkWell(
+          onTap: () => _openMealInputSheet(index),
+          borderRadius: BorderRadius.circular(16.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: theme.brightness == Brightness.light
+                  ? cs.surface
+                  : cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(16.0),
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    OutlinedButton(
+                      onPressed: () async {
+                        final selected = await _showMealCategoryPicker(
+                          current: card.category,
+                        );
+                        if (selected == null || !mounted) return;
+                        if (selected == card.category) return;
+                        setState(() {
+                          card.category = selected;
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: cs.onSurface,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        side: BorderSide(color: cs.outlineVariant),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            categoryLabel,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.expand_more_rounded,
+                            size: 18,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => _confirmRemoveMealCard(index),
+                      tooltip: l10n.delete,
+                      icon: const Icon(Icons.close, size: 18),
+                      visualDensity: VisualDensity.compact,
+                      splashRadius: 18,
+                    ),
+                  ],
+                ),
+                if (summaryItems.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  buildSummaryRows(),
+                ],
+                const SizedBox(height: 8),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+                Text(
+                  '${l10n.mealSubtotal}: ${_formatKcalDisplay(card.subtotalKcal)} ${l10n.kcalUnit}',
+                  style: TextStyle(
+                    color: cs.onSurface,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${l10n.mealTotalToday}: ${_formatKcalDisplay(_totalMealKcal)} ${l10n.kcalUnit}',
+                  style: TextStyle(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMemoCard() {
     if (!_showMemo) return const SizedBox.shrink();
     final cs = Theme.of(context).colorScheme;
@@ -3769,6 +4579,8 @@ await box.put('hint_seen_record_fab_after_save', true);
         (widget.settingsBox.get('manage.waist') as bool?) ?? false;
     final bool showBMI =
         (widget.settingsBox.get('manage.bmi') as bool?) ?? false;
+    final bool showBmr =
+        (widget.settingsBox.get('manage.bmr') as bool?) ?? false;
 
     final double topGap = media.padding.top + kToolbarHeight + 8;
     final double overlayHeight = media.size.height * 0.4;
@@ -4081,6 +4893,52 @@ await box.put('hint_seen_record_fab_after_save', true);
                                           ),
                                         ),
                                       ],
+                                    ),
+                                  ],
+                                  if (showBmr) ...[
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        SizedBox(
+                                          width: 96,
+                                          child: Align(
+                                            alignment: Alignment.centerRight,
+                                            child: Text(
+                                              l10n.bmrTitleShort,
+                                              style: TextStyle(
+                                                fontFamily: kUiFont,
+                                                color: cs.onSurface,
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: underlineField(
+                                            controller: _bmrController,
+                                            unitSuffix: l10n.kcalUnit,
+                                            onTap: _openBmrPicker,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 108,
+                                        top: 4,
+                                      ),
+                                      child: Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          _formattedBmrDifference(l10n),
+                                          style: TextStyle(
+                                            color: cs.onSurfaceVariant,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ],
@@ -4551,10 +5409,12 @@ await box.put('hint_seen_record_fab_after_save', true);
         (widget.settingsBox.get('manage.waist') as bool?) ?? false;
     final bool showBMI =
         (widget.settingsBox.get('manage.bmi') as bool?) ?? false;
+    final bool showBmr =
+        (widget.settingsBox.get('manage.bmr') as bool?) ?? false;
 
-    // 設定：パーソナル機能が全OFFなら＋パーソナルを非表示
+// 設定：パーソナル機能が全OFFなら＋パーソナルを非表示
     final bool canShowPersonalButton =
-        SettingsManager.showWeightInput || showBodyFat || showWaist || showBMI;
+        SettingsManager.showWeightInput || showBodyFat || showWaist || showBMI || showBmr;
     final bool inputOverlayActive =
         _memoOverlayVisible || _menuOverlayVisible || _personalOverlayVisible;
     final Widget blurLayer = inputOverlayActive
@@ -4604,6 +5464,7 @@ await box.put('hint_seen_record_fab_after_save', true);
                   physics: const AlwaysScrollableScrollPhysics(),
                   itemCount: (showWeight ? 1 : 0) +
                       _sections.length +
+                      _mealCards.length +
                       (_showMemo ? 1 : 0) +
                       1,
                   itemBuilder: (context, index) {
@@ -4894,20 +5755,14 @@ await box.put('hint_seen_record_fab_after_save', true);
                                                       unit: currentUnit == 'kg'
                                                           ? l10n.kg
                                                           : l10n.lbs),
-                                                  if ((widget.settingsBox.get(
-                                                              'manage.bodyFat')
-                                                          as bool?) ??
-                                                      false)
+                                                  if (showBodyFat)
                                                     _metricRow(
                                                         label: l10n.bodyFat,
                                                         controller:
                                                             _bodyFatController,
                                                         unit:
                                                             l10n.percentSymbol),
-                                                  if ((widget.settingsBox.get(
-                                                              'manage.waist')
-                                                          as bool?) ??
-                                                      false)
+                                                  if (showWaist)
                                                     _metricRow(
                                                         label: l10n.waist,
                                                         controller:
@@ -4916,13 +5771,34 @@ await box.put('hint_seen_record_fab_after_save', true);
                                                                 .isWaistInch
                                                             ? l10n.unitIn
                                                             : l10n.unitCm),
-                                                  if ((widget.settingsBox
-                                                              .get('manage.bmi')
-                                                          as bool?) ??
-                                                      false)
+                                                  if (showBMI)
                                                     _metricRow(
                                                         label: l10n.bmi,
                                                         controller: _bmiCtrl),
+                                                  if (showBmr) ...[
+                                                    _metricRow(
+                                                      label:
+                                                          l10n.bmrTitleShort,
+                                                      controller:
+                                                          _bmrController,
+                                                      unit: l10n.kcalUnit,
+                                                    ),
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                              left: 98,
+                                                              top: 4),
+                                                      child: Text(
+                                                        _formattedBmrDifference(
+                                                            l10n),
+                                                        style: TextStyle(
+                                                          color: colorScheme
+                                                              .onSurfaceVariant,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ],
                                               ),
                                             ),
@@ -4939,6 +5815,7 @@ await box.put('hint_seen_record_fab_after_save', true);
                       );
                     }
 
+                    final int mealCount = _mealCards.length;
                     final int headerCount = (showWeight ? 1 : 0);
                     final int sectionCount = _sections.length;
                     final int bodyIdx = index - headerCount;
@@ -5437,12 +6314,19 @@ await box.put('hint_seen_record_fab_after_save', true);
                       );
                     }
 
-                    if (bodyIdx == sectionCount && _showMemo) {
+                    final int mealStart = sectionCount;
+                    final int mealEnd = mealStart + mealCount;
+                    if (bodyIdx >= mealStart && bodyIdx < mealEnd) {
+                      return _buildMealCard(bodyIdx - mealStart);
+                    }
+
+                    final int memoIndex = mealEnd;
+                    if (_showMemo && bodyIdx == memoIndex) {
                       return _buildMemoCard();
                     }
 
-                    final afterMemoOffset = sectionCount + (_showMemo ? 1 : 0);
-                    if (bodyIdx == afterMemoOffset) {
+                    final int mediaIndex = mealEnd + (_showMemo ? 1 : 0);
+                    if (bodyIdx == mediaIndex) {
                       return KeyedSubtree(
                         key: _kPhotoCardsKey,
                         child: Padding(
@@ -5617,13 +6501,15 @@ await box.put('hint_seen_record_fab_after_save', true);
                   const SizedBox(height: 8),
                   _stagger(1, chipAction(l10n.addPart, _handleAddPart)),
                   const SizedBox(height: 8),
-                  _stagger(2, chipAction(l10n.addMemo, _handleAddMemo)),
+                  _stagger(2, chipAction(l10n.mealAdd, _handleAddMeal)),
                   const SizedBox(height: 8),
-                  _stagger(3, chipAction(l10n.addPhoto, _handleAddPhoto)),
+                  _stagger(3, chipAction(l10n.addMemo, _handleAddMemo)),
+                  const SizedBox(height: 8),
+                  _stagger(4, chipAction(l10n.addPhoto, _handleAddPhoto)),
                   if (canShowPersonalButton) ...[
                     const SizedBox(height: 8),
                     _stagger(
-                        4,
+                        5,
                         chipAction('＋パーソナル', _handleAddPersonal,
                             enabled: !_showPersonalCard)),
                   ],

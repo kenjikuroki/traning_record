@@ -306,7 +306,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get hintRecordOpenSettings => 'セット数の初期値は設定から変更できます。';
 
   @override
-  String get hintRecordFab => '';
+  String get hintRecordFab => 'Add a part, exercise, photo, or memo from here.';
 
   @override
   String get hintCalendarTapDate => '記録する日付を選択';
@@ -682,6 +682,66 @@ class AppLocalizationsJa extends AppLocalizations {
   String get kcalUnit => 'kcal';
 
   @override
+  String get meal => '食事';
+
+  @override
+  String get mealAdd => '＋食事';
+
+  @override
+  String get mealCategory => '食事区分';
+
+  @override
+  String get mealMorning => '朝';
+
+  @override
+  String get mealNoon => '昼';
+
+  @override
+  String get mealEvening => '夜';
+
+  @override
+  String get mealSnack => '間食';
+
+  @override
+  String get mealItem => 'メニュー';
+
+  @override
+  String get mealSubtotal => '小計';
+
+  @override
+  String get mealTotalToday => '本日の食事合計';
+
+  @override
+  String get addMealItem => '＋メニュー';
+
+  @override
+  String get bmrTitle => '基礎代謝：';
+
+  @override
+  String get bmrTitleShort => '基礎代謝';
+
+  @override
+  String get bmrDiffShort => '基礎代謝 - 摂取';
+
+  @override
+  String get dailyBalanceSummary => '（基礎代謝＋有酸素）− 摂取';
+
+  @override
+  String get bmrDeficit => '差分（基礎代謝 − 摂取）';
+
+  @override
+  String get bmrNeedPersonalNotice => '体重・身長・生年月日・性別の入力が必要です（設定 → パーソナル）。';
+
+  @override
+  String get mealInputHint => 'メニュー名とkcalを入力してください';
+
+  @override
+  String get mealEmptyNotice => '入力がありません';
+
+  @override
+  String get mealRestoreFailed => '食事データを読み込めませんでした';
+
+  @override
   String get calorieOverrideHint => '必要に応じて編集できます';
 
   @override
@@ -784,10 +844,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get hintRecordTapExerciseCard => 'こちらをタップしてトレーニングする部位を選択してください。';
 
   @override
-  String get hintRecordPickExercise => 'トレーニングする種目をタップしてください。種目を追加する場合は種目名のないカードをタップして新しいカードを作成してください。';
+  String get hintRecordPickExercise => 'トレーニングする種目をタップするか、新しいカード種目カードを作成してください。';
 
   @override
-  String get hintRecordCheckbox => '重量と回数を入力したら右側のチェックボックスにチェックをいれてください';
+  String get hintRecordCheckbox => '重量と回数を入力し、チェックボックスにチェックをいれてください';
 
   @override
   String get hintRecordSave => '完了したら保存をタップ。';

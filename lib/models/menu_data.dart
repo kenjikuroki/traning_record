@@ -77,6 +77,12 @@ class DailyRecord extends HiveObject {
   @HiveField(5)
   final double? waistCm; // cm
 
+  @HiveField(6)
+  final List<Map<String, dynamic>>? meals;
+
+  @HiveField(7)
+  final double? bmr;
+
   DailyRecord({
     required this.date,
     required this.menus,
@@ -84,5 +90,7 @@ class DailyRecord extends HiveObject {
     this.weight,
     this.bodyFatPercent,
     this.waistCm,
+    this.meals,
+    this.bmr,
   });
 }

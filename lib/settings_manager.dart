@@ -32,6 +32,7 @@ class SettingsManager {
   static const String _showTotalVolumeKey = 'show_total_volume';
   static const String _showSatisfactionKey = 'show_satisfaction';
   static const String _showIntervalTimerKey = 'show_interval_timer';
+  static const String _manageBmrKey = 'manage.bmr';
 
   // ===== Notifiers =====
   // 重さ
@@ -64,6 +65,9 @@ class SettingsManager {
   static final ValueNotifier<bool> _showSatisfactionNotifier =
       ValueNotifier<bool>(true);
   static final ValueNotifier<bool> _showIntervalTimerNotifier =
+      ValueNotifier<bool>(false);
+
+  static final ValueNotifier<bool> _manageBmrNotifier =
       ValueNotifier<bool>(false);
 
   // 体重入力の表示
@@ -145,6 +149,9 @@ class SettingsManager {
     // 有酸素カロリー算出
     _aerobicCalorieNotifier.value =
         (box.get(_aerobicCalorieKey) as bool?) ?? false;
+
+    _manageBmrNotifier.value =
+        (box.get(_manageBmrKey) as bool?) ?? false;
 
     final storedWeight = box.get(_personalWeightKey);
     double? weightKg;
@@ -234,6 +241,9 @@ class SettingsManager {
   static bool get enableAerobicCalories => _aerobicCalorieNotifier.value;
   static ValueNotifier<bool> get aerobicCalorieNotifier =>
       _aerobicCalorieNotifier;
+
+  static bool get manageBmr => _manageBmrNotifier.value;
+  static ValueNotifier<bool> get manageBmrNotifier => _manageBmrNotifier;
 
   /// パーソナル体重（kg）
   static double? get personalWeightKg => _personalWeightNotifier.value;
@@ -336,6 +346,12 @@ class SettingsManager {
     await _ensureBox();
     await _box?.put(_aerobicCalorieKey, enable);
     _aerobicCalorieNotifier.value = enable;
+  }
+
+  static Future<void> setManageBmr(bool value) async {
+    await _ensureBox();
+    await _box?.put(_manageBmrKey, value);
+    _manageBmrNotifier.value = value;
   }
 
   static Future<void> setPersonalWeightKg(double? kg) async {

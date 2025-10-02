@@ -923,6 +923,176 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return parts;
   }
 
+  bool _hasMealForRecord(DailyRecord? record) {
+    final meals = record?.meals;
+    if (meals == null || meals.isEmpty) {
+      return false;
+    }
+    for (final entry in meals) {
+      if (entry is! Map) continue;
+      final subtotal = entry['subtotal'];
+      if (subtotal is num && subtotal > 0) return true;
+      if (subtotal is String && double.tryParse(subtotal) != null) {
+        final parsed = double.tryParse(subtotal);
+        if ((parsed ?? 0) > 0) return true;
+      }
+      final items = entry['items'];
+      if (items is List) {
+        for (final item in items) {
+          if (item is Map) {
+            final name = item['name']?.toString() ?? '';
+            final kcal = item['kcal'];
+            if (name.trim().isNotEmpty) return true;
+            if (kcal is num && kcal > 0) return true;
+            if (kcal is String) {
+              final parsed = double.tryParse(kcal);
+              if ((parsed ?? 0) > 0) return true;
+            }
+          }
+        }
+      }
+    }
+    return true;
+  }
+
+  double _totalMealKcalForRecord(DailyRecord? record) {
+    final meals = record?.meals;
+    if (meals == null) return 0;
+    double total = 0;
+    for (final entry in meals) {
+      if (entry is! Map) continue;
+      final subtotal = entry['subtotal'];
+      if (subtotal is num) {
+        total += subtotal.toDouble();
+      } else if (subtotal is String) {
+        final parsed = double.tryParse(subtotal);
+        if (parsed != null) {
+          total += parsed;
+        }
+      }
+    }
+    return total;
+  }
+
+  double _totalAerobicCalories(DailyRecord? record) {
+    if (record == null) return 0;
+    final aerobicMenus = record.menus['有酸素運動'];
+    if (aerobicMenus == null) return 0;
+    double total = 0;
+    for (final m in aerobicMenus) {
+      final text = m.calories?.trim();
+      if (text == null || text.isEmpty) continue;
+      final parsed = double.tryParse(text.replaceAll(',', ''));
+      if (parsed != null) {
+        total += parsed;
+      }
+    }
+    return total;
+  }
+
+  double? _heightCmFromSettings() {
+    final candidates = [
+      widget.settingsBox.get('personal.heightCm'),
+      widget.settingsBox.get('height_cm'),
+      widget.settingsBox.get('heightCm'),
+      widget.settingsBox.get('user_height_cm'),
+      widget.settingsBox.get('height'),
+    ];
+    for (final value in candidates) {
+      if (value is num) return value.toDouble();
+      if (value is String) {
+        final parsed = double.tryParse(value);
+        if (parsed != null) return parsed;
+      }
+    }
+
+    final personalMeters = widget.settingsBox.get('personal.heightM');
+    if (personalMeters is num) return personalMeters.toDouble() * 100;
+    if (personalMeters is String) {
+      final parsed = double.tryParse(personalMeters);
+      if (parsed != null) return parsed * 100;
+    }
+
+    final meters = widget.settingsBox.get('height_m');
+    if (meters is num) return meters.toDouble() * 100;
+    if (meters is String) {
+      final parsed = double.tryParse(meters);
+      if (parsed != null) return parsed * 100;
+    }
+
+    return null;
+  }
+
+  DateTime? _birthDateFromSettings() {
+    final stored = widget.settingsBox.get('personal.birthDate');
+    if (stored is DateTime) return stored;
+    if (stored is String) {
+      return DateTime.tryParse(stored);
+    }
+    return null;
+  }
+
+  String? _genderForBmr() {
+    final candidates = [
+      widget.settingsBox.get('personal.gender'),
+      widget.settingsBox.get('gender'),
+    ];
+    for (final value in candidates) {
+      if (value is String) {
+        final lower = value.toLowerCase();
+        if (lower.contains('male') || lower.contains('男')) return 'male';
+        if (lower.contains('female') || lower.contains('女')) return 'female';
+      }
+    }
+    return null;
+  }
+
+  int? _ageFromBirth(DateTime birthDate) {
+    final now = DateTime.now();
+    int age = now.year - birthDate.year;
+    final hadBirthday = (now.month > birthDate.month) ||
+        (now.month == birthDate.month && now.day >= birthDate.day);
+    if (!hadBirthday) {
+      age -= 1;
+    }
+    if (age < 0) return null;
+    return age;
+  }
+
+  double? _calculateBmrForRecord(DailyRecord? record) {
+    if (record == null) return null;
+    if (record.bmr != null) return record.bmr;
+
+    double? weightKg;
+    if (record.weight != null) {
+      weightKg = SettingsManager.currentUnit == 'kg'
+          ? record.weight
+          : record.weight! * 0.45359237;
+    } else {
+      weightKg = SettingsManager.personalWeightKg;
+    }
+
+    final heightCm = _heightCmFromSettings();
+    final birthDate = _birthDateFromSettings();
+    final gender = _genderForBmr();
+    if (weightKg == null || heightCm == null || birthDate == null || gender == null) {
+      return null;
+    }
+    final age = _ageFromBirth(birthDate);
+    if (age == null) return null;
+
+    final base = 10 * weightKg + 6.25 * heightCm - 5 * age;
+    final offset = gender == 'male' ? 5 : -161;
+    final result = base + offset;
+    if (!result.isFinite) return null;
+    return result;
+  }
+
+  String _formatKcalNumber(double value) {
+    final formatter = NumberFormat('#,##0');
+    return formatter.format(value.round());
+  }
+
   // TableCalendar：その日の「部位一覧」を返す
   // ※体重のみ記録日＝部位なしの場合は '_w' を1件返す（UIでは非表示）
   List<Object> _eventLoader(DateTime day) {
@@ -1052,6 +1222,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final hasAerobic = partsAll.contains('有酸素運動');
     final hasMemo = _hasMemoForDate(day);
     final hasWeight = record?.weight != null;
+    final hasMeal = _hasMealForRecord(record);
 
     final bool canShowChips = showEventsForOutOfMonth ||
         day.month == _focusedDay.month || record != null || hasMemo || hasPhoto;
@@ -1122,6 +1293,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
     }
 
+    Widget _mealChip() {
+      final l10n = AppLocalizations.of(context)!;
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: cs.surfaceVariant,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          l10n.meal,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 10,
+              height: 1.1,
+              color: cs.onSurface,
+              fontWeight: FontWeight.w700),
+        ),
+      );
+    }
+
     Widget _photoChip() {
       final cs = Theme
           .of(context)
@@ -1155,9 +1347,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
         if (chips.length >= 3) break;
         chips.add(_partChip(p));
       }
-      if (chips.length < 3 && hasAerobic) chips.add(_partChip('有酸素運動'));
       if (chips.length < 3 && hasMemo) chips.add(_memoChip());
       if (chips.length < 3 && hasWeight) chips.add(_weightChip());
+      if (chips.length < 3 && hasMeal) chips.add(_mealChip());
+      if (chips.length < 3 && hasAerobic) chips.add(_partChip('有酸素運動'));
       if (chips.length < 3 && hasPhoto) chips.add(_photoChip());
     }
 
@@ -1499,6 +1692,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         .of(context)
         .colorScheme;
     final l10n = AppLocalizations.of(context)!;
+    final bool showBmr = SettingsManager.manageBmr;
     final List<Widget> summaryChildren = [];
 
     if (record == null || !_hasAnyData(record)) {
@@ -1534,6 +1728,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
     }
 
+    final double mealTotal = _totalMealKcalForRecord(record);
+    final bool hasMealSection = _hasMealForRecord(record);
+    final double? bmrValue = _calculateBmrForRecord(record);
+    final double? bmrMinusMeal =
+        bmrValue != null ? (bmrValue - mealTotal) : null;
+
     bool _menuHasAnyData(MenuData m) {
       final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps
           .length;
@@ -1554,6 +1754,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // 有酸素
     final List<MenuData> aerobicMenus =
         (record.menus['有酸素運動'] as List<MenuData>?) ?? const <MenuData>[];
+    final double aerobicTotal = _totalAerobicCalories(record);
+    final double? energyBalance =
+        bmrValue != null ? (bmrValue + aerobicTotal - mealTotal) : null;
     if (aerobicMenus.any(_menuHasAnyData)) {
       summaryChildren.add(
         Padding(
@@ -1716,9 +1919,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
       summaryChildren.add(const SizedBox(height: 8));
     });
 
+    if (hasMealSection) {
+      summaryChildren.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
+          child: Text(
+            '■${l10n.meal}',
+            style: TextStyle(
+                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+        ),
+      );
+      summaryChildren.add(
+        _selectableLine(
+          text:
+              '${l10n.mealTotalToday}: ${_formatKcalNumber(mealTotal)} ${l10n.kcalUnit}',
+          style: TextStyle(color: cs.onSurface, fontSize: 13),
+          padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+        ),
+      );
+    }
+
     // 個人値まとめ（あるものだけ）
     final hasPersonal = (record.weight != null) || (bodyFatVal != null) ||
-        (waistValCm != null) || (bmiVal != null);
+        (waistValCm != null) || (bmiVal != null) || showBmr;
     if (hasPersonal) {
       summaryChildren.add(
         Padding(
@@ -1768,6 +1992,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         );
       }
+      if (showBmr) {
+        final bmrDisplay =
+            bmrValue != null ? '${_formatKcalNumber(bmrValue!)} ${l10n.kcalUnit}' : '—';
+        summaryChildren.add(
+          _selectableLine(
+            text: '${l10n.bmrTitleShort}: $bmrDisplay',
+            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+          ),
+        );
+        final diffDisplay = bmrMinusMeal != null
+            ? '${_formatKcalNumber(bmrMinusMeal)} ${l10n.kcalUnit}'
+            : '—';
+        summaryChildren.add(
+          _selectableLine(
+            text: '${l10n.bmrDiffShort}: $diffDisplay',
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+            padding: const EdgeInsets.only(left: 12.0, bottom: 1.0),
+          ),
+        );
+      }
     }
 
     // メモ
@@ -1783,6 +2028,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
             style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
             padding: const EdgeInsets.only(left: 4.0, bottom: 0),
           ),
+        ),
+      );
+    }
+
+    final shouldShowSummary = showBmr;
+    if (shouldShowSummary) {
+      summaryChildren.add(const SizedBox(height: 12));
+      final balanceText = energyBalance != null
+          ? '${_formatKcalNumber(energyBalance)} ${l10n.kcalUnit}'
+          : '—';
+      summaryChildren.add(
+        _selectableLine(
+          text: '${l10n.dailyBalanceSummary}: $balanceText',
+          style: TextStyle(
+            color: cs.onSurface,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          padding: const EdgeInsets.only(left: 4.0, bottom: 0),
         ),
       );
     }

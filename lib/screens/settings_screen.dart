@@ -104,6 +104,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _manageBodyFat = false;
   bool _manageWaist = false;
   bool _manageBmi = false;
+  bool _manageBmr = false;
   bool _enableAerobicCalories = false;
 
   @override
@@ -166,6 +167,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         (widget.settingsBox.get('manage.bodyFat') as bool?) ?? false;
     _manageWaist = (widget.settingsBox.get('manage.waist') as bool?) ?? false;
     _manageBmi = (widget.settingsBox.get('manage.bmi') as bool?) ?? false;
+    _manageBmr = (widget.settingsBox.get('manage.bmr') as bool?) ?? false;
     _enableAerobicCalories = SettingsManager.enableAerobicCalories;
 
     if (_enableAerobicCalories && _personalWeightKg == null) {
@@ -446,6 +448,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _setManageBmi(bool v) {
     setState(() => _manageBmi = v);
     widget.settingsBox.put('manage.bmi', v);
+  }
+
+  void _setManageBmr(bool v) {
+    setState(() => _manageBmr = v);
+    widget.settingsBox.put('manage.bmr', v);
+    SettingsManager.setManageBmr(v);
   }
 
   Map<String, List<String>> _readCustomExercises() {
@@ -843,6 +851,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _toggleRow(context, title: l10n.bmiTracking,
                           value: _manageBmi,
                           onChanged: _setManageBmi),
+                      _toggleRow(context, title: l10n.bmrTitleShort,
+                          value: _manageBmr,
+                          onChanged: _setManageBmr),
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 2),
                         child: Row(

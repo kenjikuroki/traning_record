@@ -1401,6 +1401,126 @@ abstract class AppLocalizations {
   /// **'kcal'**
   String get kcalUnit;
 
+  /// No description provided for @meal.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal'**
+  String get meal;
+
+  /// No description provided for @mealAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Meal'**
+  String get mealAdd;
+
+  /// No description provided for @mealCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal category'**
+  String get mealCategory;
+
+  /// No description provided for @mealMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Breakfast'**
+  String get mealMorning;
+
+  /// No description provided for @mealNoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Lunch'**
+  String get mealNoon;
+
+  /// No description provided for @mealEvening.
+  ///
+  /// In en, this message translates to:
+  /// **'Dinner'**
+  String get mealEvening;
+
+  /// No description provided for @mealSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Snack'**
+  String get mealSnack;
+
+  /// No description provided for @mealItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu'**
+  String get mealItem;
+
+  /// No description provided for @mealSubtotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtotal'**
+  String get mealSubtotal;
+
+  /// No description provided for @mealTotalToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s meal total'**
+  String get mealTotalToday;
+
+  /// No description provided for @addMealItem.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Menu'**
+  String get addMealItem;
+
+  /// No description provided for @bmrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'BMR:'**
+  String get bmrTitle;
+
+  /// No description provided for @bmrTitleShort.
+  ///
+  /// In en, this message translates to:
+  /// **'BMR'**
+  String get bmrTitleShort;
+
+  /// No description provided for @bmrDiffShort.
+  ///
+  /// In en, this message translates to:
+  /// **'BMR - Intake'**
+  String get bmrDiffShort;
+
+  /// No description provided for @dailyBalanceSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'(BMR + Aerobic) − Intake'**
+  String get dailyBalanceSummary;
+
+  /// No description provided for @bmrDeficit.
+  ///
+  /// In en, this message translates to:
+  /// **'Difference (BMR − Intake)'**
+  String get bmrDeficit;
+
+  /// No description provided for @bmrNeedPersonalNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight, height, birth date, and gender are required. Set them in Settings → Personal.'**
+  String get bmrNeedPersonalNotice;
+
+  /// No description provided for @mealInputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter menu name and kcal'**
+  String get mealInputHint;
+
+  /// No description provided for @mealEmptyNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'No entries'**
+  String get mealEmptyNotice;
+
+  /// No description provided for @mealRestoreFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not restore meal data'**
+  String get mealRestoreFailed;
+
   /// No description provided for @calorieOverrideHint.
   ///
   /// In en, this message translates to:

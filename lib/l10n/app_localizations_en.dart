@@ -682,6 +682,66 @@ class AppLocalizationsEn extends AppLocalizations {
   String get kcalUnit => 'kcal';
 
   @override
+  String get meal => 'Meal';
+
+  @override
+  String get mealAdd => '+ Meal';
+
+  @override
+  String get mealCategory => 'Meal category';
+
+  @override
+  String get mealMorning => 'Breakfast';
+
+  @override
+  String get mealNoon => 'Lunch';
+
+  @override
+  String get mealEvening => 'Dinner';
+
+  @override
+  String get mealSnack => 'Snack';
+
+  @override
+  String get mealItem => 'Menu';
+
+  @override
+  String get mealSubtotal => 'Subtotal';
+
+  @override
+  String get mealTotalToday => 'Today\'s meal total';
+
+  @override
+  String get addMealItem => '+ Menu';
+
+  @override
+  String get bmrTitle => 'BMR:';
+
+  @override
+  String get bmrTitleShort => 'BMR';
+
+  @override
+  String get bmrDiffShort => 'BMR - Intake';
+
+  @override
+  String get dailyBalanceSummary => '(BMR + Aerobic) − Intake';
+
+  @override
+  String get bmrDeficit => 'Difference (BMR − Intake)';
+
+  @override
+  String get bmrNeedPersonalNotice => 'Weight, height, birth date, and gender are required. Set them in Settings → Personal.';
+
+  @override
+  String get mealInputHint => 'Enter menu name and kcal';
+
+  @override
+  String get mealEmptyNotice => 'No entries';
+
+  @override
+  String get mealRestoreFailed => 'Could not restore meal data';
+
+  @override
   String get calorieOverrideHint => 'You can edit this value';
 
   @override

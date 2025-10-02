@@ -139,13 +139,17 @@ class DailyRecordAdapter extends TypeAdapter<DailyRecord> {
       weight: fields[3] as double?,
       bodyFatPercent: fields[4] as double?, // 追加
       waistCm: fields[5] as double?,        // 追加
+      meals: (fields[6] as List?)
+          ?.map((e) => (e as Map).cast<String, dynamic>())
+          .toList(),
+      bmr: fields[7] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, DailyRecord obj) {
     writer
-      ..writeByte(6) // 4 → 6 に変更（フィールド総数）
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.date)
       ..writeByte(1)
@@ -157,7 +161,11 @@ class DailyRecordAdapter extends TypeAdapter<DailyRecord> {
       ..writeByte(4) // 追加
       ..write(obj.bodyFatPercent)
       ..writeByte(5) // 追加
-      ..write(obj.waistCm);
+      ..write(obj.waistCm)
+      ..writeByte(6)
+      ..write(obj.meals)
+      ..writeByte(7)
+      ..write(obj.bmr);
   }
 
   @override
