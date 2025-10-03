@@ -1287,6 +1287,12 @@ abstract class AppLocalizations {
   /// **'Personal'**
   String get personal;
 
+  /// No description provided for @weightCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight'**
+  String get weightCardTitle;
+
   /// No description provided for @bodyFatPercentage.
   ///
   /// In en, this message translates to:

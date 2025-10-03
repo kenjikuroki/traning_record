@@ -5232,32 +5232,42 @@ class _RecordScreenState extends State<RecordScreen>
                                                 ),
                                               ),
                                               const SizedBox(width: 12),
+                                              // 下線の中に単位を入れない。行レイアウトで右側に固定配置
                                               SizedBox(
                                                 width: 110,
-                                                child: TextField(
-                                                  controller:
-                                                      row.kcalController,
-                                                  decoration:
-                                                      _underlineDec(context)
-                                                          .copyWith(
-                                                    labelText: null,
-                                                    hintText: '0',
-                                                    suffixText: l10n.kcalUnit,
-                                                  ),
-                                                  keyboardType:
-                                                      const TextInputType
-                                                          .numberWithOptions(
-                                                    signed: false,
-                                                    decimal: true,
-                                                  ),
-                                                  onChanged: (value) {
-                                                    _onMealKcalChanged(
-                                                      cardIndex,
-                                                      index,
-                                                      value,
-                                                    );
-                                                    setState(() {});
-                                                  },
+                                                child: Row(
+                                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                                  children: [
+                                                    // 入力欄（下線）— 余白を確保して右側に単位を置く
+                                                    Expanded(
+                                                      child: TextField(
+                                                        controller: row.kcalController,
+                                                        decoration: _underlineDec(context).copyWith(
+                                                          labelText: null,
+                                                          // プレースホルダーは不要
+                                                          // hintText: '0',
+                                                          // ← suffix/suffixText は使わない（常時固定表示のため）
+                                                        ),
+                                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                        textAlign: TextAlign.right,
+                                                        style: TextStyle(
+                                                          color: cs.onSurface,
+                                                          fontSize: 14,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    // 右側固定の「kcal」— 初期から常時表示
+                                                    Text(
+                                                      l10n.kcalUnit,
+                                                      style: TextStyle(
+                                                        color: cs.onSurfaceVariant,
+                                                        fontSize: 13,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ],
@@ -6107,7 +6117,7 @@ class _RecordScreenState extends State<RecordScreen>
                                                             controller:
                                                                 TextEditingController(
                                                                     text: l10n
-                                                                        .personal),
+                                                                        .weightCardTitle),
                                                             readOnly: true,
                                                             showCursor: false,
                                                             enableInteractiveSelection:
@@ -7062,7 +7072,8 @@ class _RecordScreenState extends State<RecordScreen>
                     const SizedBox(height: 8),
                     _stagger(
                         5,
-                        chipAction('＋パーソナル', _handleAddPersonal,
+                        chipAction('＋${l10n.weightCardTitle}',
+                            _handleAddPersonal,
                             enabled: !_showPersonalCard)),
                   ],
                   const SizedBox(height: 8),

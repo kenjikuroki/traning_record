@@ -619,6 +619,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get personal => 'Personal';
 
   @override
+  String get weightCardTitle => 'Weight';
+
+  @override
   String get bodyFatPercentage => 'Body Fat %';
 
   @override

@@ -92,6 +92,7 @@
   "setCount": "Set Count",
   "defaultSets": "Default Sets",
   "bodyWeight": "BW",
+  "weightCardTitle": "Weight",
   "bodyWeightTracking": "Body Weight Tracking",
   "durationHint": "min:sec",
   "distanceHint": "Enter distance",

@@ -90,6 +90,7 @@
   "setCount": "セット数",
   "defaultSets": "初期セット数",
   "bodyWeight": "体重",
+  "weightCardTitle": "体重",
   "bodyWeightTracking": "体重管理",
   "durationHint": "時間:分",
   "distanceHint": "距離を入力",
