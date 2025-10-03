@@ -4174,46 +4174,30 @@ class _RecordScreenState extends State<RecordScreen>
     final handleColor = isExpanded ? cs.primary : cs.onSurfaceVariant;
 
     Widget buildPreviewBody() {
-      final children = <Widget>[];
-      if (summaryItems.isEmpty) {
-        for (var i = 0; i < 3; i++) {
-          children.add(
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Text(
-                      '＿＿＿＿',
-                      style: TextStyle(
-                        fontFamily: kUiFont,
-                        color: cs.onSurfaceVariant,
-                        fontSize: 13.0,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    '＿＿＿kcal',
-                    style: TextStyle(
-                      fontFamily: kUiFont,
-                      color: cs.onSurfaceVariant,
-                      fontSize: 13.0,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+      final hasRecords = summaryItems.isNotEmpty;
+      if (!hasRecords) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                l10n.mealEmptyNotice,
+                style: TextStyle(
+                  fontFamily: kUiFont,
+                  color: cs.onSurfaceVariant,
+                  fontSize: 13.0,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          );
-        }
-      } else {
-        for (var i = 0; i < summaryItems.length; i++) {
+          ),
+        );
+      }
+
+      final children = <Widget>[];
+      for (var i = 0; i < summaryItems.length; i++) {
           final item = summaryItems[i];
           final name = item.name.trim().isEmpty ? '—' : item.name.trim();
           final kcalText = (item.kcal == null || item.kcal! <= 0)
@@ -4263,8 +4247,6 @@ class _RecordScreenState extends State<RecordScreen>
             ),
           );
         }
-      }
-
       children.addAll([
         const SizedBox(height: 8),
         Padding(
