@@ -143,6 +143,12 @@ class _RecordScreenState extends State<RecordScreen>
   bool _memoOverlayVisible = false; // 表示中か
   bool _memoOverlayOpening = false; // キーボード待ち中か
   bool _memoSlideIn = false; // 上からのスライド演出
+  // ===== 食事・オーバーレイ =====
+  bool _mealOverlayVisible = false;
+  bool _mealOverlayOpening = false;
+  bool _mealSlideIn = false;
+  final FocusNode _mealOverlayFocus = FocusNode();
+  int? _mealOverlayIndex;
   bool _lastWaistUnitIsInch = SettingsManager.isWaistInch; // 追加
   // ===== 種目・オーバーレイ（フローティング） =====
   bool _menuOverlayVisible = false;
@@ -164,7 +170,7 @@ class _RecordScreenState extends State<RecordScreen>
 
   InputDecoration _underlineDec([BuildContext? ctx]) {
     // State の context をフォールバックに使う
-    final c  = ctx ?? context;
+    final c = ctx ?? context;
     final cs = Theme.of(c).colorScheme;
     return InputDecoration(
       isDense: true,
@@ -467,6 +473,7 @@ class _RecordScreenState extends State<RecordScreen>
     _bmiController.dispose();
     _bmrController.dispose();
     _memoController.dispose();
+    _mealOverlayFocus.dispose();
     _memoOverlayFocus.dispose();
     _menuOverlayFocus.dispose();
 
@@ -1293,134 +1300,134 @@ class _RecordScreenState extends State<RecordScreen>
           context,
           StatefulBuilder(
             builder: (stateCtx, setSheetState) {
-            final cs = Theme.of(stateCtx).colorScheme;
-            final sheetL10n = AppLocalizations.of(stateCtx)!;
-            final sheetMaterial = MaterialLocalizations.of(stateCtx);
+              final cs = Theme.of(stateCtx).colorScheme;
+              final sheetL10n = AppLocalizations.of(stateCtx)!;
+              final sheetMaterial = MaterialLocalizations.of(stateCtx);
 
-            Future<void> handleAdd() async {
-              final newName = await _promptCustomExerciseName(sheetL10n);
-              if (newName == null) {
+              Future<void> handleAdd() async {
+                final newName = await _promptCustomExerciseName(sheetL10n);
+                if (newName == null) {
+                  if (!stateCtx.mounted) return;
+                  return;
+                }
+                final added = await _addCustomExercise(originalPart, newName);
                 if (!stateCtx.mounted) return;
-                return;
-              }
-              final added = await _addCustomExercise(originalPart, newName);
-              if (!stateCtx.mounted) return;
-              if (!added) {
-                showAppSnack(stateCtx, sheetL10n.customExerciseDuplicate);
-                return;
-              }
-              pickerOptions = _exerciseOptionsForPart(
-                originalPart,
-                currentName: newName,
-              );
-              tempIndex = pickerOptions.indexOf(newName);
-              if (tempIndex < 0) {
-                tempIndex = 0;
-              }
-              if (!stateCtx.mounted) return;
-              setSheetState(() {});
-            }
-
-            Widget buildPicker() {
-              if (pickerOptions.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Text(
-                      sheetL10n.customExercisePickerEmpty,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: cs.onSurfaceVariant,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
+                if (!added) {
+                  showAppSnack(stateCtx, sheetL10n.customExerciseDuplicate);
+                  return;
+                }
+                pickerOptions = _exerciseOptionsForPart(
+                  originalPart,
+                  currentName: newName,
                 );
+                tempIndex = pickerOptions.indexOf(newName);
+                if (tempIndex < 0) {
+                  tempIndex = 0;
+                }
+                if (!stateCtx.mounted) return;
+                setSheetState(() {});
               }
-              if (tempIndex >= pickerOptions.length) {
-                tempIndex = pickerOptions.length - 1;
-              }
-              if (tempIndex < 0) {
-                tempIndex = 0;
-              }
-              return CupertinoPicker(
-                itemExtent: 36,
-                useMagnifier: true,
-                magnification: 1.08,
-                scrollController:
-                    FixedExtentScrollController(initialItem: tempIndex),
-                onSelectedItemChanged: (i) => tempIndex = i,
-                children: [
-                  for (final name in pickerOptions)
-                    Center(
+
+              Widget buildPicker() {
+                if (pickerOptions.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
                       child: Text(
-                        name,
+                        sheetL10n.customExercisePickerEmpty,
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontFamily: kUiFont,
-                          color: cs.onSurface,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
+                          color: cs.onSurfaceVariant,
+                          fontSize: 14,
                         ),
                       ),
                     ),
-                ],
-              );
-            }
-
-            return SafeArea(
-              child: SizedBox(
-                height: 320,
-                child: Column(
+                  );
+                }
+                if (tempIndex >= pickerOptions.length) {
+                  tempIndex = pickerOptions.length - 1;
+                }
+                if (tempIndex < 0) {
+                  tempIndex = 0;
+                }
+                return CupertinoPicker(
+                  itemExtent: 36,
+                  useMagnifier: true,
+                  magnification: 1.08,
+                  scrollController:
+                      FixedExtentScrollController(initialItem: tempIndex),
+                  onSelectedItemChanged: (i) => tempIndex = i,
                   children: [
-                    const SizedBox(height: 8),
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: cs.onSurfaceVariant.withOpacity(0.35),
-                        borderRadius: BorderRadius.circular(2),
+                    for (final name in pickerOptions)
+                      Center(
+                        child: Text(
+                          name,
+                          style: TextStyle(
+                            fontFamily: kUiFont,
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
-                    ),
-                    SizedBox(
-                      height: 52,
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 12),
-                          Text(
-                            sheetL10n.selectExercise,
-                            style: TextStyle(
-                              color: cs.onSurface,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const Spacer(),
-                          TextButton(
-                            onPressed: handleAdd,
-                            child: Text(sheetL10n.addNewExercise),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(stateCtx, null),
-                            child: Text(sheetMaterial.cancelButtonLabel),
-                          ),
-                          TextButton(
-                            onPressed: pickerOptions.isEmpty
-                                ? null
-                                : () => Navigator.pop(
-                                      stateCtx,
-                                      pickerOptions[tempIndex],
-                                    ),
-                            child: Text(sheetMaterial.okButtonLabel),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    Expanded(child: buildPicker()),
                   ],
+                );
+              }
+
+              return SafeArea(
+                child: SizedBox(
+                  height: 320,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: cs.onSurfaceVariant.withOpacity(0.35),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      SizedBox(
+                        height: 52,
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 12),
+                            Text(
+                              sheetL10n.selectExercise,
+                              style: TextStyle(
+                                color: cs.onSurface,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const Spacer(),
+                            TextButton(
+                              onPressed: handleAdd,
+                              child: Text(sheetL10n.addNewExercise),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(stateCtx, null),
+                              child: Text(sheetMaterial.cancelButtonLabel),
+                            ),
+                            TextButton(
+                              onPressed: pickerOptions.isEmpty
+                                  ? null
+                                  : () => Navigator.pop(
+                                        stateCtx,
+                                        pickerOptions[tempIndex],
+                                      ),
+                              child: Text(sheetMaterial.okButtonLabel),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      Expanded(child: buildPicker()),
+                    ],
+                  ),
                 ),
-              ),
-            );
+              );
             },
           ),
         );
@@ -1925,236 +1932,45 @@ class _RecordScreenState extends State<RecordScreen>
     _mealControllers[cardIndex].add(_createMealRowControllers());
   }
 
-  Future<void> _openMealInputSheet(int cardIndex) async {
+  Future<void> _showMealOverlay(int cardIndex) async {
+    if (_mealOverlayVisible || _mealOverlayOpening) return;
     if (cardIndex < 0 || cardIndex >= _mealCards.length) {
       return;
     }
 
-    final cs = Theme.of(context).colorScheme;
+    _mealOverlayOpening = true;
+    _mealOverlayIndex = cardIndex;
+    _mealOverlayFocus.requestFocus();
 
-    await showModalBottomSheet<void>(
-      context: context,
-      useRootNavigator: false,
-      isScrollControlled: true,
-      backgroundColor: cs.surfaceContainerHighest,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (sheetCtx) {
-        final sheetL10n = AppLocalizations.of(sheetCtx)!;
-        final sheetCs = Theme.of(sheetCtx).colorScheme;
-        final dateLabel = _formatAppBarDate(sheetCtx);
-        return InheritedTheme.captureAll(
-          sheetCtx,
-          Material(
-            color: Colors.transparent,
-            child: SafeArea(
-              top: false,
-              child: FractionallySizedBox(
-                heightFactor: 0.85,
-                child: StatefulBuilder(
-                  builder: (modalCtx, modalSetState) {
-                    if (cardIndex < 0 || cardIndex >= _mealCards.length) {
-                      return const SizedBox.shrink();
-                    }
+    if (!mounted) return;
+    setState(() {
+      _mealOverlayVisible = true;
+      _mealOverlayOpening = false;
+      _mealSlideIn = false;
+      _fabOpen = false;
+    });
 
-                    final card = _mealCards[cardIndex];
-                    final controllers = _mealControllers[cardIndex];
-                    final media = MediaQuery.of(modalCtx);
-                    final bottomInset = media.viewInsets.bottom;
-                    final safeBottom = media.padding.bottom;
-
-                    return Padding(
-                      padding: EdgeInsets.only(bottom: bottomInset),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(4, 8, 4, 4),
-                            child: Row(
-                              children: [
-                                IconButton(
-                                  onPressed: () => Navigator.of(sheetCtx).pop(),
-                                  icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                                  tooltip: MaterialLocalizations.of(sheetCtx)
-                                      .backButtonTooltip,
-                                  visualDensity: VisualDensity.compact,
-                                  splashRadius: 20,
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    dateLabel,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: sheetCs.onSurface,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 48),
-                              ],
-                            ),
-                          ),
-                          const Divider(height: 1),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
-                            child: Row(
-                              children: [
-                                Text(
-                                  _mealCategoryLabel(card.category, sheetL10n),
-                                  style: TextStyle(
-                                    color: sheetCs.onSurface,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const Spacer(),
-                                TextButton(
-                                  onPressed: () {
-                                    modalSetState(() {
-                                      _addMealItemRow(cardIndex);
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: sheetCs.onSurfaceVariant,
-                                    textStyle:
-                                        const TextStyle(fontWeight: FontWeight.w700),
-                                  ),
-                                  child: Text(sheetL10n.addMealItem),
-                                ),
-                                const SizedBox(width: 4),
-                                TextButton.icon(
-                                  onPressed: () => Navigator.of(sheetCtx).pop(),
-                                  icon: const Icon(Icons.check_rounded),
-                                  label: Text(
-                                    sheetL10n.save,
-                                    style:
-                                        const TextStyle(fontWeight: FontWeight.w700),
-                                  ),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: sheetCs.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Divider(height: 1),
-                          Expanded(
-                            child: ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                              itemCount: controllers.length,
-                              itemBuilder: (_, rowIndex) {
-                                final row = controllers[rowIndex];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Expanded(
-                                        child: TextField(
-                                          controller: row.nameController,
-                                          decoration: _underlineDec(modalCtx).copyWith(
-                                            labelText: sheetL10n.mealItem,
-                                            hintText: null,
-                                          ),
-                                          onChanged: (value) {
-                                            _onMealNameChanged(
-                                              cardIndex,
-                                              rowIndex,
-                                              value,
-                                            );
-                                            modalSetState(() {});
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      SizedBox(
-                                        width: 110,
-                                        child: TextField(
-                                          controller: row.kcalController,
-                                          decoration: _underlineDec(modalCtx).copyWith(
-                                            labelText: sheetL10n.kcalUnit,
-                                            suffixText: sheetL10n.kcalUnit,
-                                          ),
-                                          keyboardType: const TextInputType.numberWithOptions(
-                                            signed: false,
-                                            decimal: true,
-                                          ),
-                                          onChanged: (value) {
-                                            _onMealKcalChanged(
-                                              cardIndex,
-                                              rowIndex,
-                                              value,
-                                            );
-                                            modalSetState(() {});
-                                          },
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          const Divider(height: 1),
-                          Padding(
-                            padding: EdgeInsets.fromLTRB(20, 8, 20, 16 + safeBottom),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${sheetL10n.mealSubtotal}: ${_formatKcalDisplay(card.subtotalKcal)} ${sheetL10n.kcalUnit}',
-                                  style: TextStyle(
-                                    color: sheetCs.onSurface,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${sheetL10n.mealTotalToday}: ${_formatKcalDisplay(_totalMealKcal)} ${sheetL10n.kcalUnit}',
-                                  style: TextStyle(
-                                    color: sheetCs.onSurfaceVariant,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Divider(height: 1),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                            child: const BigEarningAd(
-                              androidNativeUnitId:
-                                  'ca-app-pub-3331079517737737/9518673738',
-                              iosNativeUnitId:
-                                  'ca-app-pub-3331079517737737/3349399943',
-                              androidBannerUnitId:
-                                  'ca-app-pub-3331079517737737/9588577724',
-                              iosBannerUnitId:
-                                  'ca-app-pub-3331079517737737/6962414382',
-                              factoryId: 'large_media',
-                              height: 260,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-    if (!mounted) {
-      return;
-    }
-    setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _mealSlideIn = true);
+    });
   }
 
-
+  Future<void> _saveMealOverlayAndClose() async {
+    if (!_mealOverlayVisible) return;
+    FocusScope.of(context).unfocus();
+    await _dismissKeyboardSafely(context);
+    _recalculateMealTotals();
+    if (!mounted) return;
+    setState(() => _mealSlideIn = false);
+    await Future.delayed(_overlaySlideDuration);
+    if (!mounted) return;
+    setState(() {
+      _mealOverlayVisible = false;
+      _mealOverlayIndex = null;
+      _mealOverlayOpening = false;
+    });
+  }
 
   void _toggleMealCollapse(int index) {
     if (index < 0 || index >= _mealCollapsed.length) {
@@ -3928,7 +3744,7 @@ class _RecordScreenState extends State<RecordScreen>
     if (!mounted) {
       return;
     }
-    _openMealInputSheet(0);
+    _showMealOverlay(0);
   }
 
   // === ここからメモ・フローティングエディタ ===
@@ -3963,6 +3779,7 @@ class _RecordScreenState extends State<RecordScreen>
     final didSave = _saveAllSectionsData();
     if (didSave) _showSavedChipFor(const Duration(milliseconds: 900));
 
+    FocusScope.of(context).unfocus();
     await _dismissKeyboardSafely(context);
     if (!mounted) return;
     setState(() => _memoSlideIn = false); // ← まずアニメ逆再生
@@ -4362,8 +4179,8 @@ class _RecordScreenState extends State<RecordScreen>
         for (var i = 0; i < 3; i++) {
           children.add(
             Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 8.0, vertical: 6.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -4404,8 +4221,8 @@ class _RecordScreenState extends State<RecordScreen>
               : '${_formatKcalDisplay(item.kcal!)} ${l10n.kcalUnit}';
           children.add(
             Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 8.0, vertical: 6.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -4451,8 +4268,7 @@ class _RecordScreenState extends State<RecordScreen>
       children.addAll([
         const SizedBox(height: 8),
         Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 8.0, vertical: 6.0),
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
           child: Text(
             '${l10n.mealSubtotal}: ${_formatKcalDisplay(card.subtotalKcal)} ${l10n.kcalUnit}',
             style: TextStyle(
@@ -4464,8 +4280,7 @@ class _RecordScreenState extends State<RecordScreen>
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 8.0, vertical: 2.0),
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
           child: Text(
             '${l10n.mealTotalToday}: ${_formatKcalDisplay(_totalMealKcal)} ${l10n.kcalUnit}',
             style: TextStyle(
@@ -4518,7 +4333,7 @@ class _RecordScreenState extends State<RecordScreen>
                 borderRadius: BorderRadius.circular(12.0),
                 splashFactory: NoSplash.splashFactory,
                 highlightColor: Colors.transparent,
-                onTap: () => _openMealInputSheet(index),
+                onTap: () => _showMealOverlay(index),
                 child: Padding(
                   padding: const EdgeInsets.all(10.0),
                   child: Column(
@@ -5246,6 +5061,275 @@ class _RecordScreenState extends State<RecordScreen>
     );
   }
 
+  Widget _buildMealEditorOverlay() {
+    if (!_mealOverlayVisible || _mealOverlayIndex == null) {
+      return const SizedBox.shrink();
+    }
+
+    final cardIndex = _mealOverlayIndex!;
+    if (cardIndex < 0 || cardIndex >= _mealCards.length) {
+      return const SizedBox.shrink();
+    }
+
+    final media = MediaQuery.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final card = _mealCards[cardIndex];
+    final controllers = _mealControllers[cardIndex];
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final safeBottom = media.padding.bottom;
+    final double bottomSpacerHeight = bottomInset + safeBottom + 12;
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: _saveMealOverlayAndClose,
+            child: AnimatedOpacity(
+              duration: _overlayFadeDuration,
+              curve: _overlayInCurve,
+              opacity: _mealSlideIn ? 1.0 : 0.0,
+              child: Container(color: Colors.black.withOpacity(0.25)),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 12,
+          right: 12,
+          top: 0,
+          bottom: safeBottom + 12,
+          child: AnimatedSlide(
+            duration: _overlaySlideDuration,
+            curve: _overlayInCurve,
+            offset: _mealSlideIn ? Offset.zero : const Offset(0, -0.08),
+            child: SafeArea(
+              top: false,
+              left: false,
+              right: false,
+              bottom: true,
+              child: MediaQuery.removeViewInsets(
+                context: context,
+                removeBottom: true,
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: AnimatedOpacity(
+                      duration: _overlayFadeDuration,
+                      curve: _overlayInCurve,
+                      opacity: _mealSlideIn ? 1.0 : 0.0,
+                      child: AnimatedScale(
+                        duration: _overlaySlideDuration,
+                        curve: _overlayInCurve,
+                        scale: _mealSlideIn ? 1.0 : 0.98,
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    _mealCategoryLabel(card.category, l10n),
+                                    style: TextStyle(
+                                      color: cs.onSurface,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  TextButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _addMealItemRow(cardIndex);
+                                      });
+                                    },
+                                    child: Text(
+                                      l10n.addMealItem,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: cs.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  TextButton.icon(
+                                    onPressed: _saveMealOverlayAndClose,
+                                    icon: const Icon(Icons.check_rounded),
+                                    label: Text(
+                                      l10n.save,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: cs.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Divider(height: 1),
+                            Expanded(
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                                child: Scrollbar(
+                                  child: Focus(
+                                    focusNode: _mealOverlayFocus,
+                                    child: ListView.builder(
+                                      padding: EdgeInsets.zero,
+                                      keyboardDismissBehavior:
+                                          ScrollViewKeyboardDismissBehavior
+                                              .onDrag,
+                                      itemCount: controllers.length + 1,
+                                      itemBuilder: (_, index) {
+                                        if (index == controllers.length) {
+                                          return SizedBox(
+                                            height: bottomSpacerHeight,
+                                          );
+                                        }
+                                        final row = controllers[index];
+                                        return Padding(
+                                          padding: EdgeInsets.only(
+                                            bottom:
+                                                index == controllers.length - 1
+                                                    ? 0
+                                                    : 12,
+                                          ),
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: [
+                                              Expanded(
+                                                child: TextField(
+                                                  controller:
+                                                      row.nameController,
+                                                  decoration:
+                                                      _underlineDec(context)
+                                                          .copyWith(
+                                                    labelText: l10n.mealItem,
+                                                  ),
+                                                  onChanged: (value) {
+                                                    _onMealNameChanged(
+                                                      cardIndex,
+                                                      index,
+                                                      value,
+                                                    );
+                                                    setState(() {});
+                                                  },
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              SizedBox(
+                                                width: 110,
+                                                child: TextField(
+                                                  controller:
+                                                      row.kcalController,
+                                                  decoration:
+                                                      _underlineDec(context)
+                                                          .copyWith(
+                                                    labelText: null,
+                                                    hintText: '0',
+                                                    suffixText: l10n.kcalUnit,
+                                                  ),
+                                                  keyboardType:
+                                                      const TextInputType
+                                                          .numberWithOptions(
+                                                    signed: false,
+                                                    decimal: true,
+                                                  ),
+                                                  onChanged: (value) {
+                                                    _onMealKcalChanged(
+                                                      cardIndex,
+                                                      index,
+                                                      value,
+                                                    );
+                                                    setState(() {});
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const Divider(height: 1),
+                            Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                20,
+                                8,
+                                20,
+                                16 + safeBottom,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${l10n.mealSubtotal}: ${_formatKcalDisplay(card.subtotalKcal)} ${l10n.kcalUnit}',
+                                    style: TextStyle(
+                                      color: cs.onSurface,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${l10n.mealTotalToday}: ${_formatKcalDisplay(_totalMealKcal)} ${l10n.kcalUnit}',
+                                    style: TextStyle(
+                                      color: cs.onSurfaceVariant,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Divider(height: 1),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                              child: const BigEarningAd(
+                                androidNativeUnitId:
+                                    'ca-app-pub-3331079517737737/9518673738',
+                                iosNativeUnitId:
+                                    'ca-app-pub-3331079517737737/3349399943',
+                                androidBannerUnitId:
+                                    'ca-app-pub-3331079517737737/9588577724',
+                                iosBannerUnitId:
+                                    'ca-app-pub-3331079517737737/6962414382',
+                                factoryId: 'large_media',
+                                height: 260,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   // ===== 記入オーバーレイ（画面内フローティングシート：上からスッ） =====
   Widget _buildMemoEditorOverlay() {
     if (!_memoOverlayVisible) return const SizedBox.shrink();
@@ -5253,15 +5337,12 @@ class _RecordScreenState extends State<RecordScreen>
     final media = MediaQuery.of(context);
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
-
-    // AppBar 直下に固定
-    final double topGap = media.padding.top + kToolbarHeight + 8;
-    // 高さは 0.4（ユーザー指定）
-    final double overlayHeight = media.size.height * 0.4;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final safeBottom = media.padding.bottom;
+    final double bottomSpacerHeight = bottomInset + safeBottom + 12;
 
     return Stack(
       children: [
-        // 半透明スクリーン（タップで保存して閉じる）
         Positioned.fill(
           child: GestureDetector(
             onTap: _saveMemoAndClose,
@@ -5273,114 +5354,151 @@ class _RecordScreenState extends State<RecordScreen>
             ),
           ),
         ),
-
         Positioned(
           left: 12,
           right: 12,
-          top: topGap,
-          height: overlayHeight,
+          top: 0,
+          bottom: safeBottom + 12,
           child: AnimatedSlide(
             duration: _overlaySlideDuration,
             curve: _overlayInCurve,
             offset: _memoSlideIn ? Offset.zero : const Offset(0, -0.08),
-            // 上からシュッ
-            child: Material(
-              color: Colors.transparent,
-              elevation: 2,
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: cs.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                // ▼ フォーム全体をふわっと（フェード＋わずかにスケール）
-                child: AnimatedOpacity(
-                  duration: _overlayFadeDuration,
-                  curve: _overlayInCurve,
-                  opacity: _memoSlideIn ? 1.0 : 0.0,
-                  child: AnimatedScale(
-                    duration: _overlaySlideDuration,
-                    curve: _overlayInCurve,
-                    scale: _memoSlideIn ? 1.0 : 0.98,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ヘッダー（右上は「保存」）
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
-                          child: Row(
-                            children: [
-                              Text(
-                                l10n.memo,
-                                style: TextStyle(
-                                  color: cs.onSurface,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const Spacer(),
-                              TextButton.icon(
-                                onPressed: _saveMemoAndClose,
-                                icon: const Icon(Icons.check_rounded),
-                                label: Text(l10n.save,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w700)),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Divider(height: 1),
-
-                        // 本文（固定領域内で伸縮）
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                            child: TextField(
-                              focusNode: _memoOverlayFocus,
-                              controller: _memoController,
-                              autofocus: true,
-                              keyboardType: TextInputType.multiline,
-                              maxLength: 400,
-                              inputFormatters: [
-                                LengthLimitingTextInputFormatter(400)
-                              ],
-                              expands: true,
-                              minLines: null,
-                              maxLines: null,
-                              style: TextStyle(color: cs.onSurface),
-                              decoration: InputDecoration(
-                                isDense: true,
-                                hintText: l10n.memoBodyPlaceholder,
-                                hintStyle: TextStyle(
-                                  color: cs.onSurfaceVariant.withOpacity(0.6),
-                                ),
-                                border: InputBorder.none,
-                                counterStyle: TextStyle(
-                                  color: cs.onSurfaceVariant,
-                                  fontSize: 11,
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 6, horizontal: 2),
-                              ),
-                              onChanged: (_) {
-                                if (_fabOpen) setState(() => _fabOpen = false);
-                              },
-                            ),
-                          ),
+            child: SafeArea(
+              top: false,
+              left: false,
+              right: false,
+              bottom: true,
+              child: MediaQuery.removeViewInsets(
+                context: context,
+                removeBottom: true,
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
                         ),
                       ],
+                    ),
+                    child: AnimatedOpacity(
+                      duration: _overlayFadeDuration,
+                      curve: _overlayInCurve,
+                      opacity: _memoSlideIn ? 1.0 : 0.0,
+                      child: AnimatedScale(
+                        duration: _overlaySlideDuration,
+                        curve: _overlayInCurve,
+                        scale: _memoSlideIn ? 1.0 : 0.98,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    l10n.memo,
+                                    style: TextStyle(
+                                      color: cs.onSurface,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  TextButton.icon(
+                                    onPressed: _saveMemoAndClose,
+                                    icon: const Icon(Icons.check_rounded),
+                                    label: Text(
+                                      l10n.save,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: cs.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Divider(height: 1),
+                            Expanded(
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                                child: Scrollbar(
+                                  child: ListView(
+                                    padding: EdgeInsets.zero,
+                                    keyboardDismissBehavior:
+                                        ScrollViewKeyboardDismissBehavior
+                                            .onDrag,
+                                    children: [
+                                      TextField(
+                                        focusNode: _memoOverlayFocus,
+                                        controller: _memoController,
+                                        textAlignVertical:
+                                            TextAlignVertical.top,
+                                        keyboardType: TextInputType.multiline,
+                                        textInputAction:
+                                            TextInputAction.newline,
+                                        maxLength: 400,
+                                        inputFormatters: [
+                                          LengthLimitingTextInputFormatter(400)
+                                        ],
+                                        minLines: 6,
+                                        maxLines: null,
+                                        style: TextStyle(color: cs.onSurface),
+                                        decoration: InputDecoration(
+                                          isDense: true,
+                                          hintText: l10n.memoBodyPlaceholder,
+                                          hintStyle: TextStyle(
+                                            color: cs.onSurfaceVariant
+                                                .withOpacity(0.6),
+                                          ),
+                                          border: InputBorder.none,
+                                          counterStyle: TextStyle(
+                                            color: cs.onSurfaceVariant,
+                                            fontSize: 11,
+                                          ),
+                                          contentPadding:
+                                              const EdgeInsets.fromLTRB(
+                                                  2, 8, 2, 12),
+                                        ),
+                                        onChanged: (_) {
+                                          if (_fabOpen) {
+                                            setState(() => _fabOpen = false);
+                                          }
+                                        },
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            16, 12, 16, 12),
+                                        child: const BigEarningAd(
+                                          androidNativeUnitId:
+                                              'ca-app-pub-3331079517737737/9518673738',
+                                          iosNativeUnitId:
+                                              'ca-app-pub-3331079517737737/3349399943',
+                                          androidBannerUnitId:
+                                              'ca-app-pub-3331079517737737/9588577724',
+                                          iosBannerUnitId:
+                                              'ca-app-pub-3331079517737737/6962414382',
+                                          factoryId: 'large_media',
+                                          height: 260,
+                                        ),
+                                      ),
+                                      SizedBox(height: bottomSpacerHeight),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -5717,8 +5835,10 @@ class _RecordScreenState extends State<RecordScreen>
         showWaist ||
         showBMI ||
         showBmr;
-    final bool inputOverlayActive =
-        _memoOverlayVisible || _menuOverlayVisible || _personalOverlayVisible;
+    final bool inputOverlayActive = _memoOverlayVisible ||
+        _menuOverlayVisible ||
+        _mealOverlayVisible ||
+        _personalOverlayVisible;
     final Widget blurLayer = inputOverlayActive
         ? Positioned.fill(
             child: _BlurExclusionLayer(
@@ -6642,8 +6762,7 @@ class _RecordScreenState extends State<RecordScreen>
                                               minHeight:
                                                   kUnifiedFieldMinHeight),
                                           decoration: BoxDecoration(
-                                            color:
-                                                colorScheme.surfaceContainer,
+                                            color: colorScheme.surfaceContainer,
                                             borderRadius:
                                                 BorderRadius.circular(22.0),
                                             boxShadow: [
@@ -6656,23 +6775,19 @@ class _RecordScreenState extends State<RecordScreen>
                                             ],
                                           ),
                                           child: Padding(
-                                            padding: const EdgeInsets
-                                                .symmetric(
-                                                    vertical: 8,
-                                                    horizontal: 20),
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 8, horizontal: 20),
                                             child: Align(
                                               alignment: Alignment.centerLeft,
                                               child: Text(
                                                 l10n.meal,
                                                 style: TextStyle(
                                                   fontFamily: kUiFont,
-                                                  color:
-                                                      colorScheme.onSurface,
+                                                  color: colorScheme.onSurface,
                                                   fontSize: 15.0,
                                                   fontWeight: FontWeight.w700,
                                                 ),
-                                                overflow:
-                                                    TextOverflow.ellipsis,
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                           ),
@@ -6704,8 +6819,7 @@ class _RecordScreenState extends State<RecordScreen>
                                     padding: EdgeInsets.zero,
                                     buildDefaultDragHandles: false,
                                     itemCount: _mealCards.length,
-                                    proxyDecorator:
-                                        (child, index, animation) {
+                                    proxyDecorator: (child, index, animation) {
                                       return AnimatedBuilder(
                                         animation: animation,
                                         builder: (context, childParam) {
@@ -6722,8 +6836,8 @@ class _RecordScreenState extends State<RecordScreen>
                                           borderRadius:
                                               BorderRadius.circular(12.0),
                                           child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                                12.0),
+                                            borderRadius:
+                                                BorderRadius.circular(12.0),
                                             child: child,
                                           ),
                                         ),
@@ -6732,8 +6846,7 @@ class _RecordScreenState extends State<RecordScreen>
                                     onReorder: _reorderMealCards,
                                     itemBuilder: (context, mealIndex) {
                                       return KeyedSubtree(
-                                        key: ValueKey(
-                                            _mealCards[mealIndex]),
+                                        key: ValueKey(_mealCards[mealIndex]),
                                         child: _buildMealCard(mealIndex),
                                       );
                                     },
@@ -6864,6 +6977,7 @@ class _RecordScreenState extends State<RecordScreen>
             !_memoOverlayVisible &&
             !_memoOverlayOpen &&
             !_menuOverlayVisible &&
+            !_mealOverlayVisible &&
             !_personalOverlayVisible)
         ? Positioned.fill(
             child: IgnorePointer(
@@ -6919,6 +7033,7 @@ class _RecordScreenState extends State<RecordScreen>
               !_memoOverlayVisible &&
               !_memoOverlayOpen &&
               !_menuOverlayVisible &&
+              !_mealOverlayVisible &&
               !_personalOverlayVisible)
           ? IgnorePointer(
               ignoring: !_fabOpen,
@@ -7011,6 +7126,7 @@ class _RecordScreenState extends State<RecordScreen>
               blurLayer,
               overlay,
               dial,
+              _buildMealEditorOverlay(),
               _buildMenuEditorOverlay(),
               _buildMemoEditorOverlay(),
               _buildPersonalEditorOverlay(), // ← 追加
@@ -7021,6 +7137,7 @@ class _RecordScreenState extends State<RecordScreen>
                   !_memoOverlayVisible &&
                   !_memoOverlayOpen &&
                   !_menuOverlayVisible &&
+                  !_mealOverlayVisible &&
                   !_personalOverlayVisible)
               ? AnimatedPadding(
                   duration: const Duration(milliseconds: 180),
