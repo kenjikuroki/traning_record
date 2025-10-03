@@ -270,6 +270,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (r.weight != null) return true;
     if (r.bodyFatPercent != null) return true;
     if (r.waistCm != null) return true;
+    if (_hasMealForRecord(r)) return true;
     if (r.menus.isEmpty) return false;
     return _hasAnyTrainingData(r);
   }
@@ -1731,8 +1732,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final double mealTotal = _totalMealKcalForRecord(record);
     final bool hasMealSection = _hasMealForRecord(record);
     final double? bmrValue = _calculateBmrForRecord(record);
-    final double? bmrMinusMeal =
-        bmrValue != null ? (bmrValue - mealTotal) : null;
+    final double? intakeMinusBmr =
+        bmrValue != null ? (mealTotal - bmrValue) : null;
 
     bool _menuHasAnyData(MenuData m) {
       final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps
@@ -1755,8 +1756,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final List<MenuData> aerobicMenus =
         (record.menus['有酸素運動'] as List<MenuData>?) ?? const <MenuData>[];
     final double aerobicTotal = _totalAerobicCalories(record);
-    final double? energyBalance =
-        bmrValue != null ? (bmrValue + aerobicTotal - mealTotal) : null;
+    final double? energyBalance = bmrValue != null
+        ? (mealTotal - (bmrValue + aerobicTotal))
+        : null;
     if (aerobicMenus.any(_menuHasAnyData)) {
       summaryChildren.add(
         Padding(
@@ -2002,8 +2004,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
         );
-        final diffDisplay = bmrMinusMeal != null
-            ? '${_formatKcalNumber(bmrMinusMeal)} ${l10n.kcalUnit}'
+        final diffDisplay = intakeMinusBmr != null
+            ? '${_formatKcalNumber(intakeMinusBmr)} ${l10n.kcalUnit}'
             : '—';
         summaryChildren.add(
           _selectableLine(

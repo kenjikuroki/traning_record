@@ -724,13 +724,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get bmrTitleShort => '基礎代謝';
 
   @override
-  String get bmrDiffShort => '基礎代謝 - 摂取';
+  String get bmrDiffShort => '摂取 - 基礎代謝';
 
   @override
-  String get dailyBalanceSummary => '（基礎代謝＋有酸素）− 摂取';
+  String get dailyBalanceSummary => '摂取 −（基礎代謝＋有酸素）';
 
   @override
-  String get bmrDeficit => '差分（基礎代謝 − 摂取）';
+  String get bmrDeficit => '差分（摂取 − 基礎代謝）';
 
   @override
   String get bmrNeedPersonalNotice => '体重・身長・生年月日・性別の入力が必要です（設定 → パーソナル）。';

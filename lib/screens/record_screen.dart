@@ -1943,6 +1943,7 @@ class _RecordScreenState extends State<RecordScreen>
       builder: (sheetCtx) {
         final sheetL10n = AppLocalizations.of(sheetCtx)!;
         final sheetCs = Theme.of(sheetCtx).colorScheme;
+        final dateLabel = _formatAppBarDate(sheetCtx);
         return InheritedTheme.captureAll(
           sheetCtx,
           Material(
@@ -1968,7 +1969,35 @@ class _RecordScreenState extends State<RecordScreen>
                       child: Column(
                         children: [
                           Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
+                            padding: const EdgeInsets.fromLTRB(4, 8, 4, 4),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  onPressed: () => Navigator.of(sheetCtx).pop(),
+                                  icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                                  tooltip: MaterialLocalizations.of(sheetCtx)
+                                      .backButtonTooltip,
+                                  visualDensity: VisualDensity.compact,
+                                  splashRadius: 20,
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    dateLabel,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: sheetCs.onSurface,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 48),
+                              ],
+                            ),
+                          ),
+                          const Divider(height: 1),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
                             child: Row(
                               children: [
                                 Text(
@@ -1987,20 +2016,24 @@ class _RecordScreenState extends State<RecordScreen>
                                     });
                                   },
                                   style: TextButton.styleFrom(
-                                    foregroundColor: sheetCs.primary,
-                                    textStyle: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                    foregroundColor: sheetCs.onSurfaceVariant,
+                                    textStyle:
+                                        const TextStyle(fontWeight: FontWeight.w700),
                                   ),
                                   child: Text(sheetL10n.addMealItem),
                                 ),
-                                IconButton(
+                                const SizedBox(width: 4),
+                                TextButton.icon(
                                   onPressed: () => Navigator.of(sheetCtx).pop(),
-                                  icon: Icon(
-                                    Icons.close,
-                                    color: sheetCs.onSurfaceVariant,
+                                  icon: const Icon(Icons.check_rounded),
+                                  label: Text(
+                                    sheetL10n.save,
+                                    style:
+                                        const TextStyle(fontWeight: FontWeight.w700),
                                   ),
-                                  splashRadius: 20,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: sheetCs.onSurfaceVariant,
+                                  ),
                                 ),
                               ],
                             ),
@@ -2040,7 +2073,8 @@ class _RecordScreenState extends State<RecordScreen>
                                         child: TextField(
                                           controller: row.kcalController,
                                           decoration: _underlineDec(modalCtx).copyWith(
-                                            hintText: '_____kcal',
+                                            labelText: sheetL10n.kcalUnit,
+                                            suffixText: sheetL10n.kcalUnit,
                                           ),
                                           keyboardType: const TextInputType.numberWithOptions(
                                             signed: false,
@@ -2062,6 +2096,7 @@ class _RecordScreenState extends State<RecordScreen>
                               },
                             ),
                           ),
+                          const Divider(height: 1),
                           Padding(
                             padding: EdgeInsets.fromLTRB(20, 8, 20, 16 + safeBottom),
                             child: Column(
@@ -2083,16 +2118,23 @@ class _RecordScreenState extends State<RecordScreen>
                                     fontSize: 13,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                                SizedBox(
-                                  height: 60,
-                                  child: Builder(
-                                    builder: (_) => const AdBanner(
-                                      screenName: 'record',
-                                    ),
-                                  ),
-                                ),
                               ],
+                            ),
+                          ),
+                          const Divider(height: 1),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                            child: const BigEarningAd(
+                              androidNativeUnitId:
+                                  'ca-app-pub-3331079517737737/9518673738',
+                              iosNativeUnitId:
+                                  'ca-app-pub-3331079517737737/3349399943',
+                              androidBannerUnitId:
+                                  'ca-app-pub-3331079517737737/9588577724',
+                              iosBannerUnitId:
+                                  'ca-app-pub-3331079517737737/6962414382',
+                              factoryId: 'large_media',
+                              height: 260,
                             ),
                           ),
                         ],
@@ -2111,6 +2153,7 @@ class _RecordScreenState extends State<RecordScreen>
     }
     setState(() {});
   }
+
 
 
   void _toggleMealCollapse(int index) {
@@ -6591,54 +6634,65 @@ class _RecordScreenState extends State<RecordScreen>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Container(
-                                    constraints: const BoxConstraints(
-                                        minHeight: kUnifiedFieldMinHeight),
-                                    decoration: BoxDecoration(
-                                      color: colorScheme.surfaceContainer,
-                                      borderRadius:
-                                          BorderRadius.circular(22.0),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color:
-                                              Colors.black.withOpacity(0.04),
-                                          blurRadius: 3.0,
-                                          offset: const Offset(0, 1),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 8, horizontal: 20),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                          child: Text(
-                                              l10n.meal,
-                                              style: TextStyle(
-                                                fontFamily: kUiFont,
-                                                color: colorScheme.onSurface,
-                                                fontSize: 15.0,
-                                                fontWeight: FontWeight.w700,
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Container(
+                                          constraints: const BoxConstraints(
+                                              minHeight:
+                                                  kUnifiedFieldMinHeight),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                colorScheme.surfaceContainer,
+                                            borderRadius:
+                                                BorderRadius.circular(22.0),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black
+                                                    .withOpacity(0.04),
+                                                blurRadius: 3.0,
+                                                offset: const Offset(0, 1),
                                               ),
-                                              overflow: TextOverflow.ellipsis,
+                                            ],
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets
+                                                .symmetric(
+                                                    vertical: 8,
+                                                    horizontal: 20),
+                                            child: Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                l10n.meal,
+                                                style: TextStyle(
+                                                  fontFamily: kUiFont,
+                                                  color:
+                                                      colorScheme.onSurface,
+                                                  fontSize: 15.0,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                              ),
                                             ),
                                           ),
-                                          IconButton(
-                                            onPressed: () =>
-                                                _confirmRemoveAllMealCards(context),
-                                            tooltip: l10n.delete,
-                                            icon: const Icon(Icons.close),
-                                            iconSize: 18,
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints
-                                                .tightFor(width: 36, height: 36),
-                                            visualDensity: VisualDensity.compact,
-                                            splashRadius: 18,
-                                          ),
-                                        ],
+                                        ),
                                       ),
-                                    ),
+                                      const SizedBox(width: 6),
+                                      IconButton(
+                                        onPressed: () =>
+                                            _confirmRemoveAllMealCards(context),
+                                        tooltip: l10n.delete,
+                                        icon: const Icon(Icons.close),
+                                        iconSize: 18,
+                                        padding: EdgeInsets.zero,
+                                        constraints:
+                                            const BoxConstraints.tightFor(
+                                                width: 36, height: 36),
+                                        visualDensity: VisualDensity.compact,
+                                        splashRadius: 18,
+                                      ),
+                                    ],
                                   ),
                                   const SizedBox(height: 4.0),
                                   ReorderableListView.builder(

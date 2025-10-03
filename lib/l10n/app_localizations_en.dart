@@ -724,13 +724,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bmrTitleShort => 'BMR';
 
   @override
-  String get bmrDiffShort => 'BMR - Intake';
+  String get bmrDiffShort => 'Intake - BMR';
 
   @override
-  String get dailyBalanceSummary => '(BMR + Aerobic) − Intake';
+  String get dailyBalanceSummary => 'Intake − (BMR + Aerobic)';
 
   @override
-  String get bmrDeficit => 'Difference (BMR − Intake)';
+  String get bmrDeficit => 'Difference (Intake − BMR)';
 
   @override
   String get bmrNeedPersonalNotice => 'Weight, height, birth date, and gender are required. Set them in Settings → Personal.';

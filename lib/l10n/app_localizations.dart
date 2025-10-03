@@ -1487,19 +1487,19 @@ abstract class AppLocalizations {
   /// No description provided for @bmrDiffShort.
   ///
   /// In en, this message translates to:
-  /// **'BMR - Intake'**
+  /// **'Intake - BMR'**
   String get bmrDiffShort;
 
   /// No description provided for @dailyBalanceSummary.
   ///
   /// In en, this message translates to:
-  /// **'(BMR + Aerobic) − Intake'**
+  /// **'Intake − (BMR + Aerobic)'**
   String get dailyBalanceSummary;
 
   /// No description provided for @bmrDeficit.
   ///
   /// In en, this message translates to:
-  /// **'Difference (BMR − Intake)'**
+  /// **'Difference (Intake − BMR)'**
   String get bmrDeficit;
 
   /// No description provided for @bmrNeedPersonalNotice.
