@@ -5237,6 +5237,14 @@ class _RecordScreenState extends State<RecordScreen>
                                                           fontSize: 14,
                                                           fontWeight: FontWeight.w600,
                                                         ),
+                                                        onChanged: (value) {
+                                                          _onMealKcalChanged(
+                                                            cardIndex,
+                                                            index,
+                                                            value,
+                                                          );
+                                                          setState(() {});
+                                                        },
                                                       ),
                                                     ),
                                                     const SizedBox(width: 6),
@@ -6107,7 +6115,17 @@ class _RecordScreenState extends State<RecordScreen>
                                                             onTap:
                                                                 _openPersonalOverlaySmooth,
                                                             decoration:
-                                                                _underlineDec(),
+                                                                _underlineDec()
+                                                                    .copyWith(
+                                                              contentPadding:
+                                                                  const EdgeInsets
+                                                                      .fromLTRB(
+                                                                8,
+                                                                6,
+                                                                0,
+                                                                6,
+                                                              ),
+                                                            ),
                                                           ),
                                                         ),
                                                       ),
