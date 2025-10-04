@@ -2040,9 +2040,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final balanceText = energyBalance != null
           ? '${_formatKcalNumber(energyBalance)} ${l10n.kcalUnit}'
           : '—';
+      final summaryLabel = l10n.dailyBalanceSummary;
+      final labelWithColon = (summaryLabel.endsWith('：') || summaryLabel.endsWith(':'))
+          ? summaryLabel
+          : '$summaryLabel:';
       summaryChildren.add(
         _selectableLine(
-          text: '${l10n.dailyBalanceSummary}: $balanceText',
+          text: '$labelWithColon $balanceText',
           style: TextStyle(
             color: cs.onSurface,
             fontSize: 14,

@@ -212,7 +212,7 @@
   "bmrTitle": "基礎代謝：",
   "bmrTitleShort": "基礎代謝",
   "bmrDiffShort": "摂取 - 基礎代謝",
-  "dailyBalanceSummary": "摂取 −（基礎代謝＋有酸素）",
+  "dailyBalanceSummary": "カロリー収支：",
   "bmrDeficit": "差分（摂取 − 基礎代謝）",
   "bmrNeedPersonalNotice": "体重・身長・生年月日・性別の入力が必要です（設定 → パーソナル）。",
   "mealInputHint": "メニュー名とkcalを入力してください",

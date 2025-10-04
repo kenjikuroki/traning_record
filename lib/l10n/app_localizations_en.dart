@@ -276,6 +276,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bodyWeight => 'BW';
 
   @override
+  String get weightCardTitle => 'Weight';
+
+  @override
   String get bodyWeightTracking => 'Body Weight Tracking';
 
   @override
@@ -617,9 +620,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get personal => 'Personal';
-
-  @override
-  String get weightCardTitle => 'Weight';
 
   @override
   String get bodyFatPercentage => 'Body Fat %';

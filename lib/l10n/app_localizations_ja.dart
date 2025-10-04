@@ -276,6 +276,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get bodyWeight => '体重';
 
   @override
+  String get weightCardTitle => '体重';
+
+  @override
   String get bodyWeightTracking => '体重管理';
 
   @override
@@ -619,9 +622,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get personal => 'パーソナル';
 
   @override
-  String get weightCardTitle => '体重';
-
-  @override
   String get bodyFatPercentage => '体脂肪率';
 
   @override
@@ -730,7 +730,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get bmrDiffShort => '摂取 - 基礎代謝';
 
   @override
-  String get dailyBalanceSummary => '摂取 −（基礎代謝＋有酸素）';
+  String get dailyBalanceSummary => 'カロリー収支：';
 
   @override
   String get bmrDeficit => '差分（摂取 − 基礎代謝）';

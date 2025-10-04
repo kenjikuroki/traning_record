@@ -621,6 +621,12 @@ abstract class AppLocalizations {
   /// **'BW'**
   String get bodyWeight;
 
+  /// No description provided for @weightCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight'**
+  String get weightCardTitle;
+
   /// No description provided for @bodyWeightTracking.
   ///
   /// In en, this message translates to:
@@ -1287,12 +1293,6 @@ abstract class AppLocalizations {
   /// **'Personal'**
   String get personal;
 
-  /// No description provided for @weightCardTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Weight'**
-  String get weightCardTitle;
-
   /// No description provided for @bodyFatPercentage.
   ///
   /// In en, this message translates to:
@@ -1466,6 +1466,7 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Today\'s meal total'**
   String get mealTotalToday;
+
   /// No description provided for @mealDeleteConfirmTitle.
   ///
   /// In en, this message translates to:
