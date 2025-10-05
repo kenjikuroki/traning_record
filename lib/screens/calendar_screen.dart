@@ -470,7 +470,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (min > 0) {
       buffer.write('${min}${l10n.min}');
     }
-    if (hour == 0 && min == 0 && sec > 0) {
+    if (sec > 0) {
       buffer.write('${sec}${l10n.sec}');
     }
     final result = buffer.toString();
@@ -1420,18 +1420,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Future<void> _handleAddPressed() async {
     final base = _selectedDay ?? DateTime.now();
     final DateTime sel = DateTime(base.year, base.month, base.day);
-    final bool isPast = _isPastDate(sel);
 
-    if (isPast) {
-      // 過去日：実績ダイアログ
-      final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
-      final List<Widget> summaryChildren = _buildSummaryChildrenForDate(
-          context, sel, rec);
-      await _showResultsDialog(context, summaryChildren, sel);
-    } else {
-      // 今日以降：記録画面
-      await _openRecordSheet(sel);
+    // FAB は常に記録画面を開く（過去日でも編集可能に）
+    if (_selectedDay == null || !_sameDate(_selectedDay!, sel)) {
+      setState(() {
+        _selectedDay = sel;
+        _focusedDay = sel;
+      });
     }
+
+    await _openRecordSheet(sel);
   }
 
   // 半角→全角数字（0-9）変換

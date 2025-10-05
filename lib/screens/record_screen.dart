@@ -2862,7 +2862,8 @@ class _RecordScreenState extends State<RecordScreen>
     if (parts.length >= 2) {
       final hours = int.tryParse(parts[0]) ?? 0;
       final minutes = int.tryParse(parts[1]) ?? 0;
-      return (hours * 60 + minutes).toDouble();
+      final seconds = parts.length >= 3 ? int.tryParse(parts[2]) ?? 0 : 0;
+      return hours * 60 + minutes + (seconds / 60.0);
     }
     return double.tryParse(text) ?? 0;
   }
@@ -3728,23 +3729,20 @@ class _RecordScreenState extends State<RecordScreen>
 
   Future<void> _handleAddMeal() async {
     _closeFabDial();
+    final existingCategories = _mealCards.map((c) => c.category).toSet();
+    final missingCategories = MealCategory.values
+        .where((category) => !existingCategories.contains(category))
+        .toList();
 
-    if (_mealCards.isNotEmpty) {
+    if (missingCategories.isEmpty) {
       return;
     }
 
     setState(() {
-      _addMealCard(MealCategory.morning);
-      _addMealCard(MealCategory.noon);
-      _addMealCard(MealCategory.evening);
-      _addMealCard(MealCategory.snack);
+      for (final category in missingCategories) {
+        _addMealCard(category);
+      }
     });
-
-    await Future.delayed(const Duration(milliseconds: 50));
-    if (!mounted) {
-      return;
-    }
-    _showMealOverlay(0);
   }
 
   // === ここからメモ・フローティングエディタ ===
@@ -7745,10 +7743,17 @@ class MenuListPreview extends StatelessWidget {
             }
             final parts = raw.split(':');
             String hour = '0';
-            String minute = raw;
-            if (parts.length == 2) {
+            String minute = '0';
+            String second = '0';
+            if (parts.length >= 3) {
               hour = parts[0];
               minute = parts[1];
+              second = parts[2];
+            } else if (parts.length == 2) {
+              hour = parts[0];
+              minute = parts[1];
+            } else if (parts.isNotEmpty) {
+              minute = parts[0];
             }
             final valueStyle = TextStyle(
                 fontFamily: kUiFont, color: cs.onSurface, fontSize: 13.0);
@@ -7756,6 +7761,8 @@ class MenuListPreview extends StatelessWidget {
               Text('$hour ${l10n.hour}', style: valueStyle),
               const SizedBox(width: 8),
               Text('$minute ${l10n.min}', style: valueStyle),
+              const SizedBox(width: 8),
+              Text('$second ${l10n.sec}', style: valueStyle),
             ]);
           },
         );
@@ -8262,6 +8269,7 @@ class _MenuListState extends State<MenuList> {
   final TextEditingController _mController = TextEditingController();
   final TextEditingController _hourController = TextEditingController();
   final TextEditingController _minAeroCtrl = TextEditingController();
+  final TextEditingController _secAeroCtrl = TextEditingController();
 
   static final List<int> _repPickerValues = [
     for (int i = 1; i <= 999; i++) i,
@@ -8316,6 +8324,7 @@ class _MenuListState extends State<MenuList> {
     _mController.addListener(_updateDistanceController);
     _hourController.addListener(_updateDurationController);
     _minAeroCtrl.addListener(_updateDurationController);
+    _secAeroCtrl.addListener(_updateDurationController);
 
     // メニュー名の空/非空トラッキング
     _prevNameEmpty = widget.menuController.text.trim().isEmpty;
@@ -8331,6 +8340,7 @@ class _MenuListState extends State<MenuList> {
     _mController.dispose();
     _hourController.dispose();
     _minAeroCtrl.dispose();
+    _secAeroCtrl.dispose();
 
     // リスナー解除を忘れずに
     widget.menuController.removeListener(_handleNameChanged);
@@ -8351,12 +8361,18 @@ class _MenuListState extends State<MenuList> {
   void _parseDurationAndDistance() {
     // 時間
     final t = widget.durationController.text.split(':');
-    if (t.length == 2) {
+    if (t.length >= 3) {
       _hourController.text = t[0];
       _minAeroCtrl.text = t[1];
+      _secAeroCtrl.text = t[2];
+    } else if (t.length == 2) {
+      _hourController.text = t[0];
+      _minAeroCtrl.text = t[1];
+      _secAeroCtrl.text = '';
     } else {
       _hourController.text = '';
       _minAeroCtrl.text = widget.durationController.text;
+      _secAeroCtrl.text = '';
     }
 
     // 距離（保存は km、小数）
@@ -8388,13 +8404,16 @@ class _MenuListState extends State<MenuList> {
   void _updateDurationController() {
     final hourText = _hourController.text.trim();
     final minuteText = _minAeroCtrl.text.trim();
-    if (hourText.isEmpty && minuteText.isEmpty) {
+    final secondText = _secAeroCtrl.text.trim();
+    if (hourText.isEmpty && minuteText.isEmpty && secondText.isEmpty) {
       widget.durationController.text = '';
     } else {
       final hh = hourText.isEmpty ? '0' : hourText;
       final mmRaw = minuteText.isEmpty ? '0' : minuteText;
       final mm = mmRaw.padLeft(2, '0');
-      widget.durationController.text = '$hh:$mm';
+      final ssRaw = secondText.isEmpty ? '0' : secondText;
+      final ss = ssRaw.padLeft(2, '0');
+      widget.durationController.text = '$hh:$mm:$ss';
     }
     widget.onAerobicFieldChanged?.call();
   }
@@ -8868,11 +8887,15 @@ class _MenuListState extends State<MenuList> {
     hour = hour.clamp(0, 999).toInt();
     int minute = int.tryParse(_minAeroCtrl.text.trim()) ?? 0;
     minute = minute.clamp(0, 59).toInt();
+    int second = int.tryParse(_secAeroCtrl.text.trim()) ?? 0;
+    second = second.clamp(0, 59).toInt();
     int tempHour = hour;
     int tempMinute = minute;
+    int tempSecond = second;
 
     final hourController = FixedExtentScrollController(initialItem: hour);
     final minuteController = FixedExtentScrollController(initialItem: minute);
+    final secondController = FixedExtentScrollController(initialItem: second);
 
     final result = await showModalBottomSheet<List<int>>(
       context: context,
@@ -8915,8 +8938,10 @@ class _MenuListState extends State<MenuList> {
                         child: Text(material.cancelButtonLabel),
                       ),
                       TextButton(
-                        onPressed: () =>
-                            Navigator.pop(ctx, <int>[tempHour, tempMinute]),
+                        onPressed: () => Navigator.pop(
+                          ctx,
+                          <int>[tempHour, tempMinute, tempSecond],
+                        ),
                         child: Text(material.okButtonLabel),
                       ),
                     ],
@@ -8976,6 +9001,33 @@ class _MenuListState extends State<MenuList> {
                           ],
                         ),
                       ),
+                      Container(
+                        width: 1,
+                        color: cs.onSurfaceVariant.withOpacity(0.12),
+                      ),
+                      Expanded(
+                        child: CupertinoPicker(
+                          itemExtent: 36,
+                          useMagnifier: true,
+                          magnification: 1.08,
+                          scrollController: secondController,
+                          onSelectedItemChanged: (i) => tempSecond = i,
+                          children: [
+                            for (int i = 0; i < 60; i++)
+                              Center(
+                                child: Text(
+                                  '${i.toString().padLeft(2, '0')} ${l10n.sec}',
+                                  style: TextStyle(
+                                    fontFamily: kUiFont,
+                                    color: cs.onSurface,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -8993,6 +9045,7 @@ class _MenuListState extends State<MenuList> {
     setState(() {
       _hourController.text = result[0].toString();
       _minAeroCtrl.text = result[1].toString().padLeft(2, '0');
+      _secAeroCtrl.text = result[2].toString().padLeft(2, '0');
       widget.onConfirmAerobic?.call();
     });
   }
@@ -9808,6 +9861,73 @@ class _MenuListState extends State<MenuList> {
                                       ),
                                     ),
                                     Text(' ${l10n.min}',
+                                        style: aerobicUnitStyle),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Focus(
+                                        onFocusChange: (has) {
+                                          notifyFocus(has);
+                                          if (has &&
+                                              widget.aerobicIsSuggestion) {
+                                            widget.onConfirmAerobic?.call();
+                                          }
+                                        },
+                                        child: ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                              minHeight:
+                                                  kUnifiedFieldMinHeight),
+                                          child: TextField(
+                                            controller: _secAeroCtrl,
+                                            readOnly: true,
+                                            showCursor: false,
+                                            enableInteractiveSelection: false,
+                                            textAlign: TextAlign.right,
+                                            style: TextStyle(
+                                              fontFamily: kUiFont,
+                                              color: colorScheme.onSurface,
+                                            ),
+                                            onTap: () async {
+                                              notifyFocus(true);
+                                              await _openDurationPicker();
+                                            },
+                                            decoration: InputDecoration(
+                                              isDense: true,
+                                              filled: false,
+                                              enabledBorder:
+                                                  UnderlineInputBorder(
+                                                borderSide: BorderSide(
+                                                  color: colorScheme
+                                                      .onSurfaceVariant
+                                                      .withOpacity(0.4),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              focusedBorder:
+                                                  UnderlineInputBorder(
+                                                borderSide: BorderSide(
+                                                    color: colorScheme.primary,
+                                                    width: 2),
+                                              ),
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 6,
+                                                      horizontal: 0),
+                                              hintText:
+                                                  widget.aerobicIsSuggestion
+                                                      ? '0'
+                                                      : null,
+                                              hintStyle: TextStyle(
+                                                fontFamily: kUiFont,
+                                                color: colorScheme
+                                                    .onSurfaceVariant
+                                                    .withOpacity(0.35),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Text(' ${l10n.sec}',
                                         style: aerobicUnitStyle),
                                   ],
                                 ),
