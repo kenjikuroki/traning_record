@@ -230,6 +230,7 @@ class _RecordScreenState extends State<RecordScreen>
   final List<List<_MealRowControllers>> _mealControllers = [];
   final List<bool> _mealCollapsed = [];
   double _totalMealKcal = 0;
+  int? _currentMealIndex;
 
   final TextEditingController _weightController = TextEditingController();
 
@@ -1755,8 +1756,10 @@ class _RecordScreenState extends State<RecordScreen>
   void _resetMealState() {
     _disposeMealControllers();
     _mealCards.clear();
+    _mealControllers.clear();
     _mealCollapsed.clear();
     _totalMealKcal = 0;
+    _currentMealIndex = null;
   }
 
   MealCategory _mealCategoryFromString(String value) {
@@ -1912,7 +1915,7 @@ class _RecordScreenState extends State<RecordScreen>
     }
   }
 
-  void _addMealCard(MealCategory category) {
+  int _addMealCard(MealCategory category) {
     final items = List<MealItem>.generate(3, (_) => MealItem());
     final controllers = List<_MealRowControllers>.generate(
         3, (_) => _createMealRowControllers());
@@ -1925,6 +1928,7 @@ class _RecordScreenState extends State<RecordScreen>
     _mealControllers.add(controllers);
     _mealCollapsed.add(true);
     _recalculateMealTotals();
+    return _mealCards.length - 1;
   }
 
   void _addMealItemRow(int cardIndex) {
@@ -1991,6 +1995,11 @@ class _RecordScreenState extends State<RecordScreen>
     if (oldIndex == newIndex) {
       return;
     }
+    final MealCardState? activeCard = (_currentMealIndex != null &&
+            _currentMealIndex! >= 0 &&
+            _currentMealIndex! < _mealCards.length)
+        ? _mealCards[_currentMealIndex!]
+        : null;
     setState(() {
       if (newIndex > oldIndex) {
         newIndex -= 1;
@@ -2001,19 +2010,43 @@ class _RecordScreenState extends State<RecordScreen>
       _mealCards.insert(newIndex, card);
       _mealControllers.insert(newIndex, controllers);
       _mealCollapsed.insert(newIndex, collapsed);
+      if (activeCard != null) {
+        final newActiveIndex = _mealCards.indexOf(activeCard);
+        _currentMealIndex = newActiveIndex >= 0 ? newActiveIndex : null;
+      }
     });
   }
 
   void _removeMealCard(int index) {
-    final controllers = _mealControllers.removeAt(index);
+    if (index < 0 || index >= _mealCards.length) {
+      return;
+    }
+
+    final controllers = _mealControllers[index];
     for (final c in controllers) {
       c.dispose();
     }
-    _mealCards.removeAt(index);
-    if (index >= 0 && index < _mealCollapsed.length) {
-      _mealCollapsed.removeAt(index);
-    }
-    _recalculateMealTotals();
+
+    setState(() {
+      _mealControllers.removeAt(index);
+      _mealCards.removeAt(index);
+      if (index >= 0 && index < _mealCollapsed.length) {
+        _mealCollapsed.removeAt(index);
+      }
+
+      if (_mealCards.isEmpty) {
+        _currentMealIndex = null;
+      } else if (_currentMealIndex != null) {
+        if (_currentMealIndex! == index) {
+          final nextIndex = index >= _mealCards.length ? _mealCards.length - 1 : index;
+          _currentMealIndex = nextIndex;
+        } else if (_currentMealIndex! > index) {
+          _currentMealIndex = _currentMealIndex! - 1;
+        }
+      }
+
+      _recalculateMealTotals();
+    });
   }
 
   void _removeAllMealCards() {
@@ -3577,6 +3610,7 @@ class _RecordScreenState extends State<RecordScreen>
       _lastInteractionAt = DateTime.now();
       _closeFabDial();
       _personalSelected = false;
+      _currentMealIndex = null;
       _skipTapSectionIndex = sectionIndex;
       _skipTapMenuIndex = menuIndex;
       _suppressNextMenuOverlay = true;
@@ -3596,11 +3630,26 @@ class _RecordScreenState extends State<RecordScreen>
       _lastInteractionAt = DateTime.now();
       _closeFabDial();
       _personalSelected = false;
+      _currentMealIndex = null;
       if (resetSkip) {
         _skipTapSectionIndex = null;
         _skipTapMenuIndex = null;
         _suppressNextMenuOverlay = false;
       }
+    });
+  }
+
+  void _focusMealCard(int index) {
+    if (index < 0 || index >= _mealCards.length) {
+      return;
+    }
+    setState(() {
+      _currentMealIndex = index;
+      _currentSectionIndex = null;
+      _currentMenuIndex = null;
+      _personalSelected = false;
+      _lastInteractionAt = DateTime.now();
+      _closeFabDial();
     });
   }
 
@@ -3738,9 +3787,18 @@ class _RecordScreenState extends State<RecordScreen>
       return;
     }
 
+    int? firstAddedIndex;
     setState(() {
       for (final category in missingCategories) {
-        _addMealCard(category);
+        final idx = _addMealCard(category);
+        firstAddedIndex ??= idx;
+      }
+      if (firstAddedIndex != null) {
+        _currentMealIndex = firstAddedIndex;
+        _currentSectionIndex = null;
+        _currentMenuIndex = null;
+        _personalSelected = false;
+        _lastInteractionAt = DateTime.now();
       }
     });
   }
@@ -4160,16 +4218,19 @@ class _RecordScreenState extends State<RecordScreen>
     final bool isCollapsed =
         (index < _mealCollapsed.length) ? _mealCollapsed[index] : true;
     final bool isExpanded = !isCollapsed;
+    final bool isActive = _currentMealIndex == index;
     final bool isLight = theme.brightness == Brightness.light;
     const Color kBrandBlue = Color(0xFF2563EB);
-    final borderColor =
-        isExpanded ? (isLight ? kBrandBlue : Colors.white) : Colors.transparent;
-    final shadowColor = isExpanded
+    final bool highlight = isExpanded || isActive;
+    final borderColor = highlight
+        ? (isLight ? kBrandBlue : cs.primary)
+        : Colors.transparent;
+    final shadowColor = highlight
         ? (isLight
             ? kBrandBlue.withOpacity(0.45)
-            : Colors.white.withOpacity(0.70))
+            : cs.primary.withOpacity(0.45))
         : Colors.black.withOpacity(0.20);
-    final handleColor = isExpanded ? cs.primary : cs.onSurfaceVariant;
+    final handleColor = highlight ? cs.primary : cs.onSurfaceVariant;
 
     Widget buildPreviewBody() {
       final hasRecords = summaryItems.isNotEmpty;
@@ -4313,7 +4374,10 @@ class _RecordScreenState extends State<RecordScreen>
                 borderRadius: BorderRadius.circular(12.0),
                 splashFactory: NoSplash.splashFactory,
                 highlightColor: Colors.transparent,
-                onTap: () => _showMealOverlay(index),
+                onTap: () {
+                  _focusMealCard(index);
+                  _showMealOverlay(index);
+                },
                 child: Padding(
                   padding: const EdgeInsets.all(10.0),
                   child: Column(
@@ -4325,6 +4389,7 @@ class _RecordScreenState extends State<RecordScreen>
                             child: GestureDetector(
                               behavior: HitTestBehavior.opaque,
                               onLongPress: () async {
+                                _focusMealCard(index);
                                 final selected = await _showMealCategoryPicker(
                                   current: card.category,
                                 );
@@ -4348,7 +4413,10 @@ class _RecordScreenState extends State<RecordScreen>
                             ),
                           ),
                           IconButton(
-                            onPressed: () => _toggleMealCollapse(index),
+                            onPressed: () {
+                              _focusMealCard(index);
+                              _toggleMealCollapse(index);
+                            },
                             tooltip: isCollapsed
                                 ? l10n.expandCard
                                 : l10n.collapseCard,
@@ -6038,6 +6106,7 @@ class _RecordScreenState extends State<RecordScreen>
                                           _personalSelected = true;
                                           _currentSectionIndex = null;
                                           _currentMenuIndex = null;
+                                          _currentMealIndex = null;
                                           _lastInteractionAt = DateTime.now();
                                           _closeFabDial();
                                         });
