@@ -497,6 +497,12 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get resultsCopy => 'コピー';
+
+  @override
+  String get resultsCopied => '実績をコピーしました';
+
+  @override
   String deleteSelectedConfirmTitle(Object count) {
     return '選択した$count件を削除しますか？';
   }

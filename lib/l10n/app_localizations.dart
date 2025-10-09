@@ -1047,6 +1047,18 @@ abstract class AppLocalizations {
   /// **'Records for {date}'**
   String results(Object date);
 
+  /// No description provided for @resultsCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get resultsCopy;
+
+  /// No description provided for @resultsCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied results to clipboard'**
+  String get resultsCopied;
+
   /// No description provided for @deleteSelectedConfirmTitle.
   ///
   /// In en, this message translates to:

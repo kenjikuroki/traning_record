@@ -497,6 +497,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get resultsCopy => 'Copy';
+
+  @override
+  String get resultsCopied => 'Copied results to clipboard';
+
+  @override
   String deleteSelectedConfirmTitle(Object count) {
     return 'Delete $count item(s)?';
   }

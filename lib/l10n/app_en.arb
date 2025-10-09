@@ -163,6 +163,8 @@
   "clear": "Clear",
   "selectedCount": "{count} selected",
   "results": "Records for {date}",
+  "resultsCopy": "Copy",
+  "resultsCopied": "Copied results to clipboard",
   "deleteSelectedConfirmTitle": "Delete {count} item(s)?",
   "albumEmptyMessage": "Save your selfies in the album to track your training progress.",
   "close": "Close",

@@ -1,6 +1,6 @@
 // lib/screens/calendar_screen.dart
 
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show Clipboard, ClipboardData, rootBundle;
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -233,6 +233,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
       ],
     );
+  }
+
+    String _satisfactionLabel(int value, AppLocalizations l10n) {
+    switch (value) {
+      case 0:
+        return l10n.satisfactionBad;
+      case 1:
+        return l10n.satisfactionOkay;
+      default:
+        return l10n.satisfactionGood;
+    }
   }
 
   // ---------- Helpers ----------
@@ -1723,7 +1734,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
               final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
               final List<Widget> summaryChildren = _buildSummaryChildrenForDate(
                   context, sel, rec);
-              await _showResultsDialog(context, summaryChildren, sel);
+              final List<String> summaryLines = _buildSummaryLinesForDate(
+                  context, sel, rec);
+              await _showResultsDialog(context, summaryChildren, summaryLines, sel);
 
               return;
             }
@@ -2136,8 +2149,220 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return summaryChildren;
   }
 
+  List<String> _buildSummaryLinesForDate(BuildContext context,
+      DateTime sel,
+      DailyRecord? record,) {
+    final l10n = AppLocalizations.of(context)!;
+    final bool showBmr = SettingsManager.manageBmr;
+    final lines = <String>[];
+    final strengthLines = <String>[];
+    final aerobicLines = <String>[];
+    final memoLines = <String>[];
+    final mealLines = <String>[];
+    final personalLines = <String>[];
+
+    final memoText = _getMemoTextForDate(sel);
+
+    if (record == null || !_hasAnyData(record)) {
+      if (memoText != null && memoText.trim().isNotEmpty) {
+        lines.add(memoText.trim());
+      }
+      return lines;
+    }
+
+    final double? bodyFatVal = _safeBodyFat(record);
+    final double? waistValCm = _safeWaist(record);
+    double? bmiVal;
+    if (record.weight != null) {
+      final w = record.weight!;
+      final h = _heightMetersFromSettings() ?? _heightMetersFromRecord(record);
+      if (h != null && h > 0) {
+        bmiVal = _toKg(w) / (h * h);
+      }
+    }
+
+    final double mealTotal = _totalMealKcalForRecord(record);
+    final bool hasMealSection = _hasMealForRecord(record);
+    final double? bmrValue = _calculateBmrForRecord(record);
+    final double? intakeMinusBmr =
+        bmrValue != null ? (mealTotal - bmrValue) : null;
+
+    bool _menuHasAnyData(MenuData m) {
+      final len = (m.weights.length < m.reps.length)
+          ? m.weights.length
+          : m.reps.length;
+      for (int i = 0; i < len; i++) {
+        final w = m.weights[i].toString().trim();
+        final r = m.reps[i].toString().trim();
+        if (w.isNotEmpty || r.isNotEmpty) return true;
+      }
+      if (_hasPositiveDistanceValue(m.distance)) return true;
+      if (_hasPositiveDurationValue(m.duration)) return true;
+      if ((m.calories?.trim().isNotEmpty ?? false)) return true;
+      if (m.totalVolume != null) return true;
+      return false;
+    }
+
+    final List<MenuData> aerobicMenus =
+        (record.menus['有酸素運動'] as List<MenuData>?) ?? const <MenuData>[];
+    final double aerobicTotal = _totalAerobicCalories(record);
+    final double? energyBalance = bmrValue != null
+        ? (mealTotal - (bmrValue + aerobicTotal))
+        : null;
+    if (aerobicMenus.any(_menuHasAnyData)) {
+      final sectionLines = <String>['■${_translatePartToLocale(context, '有酸素運動')}'];
+      for (final m in aerobicMenus) {
+        sectionLines.add(m.name);
+        final bool hasDistance = _hasPositiveDistanceValue(m.distance);
+        final bool hasDuration = _hasPositiveDurationValue(m.duration);
+        if (hasDistance) {
+          sectionLines.add('  ${l10n.distance}: ${_formatDistance(m.distance, l10n)}');
+        }
+        if (hasDuration) {
+          sectionLines
+              .add('  ${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}');
+        }
+        if ((m.calories?.trim().isNotEmpty ?? false)) {
+          sectionLines.add('  ${l10n.calorie}: ${m.calories} ${l10n.kcalUnit}');
+        }
+        if (m.satisfaction != null) {
+          sectionLines.add(
+              '  ${l10n.satisfaction}：${_satisfactionLabel(m.satisfaction!, l10n)}');
+        }
+      }
+      sectionLines.add('');
+      aerobicLines.addAll(sectionLines);
+    }
+
+    record.menus.forEach((originalPart, menuList) {
+      if (originalPart == '有酸素運動') return;
+
+      bool partHas = false;
+      for (final m in menuList) {
+        if (_menuHasAnyData(m)) {
+          partHas = true;
+          break;
+        }
+      }
+      if (!partHas) return;
+
+      final sectionLines = <String>['■${_translatePartToLocale(context, originalPart)}'];
+
+      for (final m in menuList) {
+        if (!_menuHasAnyData(m)) continue;
+        sectionLines.add(m.name);
+
+        final int len = (m.weights.length < m.reps.length)
+            ? m.weights.length
+            : m.reps.length;
+        final unit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
+        for (int i = 0; i < len; i++) {
+          final w = m.weights[i].toString().trim();
+          final r = m.reps[i].toString().trim();
+          final setDisplay = formatStrengthSetDisplay(
+            l10n: l10n,
+            weight: w,
+            unit: unit,
+            reps: r,
+          );
+          if (setDisplay == '-') continue;
+          sectionLines.add('  ${i + 1}${l10n.sets}：$setDisplay');
+        }
+        if (m.totalVolume != null) {
+          sectionLines.add(
+              '  ${l10n.totalVolumeLabel}：${formatTotalVolumeValue(l10n, m.totalVolume)}');
+        }
+        if (m.satisfaction != null) {
+          sectionLines.add(
+              '  ${l10n.satisfaction}：${_satisfactionLabel(m.satisfaction!, l10n)}');
+        }
+      }
+      sectionLines.add('');
+      strengthLines.addAll(sectionLines);
+    });
+
+    if (memoText != null && memoText.trim().isNotEmpty) {
+      memoLines
+        ..add(memoText.trim())
+        ..add('');
+    }
+
+    if (hasMealSection) {
+      final mealBreakdown = _mealCalorieBreakdown(record);
+      final sectionLines = <String>['■${l10n.meal}'];
+      for (final category in MealCategory.values) {
+        final label = _mealCategoryLabel(l10n, category);
+        final kcal = mealBreakdown[category] ?? 0;
+        sectionLines.add('$label: ${_formatKcalNumber(kcal)} ${l10n.kcalUnit}');
+      }
+      sectionLines.add(
+          '${l10n.mealTotalToday}: ${_formatKcalNumber(mealTotal)} ${l10n.kcalUnit}');
+      sectionLines.add('');
+      mealLines.addAll(sectionLines);
+    }
+
+    final bool hasPersonal = (record.weight != null) || (bodyFatVal != null) ||
+        (waistValCm != null) || (bmiVal != null) || showBmr;
+    if (hasPersonal) {
+      personalLines.add('■${l10n.personal}');
+      if (record.weight != null) {
+        final unit = SettingsManager.currentUnit;
+        personalLines.add(
+            '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(1)} $unit');
+      }
+      if (bodyFatVal != null) {
+        personalLines.add('${l10n.bodyFat}: ${bodyFatVal!.toStringAsFixed(1)}%');
+      }
+      if (waistValCm != null) {
+        personalLines.add('${l10n.waist}: ${_fmtWaist(waistValCm!, l10n)}');
+      }
+      if (bmiVal != null) {
+        personalLines.add('BMI: ${bmiVal!.toStringAsFixed(1)}');
+      }
+      if (showBmr) {
+        final bmrDisplay =
+            bmrValue != null ? '${_formatKcalNumber(bmrValue!)} ${l10n.kcalUnit}' : '—';
+        personalLines.add('${l10n.bmrTitleShort}: $bmrDisplay');
+        final diffDisplay = intakeMinusBmr != null
+            ? '${_formatKcalNumber(intakeMinusBmr)} ${l10n.kcalUnit}'
+            : '—';
+        personalLines.add('${l10n.bmrDiffShort}: $diffDisplay');
+      }
+    }
+
+    final combinedLines = <String>[]
+      ..addAll(strengthLines)
+      ..addAll(aerobicLines)
+      ..addAll(memoLines)
+      ..addAll(mealLines)
+      ..addAll(personalLines);
+
+    if (showBmr) {
+      if (combinedLines.isNotEmpty &&
+          combinedLines.last.trim().isNotEmpty) {
+        combinedLines.add('');
+      }
+      final summaryLabel = l10n.dailyBalanceSummary;
+      final labelWithColon = (summaryLabel.endsWith('：') || summaryLabel.endsWith(':'))
+          ? summaryLabel
+          : '$summaryLabel:';
+      final balanceText = energyBalance != null
+          ? '${_formatKcalNumber(energyBalance)} ${l10n.kcalUnit}'
+          : '—';
+      combinedLines.add('$labelWithColon $balanceText');
+    }
+
+    while (combinedLines.isNotEmpty &&
+        combinedLines.last.trim().isEmpty) {
+      combinedLines.removeLast();
+    }
+
+    return combinedLines;
+  }
+
   Future<void> _showResultsDialog(BuildContext context,
       List<Widget> body,
+      List<String> summaryLines,
       DateTime sel,) async {
     final cs = Theme
         .of(context)
@@ -2182,6 +2407,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           ),
                         ),
                       ),
+                      if (hasRecord && summaryLines.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.copy_rounded),
+                          tooltip: l10n.resultsCopy,
+                          onPressed: () async {
+                            await Clipboard.setData(
+                              ClipboardData(text: summaryLines.join('\n')),
+                            );
+                            if (!ctx.mounted) return;
+                            ScaffoldMessenger.of(ctx)
+                              ..hideCurrentSnackBar()
+                              ..showSnackBar(
+                                SnackBar(
+                                  content: Text(l10n.resultsCopied),
+                                  duration: const Duration(milliseconds: 1600),
+                                ),
+                              );
+                          },
+                        ),
                       IconButton(
                         icon: const Icon(Icons.close),
                         onPressed: () => Navigator.of(ctx).pop(),
@@ -2579,6 +2823,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final double maxWidth = (screenW - 96).clamp(220.0, screenW);
 
     const double fabHeight = 56;
+    final summaryLines = _buildSummaryLinesForDate(context, sel, record);
     return Align(
       alignment: Alignment.centerLeft,
       child: ConstrainedBox(
@@ -2599,7 +2844,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
-            onTap: () => _showResultsDialog(context, summaryChildren, sel),
+            onTap: () => _showResultsDialog(
+              context,
+              summaryChildren,
+              summaryLines,
+              sel,
+            ),
             child: Container(
               height: fabHeight, // ← ここでも明示
               padding: const EdgeInsets.symmetric(horizontal: 12),

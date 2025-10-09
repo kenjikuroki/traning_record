@@ -162,6 +162,8 @@
   "deleteSelectedConfirmTitle": "選択した{count}件を削除しますか？",
   "albumEmptyMessage": "自撮り写真をアルバムに残してトレーニングの進捗を確認しよう。",
   "results": "{date}の記録",
+  "resultsCopy": "コピー",
+  "resultsCopied": "実績をコピーしました",
   "close": "閉じる",
   "addMemo": "＋メモ",
   "memo": "メモ",
