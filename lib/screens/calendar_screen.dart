@@ -1416,10 +1416,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
         if (chips.length >= 3) break;
         chips.add(_partChip(p));
       }
-      if (chips.length < 3 && hasMemo) chips.add(_memoChip());
-      if (chips.length < 3 && hasWeight) chips.add(_weightChip());
-      if (chips.length < 3 && hasMeal) chips.add(_mealChip());
       if (chips.length < 3 && hasAerobic) chips.add(_partChip('有酸素運動'));
+      if (chips.length < 3 && hasMemo) chips.add(_memoChip());
+      if (chips.length < 3 && hasMeal) chips.add(_mealChip());
+      if (chips.length < 3 && hasWeight) chips.add(_weightChip());
       if (chips.length < 3 && hasPhoto) chips.add(_photoChip());
     }
 
@@ -1761,22 +1761,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final l10n = AppLocalizations.of(context)!;
     final bool showBmr = SettingsManager.manageBmr;
     final List<Widget> summaryChildren = [];
-
-    if (record == null || !_hasAnyData(record)) {
-      final memo = _getMemoTextForDate(sel);
-      if (memo != null && memo
-          .trim()
-          .isNotEmpty) {
-        summaryChildren.add(
-          Padding(
+    final List<Widget> strengthWidgets = [];
+    final List<Widget> aerobicWidgets = [];
+    final List<Widget> memoWidgets = [];
+    final List<Widget> mealWidgets = [];
+    final List<Widget> personalWidgets = [];
+    final memoText = _getMemoTextForDate(sel);
+    final bool hasMemoText = memoText != null && memoText.trim().isNotEmpty;
+    final Widget? memoWidget = hasMemoText
+        ? Padding(
             padding: const EdgeInsets.only(top: 8.0),
             child: _selectableLine(
-              text: memo.trim(),
+              text: memoText!.trim(),
               style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15),
               padding: const EdgeInsets.only(left: 4.0, bottom: 0),
             ),
-          ),
-        );
+          )
+        : null;
+
+    if (record == null || !_hasAnyData(record)) {
+      if (memoWidget != null) {
+        return [memoWidget];
       }
       return summaryChildren;
     }
@@ -1826,7 +1831,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ? (mealTotal - (bmrValue + aerobicTotal))
         : null;
     if (aerobicMenus.any(_menuHasAnyData)) {
-      summaryChildren.add(
+      aerobicWidgets.add(
         Padding(
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
           child: Text(
@@ -1837,7 +1842,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
       );
       for (final m in aerobicMenus) {
-        summaryChildren.add(
+        aerobicWidgets.add(
           _selectableLine(
             text: m.name,
             padding: const EdgeInsets.only(bottom: 2.0),
@@ -1848,7 +1853,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final bool hasDistance = _hasPositiveDistanceValue(m.distance);
         final bool hasDuration = _hasPositiveDurationValue(m.duration);
         if (hasDistance) {
-          summaryChildren.add(
+          aerobicWidgets.add(
             _selectableLine(
               text: '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
@@ -1859,10 +1864,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
           );
         }
         if (hasDuration) {
-          summaryChildren.add(
+          aerobicWidgets.add(
             _selectableLine(
-              text: '${l10n.time}: ${_formatDurationHM(
-                  context, m.duration, l10n)}',
+              text: '${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(color: cs.onSurface,
                   fontSize: 15,
@@ -1870,10 +1874,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           );
         }
-        if ((m.calories
-            ?.trim()
-            .isNotEmpty ?? false)) {
-          summaryChildren.add(
+        if ((m.calories?.trim().isNotEmpty ?? false)) {
+          aerobicWidgets.add(
             _selectableLine(
               text: '${l10n.calorie}: ${m.calories} ${l10n.kcalUnit}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
@@ -1884,7 +1886,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           );
         }
         if (m.satisfaction != null) {
-          summaryChildren.add(
+          aerobicWidgets.add(
             Padding(
               padding: const EdgeInsets.only(left: 8.0, top: 2.0, bottom: 2.0),
               child: Align(
@@ -1895,7 +1897,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           );
         }
       }
-      summaryChildren.add(const SizedBox(height: 8));
+      aerobicWidgets.add(const SizedBox(height: 8));
     }
 
     // 有酸素以外（部位/メニュー名 + 簡易セット表示）
@@ -1911,7 +1913,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
       if (!partHas) return;
 
-      summaryChildren.add(
+      strengthWidgets.add(
         Padding(
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
           child: Text(
@@ -1925,7 +1927,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       for (final m in menuList) {
         if (!_menuHasAnyData(m)) continue;
 
-        summaryChildren.add(
+        strengthWidgets.add(
           _selectableLine(
             text: m.name,
             padding: const EdgeInsets.only(bottom: 2.0),
@@ -1948,7 +1950,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             reps: r,
           );
           if (setDisplay == '-') continue;
-          summaryChildren.add(
+          strengthWidgets.add(
             _selectableLine(
               text: '${i + 1}${l10n.sets}：$setDisplay',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
@@ -1959,7 +1961,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           );
         }
         if (m.totalVolume != null) {
-          summaryChildren.add(
+          strengthWidgets.add(
             _selectableLine(
               text:
               '${l10n.totalVolumeLabel}：${formatTotalVolumeValue(
@@ -1973,7 +1975,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           );
         }
         if (m.satisfaction != null) {
-          summaryChildren.add(
+          strengthWidgets.add(
             Padding(
               padding: const EdgeInsets.only(left: 8.0, top: 2.0, bottom: 2.0),
               child: Align(
@@ -1984,12 +1986,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
           );
         }
       }
-      summaryChildren.add(const SizedBox(height: 8));
+      strengthWidgets.add(const SizedBox(height: 8));
     });
 
     if (hasMealSection) {
       final mealBreakdown = _mealCalorieBreakdown(record);
-      summaryChildren.add(
+      mealWidgets.add(
         Padding(
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
           child: Text(
@@ -2002,7 +2004,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       for (final category in MealCategory.values) {
         final label = _mealCategoryLabel(l10n, category);
         final kcal = mealBreakdown[category] ?? 0;
-        summaryChildren.add(
+        mealWidgets.add(
           _selectableLine(
             text: '$label: ${_formatKcalNumber(kcal)} ${l10n.kcalUnit}',
             style: TextStyle(color: cs.onSurface, fontSize: 15),
@@ -2010,7 +2012,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         );
       }
-      summaryChildren.add(
+      mealWidgets.add(
         _selectableLine(
           text:
               '${l10n.mealTotalToday}: ${_formatKcalNumber(mealTotal)} ${l10n.kcalUnit}',
@@ -2018,14 +2020,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
           padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
         ),
       );
-      summaryChildren.add(const SizedBox(height: 8));
+      mealWidgets.add(const SizedBox(height: 8));
     }
 
     // 個人値まとめ（あるものだけ）
     final hasPersonal = (record.weight != null) || (bodyFatVal != null) ||
         (waistValCm != null) || (bmiVal != null) || showBmr;
     if (hasPersonal) {
-      summaryChildren.add(
+      personalWidgets.add(
         Padding(
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
           child: Text(
@@ -2037,7 +2039,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
       if (record.weight != null) {
         final unit = SettingsManager.currentUnit;
-        summaryChildren.add(
+        personalWidgets.add(
           _selectableLine(
             text: '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(
                 1)} $unit',
@@ -2047,7 +2049,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         );
       }
       if (bodyFatVal != null) {
-        summaryChildren.add(
+        personalWidgets.add(
           _selectableLine(
             text: '${l10n.bodyFat}: ${bodyFatVal!.toStringAsFixed(1)}%',
             style: TextStyle(color: cs.onSurface, fontSize: 15),
@@ -2056,7 +2058,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         );
       }
       if (waistValCm != null) {
-        summaryChildren.add(
+        personalWidgets.add(
           _selectableLine(
             text: '${l10n.waist}: ${_fmtWaist(waistValCm!, l10n)}',
             style: TextStyle(color: cs.onSurface, fontSize: 15),
@@ -2065,7 +2067,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         );
       }
       if (bmiVal != null) {
-        summaryChildren.add(
+        personalWidgets.add(
           _selectableLine(
             text: 'BMI: ${bmiVal!.toStringAsFixed(1)}',
             style: TextStyle(color: cs.onSurface, fontSize: 15),
@@ -2076,7 +2078,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (showBmr) {
         final bmrDisplay =
             bmrValue != null ? '${_formatKcalNumber(bmrValue!)} ${l10n.kcalUnit}' : '—';
-        summaryChildren.add(
+        personalWidgets.add(
           _selectableLine(
             text: '${l10n.bmrTitleShort}: $bmrDisplay',
             style: TextStyle(color: cs.onSurface, fontSize: 15),
@@ -2086,7 +2088,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final diffDisplay = intakeMinusBmr != null
             ? '${_formatKcalNumber(intakeMinusBmr)} ${l10n.kcalUnit}'
             : '—';
-        summaryChildren.add(
+        personalWidgets.add(
           _selectableLine(
             text: '${l10n.bmrDiffShort}: $diffDisplay',
             style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
@@ -2096,22 +2098,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
     }
 
-    // メモ
-    final memo = _getMemoTextForDate(sel);
-    if (memo != null && memo
-        .trim()
-        .isNotEmpty) {
-      summaryChildren.add(
-        Padding(
-          padding: const EdgeInsets.only(top: 8.0),
-          child: _selectableLine(
-            text: memo.trim(),
-            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15),
-            padding: const EdgeInsets.only(left: 4.0, bottom: 0),
-          ),
-        ),
-      );
+    if (memoWidget != null) {
+      memoWidgets.add(memoWidget);
+      memoWidgets.add(const SizedBox(height: 8));
     }
+
+    summaryChildren
+      ..addAll(strengthWidgets)
+      ..addAll(aerobicWidgets)
+      ..addAll(memoWidgets)
+      ..addAll(mealWidgets)
+      ..addAll(personalWidgets);
 
     final shouldShowSummary = showBmr;
     if (shouldShowSummary) {
