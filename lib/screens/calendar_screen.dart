@@ -2212,6 +2212,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (aerobicMenus.any(_menuHasAnyData)) {
       final sectionLines = <String>['■${_translatePartToLocale(context, '有酸素運動')}'];
       for (final m in aerobicMenus) {
+        if (!_menuHasAnyData(m)) continue;
         sectionLines.add(m.name);
         final bool hasDistance = _hasPositiveDistanceValue(m.distance);
         final bool hasDuration = _hasPositiveDurationValue(m.duration);

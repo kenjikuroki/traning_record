@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../services/age_signals_service.dart';
 import '../settings_manager.dart';
 
 /// 利用可能なバナーサイズ
@@ -120,7 +121,7 @@ class _AdSquareState extends State<AdSquare> with SingleTickerProviderStateMixin
 
     _bannerAd = BannerAd(
       adUnitId: _resolveAdUnitId(),
-      request: const AdRequest(),
+      request: AgeSignalsService.instance.buildAdRequest(),
       size: _adSize,
       listener: BannerAdListener(
         onAdLoaded: (ad) {

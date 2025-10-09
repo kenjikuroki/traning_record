@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import '../services/age_signals_service.dart';
 import '../settings_manager.dart';
 /// 大きめの収益広告
 /// - iOS: まず MREC(300x250) をロードして確実表示 →（任意で）Native を後追いロード
@@ -92,7 +93,7 @@ class _BigEarningAdState extends State<BigEarningAd> {
 
     _nativeAd = NativeAd(
       adUnitId: unitId,
-      request: const AdRequest(),
+      request: AgeSignalsService.instance.buildAdRequest(),
       // iOSで使う場合は factoryId を AppDelegate で登録しておくこと
       factoryId: widget.factoryId,
       // ここは非constにしておく（constにするとVideoOptionsもconst必須でコケやすい）
@@ -127,7 +128,7 @@ class _BigEarningAdState extends State<BigEarningAd> {
     _mrecAd = BannerAd(
       adUnitId: unitId,
       size: AdSize.mediumRectangle, // 300x250
-      request: const AdRequest(),
+      request: AgeSignalsService.instance.buildAdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           if (!mounted) return;

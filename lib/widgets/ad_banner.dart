@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../services/age_signals_service.dart';
 import '../settings_manager.dart';
 
 class AdBanner extends StatefulWidget {
@@ -67,7 +68,7 @@ class _AdBannerState extends State<AdBanner> with SingleTickerProviderStateMixin
 
     final ad = BannerAd(
       adUnitId: adUnitId,
-      request: const AdRequest(),
+      request: AgeSignalsService.instance.buildAdRequest(),
       size: _anchoredSize ?? AdSize.banner,
       listener: BannerAdListener(
         onAdLoaded: (ad) {

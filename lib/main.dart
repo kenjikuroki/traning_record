@@ -14,6 +14,7 @@ import 'models/menu_data.dart';
 import 'screens/home_screen.dart';
 import 'settings_manager.dart';
 import 'package:audio_session/audio_session.dart';
+import 'services/age_signals_service.dart';
 
 Future<void> _initAudioSession() async {
   final session = await AudioSession.instance;
@@ -35,6 +36,8 @@ Future<void> main() async {
   }
 
   await SettingsManager.initialize();
+
+  await AgeSignalsService.instance.ensureInitialized();
 
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
@@ -162,4 +165,3 @@ class _MyAppState extends State<MyApp> {
     );
   }
 }
-
