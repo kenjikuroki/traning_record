@@ -9377,9 +9377,9 @@ class _MenuListState extends State<MenuList> {
                         textAlign: TextAlign.right,
                         style: TextStyle(
                           fontFamily: kUiFont,
-                          color: set.isSuggestion
-                              ? colorScheme.onSurfaceVariant.withOpacity(0.5)
-                              : colorScheme.onSurface,
+                          color: set.checked
+                              ? colorScheme.onSurface
+                              : colorScheme.onSurfaceVariant.withOpacity(0.5),
                         ),
                         onTap: () async {
                           notifyFocus(true);
@@ -9429,9 +9429,9 @@ class _MenuListState extends State<MenuList> {
                         textAlign: TextAlign.right,
                         style: TextStyle(
                           fontFamily: kUiFont,
-                          color: set.isSuggestion
-                              ? colorScheme.onSurfaceVariant.withOpacity(0.5)
-                              : colorScheme.onSurface,
+                          color: set.checked
+                              ? colorScheme.onSurface
+                              : colorScheme.onSurfaceVariant.withOpacity(0.5),
                         ),
                         onTap: () async {
                           notifyFocus(true);
