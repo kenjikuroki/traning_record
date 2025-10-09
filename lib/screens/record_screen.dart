@@ -5612,7 +5612,7 @@ class _RecordScreenState extends State<RecordScreen>
 
     final bool isAerobic = section.selectedPart == l10n.aerobicExercise;
 
-    final double topGap = 0.0;
+    final double topGap = 12.0;
     final double bottomGap = media.padding.bottom + 12;
 
     return Stack(
@@ -7194,7 +7194,9 @@ class _RecordScreenState extends State<RecordScreen>
               ? null
               : Colors.transparent,
           appBar: AppBar(
-            automaticallyImplyLeading: true,
+            automaticallyImplyLeading: !inputOverlayActive,
+            leading: inputOverlayActive ? const SizedBox.shrink() : null,
+            leadingWidth: inputOverlayActive ? 0 : null,
             elevation: 0,
             scrolledUnderElevation: 0,
             surfaceTintColor: Colors.transparent,
