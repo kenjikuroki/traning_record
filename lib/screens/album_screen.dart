@@ -13,8 +13,6 @@ import '../l10n/app_localizations.dart';
 import '../widgets/ad_banner.dart';
 import '../settings_manager.dart';
 import '../widgets/centered_constrained.dart';
-import '../theme/app_theme.dart';       // appFabGradient / appFabSolid
-import '../widgets/gradient_fab.dart';  // カレンダーと同じ見た目のFAB
 
 Future<bool> _ensureAlbumCameraPermission(BuildContext context) async {
   var status = await Permission.camera.status;
@@ -41,6 +39,8 @@ Future<bool> _ensureAlbumCameraPermission(BuildContext context) async {
   }
   return false;
 }
+
+typedef AlbumScreenState = _AlbumScreenState;
 
 class AlbumScreen extends StatefulWidget {
   const AlbumScreen({super.key});
@@ -318,6 +318,8 @@ class _AlbumScreenState extends State<AlbumScreen> {
       }
     }
   }
+
+  Future<void> handleAddAction() => _handleAddPressed();
 
   // 空表示（BackdropFilterは使わない）
   Widget _centerEmptyMessage(BuildContext context, AppLocalizations l10n) {
@@ -628,16 +630,6 @@ class _AlbumScreenState extends State<AlbumScreen> {
           ),
         ],
       ),
-
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'albumAddFab',
-        tooltip: l10n.add,
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        onPressed: _handleAddPressed, // 既存の追加ハンドラをそのまま利用
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-
       bottomNavigationBar: _inSelection
           ? SafeArea(
         child: Container(

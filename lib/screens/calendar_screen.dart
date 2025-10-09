@@ -18,7 +18,6 @@ import 'graph_screen.dart';
 import 'settings_screen.dart';
 import '../routes/slide_up_route.dart';
 import '../widgets/centered_constrained.dart';
-import '../widgets/gradient_fab.dart';
 import '../widgets/big_earning_ad.dart';
 import '../theme/app_theme.dart' as T; // ← 追加：エイリアス T で
 
@@ -1263,30 +1262,36 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  // 最大3ボックス（日付下：体重+部位の合計）の行高を算出
-  double _rowHeightFor3(BuildContext context) {
+  // 4情報を想定した基本行高を算出
+  double _baseRowHeight(BuildContext context) {
     const double topPad = 6.0;
     final double dayFont = Theme
-        .of(context)
-        .textTheme
-        .bodyMedium
-        ?.fontSize ?? 14.0;
+            .of(context)
+            .textTheme
+            .bodyMedium
+            ?.fontSize ??
+        14.0;
     final double dayLine = dayFont * 1.2;
 
     const double chipFont = 10.0;
     const double chipLine = chipFont * 1.1;
     const double chipVPad = 2.0;
     const double chipH = chipLine + chipVPad * 2;
+    const int chipRows = 4;
+    const double gapPerRow = 2.0;
+    final double gaps = gapPerRow * (chipRows + 1);
 
-    const double gaps = 2.0 + 2.0 + 2.0;
-
-    const double safety = 4.0;
-    return (topPad + dayLine + chipH * 3 + gaps + safety).ceilToDouble();
+    const double safety = 6.0;
+    return (topPad + dayLine + chipH * chipRows + gaps + safety).ceilToDouble();
   }
 
   // セル描画
   Widget _buildDayCell(BuildContext context, DateTime day,
-      {required Color textColor, bool selected = false, bool showEventsForOutOfMonth = false}) {
+      {required Color textColor,
+      bool selected = false,
+      bool showEventsForOutOfMonth = false,
+      double chipScale = 1.0,
+      int maxChips = 4}) {
     final cs = Theme
         .of(context)
         .colorScheme;
@@ -1307,6 +1312,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final bool canShowChips = showEventsForOutOfMonth ||
         day.month == _focusedDay.month || record != null || hasMemo || hasPhoto;
 
+    final double chipFontSize = (10.0 * chipScale).clamp(7.5, 10.0);
+    final double chipVPad = (2.0 * chipScale).clamp(1.0, 2.0);
+    final double chipHPad = (6.0 * chipScale).clamp(4.0, 6.0);
+    final double chipGap = (2.0 * chipScale).clamp(1.0, 3.0);
+    final double chipBoxHeight = chipFontSize * 1.05 + chipVPad * 2;
+
     Widget _partChip(String part) {
       final label = _translatePartToLocale(context, part);
       final boxColor = _colorForPart(part, cs);
@@ -1315,7 +1326,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ? Colors.white
           : Colors.black87;
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding:
+            EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
         decoration: BoxDecoration(
           color: boxColor,
           borderRadius: BorderRadius.circular(6),
@@ -1325,17 +1337,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 10,
-              height: 1.1,
-              color: textOnBox,
-              fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontSize: chipFontSize,
+            height: 1.05,
+            color: textOnBox,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       );
     }
 
     Widget _memoChip() =>
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          padding:
+              EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
           decoration: BoxDecoration(
             color: cs.tertiaryContainer,
             borderRadius: BorderRadius.circular(6),
@@ -1345,17 +1360,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 10,
-                height: 1.1,
-                color: cs.onTertiaryContainer,
-                fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontSize: chipFontSize,
+              height: 1.05,
+              color: cs.onTertiaryContainer,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         );
 
     Widget _weightChip() {
       final l10n = AppLocalizations.of(context)!;
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding:
+            EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
         decoration: BoxDecoration(
           color: cs.secondaryContainer,
           borderRadius: BorderRadius.circular(6),
@@ -1365,10 +1383,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 10,
-              height: 1.1,
-              color: cs.onSecondaryContainer,
-              fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontSize: chipFontSize,
+            height: 1.05,
+            color: cs.onSecondaryContainer,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       );
     }
@@ -1376,7 +1396,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     Widget _mealChip() {
       final l10n = AppLocalizations.of(context)!;
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding:
+            EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
         decoration: BoxDecoration(
           color: cs.surfaceVariant,
           borderRadius: BorderRadius.circular(6),
@@ -1386,10 +1407,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 10,
-              height: 1.1,
-              color: cs.onSurface,
-              fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontSize: chipFontSize,
+            height: 1.05,
+            color: cs.onSurface,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       );
     }
@@ -1401,7 +1424,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final l10n = AppLocalizations.of(context)!; // l10n
 
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding:
+            EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
         decoration: BoxDecoration(
           color: cs.primaryContainer,
           borderRadius: BorderRadius.circular(6),
@@ -1412,8 +1436,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 10,
-            height: 1.1,
+            fontSize: chipFontSize,
+            height: 1.05,
             color: cs.onPrimaryContainer,
             fontWeight: FontWeight.w700,
           ),
@@ -1424,19 +1448,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final chips = <Widget>[];
     if (canShowChips) {
       for (final p in strengthParts) {
-        if (chips.length >= 3) break;
+        if (chips.length >= maxChips) break;
         chips.add(_partChip(p));
       }
-      if (chips.length < 3 && hasAerobic) chips.add(_partChip('有酸素運動'));
-      if (chips.length < 3 && hasMemo) chips.add(_memoChip());
-      if (chips.length < 3 && hasMeal) chips.add(_mealChip());
-      if (chips.length < 3 && hasWeight) chips.add(_weightChip());
-      if (chips.length < 3 && hasPhoto) chips.add(_photoChip());
+      if (chips.length < maxChips && hasAerobic) {
+        chips.add(_partChip('有酸素運動'));
+      }
+      if (chips.length < maxChips && hasMemo) chips.add(_memoChip());
+      if (chips.length < maxChips && hasMeal) chips.add(_mealChip());
+      if (chips.length < maxChips && hasWeight) chips.add(_weightChip());
+      if (chips.length < maxChips && hasPhoto) chips.add(_photoChip());
     }
 
     final Color dayNumberColor = (day.weekday == DateTime.sunday)
         ? Colors.red
         : (day.weekday == DateTime.saturday ? Colors.blue : textColor);
+
+    final int chipCount = chips.length;
 
     return SizedBox.expand(
       child: Container(
@@ -1445,19 +1473,32 @@ class _CalendarScreenState extends State<CalendarScreen> {
           borderRadius: selected ? BorderRadius.circular(8) : null,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _dayLabelTop(
-                context, day, textColor: dayNumberColor, selected: selected),
-            if (chips.isNotEmpty) const SizedBox(height: 2),
-            for (int i = 0; i < chips.length; i++)
-              Padding(
-                padding: EdgeInsets.only(bottom: i == chips.length - 1 ? 0 : 2),
-                child: chips[i],
-              ),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                _dayLabelTop(
+                    context, day, textColor: dayNumberColor, selected: selected),
+                if (chipCount > 0) ...[
+                  SizedBox(height: chipGap),
+                  for (int i = 0; i < chipCount; i++)
+                    Padding(
+                      padding: EdgeInsets.only(
+                          bottom: i == chipCount - 1 ? 0 : chipGap),
+                      child: SizedBox(
+                        height: chipBoxHeight,
+                        width: constraints.maxWidth,
+                        child: chips[i],
+                      ),
+                    ),
+                  const Spacer(),
+                ] else
+                  const Spacer(),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -1510,6 +1551,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     await _openRecordSheet(sel);
   }
+
+  Future<void> handleAddAction() => _handleAddPressed();
 
   // 半角→全角数字（0-9）変換
   String _toZenkakuDigits(String s) {
@@ -1595,10 +1638,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         final selectedRecord = box.get(
                             _dateKey(_selectedDay ?? DateTime.now()));
                         return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             const AdBanner(screenName: 'calendar'),
                             const SizedBox(height: 2),
-                            _buildCalendar(context),
+                            Expanded(
+                              child: _buildCalendar(context),
+                            ),
                           ],
                         );
                       },
@@ -1611,17 +1657,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         },
       ),
 
-      // ▼ 右下のプラス（FAB）を復活：RecordScreen を開く既存メソッドを呼ぶ
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'calendarFab',
-        backgroundColor: Theme
-            .of(context)
-            .colorScheme
-            .primary,
-        onPressed: _handleAddPressed,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
     );
   }
 
@@ -1638,119 +1673,146 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Padding(
         // 下の余白を少し詰めて、実画面上の高さを稼ぐ
         padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-        child: TableCalendar<Object>(
-          firstDay: DateTime.utc(2015, 1, 1),
-          lastDay: DateTime.utc(2100, 12, 31),
-          focusedDay: _focusedDay,
-          locale: Localizations.localeOf(context).toString(),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final double baseRow = _baseRowHeight(context);
+            double rowHeight = baseRow;
+            final double available = constraints.maxHeight;
 
-          // ここで高さを少しアップ（12%拡大）
-          rowHeight: _rowHeightFor3(context) * 1.12,
-
-          selectedDayPredicate: (day) =>
-          _selectedDay != null && _sameDate(day, _selectedDay!),
-          startingDayOfWeek: StartingDayOfWeek.monday,
-
-          headerStyle: HeaderStyle(
-            titleCentered: true,
-            formatButtonVisible: false,
-            titleTextStyle: TextStyle(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-            leftChevronIcon:
-            Icon(Icons.chevron_left, color: colorScheme.onSurface),
-            rightChevronIcon:
-            Icon(Icons.chevron_right, color: colorScheme.onSurface),
-          ),
-
-          calendarStyle: CalendarStyle(
-            defaultTextStyle: TextStyle(color: colorScheme.onSurface),
-            weekendTextStyle: TextStyle(color: colorScheme.onSurface),
-            outsideTextStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-            todayDecoration: const BoxDecoration(),
-            selectedDecoration: const BoxDecoration(),
-            selectedTextStyle: TextStyle(color: colorScheme.onSurface),
-            markersMaxCount: 0,
-          ),
-
-          calendarBuilders: CalendarBuilders<Object>(
-            defaultBuilder: (context, day, focusedDay) {
-              final cs = Theme
-                  .of(context)
-                  .colorScheme;
-              return _buildDayCell(
-                context,
-                day,
-                textColor: cs.onSurface,
-                selected: false,
-              );
-            },
-            outsideBuilder: (context, day, focusedDay) {
-              final cs = Theme
-                  .of(context)
-                  .colorScheme;
-              return _buildDayCell(
-                context,
-                day,
-                textColor: cs.onSurfaceVariant,
-                selected: false,
-                showEventsForOutOfMonth: true,
-              );
-            },
-            todayBuilder: (context, day, focusedDay) {
-              final cs = Theme
-                  .of(context)
-                  .colorScheme;
-              return _buildDayCell(
-                context,
-                day,
-                textColor: cs.onSurface,
-                selected: false,
-              );
-            },
-            selectedBuilder: (context, day, focusedDay) {
-              final cs = Theme
-                  .of(context)
-                  .colorScheme;
-              return _buildDayCell(
-                context,
-                day,
-                textColor: cs.onSurface,
-                selected: true,
-              );
-            },
-          ),
-
-          eventLoader: _eventLoader,
-
-          onDaySelected: (selectedDay, focusedDay) async {
-            // 2回目タップ判定：すでに選択中の日付をもう一度タップした
-            if (_selectedDay != null && _sameDate(selectedDay, _selectedDay!)) {
-              final DateTime sel = DateTime(
-                  selectedDay.year, selectedDay.month, selectedDay.day);
-// 日付に関わらず、2回目タップで実績ダイアログを表示
-              final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
-              final List<Widget> summaryChildren = _buildSummaryChildrenForDate(
-                  context, sel, rec);
-              final List<String> summaryLines = _buildSummaryLinesForDate(
-                  context, sel, rec);
-              await _showResultsDialog(context, summaryChildren, summaryLines, sel);
-
-              return;
+            if (available.isFinite && available > 0) {
+              const double headerReserve = 72.0;
+              const double bottomReserve = 12.0;
+              final double usable = available - headerReserve - bottomReserve;
+              if (usable > 0) {
+                final double candidate = usable / 6.0;
+                final double maxRow = baseRow * 1.2;
+                rowHeight = candidate > maxRow ? maxRow : candidate;
+              }
             }
 
-            // 1回目タップ：その日に移動（選択＆フォーカス更新）のみ
-            setState(() {
-              _selectedDay = DateTime(
-                  selectedDay.year, selectedDay.month, selectedDay.day);
-              _focusedDay = focusedDay;
-            });
-          },
+            if (rowHeight <= 0) {
+              rowHeight = baseRow;
+            }
 
-          onPageChanged: (focusedDay) {
-            setState(() => _focusedDay = focusedDay);
+            final double chipScale =
+                (rowHeight / baseRow).clamp(0.3, 1.2);
+            double dowHeight = (28.0 * chipScale).clamp(20.0, 44.0);
+
+            return TableCalendar<Object>(
+              firstDay: DateTime.utc(2015, 1, 1),
+              lastDay: DateTime.utc(2100, 12, 31),
+              focusedDay: _focusedDay,
+              locale: Localizations.localeOf(context).toString(),
+              rowHeight: rowHeight,
+              daysOfWeekHeight: dowHeight,
+              selectedDayPredicate: (day) =>
+                  _selectedDay != null && _sameDate(day, _selectedDay!),
+              startingDayOfWeek: StartingDayOfWeek.monday,
+              headerStyle: HeaderStyle(
+                titleCentered: true,
+                formatButtonVisible: false,
+                titleTextStyle: TextStyle(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+                leftChevronIcon:
+                    Icon(Icons.chevron_left, color: colorScheme.onSurface),
+                rightChevronIcon:
+                    Icon(Icons.chevron_right, color: colorScheme.onSurface),
+              ),
+              calendarStyle: CalendarStyle(
+                defaultTextStyle: TextStyle(color: colorScheme.onSurface),
+                weekendTextStyle: TextStyle(color: colorScheme.onSurface),
+                outsideTextStyle:
+                    TextStyle(color: colorScheme.onSurfaceVariant),
+                todayDecoration: const BoxDecoration(),
+                selectedDecoration: const BoxDecoration(),
+                selectedTextStyle: TextStyle(color: colorScheme.onSurface),
+                markersMaxCount: 0,
+              ),
+              calendarBuilders: CalendarBuilders<Object>(
+                defaultBuilder: (context, day, focusedDay) {
+                  final cs = Theme
+                      .of(context)
+                      .colorScheme;
+                  return _buildDayCell(
+                    context,
+                    day,
+                    textColor: cs.onSurface,
+                    selected: false,
+                    chipScale: chipScale,
+                    maxChips: 4,
+                  );
+                },
+                outsideBuilder: (context, day, focusedDay) {
+                  final cs = Theme
+                      .of(context)
+                      .colorScheme;
+                  return _buildDayCell(
+                    context,
+                    day,
+                    textColor: cs.onSurfaceVariant,
+                    selected: false,
+                    showEventsForOutOfMonth: true,
+                    chipScale: chipScale,
+                    maxChips: 4,
+                  );
+                },
+                todayBuilder: (context, day, focusedDay) {
+                  final cs = Theme
+                      .of(context)
+                      .colorScheme;
+                  return _buildDayCell(
+                    context,
+                    day,
+                    textColor: cs.onSurface,
+                    selected: false,
+                    chipScale: chipScale,
+                    maxChips: 4,
+                  );
+                },
+                selectedBuilder: (context, day, focusedDay) {
+                  final cs = Theme
+                      .of(context)
+                      .colorScheme;
+                  return _buildDayCell(
+                    context,
+                    day,
+                    textColor: cs.onSurface,
+                    selected: true,
+                    chipScale: chipScale,
+                    maxChips: 4,
+                  );
+                },
+              ),
+              eventLoader: _eventLoader,
+              onDaySelected: (selectedDay, focusedDay) async {
+                if (_selectedDay != null &&
+                    _sameDate(selectedDay, _selectedDay!)) {
+                  final DateTime sel = DateTime(
+                      selectedDay.year, selectedDay.month, selectedDay.day);
+                  final DailyRecord? rec =
+                      widget.recordsBox.get(_dateKey(sel));
+                  final List<Widget> summaryChildren =
+                      _buildSummaryChildrenForDate(context, sel, rec);
+                  final List<String> summaryLines =
+                      _buildSummaryLinesForDate(context, sel, rec);
+                  await _showResultsDialog(
+                      context, summaryChildren, summaryLines, sel);
+                  return;
+                }
+
+                setState(() {
+                  _selectedDay = DateTime(
+                      selectedDay.year, selectedDay.month, selectedDay.day);
+                  _focusedDay = focusedDay;
+                });
+              },
+              onPageChanged: (focusedDay) {
+                setState(() => _focusedDay = focusedDay);
+              },
+            );
           },
         ),
       ),
@@ -2881,5 +2943,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-
 }
+
+typedef CalendarScreenState = _CalendarScreenState;

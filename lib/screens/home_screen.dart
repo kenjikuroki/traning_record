@@ -2,6 +2,7 @@
 import 'dart:ui'; // ← BackdropFilter用
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../settings_manager.dart';
 import 'calendar_screen.dart';
@@ -28,7 +29,44 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final GlobalKey<CalendarScreenState> _calendarKey = GlobalKey<CalendarScreenState>();
+  final GlobalKey<AlbumScreenState> _albumKey = GlobalKey<AlbumScreenState>();
   int _currentIndex = 0;
+
+  int get _currentNavIndex => _currentIndex <= 1 ? _currentIndex : _currentIndex + 1;
+
+  bool get _isAddDisabled => _currentIndex >= 2;
+
+  Widget _buildAddNavIcon(ColorScheme colorScheme,
+      {required bool disabled, bool highlighted = false}) {
+    final bool usable = !disabled;
+    final Color baseBg = highlighted && usable
+        ? colorScheme.primaryContainer
+        : colorScheme.primary;
+    final Color bg = usable ? baseBg : colorScheme.surfaceVariant;
+    final Color border = usable
+        ? colorScheme.outlineVariant.withOpacity(highlighted ? 0.2 : 0.4)
+        : colorScheme.outlineVariant.withOpacity(0.6);
+    final Color fg = usable
+        ? colorScheme.onPrimary
+        : colorScheme.onSurfaceVariant.withOpacity(0.75);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      height: 36,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border, width: 1.2),
+      ),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.add_rounded,
+        size: 22,
+        color: fg,
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -40,8 +78,35 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  void _onItemTapped(int index) {
-    setState(() => _currentIndex = index);
+  void _onItemTapped(int index) async {
+    if (index == 2) {
+      if (!_isAddDisabled) {
+        await _handleAddAction();
+      }
+      return;
+    }
+
+    final nextIndex = index > 2 ? index - 1 : index;
+    if (nextIndex == _currentIndex) {
+      return;
+    }
+    setState(() => _currentIndex = nextIndex);
+  }
+
+  Future<void> _handleAddAction() async {
+    if (_currentIndex == 0) {
+      final state = _calendarKey.currentState;
+      if (state != null) {
+        await state.handleAddAction();
+      }
+      return;
+    }
+    if (_currentIndex == 1) {
+      final state = _albumKey.currentState;
+      if (state != null) {
+        await state.handleAddAction();
+      }
+    }
   }
 
   @override
@@ -49,6 +114,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final colorScheme = Theme
         .of(context)
         .colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final addDisabled = _isAddDisabled;
 
 
 // ▼ ライト：白地に黒文字／ダーク：黒地に白文字
@@ -89,6 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             // 0: カレンダー
             CalendarScreen(
+              key: _calendarKey,
               recordsBox: widget.recordsBox,
               lastUsedMenusBox: widget.lastUsedMenusBox,
               settingsBox: widget.settingsBox,
@@ -96,7 +164,9 @@ class _HomeScreenState extends State<HomeScreen> {
               selectedDate: DateTime.now(),
             ),
             // 1: アルバム
-            const AlbumScreen(),
+            AlbumScreen(
+              key: _albumKey,
+            ),
             // 2: グラフ（isActive のインデックスも 2 に変更）
             GraphScreen(
               recordsBox: widget.recordsBox,
@@ -128,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SafeArea(
           top: false, // 下だけ余白を確保
           child: BottomNavigationBar(
-            currentIndex: _currentIndex,
+            currentIndex: _currentNavIndex,
             selectedItemColor: navFgColor,
             unselectedItemColor: navFgColor.withOpacity(0.6),
             // ▼ 背景は透過にして、外側の ColoredBox の色を見せる
@@ -137,15 +207,35 @@ class _HomeScreenState extends State<HomeScreen> {
             showSelectedLabels: false,
             showUnselectedLabels: false,
             onTap: _onItemTapped,
-            items: const [
+            items: [
               BottomNavigationBarItem(
-                  icon: Icon(Icons.calendar_today), label: 'Calendar'),
+                icon: const Icon(Icons.calendar_today),
+                label: l10n.calendar,
+              ),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.photo_library_outlined), label: 'Album'),
+                icon: const Icon(Icons.photo_library_outlined),
+                label: l10n.albumTitle,
+              ),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.bar_chart), label: 'Graph'),
+                icon: _buildAddNavIcon(
+                  colorScheme,
+                  disabled: addDisabled,
+                ),
+                activeIcon: _buildAddNavIcon(
+                  colorScheme,
+                  disabled: addDisabled,
+                  highlighted: true,
+                ),
+                label: l10n.add,
+              ),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.settings), label: 'Settings'),
+                icon: const Icon(Icons.bar_chart),
+                label: l10n.graph,
+              ),
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.settings),
+                label: l10n.settings,
+              ),
             ],
           ),
         ),
