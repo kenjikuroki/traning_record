@@ -2107,11 +2107,20 @@ class _GraphScreenState extends State<GraphScreen> {
             final maxDefault =
                 _isMetricLength ? 120.0 : 50.0; // だいたい 120cm / 50in
             final step = _isMetricLength ? 0.5 : 0.25;
+            final rangeSpan = (_baseMaxY - _baseMinY).abs();
+            final padding = _isMetricLength ? 20.0 : 8.0;
+            final expand = max(padding, rangeSpan);
+            final minValue = _baseMinY.isFinite
+                ? max(minDefault, (_baseMinY - expand).floorToDouble())
+                : minDefault;
+            final maxValue = _baseMaxY.isFinite
+                ? max(maxDefault, (_baseMaxY + expand).ceilToDouble())
+                : maxDefault;
 
             final v = await _showNumberPicker(
               title: waistLabel,
-              minValue: max(minDefault, _baseMinY - 5),
-              maxValue: max(maxDefault, _baseMaxY + 5),
+              minValue: minValue,
+              maxValue: maxValue,
               step: step,
               fractionDigits: 1,
               current: _goalValue,
