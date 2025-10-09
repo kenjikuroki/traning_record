@@ -9,6 +9,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
+import '../models/meal.dart';
 import '../widgets/ad_banner.dart';
 import '../settings_manager.dart';
 import '../utils/training_display_utils.dart';
@@ -210,7 +211,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       children: [
         Text(
           '${l10n.satisfaction}：',
-          style: TextStyle(color: cs.onSurface, fontSize: 13),
+          style: TextStyle(color: cs.onSurface, fontSize: 16),
         ),
         const SizedBox(width: 6),
         Container(
@@ -975,6 +976,73 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return total;
   }
 
+  Map<MealCategory, double> _mealCalorieBreakdown(DailyRecord? record) {
+    final Map<MealCategory, double> totals = {
+      for (final category in MealCategory.values) category: 0,
+    };
+    final meals = record?.meals;
+    if (meals == null) return totals;
+    for (final entry in meals) {
+      if (entry is! Map) continue;
+      final category = _mealCategoryFromSerialized(entry['category'] as String?);
+      double subtotal = 0;
+      final rawSubtotal = entry['subtotal'];
+      if (rawSubtotal is num) {
+        subtotal = rawSubtotal.toDouble();
+      } else if (rawSubtotal is String) {
+        subtotal = double.tryParse(rawSubtotal) ?? 0;
+      }
+      if (subtotal <= 0) {
+        final items = entry['items'];
+        if (items is List) {
+          for (final item in items) {
+            if (item is! Map) continue;
+            final kcal = item['kcal'];
+            double? parsed;
+            if (kcal is num) {
+              parsed = kcal.toDouble();
+            } else if (kcal is String) {
+              parsed = double.tryParse(kcal);
+            }
+            if (parsed != null) {
+              subtotal += parsed;
+            }
+          }
+        }
+      }
+      if (subtotal <= 0) continue;
+      totals[category] = (totals[category] ?? 0) + subtotal;
+    }
+    return totals;
+  }
+
+  MealCategory _mealCategoryFromSerialized(String? value) {
+    switch (value) {
+      case 'noon':
+        return MealCategory.noon;
+      case 'evening':
+        return MealCategory.evening;
+      case 'snack':
+        return MealCategory.snack;
+      case 'morning':
+      default:
+        return MealCategory.morning;
+    }
+  }
+
+  String _mealCategoryLabel(AppLocalizations l10n, MealCategory category) {
+    switch (category) {
+      case MealCategory.morning:
+        return l10n.mealMorning;
+      case MealCategory.noon:
+        return l10n.mealNoon;
+      case MealCategory.evening:
+        return l10n.mealEvening;
+      case MealCategory.snack:
+        return l10n.mealSnack;
+    }
+  }
+
   double _totalAerobicCalories(DailyRecord? record) {
     if (record == null) return 0;
     final aerobicMenus = record.menus['有酸素運動'];
@@ -1704,7 +1772,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             padding: const EdgeInsets.only(top: 8.0),
             child: _selectableLine(
               text: memo.trim(),
-              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15),
               padding: const EdgeInsets.only(left: 4.0, bottom: 0),
             ),
           ),
@@ -1764,7 +1832,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           child: Text(
             '■${_translatePartToLocale(context, '有酸素運動')}',
             style: TextStyle(
-                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 18),
           ),
         ),
       );
@@ -1774,7 +1842,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             text: m.name,
             padding: const EdgeInsets.only(bottom: 2.0),
             style: TextStyle(
-                color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
+                color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 16),
           ),
         );
         final bool hasDistance = _hasPositiveDistanceValue(m.distance);
@@ -1785,7 +1853,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               text: '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(color: cs.onSurface,
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
           );
@@ -1797,7 +1865,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   context, m.duration, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(color: cs.onSurface,
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
           );
@@ -1810,7 +1878,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               text: '${l10n.calorie}: ${m.calories} ${l10n.kcalUnit}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(color: cs.onSurface,
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
           );
@@ -1849,7 +1917,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           child: Text(
             '■${_translatePartToLocale(context, originalPart)}',
             style: TextStyle(
-                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 18),
           ),
         ),
       );
@@ -1862,7 +1930,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             text: m.name,
             padding: const EdgeInsets.only(bottom: 2.0),
             style: TextStyle(
-                color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
+                color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 16),
           ),
         );
 
@@ -1885,7 +1953,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               text: '${i + 1}${l10n.sets}：$setDisplay',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(color: cs.onSurface,
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
           );
@@ -1899,7 +1967,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style:
               TextStyle(color: cs.onSurface,
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
           );
@@ -1920,24 +1988,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
 
     if (hasMealSection) {
+      final mealBreakdown = _mealCalorieBreakdown(record);
       summaryChildren.add(
         Padding(
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
           child: Text(
             '■${l10n.meal}',
             style: TextStyle(
-                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 18),
           ),
         ),
       );
+      for (final category in MealCategory.values) {
+        final label = _mealCategoryLabel(l10n, category);
+        final kcal = mealBreakdown[category] ?? 0;
+        summaryChildren.add(
+          _selectableLine(
+            text: '$label: ${_formatKcalNumber(kcal)} ${l10n.kcalUnit}',
+            style: TextStyle(color: cs.onSurface, fontSize: 15),
+            padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+          ),
+        );
+      }
       summaryChildren.add(
         _selectableLine(
           text:
               '${l10n.mealTotalToday}: ${_formatKcalNumber(mealTotal)} ${l10n.kcalUnit}',
-          style: TextStyle(color: cs.onSurface, fontSize: 13),
+          style: TextStyle(color: cs.onSurface, fontSize: 15),
           padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
         ),
       );
+      summaryChildren.add(const SizedBox(height: 8));
     }
 
     // 個人値まとめ（あるものだけ）
@@ -1950,7 +2031,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           child: Text(
             '■${l10n.personal}',
             style: TextStyle(
-                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 18),
           ),
         ),
       );
@@ -1960,7 +2041,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _selectableLine(
             text: '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(
                 1)} $unit',
-            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            style: TextStyle(color: cs.onSurface, fontSize: 15),
             padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
         );
@@ -1969,7 +2050,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         summaryChildren.add(
           _selectableLine(
             text: '${l10n.bodyFat}: ${bodyFatVal!.toStringAsFixed(1)}%',
-            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            style: TextStyle(color: cs.onSurface, fontSize: 15),
             padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
         );
@@ -1978,7 +2059,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         summaryChildren.add(
           _selectableLine(
             text: '${l10n.waist}: ${_fmtWaist(waistValCm!, l10n)}',
-            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            style: TextStyle(color: cs.onSurface, fontSize: 15),
             padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
         );
@@ -1987,7 +2068,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         summaryChildren.add(
           _selectableLine(
             text: 'BMI: ${bmiVal!.toStringAsFixed(1)}',
-            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            style: TextStyle(color: cs.onSurface, fontSize: 15),
             padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
         );
@@ -1998,7 +2079,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         summaryChildren.add(
           _selectableLine(
             text: '${l10n.bmrTitleShort}: $bmrDisplay',
-            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            style: TextStyle(color: cs.onSurface, fontSize: 15),
             padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
         );
@@ -2008,7 +2089,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         summaryChildren.add(
           _selectableLine(
             text: '${l10n.bmrDiffShort}: $diffDisplay',
-            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
             padding: const EdgeInsets.only(left: 12.0, bottom: 1.0),
           ),
         );
@@ -2025,7 +2106,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           padding: const EdgeInsets.only(top: 8.0),
           child: _selectableLine(
             text: memo.trim(),
-            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15),
             padding: const EdgeInsets.only(left: 4.0, bottom: 0),
           ),
         ),
@@ -2047,7 +2128,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           text: '$labelWithColon $balanceText',
           style: TextStyle(
             color: cs.onSurface,
-            fontSize: 14,
+            fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
           padding: const EdgeInsets.only(left: 4.0, bottom: 0),
@@ -2100,7 +2181,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           style: TextStyle(
                             color: cs.onSurface,
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 20,
                           ),
                         ),
                       ),
@@ -2266,7 +2347,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           child: Text(
             '■${_translatePartToLocale(context, '有酸素運動')}',
             style: TextStyle(
-                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 18),
           ),
         ),
       );
@@ -2276,7 +2357,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             text: m.name,
             padding: const EdgeInsets.only(bottom: 2.0),
             style: TextStyle(
-                color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
+                color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 16),
           ),
         );
         final bool hasDistance = _hasPositiveDistanceValue(m.distance);
@@ -2287,7 +2368,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               text: '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(color: cs.onSurface,
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
           );
@@ -2299,7 +2380,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   context, m.duration, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(color: cs.onSurface,
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
           );
@@ -2312,7 +2393,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               text: '${l10n.calorie}: ${m.calories} ${l10n.kcalUnit}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(color: cs.onSurface,
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
           );
@@ -2351,7 +2432,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           child: Text(
             '■${_translatePartToLocale(context, originalPart)}',
             style: TextStyle(
-                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 18),
           ),
         ),
       );
@@ -2364,7 +2445,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             text: m.name,
             padding: const EdgeInsets.only(bottom: 2.0),
             style: TextStyle(
-                color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
+                color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 16),
           ),
         );
 
@@ -2387,7 +2468,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               text: '${i + 1}${l10n.sets}：$setDisplay',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(color: cs.onSurface,
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
           );
@@ -2401,7 +2482,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style:
               TextStyle(color: cs.onSurface,
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
           );
@@ -2431,7 +2512,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           child: Text(
             '■${l10n.personal}',
             style: TextStyle(
-                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 15),
+                color: cs.onSurface, fontWeight: FontWeight.bold, fontSize: 18),
           ),
         ),
       );
@@ -2441,7 +2522,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _selectableLine(
             text: '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(
                 1)} $unit',
-            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            style: TextStyle(color: cs.onSurface, fontSize: 15),
             padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
         );
@@ -2450,7 +2531,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         summaryChildren.add(
           _selectableLine(
             text: '${l10n.bodyFat}: ${bodyFatVal!.toStringAsFixed(1)}%',
-            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            style: TextStyle(color: cs.onSurface, fontSize: 15),
             padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
         );
@@ -2459,7 +2540,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         summaryChildren.add(
           _selectableLine(
             text: '${l10n.waist}: ${_fmtWaist(waistValCm!, l10n)}',
-            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            style: TextStyle(color: cs.onSurface, fontSize: 15),
             padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
         );
@@ -2468,7 +2549,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         summaryChildren.add(
           _selectableLine(
             text: 'BMI: ${bmiVal!.toStringAsFixed(1)}',
-            style: TextStyle(color: cs.onSurface, fontSize: 13),
+            style: TextStyle(color: cs.onSurface, fontSize: 15),
             padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
         );
@@ -2485,7 +2566,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           padding: const EdgeInsets.only(top: 8.0),
           child: _selectableLine(
             text: memo.trim(),
-            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15),
             padding: const EdgeInsets.only(left: 4.0, bottom: 0),
           ),
         ),
