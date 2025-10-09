@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import '../settings_manager.dart';
 /// 大きめの収益広告
 /// - iOS: まず MREC(300x250) をロードして確実表示 →（任意で）Native を後追いロード
 /// - Android: Native 優先 → 失敗時 MREC フォールバック
@@ -43,6 +44,9 @@ class _BigEarningAdState extends State<BigEarningAd> {
   @override
   void initState() {
     super.initState();
+    if (SettingsManager.demoMode) {
+      return;
+    }
     // 念のため。main()で初期化済みでも二重で問題なし
     MobileAds.instance.initialize();
 
@@ -146,6 +150,9 @@ class _BigEarningAdState extends State<BigEarningAd> {
   // ─────────────────────────────
   @override
   Widget build(BuildContext context) {
+    if (SettingsManager.demoMode) {
+      return const SizedBox.shrink();
+    }
     final cs = Theme.of(context).colorScheme;
 
     // 優先：ネイティブ
