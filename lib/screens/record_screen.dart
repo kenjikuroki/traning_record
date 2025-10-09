@@ -866,6 +866,7 @@ class _RecordScreenState extends State<RecordScreen>
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
+    FocusScope.of(context).unfocus();
     final picked = await showModalBottomSheet<String>(
       context: context,
       useRootNavigator: false,
@@ -877,7 +878,7 @@ class _RecordScreenState extends State<RecordScreen>
         return InheritedTheme.captureAll(
           context,
           Material(
-            color: Colors.transparent,
+            color: Theme.of(sheetCtx).colorScheme.surfaceContainerHighest,
             child: SafeArea(
               top: false,
               child: SizedBox(
@@ -1288,6 +1289,7 @@ class _RecordScreenState extends State<RecordScreen>
       }
     }
 
+    FocusScope.of(context).unfocus();
     final result = await showModalBottomSheet<String>(
       context: context,
       useRootNavigator: false,
@@ -3219,19 +3221,25 @@ class _RecordScreenState extends State<RecordScreen>
       return;
     }
     final trimmed = value.trim();
-    final bool newSuggestion = trimmed.isEmpty;
-    final bool oldSuggestion = section.aerobicCalorieSuggestFlags[menuIndex];
-    if (oldSuggestion == newSuggestion && !newSuggestion) return;
-    section.aerobicCalorieSuggestFlags[menuIndex] = newSuggestion;
-    if (newSuggestion) {
-      if (_updateCalorieSuggestion(sectionIndex, menuIndex)) {
-        if (mounted) setState(() {});
+    final bool wasSuggestion = section.aerobicCalorieSuggestFlags[menuIndex];
+    bool updated = false;
+    if (wasSuggestion) {
+      section.aerobicCalorieSuggestFlags[menuIndex] = false;
+      updated = true;
+    }
+    if (menuIndex < section.aerobicCalorieHintVisible.length &&
+        section.aerobicCalorieHintVisible[menuIndex]) {
+      section.aerobicCalorieHintVisible[menuIndex] = false;
+      updated = true;
+    }
+    if (trimmed.isEmpty) {
+      if (updated && mounted) {
+        setState(() {});
       }
-    } else {
-      if (menuIndex < section.aerobicCalorieHintVisible.length) {
-        section.aerobicCalorieHintVisible[menuIndex] = false;
-      }
-      if (mounted) setState(() {});
+      return;
+    }
+    if (updated && mounted) {
+      setState(() {});
     }
   }
 
@@ -9635,7 +9643,7 @@ class _MenuListState extends State<MenuList> {
                 headerRow,
                 const SizedBox(height: 2.0),
                 IgnorePointer(
-                  ignoring: !widget.enabledForInput,
+                  ignoring: !(widget.enabledForInput || widget.isAerobic),
                   child: Padding(
                     padding: const EdgeInsets.only(left: 10.0),
                     child: widget.isAerobic
@@ -9671,7 +9679,9 @@ class _MenuListState extends State<MenuList> {
                                             textAlign: TextAlign.right,
                                             style: TextStyle(
                                               fontFamily: kUiFont,
-                                              color: colorScheme.onSurface,
+                                              color: widget.aerobicIsSuggestion
+                                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                                                  : colorScheme.onSurface,
                                             ),
                                             onTap: () async {
                                               notifyFocus(true);
@@ -9740,7 +9750,9 @@ class _MenuListState extends State<MenuList> {
                                             textAlign: TextAlign.right,
                                             style: TextStyle(
                                               fontFamily: kUiFont,
-                                              color: colorScheme.onSurface,
+                                              color: widget.aerobicIsSuggestion
+                                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                                                  : colorScheme.onSurface,
                                             ),
                                             onTap: () async {
                                               notifyFocus(true);
@@ -9819,7 +9831,9 @@ class _MenuListState extends State<MenuList> {
                                             textAlign: TextAlign.right,
                                             style: TextStyle(
                                               fontFamily: kUiFont,
-                                              color: colorScheme.onSurface,
+                                              color: widget.aerobicIsSuggestion
+                                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                                                  : colorScheme.onSurface,
                                             ),
                                             onTap: () async {
                                               notifyFocus(true);
@@ -9886,7 +9900,9 @@ class _MenuListState extends State<MenuList> {
                                             textAlign: TextAlign.right,
                                             style: TextStyle(
                                               fontFamily: kUiFont,
-                                              color: colorScheme.onSurface,
+                                              color: widget.aerobicIsSuggestion
+                                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                                                  : colorScheme.onSurface,
                                             ),
                                             onTap: () async {
                                               notifyFocus(true);
@@ -9953,7 +9969,9 @@ class _MenuListState extends State<MenuList> {
                                             textAlign: TextAlign.right,
                                             style: TextStyle(
                                               fontFamily: kUiFont,
-                                              color: colorScheme.onSurface,
+                                              color: widget.aerobicIsSuggestion
+                                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                                                  : colorScheme.onSurface,
                                             ),
                                             onTap: () async {
                                               notifyFocus(true);
@@ -10037,10 +10055,9 @@ class _MenuListState extends State<MenuList> {
                                                   textAlign: TextAlign.right,
                                                   style: TextStyle(
                                                     fontFamily: kUiFont,
-                                                    color: widget
-                                                            .calorieIsSuggestion
-                                                        ? colorScheme
-                                                            .onSurfaceVariant
+                                                    color: (widget.calorieIsSuggestion &&
+                                                            (widget.calorieController?.text.trim().isEmpty ?? true))
+                                                        ? colorScheme.onSurfaceVariant
                                                             .withOpacity(0.5)
                                                         : colorScheme.onSurface,
                                                   ),
