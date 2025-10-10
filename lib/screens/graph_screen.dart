@@ -2775,16 +2775,18 @@ class _GraphScreenState extends State<GraphScreen> {
                             final plotArea = _axisDates.isEmpty
                                 ? Center(
                                     child: Transform.translate(
-                                      offset: const Offset(
-                                          0, -16), // ← 少し上へ（必要なら数値で微調整）
+                                      offset: const Offset(0, -16),
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           SizedBox.square(
-                                            dimension: MediaQuery.of(context)
-                                                    .size
-                                                    .height /
-                                                3,
+                                            dimension: min(
+                                              MediaQuery.of(context)
+                                                      .size
+                                                      .height /
+                                                  3,
+                                              240.0,
+                                            ),
                                             child: ClipRRect(
                                               borderRadius:
                                                   BorderRadius.circular(24),

@@ -334,7 +334,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox.square(
-                dimension: h / 3, // 画面の3分の1
+                dimension: h / 4, // 少し小さめに縮小
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(24), // 角丸
                   child: Image.asset(
