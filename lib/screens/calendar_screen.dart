@@ -1291,7 +1291,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       bool selected = false,
       bool showEventsForOutOfMonth = false,
       double chipScale = 1.0,
-      int maxChips = 4}) {
+      double? cellHeight}) {
     final cs = Theme
         .of(context)
         .colorScheme;
@@ -1447,24 +1447,48 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     final chips = <Widget>[];
     if (canShowChips) {
-      for (final p in strengthParts) {
-        if (chips.length >= maxChips) break;
-        chips.add(_partChip(p));
-      }
-      if (chips.length < maxChips && hasAerobic) {
-        chips.add(_partChip('有酸素運動'));
-      }
-      if (chips.length < maxChips && hasMemo) chips.add(_memoChip());
-      if (chips.length < maxChips && hasMeal) chips.add(_mealChip());
-      if (chips.length < maxChips && hasWeight) chips.add(_weightChip());
-      if (chips.length < maxChips && hasPhoto) chips.add(_photoChip());
+      chips.addAll(strengthParts.map(_partChip));
+      if (hasAerobic) chips.add(_partChip('有酸素運動'));
+      if (hasMemo) chips.add(_memoChip());
+      if (hasMeal) chips.add(_mealChip());
+      if (hasWeight) chips.add(_weightChip());
+      if (hasPhoto) chips.add(_photoChip());
     }
+
+    final double dayFontSize = Theme
+            .of(context)
+            .textTheme
+            .bodyMedium
+            ?.fontSize ??
+        14.0;
+    final double dayLabelHeightEstimate = dayFontSize * 1.25 + 8.0;
+
+    int capacity;
+    if (cellHeight != null && cellHeight > 0) {
+      final double usableForChips =
+          cellHeight - dayLabelHeightEstimate;
+      if (usableForChips <= 0 || chipBoxHeight + chipGap <= 0) {
+        capacity = 0;
+      } else {
+        capacity =
+            (usableForChips / (chipBoxHeight + chipGap)).floor();
+      }
+    } else {
+      capacity = 4;
+    }
+
+    if (capacity > chips.length) capacity = chips.length;
+    if (capacity < 0) capacity = 0;
+    if (capacity == 0 && chips.isNotEmpty) {
+      capacity = 1;
+    }
+
+    final List<Widget> displayChips = chips.take(capacity).toList();
+    final int chipCount = displayChips.length;
 
     final Color dayNumberColor = (day.weekday == DateTime.sunday)
         ? Colors.red
         : (day.weekday == DateTime.saturday ? Colors.blue : textColor);
-
-    final int chipCount = chips.length;
 
     return SizedBox.expand(
       child: Container(
@@ -1490,7 +1514,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       child: SizedBox(
                         height: chipBoxHeight,
                         width: constraints.maxWidth,
-                        child: chips[i],
+                        child: displayChips[i],
                       ),
                     ),
                   const Spacer(),
@@ -1742,7 +1766,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     textColor: cs.onSurface,
                     selected: false,
                     chipScale: chipScale,
-                    maxChips: 4,
+                    cellHeight: rowHeight,
                   );
                 },
                 outsideBuilder: (context, day, focusedDay) {
@@ -1756,7 +1780,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     selected: false,
                     showEventsForOutOfMonth: true,
                     chipScale: chipScale,
-                    maxChips: 4,
+                    cellHeight: rowHeight,
                   );
                 },
                 todayBuilder: (context, day, focusedDay) {
@@ -1769,7 +1793,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     textColor: cs.onSurface,
                     selected: false,
                     chipScale: chipScale,
-                    maxChips: 4,
+                    cellHeight: rowHeight,
                   );
                 },
                 selectedBuilder: (context, day, focusedDay) {
@@ -1782,7 +1806,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     textColor: cs.onSurface,
                     selected: true,
                     chipScale: chipScale,
-                    maxChips: 4,
+                    cellHeight: rowHeight,
                   );
                 },
               ),
