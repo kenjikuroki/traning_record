@@ -33,6 +33,21 @@
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-3331079517737737~1486726422" />
+
+        <!-- ホームウィジェット機能は一旦無効化 -->
+        <!--
+        <receiver
+            android:name=".CalendarWidgetProvider"
+            android:exported="false"
+            android:label="@string/calendar_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_widget_info" />
+        </receiver>
+        -->
     </application>
     <queries>
         <intent>

@@ -1,13 +1,16 @@
 // lib/screens/calendar_screen.dart
 
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart'
     show Clipboard, ClipboardData, rootBundle;
-import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:table_calendar/table_calendar.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:home_widget/home_widget.dart';
 import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../models/meal.dart';
@@ -20,7 +23,7 @@ import 'settings_screen.dart';
 import '../routes/slide_up_route.dart';
 import '../widgets/centered_constrained.dart';
 import '../widgets/big_earning_ad.dart';
-import '../theme/app_theme.dart' as T; // ← 追加：エイリアス T で
+import '../widgets/calendar_widget_view.dart';
 
 String _fmtWaist(double cm, AppLocalizations l10n) {
   final v = SettingsManager.waistCmToDisplay(cm).toStringAsFixed(1);
@@ -139,6 +142,331 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // 写真有無キャッシュ（key = yyyy-MM-dd）
   final Map<String, bool> _photoCache = {};
+
+  bool _widgetRefreshScheduled = false;
+
+  bool get _shouldUpdateHomeWidget => false;
+
+  double _clampDouble(double value, double min, double max) {
+    if (value < min) {
+      return min;
+    }
+    if (value > max) {
+      return max;
+    }
+    return value;
+  }
+
+  EdgeInsets _scaledHeaderPadding(
+      double chipScale, double scaleFactor, bool compact) {
+    final double horizontal = _clampDouble(
+      16.0 * chipScale * (0.7 + scaleFactor * 0.3) * (compact ? 0.92 : 1.0),
+      8.0,
+      20.0,
+    );
+    final double vertical = _clampDouble(
+      (compact ? 10.0 : 12.0) * chipScale * (0.75 + scaleFactor * 0.25),
+      6.0,
+      14.0,
+    );
+    return EdgeInsets.symmetric(horizontal: horizontal, vertical: vertical);
+  }
+
+  int _maxChipRowsFor(double chipScale, bool forWidgetCapture) {
+    if (!forWidgetCapture) {
+      return chipScale >= 0.9 ? 4 : (chipScale >= 0.7 ? 3 : 2);
+    }
+    if (chipScale >= 0.95) {
+      return 4;
+    }
+    if (chipScale >= 0.8) {
+      return 3;
+    }
+    if (chipScale >= 0.65) {
+      return 2;
+    }
+    return 1;
+  }
+
+  DateTime _firstCalendarDay(DateTime month) {
+    final DateTime first = DateTime(month.year, month.month, 1);
+    final int daysToSubtract = (first.weekday + 6) % 7; // Monday start
+    return first.subtract(Duration(days: daysToSubtract));
+  }
+
+  CalendarWidgetDayData _buildHomeWidgetDayData(
+    DateTime day,
+    ColorScheme colorScheme,
+    AppLocalizations l10n,
+    DateTime today,
+    BuildContext context,
+  ) {
+    _ensurePhotoFlag(day);
+    final bool hasPhoto = _photoCache[_dateKey(day)] ?? false;
+    final DailyRecord? record = widget.recordsBox.get(_dateKey(day));
+    final bool hasMemo = _hasMemoForDate(day);
+    final bool hasMeal = _hasMealForRecord(record);
+    final bool hasWeight = record?.weight != null;
+    final List<String> partsAll =
+        (record == null) ? <String>[] : _partsWithDataForDay(record);
+    final Iterable<String> strengthParts =
+        partsAll.where((p) => p != '有酸素運動');
+    final bool hasAerobic = partsAll.contains('有酸素運動');
+
+    final List<CalendarWidgetChipData> chips = [];
+
+    Color chipTextColor(Color background) {
+      return ThemeData.estimateBrightnessForColor(background) == Brightness.dark
+          ? Colors.white
+          : Colors.black87;
+    }
+
+    for (final part in strengthParts) {
+      final String label = _translatePartToLocale(context, part);
+      final Color bg = _colorForPart(part, colorScheme);
+      chips.add(
+        CalendarWidgetChipData(
+          label: label,
+          backgroundColor: bg,
+          textColor: chipTextColor(bg),
+        ),
+      );
+    }
+
+    if (hasAerobic) {
+      final String label = _translatePartToLocale(context, '有酸素運動');
+      final Color bg = _colorForPart('有酸素運動', colorScheme);
+      chips.add(
+        CalendarWidgetChipData(
+          label: label,
+          backgroundColor: bg,
+          textColor: chipTextColor(bg),
+        ),
+      );
+    }
+
+    if (hasMemo) {
+      chips.add(
+        CalendarWidgetChipData(
+          label: l10n.memo,
+          backgroundColor: colorScheme.tertiaryContainer,
+          textColor: colorScheme.onTertiaryContainer,
+        ),
+      );
+    }
+
+    if (hasMeal) {
+      chips.add(
+        CalendarWidgetChipData(
+          label: l10n.meal,
+          backgroundColor: colorScheme.surfaceVariant,
+          textColor: colorScheme.onSurface,
+        ),
+      );
+    }
+
+    if (hasWeight) {
+      chips.add(
+        CalendarWidgetChipData(
+          label: l10n.bodyWeight,
+          backgroundColor: colorScheme.secondaryContainer,
+          textColor: colorScheme.onSecondaryContainer,
+        ),
+      );
+    }
+
+    if (hasPhoto) {
+      chips.add(
+        CalendarWidgetChipData(
+          label: l10n.photos,
+          backgroundColor: colorScheme.primaryContainer,
+          textColor: colorScheme.onPrimaryContainer,
+        ),
+      );
+    }
+
+    final bool hasContent = hasMemo ||
+        hasMeal ||
+        hasWeight ||
+        hasPhoto ||
+        partsAll.isNotEmpty ||
+        (record != null && _hasAnyData(record));
+
+    return CalendarWidgetDayData(
+      date: day,
+      inMonth: day.month == _focusedDay.month,
+      isToday: _sameDate(day, today),
+      hasContent: hasContent,
+      chips: chips,
+    );
+  }
+
+  String _widgetMonthLabel(BuildContext context) {
+    final localeTag = Localizations.localeOf(context).toLanguageTag();
+    final formatter = DateFormat.MMM(localeTag);
+    return formatter.format(_focusedDay);
+  }
+
+  void _requestWidgetRefresh() {
+    if (!_shouldUpdateHomeWidget) {
+      return;
+    }
+    if (_widgetRefreshScheduled) {
+      return;
+    }
+    _widgetRefreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        _widgetRefreshScheduled = false;
+        return;
+      }
+      _widgetRefreshScheduled = false;
+      _updateHomeWidget();
+    });
+  }
+
+  Future<void> _updateHomeWidget() async {
+    if (!_shouldUpdateHomeWidget) {
+      return;
+    }
+    final BuildContext? cardContext = _kCalendarCard.currentContext;
+    if (cardContext == null) {
+      return;
+    }
+
+    final RenderBox? box = cardContext.findRenderObject() as RenderBox?;
+    final Size? cardSize = box?.size;
+    if (cardSize == null || cardSize.width <= 0 || cardSize.height <= 0) {
+      return;
+    }
+
+    final MediaQueryData mediaQuery = MediaQuery.of(cardContext);
+    final Locale locale = Localizations.localeOf(cardContext);
+    final ThemeData theme = Theme.of(cardContext);
+    final TextDirection direction = Directionality.of(cardContext);
+
+    final int? widgetMinWidthDp =
+        await HomeWidget.getWidgetData<int>('calendar_widget_min_width');
+    final int? widgetMaxWidthDp =
+        await HomeWidget.getWidgetData<int>('calendar_widget_max_width');
+    final int? widgetMinHeightDp =
+        await HomeWidget.getWidgetData<int>('calendar_widget_min_height');
+    final int? widgetMaxHeightDp =
+        await HomeWidget.getWidgetData<int>('calendar_widget_max_height');
+
+    const double minWidgetWidth = 120.0;
+    const double minWidgetHeight = 120.0;
+
+    final int? storedFixedWidthDp =
+        await HomeWidget.getWidgetData<int>('calendar_widget_fixed_width');
+    double captureWidth = storedFixedWidthDp?.toDouble() ??
+        (widgetMaxWidthDp ?? widgetMinWidthDp)?.toDouble() ??
+        cardSize.width;
+    if (captureWidth < minWidgetWidth) {
+      captureWidth = minWidgetWidth;
+    }
+
+    double captureHeight =
+        (widgetMinHeightDp ?? widgetMaxHeightDp)?.toDouble() ?? cardSize.height;
+    if (captureHeight <= 0) {
+      captureHeight = cardSize.height;
+    }
+    final double minHeightByWidth = captureWidth * 0.72;
+    final double minHeightTarget =
+        minHeightByWidth > minWidgetHeight ? minHeightByWidth : minWidgetHeight;
+    final double maxHeightTarget = cardSize.height * 1.2;
+    final double heightUpper =
+        maxHeightTarget < minHeightTarget ? minHeightTarget : maxHeightTarget;
+    captureHeight = _clampDouble(
+      captureHeight,
+      minHeightTarget,
+      heightUpper,
+    );
+
+    final Size captureSize = Size(captureWidth, captureHeight);
+
+    final Widget capture = MediaQuery(
+      data: mediaQuery,
+      child: Localizations(
+        locale: locale,
+        delegates: AppLocalizations.localizationsDelegates,
+        child: Theme(
+          data: theme,
+          child: Directionality(
+            textDirection: direction,
+            child: Builder(
+              builder: (ctx) {
+                final ColorScheme cs = Theme.of(ctx).colorScheme;
+                final AppLocalizations l10n = AppLocalizations.of(ctx)!;
+                final DateTime today = DateTime.now();
+                final DateTime start = _firstCalendarDay(_focusedDay);
+                final String localeTag = locale.toLanguageTag();
+                final DateFormat weekdayFormat = DateFormat.E(localeTag);
+
+                final List<String> weekdayLabels = List.generate(7, (index) {
+                  final DateTime weekday = start.add(Duration(days: index));
+                  final String label = weekdayFormat.format(weekday);
+                  return label.length <= 3 ? label : label.substring(0, 3);
+                });
+
+                final List<CalendarWidgetDayData> dayEntries =
+                    List<CalendarWidgetDayData>.generate(42, (index) {
+                  final DateTime day = start.add(Duration(days: index));
+                  return _buildHomeWidgetDayData(
+                    day,
+                    cs,
+                    l10n,
+                    today,
+                    ctx,
+                  );
+                });
+
+                final String monthLabel = _widgetMonthLabel(ctx);
+                final String yearLabel = DateFormat.y(localeTag).format(_focusedDay);
+
+                return SizedBox(
+                  width: captureSize.width,
+                  height: captureSize.height,
+                  child: CalendarWidgetView(
+                    monthLabel: monthLabel,
+                    yearLabel: yearLabel,
+                    weekdayLabels: weekdayLabels,
+                    days: dayEntries,
+                    colorScheme: cs,
+                    width: captureSize.width,
+                    height: captureSize.height,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final double pixelRatio = mediaQuery.devicePixelRatio.clamp(1.0, 3.5);
+
+    try {
+      await HomeWidget.renderFlutterWidget(
+        capture,
+        key: 'calendar_widget',
+        logicalSize: captureSize,
+        pixelRatio: pixelRatio,
+      );
+
+      await HomeWidget.updateWidget(
+        name: 'CalendarWidgetProvider',
+        qualifiedAndroidName:
+            'com.yourname.ttrainingrecord.CalendarWidgetProvider',
+      );
+    } catch (err, stack) {
+      if (kDebugMode) {
+        // 開発時のトレース確認用
+        debugPrint('Calendar widget update failed: $err');
+        debugPrint('$stack');
+      }
+    }
+  }
 
   // --- 部位→色マップ ---
   static const Map<String, Color> _partColors = {
@@ -1268,7 +1596,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       bool selected = false,
       bool showEventsForOutOfMonth = false,
       double chipScale = 1.0,
-      double? cellHeight}) {
+      double? cellHeight,
+      required int maxChipRows,
+      bool compactMode = false}) {
     final cs = Theme.of(context).colorScheme;
 
     _ensurePhotoFlag(day);
@@ -1290,10 +1620,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
         hasMemo ||
         hasPhoto;
 
-    final double chipFontSize = (10.0 * chipScale).clamp(7.0, 12.0);
-    final double chipVPad = (2.0 * chipScale).clamp(1.0, 3.0);
-    final double chipHPad = (6.0 * chipScale).clamp(4.0, 8.0);
-    final double chipGap = (2.0 * chipScale).clamp(1.0, 4.0);
+    final double chipFontSize = _clampDouble(
+      10.0 * chipScale,
+      compactMode ? 5.0 : 6.5,
+      12.0,
+    );
+    final double chipVPad = _clampDouble(
+      2.0 * chipScale * (compactMode ? 0.85 : 1.0),
+      0.6,
+      3.0,
+    );
+    final double chipHPad = _clampDouble(
+      6.0 * chipScale * (compactMode ? 0.85 : 1.0),
+      3.0,
+      8.0,
+    );
+    final double chipGap = _clampDouble(
+      2.0 * chipScale * (compactMode ? 0.7 : 1.0),
+      0.6,
+      4.0,
+    );
     final double chipBoxHeight = chipFontSize * 1.1 + chipVPad * 2;
 
     Widget _partChip(String part) {
@@ -1426,17 +1772,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (hasPhoto) chips.add(_photoChip());
     }
 
-    final double dayFontSize =
+    final double baseDayFont =
         Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14.0;
+    final double dayFontSize = baseDayFont *
+        _clampDouble(
+            compactMode ? (0.65 + chipScale * 0.25) : (0.85 + chipScale * 0.15),
+            compactMode ? 0.6 : 0.7,
+            1.05);
     final double dayLabelHeightEstimate = dayFontSize * 1.25 + 8.0;
 
     final Color dayNumberColor = (day.weekday == DateTime.sunday)
         ? Colors.red
         : (day.weekday == DateTime.saturday ? Colors.blue : textColor);
 
-    final borderColor = selected
-        ? cs.primary.withOpacity(0.40)
-        : cs.primary.withOpacity(0.18);
+    final borderColor =
+        selected ? cs.primary.withOpacity(0.40) : cs.primary.withOpacity(0.18);
 
     return SizedBox.expand(
       child: DecoratedBox(
@@ -1451,75 +1801,77 @@ class _CalendarScreenState extends State<CalendarScreen> {
             builder: (context, constraints) {
               final double effectiveCellHeight =
                   cellHeight ?? constraints.maxHeight;
-            int capacity = chips.length;
-            if (effectiveCellHeight.isFinite && effectiveCellHeight > 0) {
-              final double usableForChips =
-                  effectiveCellHeight - dayLabelHeightEstimate;
-              if (usableForChips <= 0 || (chipBoxHeight + chipGap) <= 0) {
-                capacity = 0;
-              } else {
-                capacity = (usableForChips / (chipBoxHeight + chipGap)).floor();
+              int capacity = chips.length;
+              if (effectiveCellHeight.isFinite && effectiveCellHeight > 0) {
+                final double usableForChips =
+                    effectiveCellHeight - dayLabelHeightEstimate;
+                if (usableForChips <= 0 || (chipBoxHeight + chipGap) <= 0) {
+                  capacity = 0;
+                } else {
+                  capacity =
+                      (usableForChips / (chipBoxHeight + chipGap)).floor();
+                }
               }
-            }
 
-            if (capacity > chips.length) capacity = chips.length;
-            if (capacity < 0) capacity = 0;
-            if (capacity == 0 && chips.isNotEmpty) {
-              capacity = 1;
-            }
+              if (capacity > chips.length) capacity = chips.length;
+              if (capacity > maxChipRows) capacity = maxChipRows;
+              if (capacity < 0) capacity = 0;
+              if (capacity == 0 && chips.isNotEmpty) {
+                capacity = 1;
+              }
 
-            final List<Widget> displayChips =
-                chips.take(capacity).toList(growable: false);
-            final int chipCount = displayChips.length;
+              final List<Widget> displayChips =
+                  chips.take(capacity).toList(growable: false);
+              final int chipCount = displayChips.length;
 
-            double remainingHeight = 0;
-            if (effectiveCellHeight.isFinite && effectiveCellHeight > 0) {
-              double usedHeight = dayLabelHeightEstimate;
+              double remainingHeight = 0;
+              if (effectiveCellHeight.isFinite && effectiveCellHeight > 0) {
+                double usedHeight = dayLabelHeightEstimate;
+                if (chipCount > 0) {
+                  usedHeight += chipGap;
+                  usedHeight += chipCount * chipBoxHeight;
+                  if (chipCount > 1) {
+                    usedHeight += (chipCount - 1) * chipGap;
+                  }
+                }
+                remainingHeight = effectiveCellHeight - usedHeight;
+                if (remainingHeight < 0) remainingHeight = 0;
+              }
+
+              final double bottomPad = remainingHeight;
+
+              final List<Widget> children = [];
+
+              children.add(
+                _dayLabelTop(context, day,
+                    textColor: dayNumberColor, selected: selected),
+              );
+
               if (chipCount > 0) {
-                usedHeight += chipGap;
-                usedHeight += chipCount * chipBoxHeight;
-                if (chipCount > 1) {
-                  usedHeight += (chipCount - 1) * chipGap;
+                children.add(SizedBox(height: chipGap));
+                for (int i = 0; i < chipCount; i++) {
+                  children.add(
+                    SizedBox(
+                      height: chipBoxHeight,
+                      width: constraints.maxWidth,
+                      child: displayChips[i],
+                    ),
+                  );
+                  if (i != chipCount - 1) {
+                    children.add(SizedBox(height: chipGap));
+                  }
                 }
               }
-              remainingHeight = effectiveCellHeight - usedHeight;
-              if (remainingHeight < 0) remainingHeight = 0;
-            }
 
-            final double bottomPad = remainingHeight;
-
-            final List<Widget> children = [];
-
-            children.add(
-              _dayLabelTop(context, day,
-                  textColor: dayNumberColor, selected: selected),
-            );
-
-            if (chipCount > 0) {
-              children.add(SizedBox(height: chipGap));
-              for (int i = 0; i < chipCount; i++) {
-                children.add(
-                  SizedBox(
-                    height: chipBoxHeight,
-                    width: constraints.maxWidth,
-                    child: displayChips[i],
-                  ),
-                );
-                if (i != chipCount - 1) {
-                  children.add(SizedBox(height: chipGap));
-                }
+              if (bottomPad > 0) {
+                children.add(SizedBox(height: bottomPad));
               }
-            }
 
-            if (bottomPad > 0) {
-              children.add(SizedBox(height: bottomPad));
-            }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.max,
-              children: children,
-            );
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.max,
+                children: children,
+              );
             },
           ),
         ),
@@ -1621,7 +1973,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             children: [
                               const AdBanner(screenName: 'calendar'),
                               const SizedBox(height: 12),
-                              Expanded(child: _buildCalendar(context)),
+                              Expanded(
+                                child: _buildCalendar(
+                                  context,
+                                  cardKey: _kCalendarCard,
+                                ),
+                              ),
                               const SizedBox(height: 12),
                             ],
                           );
@@ -1638,11 +1995,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildCalendar(BuildContext context) {
+  Widget _buildCalendar(
+    BuildContext context, {
+    GlobalKey? cardKey,
+    bool forWidgetCapture = false,
+    double widgetScale = 1.0,
+  }) {
+    if (_shouldUpdateHomeWidget && !forWidgetCapture) {
+      _requestWidgetRefresh();
+    }
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
-      key: _kCalendarCard,
+      key: forWidgetCapture ? cardKey : (cardKey ?? _kCalendarCard),
       margin: EdgeInsets.zero,
       color: colorScheme.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
@@ -1652,16 +2017,32 @@ class _CalendarScreenState extends State<CalendarScreen> {
         padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final double baseRow = _baseRowHeight(context);
+            final double baseRowOriginal = _baseRowHeight(context);
+            final double effectiveScale = _clampDouble(widgetScale, 0.55, 1.05);
+            final double sizeScale = forWidgetCapture ? effectiveScale : 1.0;
+            final double baseRow = baseRowOriginal * sizeScale;
             double rowHeight = baseRow;
             final double available = constraints.maxHeight;
 
             if (available.isFinite && available > 0) {
-              const double headerStatic = 44.0; // タイトル行の概算
               double estimate = rowHeight;
               for (int i = 0; i < 5; i++) {
-                final double scale = (estimate / baseRow).clamp(0.3, 1.8);
-                final double dowHeightGuess = (28.0 * scale).clamp(20.0, 48.0);
+                final double scale =
+                    _clampDouble((estimate / baseRow), 0.3, 1.8);
+                final double headerStatic = _clampDouble(
+                  (forWidgetCapture ? 32.0 : 44.0) *
+                      (0.85 + sizeScale * 0.3) *
+                      (scale < 1.0
+                          ? (0.8 + scale * 0.2)
+                          : (0.95 + (scale - 1.0) * 0.12)),
+                  24.0,
+                  forWidgetCapture ? 40.0 : 50.0,
+                );
+                final double dowHeightGuess = _clampDouble(
+                  28.0 * scale * (0.85 + sizeScale * 0.25),
+                  forWidgetCapture ? 14.0 : 20.0,
+                  forWidgetCapture ? 32.0 : 48.0,
+                );
                 final double headerReserve = headerStatic + dowHeightGuess;
                 final double usable = available - headerReserve;
                 if (usable <= 0) {
@@ -1681,11 +2062,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
             if (rowHeight <= 0) {
               rowHeight = baseRow;
             }
+            rowHeight = _clampDouble(
+              rowHeight,
+              26.0,
+              baseRowOriginal * 1.45,
+            );
 
-            final double chipScale = (rowHeight / baseRow).clamp(0.3, 1.8);
-            double dowHeight = (28.0 * chipScale).clamp(20.0, 48.0);
+            final double chipScale =
+                _clampDouble(rowHeight / baseRowOriginal, 0.18, 1.4);
+            final double dowHeight = _clampDouble(
+              28.0 * chipScale * (0.85 + sizeScale * 0.2),
+              forWidgetCapture ? 10.0 : 16.0,
+              forWidgetCapture ? 32.0 : 44.0,
+            );
+            final int maxChipRows =
+                _maxChipRowsFor(chipScale, forWidgetCapture);
+            final double headerFontBase = forWidgetCapture ? 22.0 : 26.0;
+            final double headerFontSize = _clampDouble(
+              headerFontBase * (0.75 + sizeScale * 0.45),
+              forWidgetCapture ? 14.0 : 18.0,
+              headerFontBase,
+            );
+            final double chevronSize =
+                _clampDouble(26.0 * (0.8 + sizeScale * 0.4), 18.0, 28.0);
+            final EdgeInsets headerPadding =
+                _scaledHeaderPadding(chipScale, sizeScale, forWidgetCapture);
+            final bool compactMode = forWidgetCapture && effectiveScale < 0.95;
 
-            return TableCalendar<Object>(
+            final table = TableCalendar<Object>(
               firstDay: DateTime.utc(2015, 1, 1),
               lastDay: DateTime.utc(2100, 12, 31),
               focusedDay: _focusedDay,
@@ -1714,22 +2118,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 titleTextStyle: TextStyle(
                   color: colorScheme.onPrimary,
                   fontWeight: FontWeight.w900,
-                  fontSize: 26,
-                  height: 1.4,
-                  letterSpacing: 0.4,
+                  fontSize: headerFontSize,
+                  height: 1.25,
+                  letterSpacing: 0.2,
                 ),
                 leftChevronIcon: Icon(
                   Icons.chevron_left,
                   color: colorScheme.onPrimary,
+                  size: chevronSize,
                 ),
                 rightChevronIcon: Icon(
                   Icons.chevron_right,
                   color: colorScheme.onPrimary,
+                  size: chevronSize,
                 ),
-                headerMargin: const EdgeInsets.only(bottom: 16),
-                headerPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                headerMargin: EdgeInsets.only(
+                  bottom: forWidgetCapture ? 10 : 12,
+                ),
+                headerPadding: headerPadding,
               ),
+              headerVisible: !forWidgetCapture,
               calendarStyle: CalendarStyle(
                 defaultTextStyle: TextStyle(color: colorScheme.onSurface),
                 weekendTextStyle: TextStyle(color: colorScheme.onSurface),
@@ -1750,6 +2158,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     selected: false,
                     chipScale: chipScale,
                     cellHeight: rowHeight,
+                    maxChipRows: maxChipRows,
+                    compactMode: compactMode,
                   );
                 },
                 outsideBuilder: (context, day, focusedDay) {
@@ -1762,6 +2172,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     showEventsForOutOfMonth: true,
                     chipScale: chipScale,
                     cellHeight: rowHeight,
+                    maxChipRows: maxChipRows,
+                    compactMode: compactMode,
                   );
                 },
                 todayBuilder: (context, day, focusedDay) {
@@ -1773,6 +2185,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     selected: false,
                     chipScale: chipScale,
                     cellHeight: rowHeight,
+                    maxChipRows: maxChipRows,
+                    compactMode: compactMode,
                   );
                 },
                 selectedBuilder: (context, day, focusedDay) {
@@ -1784,6 +2198,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     selected: true,
                     chipScale: chipScale,
                     cellHeight: rowHeight,
+                    maxChipRows: maxChipRows,
+                    compactMode: compactMode,
                   );
                 },
               ),
@@ -1813,6 +2229,56 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 setState(() => _focusedDay = focusedDay);
               },
             );
+
+            if (forWidgetCapture) {
+              final String monthText = _widgetMonthLabel(context);
+              final String yearText =
+                  DateFormat.y(Localizations.localeOf(context).toLanguageTag())
+                      .format(_focusedDay);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          monthText,
+                          textAlign: TextAlign.left,
+                          style: TextStyle(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w700,
+                            fontSize: _clampDouble(
+                              16.0 * effectiveScale,
+                              11.0,
+                              16.0,
+                            ),
+                            height: 1.2,
+                          ),
+                        ),
+                        Text(
+                          yearText,
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: _clampDouble(
+                              12.0 * effectiveScale,
+                              9.0,
+                              13.0,
+                            ),
+                            height: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Expanded(child: table),
+                ],
+              );
+            }
+
+            return table;
           },
         ),
       ),
