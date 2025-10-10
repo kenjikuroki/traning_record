@@ -51,19 +51,22 @@ class _HomeScreenState extends State<HomeScreen> {
         ? colorScheme.onPrimary
         : colorScheme.onSurfaceVariant.withOpacity(0.75);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      height: 36,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: border, width: 1.2),
-      ),
-      alignment: Alignment.center,
-      child: Icon(
-        Icons.add_rounded,
-        size: 22,
-        color: fg,
+    return SizedBox(
+      width: 50,
+      height: 42,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: border, width: 1.2),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.add_rounded,
+            size: 22,
+            color: fg,
+          ),
+        ),
       ),
     );
   }
