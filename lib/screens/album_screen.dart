@@ -62,7 +62,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
 
   // 統一マージン（Graph/Calendarに合わせる）
   static const double _kOuterPad = 16.0; // 画面の外側
-  static const double _kGap = 12.0;      // 広告下の余白 等
+  static const double _kGap = 12.0; // 広告下の余白 等
 
   @override
   void initState() {
@@ -81,19 +81,15 @@ class _AlbumScreenState extends State<AlbumScreen> {
       for (final ent in mediaRoot.listSync()) {
         if (ent is! Directory) continue;
         final dateKey = p.basename(ent.path);
-        final files = ent
-            .listSync()
-            .whereType<File>()
-            .where((f) {
+        final files = ent.listSync().whereType<File>().where((f) {
           final name = f.path.toLowerCase();
           return name.endsWith('.jpg') ||
               name.endsWith('.jpeg') ||
               name.endsWith('.png');
-        })
-            .toList();
+        }).toList();
 
         files.sort(
-              (a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()),
+          (a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()),
         ); // 新→旧
 
         if (files.isNotEmpty) {
@@ -401,7 +397,8 @@ class _AlbumScreenState extends State<AlbumScreen> {
             height: 44,
             child: Center(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -434,227 +431,231 @@ class _AlbumScreenState extends State<AlbumScreen> {
           ? null
           : Colors.transparent, // 壁紙を透過表示
 
-      // ぼかしは撤去。カレンダーと同じく透明AppBar＋白文字。
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
-        titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle,
-        centerTitle: false,
-        titleSpacing: 16,
-        toolbarHeight: 56,
-        title: Text(
-          _inSelection ? l10n.selectedCount(_selectedPaths.length) : l10n.albumTitle,
-        ),
-        actions: _inSelection
-            ? [
-          TextButton(
-            onPressed: _clearSelection,
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        child: Stack(
+          children: [
+            // 背景を少し暗く（レイアウトに影響しない）
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(color: Colors.black.withOpacity(0.70)),
+              ),
             ),
-            child: Text(l10n.clear),
-          ),
-        ]
-            : null,
-      ),
 
-      body: Stack(
-        children: [
-          // 背景を少し暗く（レイアウトに影響しない）
-          Positioned.fill(
-            child: IgnorePointer(
-              child: Container(color: Colors.black.withOpacity(0.70)),
-            ),
-          ),
-
-          // 本文（Graph/Calendarと同じ余白感）
-          CenteredConstrained(
-            maxWidth: 760,
-            padding: const EdgeInsets.all(_kOuterPad),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const AdBanner(screenName: 'album'),
-                const SizedBox(height: _kGap),
-
-                Expanded(
-                  child: _loading
-                      ? const Center(child: CircularProgressIndicator())
-                      : (_byDate.isEmpty
-                      ? _centerEmptyMessage(context, l10n)
-                      : ListView.builder(
-                    padding:
-                    const EdgeInsets.fromLTRB(12, 8, 12, 12 + 72),
-                    itemCount: _byDate.length,
-                    itemBuilder: (ctx, index) {
-                      // builder内で降順に並べ替えて参照
-                      final entries = _byDate.entries.toList()
-                        ..sort((a, b) => b.key.compareTo(a.key));
-
-                      final dateKey = entries[index].key; // "yyyy-MM-dd"
-                      final files = entries[index].value;
-
-                      final dt =
-                      DateTime.tryParse('$dateKey 00:00:00');
-                      final label = dt != null
-                          ? DateFormat('yyyy/MM/dd').format(dt)
-                          : dateKey;
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 見出し（日付）
-                          Container(
-                            alignment: Alignment.centerLeft,
-                            padding: const EdgeInsets.fromLTRB(
-                                2, 8, 2, 6),
-                            child: Text(
-                              label,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          // サムネイルグリッド
-                          GridView.builder(
-                            shrinkWrap: true,
-                            physics:
-                            const NeverScrollableScrollPhysics(),
-                            gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 3,
-                              mainAxisSpacing: 6,
-                              crossAxisSpacing: 6,
-                            ),
-                            itemCount: files.length,
-                            itemBuilder: (ctx2, i) {
-                              final f = files[i];
-                              final selected =
-                              _selectedPaths.contains(f.path);
-                              return GestureDetector(
-                                onTap: () {
-                                  if (_inSelection) {
-                                    _toggleSelect(f);
-                                  } else {
-                                    _openViewer(f);
-                                  }
-                                },
-                                onLongPress: () {
-                                  if (_inSelection) {
-                                    _toggleSelect(f);
-                                  } else {
-                                    setState(() {
-                                      _selectedPaths.add(f.path);
-                                    });
-                                  }
-                                },
-                                child: Stack(
-                                  children: [
-                                    // サムネイル
-                                    ClipRRect(
-                                      borderRadius:
-                                      BorderRadius.circular(10),
-                                      child: Image.file(
-                                        f,
-                                        fit: BoxFit.cover,
-                                        width: double.infinity,
-                                        height: double.infinity,
-                                      ),
-                                    ),
-                                    // 選択中オーバーレイ
-                                    if (selected)
-                                      Positioned.fill(
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color: Colors.black26,
-                                            borderRadius:
-                                            BorderRadius.circular(
-                                                10),
-                                            border: Border.all(
-                                              color: Colors.white70,
-                                              width: 2,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    // チェックマーク
-                                    if (_inSelection)
-                                      Positioned(
-                                        right: 8,
-                                        top: 8,
-                                        child: Container(
-                                          width: 22,
-                                          height: 22,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: selected
-                                                ? Colors
-                                                .lightGreenAccent
-                                                : Colors.white24,
-                                            border: Border.all(
-                                              color: Colors.white70,
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: Icon(
-                                            selected
-                                                ? Icons.check
-                                                : Icons
-                                                .circle_outlined,
-                                            size: 16,
-                                            color: selected
-                                                ? Colors.black87
-                                                : Colors.white70,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
+            // 本文（Graph/Calendarと同じ余白感）
+            CenteredConstrained(
+              maxWidth: 760,
+              padding: const EdgeInsets.all(_kOuterPad),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                if (_inSelection)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l10n.selectedCount(_selectedPaths.length),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
                                 ),
-                              );
-                            },
                           ),
-                          const SizedBox(height: 10),
-                        ],
-                      );
-                    },
-                  )),
-                )
-              ],
+                        ),
+                        TextButton(
+                          onPressed: _clearSelection,
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white,
+                          ),
+                          child: Text(l10n.clear),
+                        ),
+                      ],
+                    ),
+                  ),
+                const AdBanner(screenName: 'album'),
+                  const SizedBox(height: _kGap),
+                  Expanded(
+                    child: _loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : (_byDate.isEmpty
+                            ? _centerEmptyMessage(context, l10n)
+                            : ListView.builder(
+                                padding: const EdgeInsets.fromLTRB(
+                                    12, 8, 12, 12 + 72),
+                                itemCount: _byDate.length,
+                                itemBuilder: (ctx, index) {
+                                  // builder内で降順に並べ替えて参照
+                                  final entries = _byDate.entries.toList()
+                                    ..sort((a, b) => b.key.compareTo(a.key));
+
+                                  final dateKey =
+                                      entries[index].key; // "yyyy-MM-dd"
+                                  final files = entries[index].value;
+
+                                  final dt =
+                                      DateTime.tryParse('$dateKey 00:00:00');
+                                  final label = dt != null
+                                      ? DateFormat('yyyy/MM/dd').format(dt)
+                                      : dateKey;
+
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // 見出し（日付）
+                                      Container(
+                                        alignment: Alignment.centerLeft,
+                                        padding: const EdgeInsets.fromLTRB(
+                                            2, 8, 2, 6),
+                                        child: Text(
+                                          label,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      // サムネイルグリッド
+                                      GridView.builder(
+                                        shrinkWrap: true,
+                                        physics:
+                                            const NeverScrollableScrollPhysics(),
+                                        gridDelegate:
+                                            const SliverGridDelegateWithFixedCrossAxisCount(
+                                          crossAxisCount: 3,
+                                          mainAxisSpacing: 6,
+                                          crossAxisSpacing: 6,
+                                        ),
+                                        itemCount: files.length,
+                                        itemBuilder: (ctx2, i) {
+                                          final f = files[i];
+                                          final selected =
+                                              _selectedPaths.contains(f.path);
+                                          return GestureDetector(
+                                            onTap: () {
+                                              if (_inSelection) {
+                                                _toggleSelect(f);
+                                              } else {
+                                                _openViewer(f);
+                                              }
+                                            },
+                                            onLongPress: () {
+                                              if (_inSelection) {
+                                                _toggleSelect(f);
+                                              } else {
+                                                setState(() {
+                                                  _selectedPaths.add(f.path);
+                                                });
+                                              }
+                                            },
+                                            child: Stack(
+                                              children: [
+                                                // サムネイル
+                                                ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  child: Image.file(
+                                                    f,
+                                                    fit: BoxFit.cover,
+                                                    width: double.infinity,
+                                                    height: double.infinity,
+                                                  ),
+                                                ),
+                                                // 選択中オーバーレイ
+                                                if (selected)
+                                                  Positioned.fill(
+                                                    child: Container(
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.black26,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(10),
+                                                        border: Border.all(
+                                                          color: Colors.white70,
+                                                          width: 2,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                // チェックマーク
+                                                if (_inSelection)
+                                                  Positioned(
+                                                    right: 8,
+                                                    top: 8,
+                                                    child: Container(
+                                                      width: 22,
+                                                      height: 22,
+                                                      decoration: BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        color: selected
+                                                            ? Colors
+                                                                .lightGreenAccent
+                                                            : Colors.white24,
+                                                        border: Border.all(
+                                                          color: Colors.white70,
+                                                          width: 1,
+                                                        ),
+                                                      ),
+                                                      child: Icon(
+                                                        selected
+                                                            ? Icons.check
+                                                            : Icons
+                                                                .circle_outlined,
+                                                        size: 16,
+                                                        color: selected
+                                                            ? Colors.black87
+                                                            : Colors.white70,
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      const SizedBox(height: 10),
+                                    ],
+                                  );
+                                },
+                              )),
+                  )
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       bottomNavigationBar: _inSelection
           ? SafeArea(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          color: Colors.black.withOpacity(0.80),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _pillActionButton(
-                icon: Icons.ios_share,
-                label: l10n.share,
-                onTap: _shareSelected,
-                color: _kBrandBlueDark,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                color: Colors.black.withOpacity(0.80),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _pillActionButton(
+                      icon: Icons.ios_share,
+                      label: l10n.share,
+                      onTap: _shareSelected,
+                      color: _kBrandBlueDark,
+                    ),
+                    const SizedBox(width: 12),
+                    _pillActionButton(
+                      icon: Icons.delete_outline,
+                      label: l10n.delete,
+                      onTap: _deleteSelected,
+                      color: _kDangerRedDark,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 12),
-              _pillActionButton(
-                icon: Icons.delete_outline,
-                label: l10n.delete,
-                onTap: _deleteSelected,
-                color: _kDangerRedDark,
-              ),
-            ],
-          ),
-        ),
-      )
+            )
           : null,
     );
   }

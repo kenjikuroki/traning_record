@@ -1,6 +1,7 @@
 // lib/screens/calendar_screen.dart
 
-import 'package:flutter/services.dart' show Clipboard, ClipboardData, rootBundle;
+import 'package:flutter/services.dart'
+    show Clipboard, ClipboardData, rootBundle;
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -65,10 +66,7 @@ String _dayRecordLabel(BuildContext context, DateTime d) {
 // ロケールに合わせた簡易的な日付文字列（intl 不要）
 // ja: "M月d日"、その他: "yyyy/MM/dd"
 String _formatResultsDate(BuildContext context, DateTime d) {
-  final lang = Localizations
-      .localeOf(context)
-      .languageCode
-      .toLowerCase();
+  final lang = Localizations.localeOf(context).languageCode.toLowerCase();
   if (lang == 'ja') {
     return '${d.month}月${d.day}日';
   }
@@ -177,8 +175,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     // 初回のみ：中央ウェルカムカード（2ステップ）
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final seen = widget.settingsBox.get('hint_seen_calendar') as bool? ??
-          false;
+      final seen =
+          widget.settingsBox.get('hint_seen_calendar') as bool? ?? false;
       if (seen) return;
 
       await _showWelcomeCardSequence(context);
@@ -234,7 +232,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-    String _satisfactionLabel(int value, AppLocalizations l10n) {
+  String _satisfactionLabel(int value, AppLocalizations l10n) {
     switch (value) {
       case 0:
         return l10n.satisfactionBad;
@@ -247,9 +245,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // ---------- Helpers ----------
   String _dateKey(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day
-          .toString()
-          .padLeft(2, '0')}';
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   bool _sameDate(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
@@ -257,18 +253,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _hasAnyTrainingData(DailyRecord r) {
     for (final entry in r.menus.entries) {
       for (final m in entry.value) {
-        final len = (m.weights.length < m.reps.length) ? m.weights.length : m
-            .reps.length;
+        final len = (m.weights.length < m.reps.length)
+            ? m.weights.length
+            : m.reps.length;
         for (var i = 0; i < len; i++) {
           final w = m.weights[i].toString().trim();
           final p = m.reps[i].toString().trim();
           if (w.isNotEmpty || p.isNotEmpty) return true;
         }
-        if ((m.distance
-            ?.trim()
-            .isNotEmpty ?? false) || (m.duration
-            ?.trim()
-            .isNotEmpty ?? false)) {
+        if ((m.distance?.trim().isNotEmpty ?? false) ||
+            (m.duration?.trim().isNotEmpty ?? false)) {
           return true;
         }
       }
@@ -353,9 +347,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         return StatefulBuilder(
           builder: (ctx, setState) {
             // 自動遷移は無し。タップでのみ進む/閉じる。
-            final String message = (step == 0)
-                ? l10n.welcomeThankYou
-                : l10n.hintTapPlus;
+            final String message =
+                (step == 0) ? l10n.welcomeThankYou : l10n.hintTapPlus;
 
             void nextOrClose() {
               if (step == 0) {
@@ -419,10 +412,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final dKm = double.tryParse(normalized);
     if (dKm == null || dKm <= 0) return '-';
 
-    final useImperial =
-        (SettingsManager.currentLengthUnit == 'mi' ||
+    final useImperial = (SettingsManager.currentLengthUnit == 'mi' ||
             SettingsManager.currentLengthUnit == 'mile') ||
-            SettingsManager.isWaistInch;
+        SettingsManager.isWaistInch;
 
     if (useImperial) {
       final miles = dKm / 1.609344;
@@ -443,8 +435,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  String _formatDurationHM(BuildContext context, String? raw,
-      AppLocalizations l10n) {
+  String _formatDurationHM(
+      BuildContext context, String? raw, AppLocalizations l10n) {
     if (raw == null) return '-';
     final normalized = raw.replaceAll(',', '').trim();
     if (normalized.isEmpty) return '-';
@@ -471,9 +463,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     if (hour == 0 && min == 0 && sec == 0) return '-';
 
-    final isJa = Localizations
-        .localeOf(context)
-        .languageCode == 'ja';
+    final isJa = Localizations.localeOf(context).languageCode == 'ja';
     final buffer = StringBuffer();
     if (hour > 0) {
       buffer.write(isJa ? '${hour}時間' : '${hour}h');
@@ -531,9 +521,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // 「30:45」→「30分45秒」
   String _formatDuration(String? raw, AppLocalizations l10n) {
-    if (raw == null || raw
-        .trim()
-        .isEmpty) return '-';
+    if (raw == null || raw.trim().isEmpty) return '-';
     final parts = raw.split(':');
     final min = (parts.isNotEmpty && parts[0].isNotEmpty) ? parts[0] : '0';
     final sec = (parts.length > 1 && parts[1].isNotEmpty) ? parts[1] : '0';
@@ -598,9 +586,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final v = widget.settingsBox.get(k);
       if (v is String) {
         final s = v.toLowerCase();
-        if (s.contains('male') || s.contains('man') || s == 'm' ||
+        if (s.contains('male') ||
+            s.contains('man') ||
+            s == 'm' ||
             s.contains('男')) return 'male';
-        if (s.contains('female') || s.contains('woman') || s == 'f' ||
+        if (s.contains('female') ||
+            s.contains('woman') ||
+            s == 'f' ||
             s.contains('女')) return 'female';
       } else if (v is int) {
         if (v == 0) return 'male';
@@ -700,13 +692,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final d = double.tryParse(phc);
       if (d != null && d > 0) return d / 100.0;
     }
-    for (final key in [
-      'height_cm',
-      'user_height_cm',
-      '身長cm',
-      '身長',
-      'height'
-    ]) {
+    for (final key in ['height_cm', 'user_height_cm', '身長cm', '身長', 'height']) {
       final v = widget.settingsBox.get(key);
       if (v == null) continue;
       if (v is num && v > 0) return v.toDouble() / 100.0;
@@ -789,16 +775,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
       (SettingsManager.currentLengthUnit == 'mile') ? l10n.mile : l10n.km;
 
   Map<String, double>? _standardsForGender(String gender) {
-    final bmiMin = (widget.settingsBox.get('bmiRangeMin') as num?)
-        ?.toDouble() ?? 18.5;
-    final bmiMax = (widget.settingsBox.get('bmiRangeMax') as num?)
-        ?.toDouble() ?? 25.0;
-    double bfMin = (widget.settingsBox.get('bodyFatRangeMin') as num?)
-        ?.toDouble() ??
-        (gender == 'male' ? 10.0 : 20.0);
-    double bfMax = (widget.settingsBox.get('bodyFatRangeMax') as num?)
-        ?.toDouble() ??
-        (gender == 'male' ? 20.0 : 30.0);
+    final bmiMin =
+        (widget.settingsBox.get('bmiRangeMin') as num?)?.toDouble() ?? 18.5;
+    final bmiMax =
+        (widget.settingsBox.get('bmiRangeMax') as num?)?.toDouble() ?? 25.0;
+    double bfMin =
+        (widget.settingsBox.get('bodyFatRangeMin') as num?)?.toDouble() ??
+            (gender == 'male' ? 10.0 : 20.0);
+    double bfMax =
+        (widget.settingsBox.get('bodyFatRangeMax') as num?)?.toDouble() ??
+            (gender == 'male' ? 20.0 : 30.0);
     double waistStd;
     final keyGender = gender == 'male' ? 'waistStdMaleCm' : 'waistStdFemaleCm';
     final gVal = widget.settingsBox.get(keyGender);
@@ -806,8 +792,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       waistStd = gVal.toDouble();
     } else {
       final anyVal = widget.settingsBox.get('waistStdCm');
-      waistStd =
-      (anyVal is num) ? anyVal.toDouble() : (gender == 'male' ? 85.0 : 90.0);
+      waistStd = (anyVal is num)
+          ? anyVal.toDouble()
+          : (gender == 'male' ? 85.0 : 90.0);
     }
     return {
       'bmiMin': bmiMin,
@@ -868,8 +855,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return null;
   }
 
-  double? _scanRecordMaps(dynamic r, List<String> mapProps,
-      List<String> tokenVariants) {
+  double? _scanRecordMaps(
+      dynamic r, List<String> mapProps, List<String> tokenVariants) {
     for (final prop in mapProps) {
       try {
         final dynamic m = switch (prop) {
@@ -906,8 +893,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     r.menus.forEach((part, menuList) {
       bool has = false;
       for (final m in menuList) {
-        final len = (m.weights.length < m.reps.length) ? m.weights.length : m
-            .reps.length;
+        final len = (m.weights.length < m.reps.length)
+            ? m.weights.length
+            : m.reps.length;
         for (int i = 0; i < len; i++) {
           final w = m.weights[i].toString().trim();
           final p = m.reps[i].toString().trim();
@@ -916,16 +904,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
             break;
           }
         }
-        if ((m.distance
-            ?.trim()
-            .isNotEmpty ?? false) || (m.duration
-            ?.trim()
-            .isNotEmpty ?? false)) {
+        if ((m.distance?.trim().isNotEmpty ?? false) ||
+            (m.duration?.trim().isNotEmpty ?? false)) {
           has = true;
         }
-        if (m.calories
-            ?.trim()
-            .isNotEmpty ?? false) {
+        if (m.calories?.trim().isNotEmpty ?? false) {
           has = true;
         }
         if (has) break;
@@ -994,7 +977,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (meals == null) return totals;
     for (final entry in meals) {
       if (entry is! Map) continue;
-      final category = _mealCategoryFromSerialized(entry['category'] as String?);
+      final category =
+          _mealCategoryFromSerialized(entry['category'] as String?);
       double subtotal = 0;
       final rawSubtotal = entry['subtotal'];
       if (rawSubtotal is num) {
@@ -1154,7 +1138,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final heightCm = _heightCmFromSettings();
     final birthDate = _birthDateFromSettings();
     final gender = _genderForBmr();
-    if (weightKg == null || heightCm == null || birthDate == null || gender == null) {
+    if (weightKg == null ||
+        heightCm == null ||
+        birthDate == null ||
+        gender == null) {
       return null;
     }
     final age = _ageFromBirth(birthDate);
@@ -1190,29 +1177,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
     try {
       final dyn = rec as dynamic;
       final note = dyn?.note as String?;
-      if (note != null && note
-          .trim()
-          .isNotEmpty) return note;
+      if (note != null && note.trim().isNotEmpty) return note;
     } catch (_) {}
 
     final m = widget.settingsBox.get('memo-$key');
     if (m is Map) {
       final body = (m['body'] as String?) ?? (m['title'] as String?);
-      if (body != null && body
-          .trim()
-          .isNotEmpty) return body;
-    } else if (m is String && m
-        .trim()
-        .isNotEmpty) {
+      if (body != null && body.trim().isNotEmpty) return body;
+    } else if (m is String && m.trim().isNotEmpty) {
       return m;
     }
     return null;
   }
 
   bool _hasMemoForDate(DateTime day) =>
-      (_getMemoTextForDate(day)
-          ?.trim()
-          .isNotEmpty ?? false);
+      (_getMemoTextForDate(day)?.trim().isNotEmpty ?? false);
 
   // ====== 写真有無の判定（キャッシュ＆遅延ロード） ======
   Future<bool> _checkPhotosForDate(DateTime date) async {
@@ -1224,7 +1203,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       for (final e in list) {
         if (e is! File) continue;
         final p = e.path.toLowerCase();
-        if (p.endsWith('.jpg') || p.endsWith('.jpeg') || p.endsWith('.png') ||
+        if (p.endsWith('.jpg') ||
+            p.endsWith('.jpeg') ||
+            p.endsWith('.png') ||
             p.endsWith('.heic')) {
           return true;
         }
@@ -1265,12 +1246,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // 4情報を想定した基本行高を算出
   double _baseRowHeight(BuildContext context) {
     const double topPad = 6.0;
-    final double dayFont = Theme
-            .of(context)
-            .textTheme
-            .bodyMedium
-            ?.fontSize ??
-        14.0;
+    final double dayFont =
+        Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14.0;
     final double dayLine = dayFont * 1.2;
 
     const double chipFont = 10.0;
@@ -1292,16 +1269,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       bool showEventsForOutOfMonth = false,
       double chipScale = 1.0,
       double? cellHeight}) {
-    final cs = Theme
-        .of(context)
-        .colorScheme;
+    final cs = Theme.of(context).colorScheme;
 
     _ensurePhotoFlag(day);
     final bool hasPhoto = _photoCache[_dateKey(day)] ?? false;
 
     final record = widget.recordsBox.get(_dateKey(day));
-    final partsAll = (record == null) ? <String>[] : _partsWithDataForDay(
-        record);
+    final partsAll =
+        (record == null) ? <String>[] : _partsWithDataForDay(record);
 
     final strengthParts = partsAll.where((p) => p != '有酸素運動').toList();
     final hasAerobic = partsAll.contains('有酸素運動');
@@ -1310,7 +1285,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final hasMeal = _hasMealForRecord(record);
 
     final bool canShowChips = showEventsForOutOfMonth ||
-        day.month == _focusedDay.month || record != null || hasMemo || hasPhoto;
+        day.month == _focusedDay.month ||
+        record != null ||
+        hasMemo ||
+        hasPhoto;
 
     final double chipFontSize = (10.0 * chipScale).clamp(7.0, 12.0);
     final double chipVPad = (2.0 * chipScale).clamp(1.0, 3.0);
@@ -1321,13 +1299,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     Widget _partChip(String part) {
       final label = _translatePartToLocale(context, part);
       final boxColor = _colorForPart(part, cs);
-      final textOnBox = ThemeData.estimateBrightnessForColor(boxColor) ==
-          Brightness.dark
-          ? Colors.white
-          : Colors.black87;
+      final textOnBox =
+          ThemeData.estimateBrightnessForColor(boxColor) == Brightness.dark
+              ? Colors.white
+              : Colors.black87;
       return Container(
-        padding:
-            EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
+        padding: EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
         decoration: BoxDecoration(
           color: boxColor,
           borderRadius: BorderRadius.circular(6),
@@ -1347,8 +1324,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
     }
 
-    Widget _memoChip() =>
-        Container(
+    Widget _memoChip() => Container(
           padding:
               EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
           decoration: BoxDecoration(
@@ -1372,8 +1348,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     Widget _weightChip() {
       final l10n = AppLocalizations.of(context)!;
       return Container(
-        padding:
-            EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
+        padding: EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
         decoration: BoxDecoration(
           color: cs.secondaryContainer,
           borderRadius: BorderRadius.circular(6),
@@ -1396,8 +1371,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     Widget _mealChip() {
       final l10n = AppLocalizations.of(context)!;
       return Container(
-        padding:
-            EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
+        padding: EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
         decoration: BoxDecoration(
           color: cs.surfaceVariant,
           borderRadius: BorderRadius.circular(6),
@@ -1418,14 +1392,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     Widget _photoChip() {
-      final cs = Theme
-          .of(context)
-          .colorScheme;
+      final cs = Theme.of(context).colorScheme;
       final l10n = AppLocalizations.of(context)!; // l10n
 
       return Container(
-        padding:
-            EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
+        padding: EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
         decoration: BoxDecoration(
           color: cs.primaryContainer,
           borderRadius: BorderRadius.circular(6),
@@ -1455,12 +1426,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (hasPhoto) chips.add(_photoChip());
     }
 
-    final double dayFontSize = Theme
-        .of(context)
-        .textTheme
-        .bodyMedium
-        ?.fontSize ??
-        14.0;
+    final double dayFontSize =
+        Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14.0;
     final double dayLabelHeightEstimate = dayFontSize * 1.25 + 8.0;
 
     final Color dayNumberColor = (day.weekday == DateTime.sunday)
@@ -1485,8 +1452,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               if (usableForChips <= 0 || (chipBoxHeight + chipGap) <= 0) {
                 capacity = 0;
               } else {
-                capacity =
-                    (usableForChips / (chipBoxHeight + chipGap)).floor();
+                capacity = (usableForChips / (chipBoxHeight + chipGap)).floor();
               }
             }
 
@@ -1519,8 +1485,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             final List<Widget> children = [];
 
             children.add(
-              _dayLabelTop(
-                  context, day, textColor: dayNumberColor, selected: selected),
+              _dayLabelTop(context, day,
+                  textColor: dayNumberColor, selected: selected),
             );
 
             if (chipCount > 0) {
@@ -1558,14 +1524,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Future<void> _openRecordSheet(DateTime day) async {
     await Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) =>
-            RecordScreen(
-              selectedDate: day,
-              recordsBox: widget.recordsBox,
-              lastUsedMenusBox: widget.lastUsedMenusBox,
-              settingsBox: widget.settingsBox,
-              setCountBox: widget.setCountBox,
-            ),
+        pageBuilder: (_, __, ___) => RecordScreen(
+          selectedDate: day,
+          recordsBox: widget.recordsBox,
+          lastUsedMenusBox: widget.lastUsedMenusBox,
+          settingsBox: widget.settingsBox,
+          setCountBox: widget.setCountBox,
+        ),
         transitionDuration: const Duration(milliseconds: 260),
         reverseTransitionDuration: const Duration(milliseconds: 220),
         transitionsBuilder: (_, animation, __, child) {
@@ -1614,107 +1579,60 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }).join();
   }
 
-  // AppBar/ヘッダ用のローカライズ済みタイトル
-  String _formatMonthTitle(BuildContext context, DateTime d) {
-    final locale = Localizations.localeOf(context);
-    final isJa = locale.languageCode == 'ja';
-    final fmt = DateFormat.yMMMM(locale.toString());
-    final s = fmt.format(d);
-
-    if (isJa) {
-      final m = RegExp(r'^(\d{4})年').firstMatch(s);
-      if (m != null) {
-        final fullYear = _toZenkakuDigits(m.group(1)!);
-        return s.replaceFirst(m.group(1)!, fullYear);
-      }
-    }
-    return s;
-  }
-
-
   // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme
-        .of(context)
-        .colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       backgroundColor: SettingsManager.backgroundAssetNotifier.value.isEmpty
           ? null
           : Colors.transparent,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        backgroundColor: Theme
-            .of(context)
-            .appBarTheme
-            .backgroundColor,
-        foregroundColor: Theme
-            .of(context)
-            .appBarTheme
-            .foregroundColor,
-        titleTextStyle: Theme
-            .of(context)
-            .appBarTheme
-            .titleTextStyle,
-        centerTitle: false,
-        titleSpacing: 16,
-        toolbarHeight: 56,
-        title: const Text('TrainingRecord'),
-      ),
-
 
       // ▼ ここで SettingsManager.waistUnitNotifier を監視して即反映
       // ▼ ここで SettingsManager.waistUnitNotifier を監視して即反映
-      body: ValueListenableBuilder<String>(
-        valueListenable: SettingsManager.waistUnitNotifier,
-        builder: (context, __, ___) {
-          // ▼ 距離（mi/km）の切替にも反応
-          return ValueListenableBuilder(
-            valueListenable: SettingsManager.lengthUnitNotifier,
-            builder: (context, ___, ____) {
-              return CenteredConstrained(
-                maxWidth: 760,
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                child: ValueListenableBuilder<Box<dynamic>>(
-                  valueListenable: widget.settingsBox.listenable(),
-                  builder: (context, _settings, __) {
-                    return ValueListenableBuilder<Box<DailyRecord>>(
-                      valueListenable: widget.recordsBox.listenable(),
-                      builder: (context, box, _) {
-                        final selectedRecord = box.get(
-                            _dateKey(_selectedDay ?? DateTime.now()));
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const AdBanner(screenName: 'calendar'),
-                            const SizedBox(height: 12),
-                            Expanded(
-                              child: _buildCalendar(context),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                ),
-              );
-            },
-          );
-        },
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        child: ValueListenableBuilder<String>(
+          valueListenable: SettingsManager.waistUnitNotifier,
+          builder: (context, __, ___) {
+            return ValueListenableBuilder(
+              valueListenable: SettingsManager.lengthUnitNotifier,
+              builder: (context, ___, ____) {
+                return CenteredConstrained(
+                  maxWidth: 760,
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                  child: ValueListenableBuilder<Box<dynamic>>(
+                    valueListenable: widget.settingsBox.listenable(),
+                    builder: (context, _settings, __) {
+                      return ValueListenableBuilder<Box<DailyRecord>>(
+                        valueListenable: widget.recordsBox.listenable(),
+                        builder: (context, ____, ___) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const AdBanner(screenName: 'calendar'),
+                              const SizedBox(height: 12),
+                              Expanded(child: _buildCalendar(context)),
+                              const SizedBox(height: 12),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
-
     );
   }
 
   Widget _buildCalendar(BuildContext context) {
-    final colorScheme = Theme
-        .of(context)
-        .colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
       key: _kCalendarCard,
@@ -1757,8 +1675,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               rowHeight = baseRow;
             }
 
-            final double chipScale =
-                (rowHeight / baseRow).clamp(0.3, 1.8);
+            final double chipScale = (rowHeight / baseRow).clamp(0.3, 1.8);
             double dowHeight = (28.0 * chipScale).clamp(20.0, 48.0);
 
             return TableCalendar<Object>(
@@ -1796,9 +1713,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
               calendarBuilders: CalendarBuilders<Object>(
                 defaultBuilder: (context, day, focusedDay) {
-                  final cs = Theme
-                      .of(context)
-                      .colorScheme;
+                  final cs = Theme.of(context).colorScheme;
                   return _buildDayCell(
                     context,
                     day,
@@ -1809,9 +1724,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   );
                 },
                 outsideBuilder: (context, day, focusedDay) {
-                  final cs = Theme
-                      .of(context)
-                      .colorScheme;
+                  final cs = Theme.of(context).colorScheme;
                   return _buildDayCell(
                     context,
                     day,
@@ -1823,9 +1736,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   );
                 },
                 todayBuilder: (context, day, focusedDay) {
-                  final cs = Theme
-                      .of(context)
-                      .colorScheme;
+                  final cs = Theme.of(context).colorScheme;
                   return _buildDayCell(
                     context,
                     day,
@@ -1836,9 +1747,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   );
                 },
                 selectedBuilder: (context, day, focusedDay) {
-                  final cs = Theme
-                      .of(context)
-                      .colorScheme;
+                  final cs = Theme.of(context).colorScheme;
                   return _buildDayCell(
                     context,
                     day,
@@ -1855,8 +1764,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     _sameDate(selectedDay, _selectedDay!)) {
                   final DateTime sel = DateTime(
                       selectedDay.year, selectedDay.month, selectedDay.day);
-                  final DailyRecord? rec =
-                      widget.recordsBox.get(_dateKey(sel));
+                  final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
                   final List<Widget> summaryChildren =
                       _buildSummaryChildrenForDate(context, sel, rec);
                   final List<String> summaryLines =
@@ -1890,12 +1798,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return DateFormat.yMMMd(locale.toString()).format(date);
   }
 
-  List<Widget> _buildSummaryChildrenForDate(BuildContext context,
-      DateTime sel,
-      DailyRecord? record,) {
-    final cs = Theme
-        .of(context)
-        .colorScheme;
+  List<Widget> _buildSummaryChildrenForDate(
+    BuildContext context,
+    DateTime sel,
+    DailyRecord? record,
+  ) {
+    final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final bool showBmr = SettingsManager.manageBmr;
     final List<Widget> summaryChildren = [];
@@ -1945,8 +1853,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         bmrValue != null ? (mealTotal - bmrValue) : null;
 
     bool _menuHasAnyData(MenuData m) {
-      final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps
-          .length;
+      final len =
+          (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
       for (int i = 0; i < len; i++) {
         final w = m.weights[i].toString().trim();
         final r = m.reps[i].toString().trim();
@@ -1954,9 +1862,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
       if (_hasPositiveDistanceValue(m.distance)) return true;
       if (_hasPositiveDurationValue(m.duration)) return true;
-      if ((m.calories
-          ?.trim()
-          .isNotEmpty ?? false)) return true;
+      if ((m.calories?.trim().isNotEmpty ?? false)) return true;
       if (m.totalVolume != null) return true;
       return false;
     }
@@ -1965,9 +1871,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final List<MenuData> aerobicMenus =
         (record.menus['有酸素運動'] as List<MenuData>?) ?? const <MenuData>[];
     final double aerobicTotal = _totalAerobicCalories(record);
-    final double? energyBalance = bmrValue != null
-        ? (mealTotal - (bmrValue + aerobicTotal))
-        : null;
+    final double? energyBalance =
+        bmrValue != null ? (mealTotal - (bmrValue + aerobicTotal)) : null;
     if (aerobicMenus.any(_menuHasAnyData)) {
       aerobicWidgets.add(
         Padding(
@@ -1995,7 +1900,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _selectableLine(
               text: '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface,
+              style: TextStyle(
+                  color: cs.onSurface,
                   fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
@@ -2004,9 +1910,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
         if (hasDuration) {
           aerobicWidgets.add(
             _selectableLine(
-              text: '${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}',
+              text:
+                  '${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface,
+              style: TextStyle(
+                  color: cs.onSurface,
                   fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
@@ -2017,7 +1925,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _selectableLine(
               text: '${l10n.calorie}: ${m.calories} ${l10n.kcalUnit}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface,
+              style: TextStyle(
+                  color: cs.onSurface,
                   fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
@@ -2092,7 +2001,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _selectableLine(
               text: '${i + 1}${l10n.sets}：$setDisplay',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface,
+              style: TextStyle(
+                  color: cs.onSurface,
                   fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
@@ -2102,11 +2012,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
           strengthWidgets.add(
             _selectableLine(
               text:
-              '${l10n.totalVolumeLabel}：${formatTotalVolumeValue(
-                  l10n, m.totalVolume)}',
+                  '${l10n.totalVolumeLabel}：${formatTotalVolumeValue(l10n, m.totalVolume)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style:
-              TextStyle(color: cs.onSurface,
+              style: TextStyle(
+                  color: cs.onSurface,
                   fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
@@ -2162,8 +2071,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     // 個人値まとめ（あるものだけ）
-    final hasPersonal = (record.weight != null) || (bodyFatVal != null) ||
-        (waistValCm != null) || (bmiVal != null) || showBmr;
+    final hasPersonal = (record.weight != null) ||
+        (bodyFatVal != null) ||
+        (waistValCm != null) ||
+        (bmiVal != null) ||
+        showBmr;
     if (hasPersonal) {
       personalWidgets.add(
         Padding(
@@ -2179,8 +2091,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final unit = SettingsManager.currentUnit;
         personalWidgets.add(
           _selectableLine(
-            text: '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(
-                1)} $unit',
+            text:
+                '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(1)} $unit',
             style: TextStyle(color: cs.onSurface, fontSize: 15),
             padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
@@ -2214,8 +2126,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         );
       }
       if (showBmr) {
-        final bmrDisplay =
-            bmrValue != null ? '${_formatKcalNumber(bmrValue!)} ${l10n.kcalUnit}' : '—';
+        final bmrDisplay = bmrValue != null
+            ? '${_formatKcalNumber(bmrValue!)} ${l10n.kcalUnit}'
+            : '—';
         personalWidgets.add(
           _selectableLine(
             text: '${l10n.bmrTitleShort}: $bmrDisplay',
@@ -2255,9 +2168,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ? '${_formatKcalNumber(energyBalance)} ${l10n.kcalUnit}'
           : '—';
       final summaryLabel = l10n.dailyBalanceSummary;
-      final labelWithColon = (summaryLabel.endsWith('：') || summaryLabel.endsWith(':'))
-          ? summaryLabel
-          : '$summaryLabel:';
+      final labelWithColon =
+          (summaryLabel.endsWith('：') || summaryLabel.endsWith(':'))
+              ? summaryLabel
+              : '$summaryLabel:';
       summaryChildren.add(
         _selectableLine(
           text: '$labelWithColon $balanceText',
@@ -2274,9 +2188,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return summaryChildren;
   }
 
-  List<String> _buildSummaryLinesForDate(BuildContext context,
-      DateTime sel,
-      DailyRecord? record,) {
+  List<String> _buildSummaryLinesForDate(
+    BuildContext context,
+    DateTime sel,
+    DailyRecord? record,
+  ) {
     final l10n = AppLocalizations.of(context)!;
     final bool showBmr = SettingsManager.manageBmr;
     final lines = <String>[];
@@ -2313,9 +2229,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         bmrValue != null ? (mealTotal - bmrValue) : null;
 
     bool _menuHasAnyData(MenuData m) {
-      final len = (m.weights.length < m.reps.length)
-          ? m.weights.length
-          : m.reps.length;
+      final len =
+          (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
       for (int i = 0; i < len; i++) {
         final w = m.weights[i].toString().trim();
         final r = m.reps[i].toString().trim();
@@ -2331,22 +2246,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final List<MenuData> aerobicMenus =
         (record.menus['有酸素運動'] as List<MenuData>?) ?? const <MenuData>[];
     final double aerobicTotal = _totalAerobicCalories(record);
-    final double? energyBalance = bmrValue != null
-        ? (mealTotal - (bmrValue + aerobicTotal))
-        : null;
+    final double? energyBalance =
+        bmrValue != null ? (mealTotal - (bmrValue + aerobicTotal)) : null;
     if (aerobicMenus.any(_menuHasAnyData)) {
-      final sectionLines = <String>['■${_translatePartToLocale(context, '有酸素運動')}'];
+      final sectionLines = <String>[
+        '■${_translatePartToLocale(context, '有酸素運動')}'
+      ];
       for (final m in aerobicMenus) {
         if (!_menuHasAnyData(m)) continue;
         sectionLines.add(m.name);
         final bool hasDistance = _hasPositiveDistanceValue(m.distance);
         final bool hasDuration = _hasPositiveDurationValue(m.duration);
         if (hasDistance) {
-          sectionLines.add('  ${l10n.distance}: ${_formatDistance(m.distance, l10n)}');
+          sectionLines
+              .add('  ${l10n.distance}: ${_formatDistance(m.distance, l10n)}');
         }
         if (hasDuration) {
-          sectionLines
-              .add('  ${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}');
+          sectionLines.add(
+              '  ${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}');
         }
         if ((m.calories?.trim().isNotEmpty ?? false)) {
           sectionLines.add('  ${l10n.calorie}: ${m.calories} ${l10n.kcalUnit}');
@@ -2372,7 +2289,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
       if (!partHas) return;
 
-      final sectionLines = <String>['■${_translatePartToLocale(context, originalPart)}'];
+      final sectionLines = <String>[
+        '■${_translatePartToLocale(context, originalPart)}'
+      ];
 
       for (final m in menuList) {
         if (!_menuHasAnyData(m)) continue;
@@ -2427,8 +2346,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
       mealLines.addAll(sectionLines);
     }
 
-    final bool hasPersonal = (record.weight != null) || (bodyFatVal != null) ||
-        (waistValCm != null) || (bmiVal != null) || showBmr;
+    final bool hasPersonal = (record.weight != null) ||
+        (bodyFatVal != null) ||
+        (waistValCm != null) ||
+        (bmiVal != null) ||
+        showBmr;
     if (hasPersonal) {
       personalLines.add('■${l10n.personal}');
       if (record.weight != null) {
@@ -2437,7 +2359,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(1)} $unit');
       }
       if (bodyFatVal != null) {
-        personalLines.add('${l10n.bodyFat}: ${bodyFatVal!.toStringAsFixed(1)}%');
+        personalLines
+            .add('${l10n.bodyFat}: ${bodyFatVal!.toStringAsFixed(1)}%');
       }
       if (waistValCm != null) {
         personalLines.add('${l10n.waist}: ${_fmtWaist(waistValCm!, l10n)}');
@@ -2446,8 +2369,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         personalLines.add('BMI: ${bmiVal!.toStringAsFixed(1)}');
       }
       if (showBmr) {
-        final bmrDisplay =
-            bmrValue != null ? '${_formatKcalNumber(bmrValue!)} ${l10n.kcalUnit}' : '—';
+        final bmrDisplay = bmrValue != null
+            ? '${_formatKcalNumber(bmrValue!)} ${l10n.kcalUnit}'
+            : '—';
         personalLines.add('${l10n.bmrTitleShort}: $bmrDisplay');
         final diffDisplay = intakeMinusBmr != null
             ? '${_formatKcalNumber(intakeMinusBmr)} ${l10n.kcalUnit}'
@@ -2464,35 +2388,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ..addAll(personalLines);
 
     if (showBmr) {
-      if (combinedLines.isNotEmpty &&
-          combinedLines.last.trim().isNotEmpty) {
+      if (combinedLines.isNotEmpty && combinedLines.last.trim().isNotEmpty) {
         combinedLines.add('');
       }
       final summaryLabel = l10n.dailyBalanceSummary;
-      final labelWithColon = (summaryLabel.endsWith('：') || summaryLabel.endsWith(':'))
-          ? summaryLabel
-          : '$summaryLabel:';
+      final labelWithColon =
+          (summaryLabel.endsWith('：') || summaryLabel.endsWith(':'))
+              ? summaryLabel
+              : '$summaryLabel:';
       final balanceText = energyBalance != null
           ? '${_formatKcalNumber(energyBalance)} ${l10n.kcalUnit}'
           : '—';
       combinedLines.add('$labelWithColon $balanceText');
     }
 
-    while (combinedLines.isNotEmpty &&
-        combinedLines.last.trim().isEmpty) {
+    while (combinedLines.isNotEmpty && combinedLines.last.trim().isEmpty) {
       combinedLines.removeLast();
     }
 
     return combinedLines;
   }
 
-  Future<void> _showResultsDialog(BuildContext context,
-      List<Widget> body,
-      List<String> summaryLines,
-      DateTime sel,) async {
-    final cs = Theme
-        .of(context)
-        .colorScheme;
+  Future<void> _showResultsDialog(
+    BuildContext context,
+    List<Widget> body,
+    List<String> summaryLines,
+    DateTime sel,
+  ) async {
+    final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
 
     // 記録の有無（ラベル切替に使用）
@@ -2507,10 +2430,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
-        final double maxHeight = MediaQuery
-            .of(ctx)
-            .size
-            .height * 0.90;
+        final double maxHeight = MediaQuery.of(ctx).size.height * 0.90;
         return SafeArea(
           top: false,
           child: ConstrainedBox(
@@ -2570,43 +2490,43 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: body.isEmpty
                           ? [
-                        Center(
-                          child: Column(
-                            children: [
-                              SizedBox.square(
-                                dimension: MediaQuery
-                                    .of(context)
-                                    .size
-                                    .height / 3, // 正方形：画面高の約1/3
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(24), // 角丸
-                                  child: Image.asset(
-                                    _emptyStateAssetFor(sel),
-                                    fit: BoxFit.contain, // 画像は切り抜かず収める
-                                    errorBuilder: (_, __, ___) =>
-                                        Image.asset(
-                                          'assets/illustrations/empty/calendar/mon.png',
-                                          fit: BoxFit.contain,
+                              Center(
+                                child: Column(
+                                  children: [
+                                    SizedBox.square(
+                                      dimension:
+                                          MediaQuery.of(context).size.height /
+                                              3, // 正方形：画面高の約1/3
+                                      child: ClipRRect(
+                                        borderRadius:
+                                            BorderRadius.circular(24), // 角丸
+                                        child: Image.asset(
+                                          _emptyStateAssetFor(sel),
+                                          fit: BoxFit.contain, // 画像は切り抜かず収める
                                           errorBuilder: (_, __, ___) =>
-                                              Icon(
-                                                Icons.event_busy,
-                                                size: 72,
-                                                color: cs.onSurfaceVariant,
-                                              ),
+                                              Image.asset(
+                                            'assets/illustrations/empty/calendar/mon.png',
+                                            fit: BoxFit.contain,
+                                            errorBuilder: (_, __, ___) => Icon(
+                                              Icons.event_busy,
+                                              size: 72,
+                                              color: cs.onSurfaceVariant,
+                                            ),
+                                          ),
                                         ),
-                                  ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      l10n.noRecords,
+                                      style: TextStyle(
+                                          color: cs.onSurfaceVariant,
+                                          fontSize: 14),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                l10n.noRecords,
-                                style: TextStyle(
-                                    color: cs.onSurfaceVariant, fontSize: 14),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ]
+                            ]
                           : body,
                     ),
                   ),
@@ -2618,9 +2538,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                   child: BigEarningAd(
                     // ★本番の広告ユニットIDに差し替えてください
-                    androidNativeUnitId: 'ca-app-pub-3331079517737737/8075628963',
+                    androidNativeUnitId:
+                        'ca-app-pub-3331079517737737/8075628963',
                     iosNativeUnitId: 'ca-app-pub-3331079517737737/2163497749',
-                    androidBannerUnitId: 'ca-app-pub-3331079517737737/6135915237',
+                    androidBannerUnitId:
+                        'ca-app-pub-3331079517737737/6135915237',
                     iosBannerUnitId: 'ca-app-pub-3331079517737737/9252979261',
                     height: 260,
                     // NativeAd Factory ID（後述のプラットフォーム登録で使うID）
@@ -2661,9 +2583,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 // カレンダー直下に出す「◯月◯日の記録」のカード（左寄せ・スクロールしない）
   // カレンダー直下に出す「◯月◯日の記録」のカード（左寄せ・スクロールしない）
   Widget _buildResultsArea(BuildContext context, DailyRecord? record) {
-    final cs = Theme
-        .of(context)
-        .colorScheme;
+    final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final DateTime sel = _selectedDay ?? _focusedDay ?? DateTime.now();
 
@@ -2688,8 +2608,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     bool _menuHasAnyData(MenuData m) {
-      final len = (m.weights.length < m.reps.length) ? m.weights.length : m.reps
-          .length;
+      final len =
+          (m.weights.length < m.reps.length) ? m.weights.length : m.reps.length;
       for (int i = 0; i < len; i++) {
         final w = m.weights[i].toString().trim();
         final r = m.reps[i].toString().trim();
@@ -2697,9 +2617,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
       if (_hasPositiveDistanceValue(m.distance)) return true;
       if (_hasPositiveDurationValue(m.duration)) return true;
-      if ((m.calories
-          ?.trim()
-          .isNotEmpty ?? false)) return true;
+      if ((m.calories?.trim().isNotEmpty ?? false)) return true;
       if (m.totalVolume != null) return true;
       return false;
     }
@@ -2734,7 +2652,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _selectableLine(
               text: '${l10n.distance}: ${_formatDistance(m.distance, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface,
+              style: TextStyle(
+                  color: cs.onSurface,
                   fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
@@ -2743,23 +2662,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
         if (hasDuration) {
           summaryChildren.add(
             _selectableLine(
-              text: '${l10n.time}: ${_formatDurationHM(
-                  context, m.duration, l10n)}',
+              text:
+                  '${l10n.time}: ${_formatDurationHM(context, m.duration, l10n)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface,
+              style: TextStyle(
+                  color: cs.onSurface,
                   fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
           );
         }
-        if ((m.calories
-            ?.trim()
-            .isNotEmpty ?? false)) {
+        if ((m.calories?.trim().isNotEmpty ?? false)) {
           summaryChildren.add(
             _selectableLine(
               text: '${l10n.calorie}: ${m.calories} ${l10n.kcalUnit}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface,
+              style: TextStyle(
+                  color: cs.onSurface,
                   fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
@@ -2834,7 +2753,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _selectableLine(
               text: '${i + 1}${l10n.sets}：$setDisplay',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(color: cs.onSurface,
+              style: TextStyle(
+                  color: cs.onSurface,
                   fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
@@ -2844,11 +2764,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
           summaryChildren.add(
             _selectableLine(
               text:
-              '${l10n.totalVolumeLabel}：${formatTotalVolumeValue(
-                  l10n, m.totalVolume)}',
+                  '${l10n.totalVolumeLabel}：${formatTotalVolumeValue(l10n, m.totalVolume)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style:
-              TextStyle(color: cs.onSurface,
+              style: TextStyle(
+                  color: cs.onSurface,
                   fontSize: 15,
                   fontWeight: FontWeight.w400),
             ),
@@ -2870,8 +2789,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
 
     // --- 個人値まとめ（あるものだけ）
-    final hasPersonal = (record.weight != null) || (bodyFatVal != null) ||
-        (waistValCm != null) || (bmiVal != null);
+    final hasPersonal = (record.weight != null) ||
+        (bodyFatVal != null) ||
+        (waistValCm != null) ||
+        (bmiVal != null);
     if (hasPersonal) {
       summaryChildren.add(
         Padding(
@@ -2887,8 +2808,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final unit = SettingsManager.currentUnit;
         summaryChildren.add(
           _selectableLine(
-            text: '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(
-                1)} $unit',
+            text:
+                '${l10n.bodyWeight}: ${record.weight!.toStringAsFixed(1)} $unit',
             style: TextStyle(color: cs.onSurface, fontSize: 15),
             padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
           ),
@@ -2925,9 +2846,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     // メモ
     final memo = _getMemoTextForDate(sel);
-    if (memo != null && memo
-        .trim()
-        .isNotEmpty) {
+    if (memo != null && memo.trim().isNotEmpty) {
       summaryChildren.add(
         Padding(
           padding: const EdgeInsets.only(top: 8.0),
@@ -2942,10 +2861,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // ====== サマリ生成ここまで ======
 
     // FAB と重ならない横幅（右余白+安全マージンで約 96px 確保）
-    final double screenW = MediaQuery
-        .of(context)
-        .size
-        .width;
+    final double screenW = MediaQuery.of(context).size.width;
     final double maxWidth = (screenW - 96).clamp(220.0, screenW);
 
     const double fabHeight = 56;
@@ -2964,9 +2880,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           elevation: 4,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: Theme
-                .of(context)
-                .dividerColor),
+            side: BorderSide(color: Theme.of(context).dividerColor),
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
@@ -3005,7 +2919,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
-
 }
 
 typedef CalendarScreenState = _CalendarScreenState;

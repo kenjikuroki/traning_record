@@ -29,11 +29,13 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final GlobalKey<CalendarScreenState> _calendarKey = GlobalKey<CalendarScreenState>();
+  final GlobalKey<CalendarScreenState> _calendarKey =
+      GlobalKey<CalendarScreenState>();
   final GlobalKey<AlbumScreenState> _albumKey = GlobalKey<AlbumScreenState>();
   int _currentIndex = 0;
 
-  int get _currentNavIndex => _currentIndex <= 1 ? _currentIndex : _currentIndex + 1;
+  int get _currentNavIndex =>
+      _currentIndex <= 1 ? _currentIndex : _currentIndex + 1;
 
   bool get _isAddDisabled => _currentIndex >= 2;
 
@@ -114,12 +116,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme
-        .of(context)
-        .colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final addDisabled = _isAddDisabled;
-
 
 // ▼ ライト：白地に黒文字／ダーク：黒地に白文字
     final Color navBgColor = colorScheme.primaryContainer; // ← テーマ連動
@@ -144,7 +143,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ];
       }
     })();
-
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -190,14 +188,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: ColoredBox(
         // ▼ バー“の下”を含めて同色で塗る
-        color: Theme
-            .of(context)
-            .bottomNavigationBarTheme
-            .backgroundColor
-            ?? Theme
-                .of(context)
-                .colorScheme
-                .surface,
+        color: Theme.of(context).bottomNavigationBarTheme.backgroundColor ??
+            Theme.of(context).colorScheme.surface,
         child: SafeArea(
           top: false, // 下だけ余白を確保
           child: BottomNavigationBar(
