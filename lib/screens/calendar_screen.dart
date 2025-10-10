@@ -1700,9 +1700,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 formatButtonVisible: false,
                 decoration: BoxDecoration(
                   color: colorScheme.primary,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(12),
-                    topRight: Radius.circular(12),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(12),
+                    bottom: Radius.circular(12),
                   ),
                   border: Border(
                     bottom: BorderSide(

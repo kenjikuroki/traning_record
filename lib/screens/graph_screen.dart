@@ -2388,37 +2388,43 @@ class _GraphScreenState extends State<GraphScreen> {
       opacity: (_noMenus && !_isPersonalContext()) ? 0.4 : 1.0,
       child: SizedBox(
         height: _kControlHeight,
-        child: OutlinedButton(
-          key: _kGoal,
-          style: OutlinedButton.styleFrom(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12.0),
-            ),
-            side: BorderSide(color: colorScheme.outlineVariant),
-            backgroundColor: colorScheme.surfaceContainer,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-          ),
-          onPressed: (_noMenus && !_isPersonalContext())
-              ? () => _showThrottledHint(l10n.hintRecordFirst)
-              : _openGoalPicker,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.flag_outlined, size: 18),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  _goalController.text.isEmpty
-                      ? l10n.enterGoal
-                      : _goalController.text,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            key: _kGoal,
+            borderRadius: BorderRadius.circular(12),
+            onTap: (_noMenus && !_isPersonalContext())
+                ? () => _showThrottledHint(l10n.hintRecordFirst)
+                : _openGoalPicker,
+            child: Ink(
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainer,
+                borderRadius: BorderRadius.circular(12),
+                border:
+                    Border.all(color: colorScheme.primary.withOpacity(0.5)),
               ),
-            ],
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.flag_outlined, size: 18),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      _goalController.text.isEmpty
+                          ? l10n.enterGoal
+                          : _goalController.text,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -2457,7 +2463,7 @@ class _GraphScreenState extends State<GraphScreen> {
                 decoration: BoxDecoration(
                   color: colorScheme.surfaceContainer,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: colorScheme.outlineVariant),
+                  border: Border.all(color: colorScheme.primary.withOpacity(0.5)),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
