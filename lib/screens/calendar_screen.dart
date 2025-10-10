@@ -1312,11 +1312,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final bool canShowChips = showEventsForOutOfMonth ||
         day.month == _focusedDay.month || record != null || hasMemo || hasPhoto;
 
-    final double chipFontSize = (10.0 * chipScale).clamp(7.5, 10.0);
-    final double chipVPad = (2.0 * chipScale).clamp(1.0, 2.0);
-    final double chipHPad = (6.0 * chipScale).clamp(4.0, 6.0);
-    final double chipGap = (2.0 * chipScale).clamp(1.0, 3.0);
-    final double chipBoxHeight = chipFontSize * 1.05 + chipVPad * 2;
+    final double chipFontSize = (10.0 * chipScale).clamp(7.0, 12.0);
+    final double chipVPad = (2.0 * chipScale).clamp(1.0, 3.0);
+    final double chipHPad = (6.0 * chipScale).clamp(4.0, 8.0);
+    final double chipGap = (2.0 * chipScale).clamp(1.0, 4.0);
+    final double chipBoxHeight = chipFontSize * 1.1 + chipVPad * 2;
 
     Widget _partChip(String part) {
       final label = _translatePartToLocale(context, part);
@@ -1456,35 +1456,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     final double dayFontSize = Theme
-            .of(context)
-            .textTheme
-            .bodyMedium
-            ?.fontSize ??
+        .of(context)
+        .textTheme
+        .bodyMedium
+        ?.fontSize ??
         14.0;
     final double dayLabelHeightEstimate = dayFontSize * 1.25 + 8.0;
-
-    int capacity;
-    if (cellHeight != null && cellHeight > 0) {
-      final double usableForChips =
-          cellHeight - dayLabelHeightEstimate;
-      if (usableForChips <= 0 || chipBoxHeight + chipGap <= 0) {
-        capacity = 0;
-      } else {
-        capacity =
-            (usableForChips / (chipBoxHeight + chipGap)).floor();
-      }
-    } else {
-      capacity = 4;
-    }
-
-    if (capacity > chips.length) capacity = chips.length;
-    if (capacity < 0) capacity = 0;
-    if (capacity == 0 && chips.isNotEmpty) {
-      capacity = 1;
-    }
-
-    final List<Widget> displayChips = chips.take(capacity).toList();
-    final int chipCount = displayChips.length;
 
     final Color dayNumberColor = (day.weekday == DateTime.sunday)
         ? Colors.red
@@ -1499,28 +1476,77 @@ class _CalendarScreenState extends State<CalendarScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 2),
         child: LayoutBuilder(
           builder: (context, constraints) {
+            final double effectiveCellHeight =
+                cellHeight ?? constraints.maxHeight;
+            int capacity = chips.length;
+            if (effectiveCellHeight.isFinite && effectiveCellHeight > 0) {
+              final double usableForChips =
+                  effectiveCellHeight - dayLabelHeightEstimate;
+              if (usableForChips <= 0 || (chipBoxHeight + chipGap) <= 0) {
+                capacity = 0;
+              } else {
+                capacity =
+                    (usableForChips / (chipBoxHeight + chipGap)).floor();
+              }
+            }
+
+            if (capacity > chips.length) capacity = chips.length;
+            if (capacity < 0) capacity = 0;
+            if (capacity == 0 && chips.isNotEmpty) {
+              capacity = 1;
+            }
+
+            final List<Widget> displayChips =
+                chips.take(capacity).toList(growable: false);
+            final int chipCount = displayChips.length;
+
+            double remainingHeight = 0;
+            if (effectiveCellHeight.isFinite && effectiveCellHeight > 0) {
+              double usedHeight = dayLabelHeightEstimate;
+              if (chipCount > 0) {
+                usedHeight += chipGap;
+                usedHeight += chipCount * chipBoxHeight;
+                if (chipCount > 1) {
+                  usedHeight += (chipCount - 1) * chipGap;
+                }
+              }
+              remainingHeight = effectiveCellHeight - usedHeight;
+              if (remainingHeight < 0) remainingHeight = 0;
+            }
+
+            final double bottomPad = remainingHeight;
+
+            final List<Widget> children = [];
+
+            children.add(
+              _dayLabelTop(
+                  context, day, textColor: dayNumberColor, selected: selected),
+            );
+
+            if (chipCount > 0) {
+              children.add(SizedBox(height: chipGap));
+              for (int i = 0; i < chipCount; i++) {
+                children.add(
+                  SizedBox(
+                    height: chipBoxHeight,
+                    width: constraints.maxWidth,
+                    child: displayChips[i],
+                  ),
+                );
+                if (i != chipCount - 1) {
+                  children.add(SizedBox(height: chipGap));
+                }
+              }
+            }
+
+            if (bottomPad > 0) {
+              children.add(SizedBox(height: bottomPad));
+            }
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.max,
-              children: [
-                _dayLabelTop(
-                    context, day, textColor: dayNumberColor, selected: selected),
-                if (chipCount > 0) ...[
-                  SizedBox(height: chipGap),
-                  for (int i = 0; i < chipCount; i++)
-                    Padding(
-                      padding: EdgeInsets.only(
-                          bottom: i == chipCount - 1 ? 0 : chipGap),
-                      child: SizedBox(
-                        height: chipBoxHeight,
-                        width: constraints.maxWidth,
-                        child: displayChips[i],
-                      ),
-                    ),
-                  const Spacer(),
-                ] else
-                  const Spacer(),
-              ],
+              children: children,
             );
           },
         ),
@@ -1652,7 +1678,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             builder: (context, ___, ____) {
               return CenteredConstrained(
                 maxWidth: 760,
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
                 child: ValueListenableBuilder<Box<dynamic>>(
                   valueListenable: widget.settingsBox.listenable(),
                   builder: (context, _settings, __) {
@@ -1665,10 +1691,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             const AdBanner(screenName: 'calendar'),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 12),
                             Expanded(
                               child: _buildCalendar(context),
                             ),
+                            const SizedBox(height: 12),
                           ],
                         );
                       },
@@ -1691,6 +1718,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     return Card(
       key: _kCalendarCard,
+      margin: EdgeInsets.zero,
       color: colorScheme.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       elevation: 4,
@@ -1704,14 +1732,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
             final double available = constraints.maxHeight;
 
             if (available.isFinite && available > 0) {
-              const double headerReserve = 72.0;
-              const double bottomReserve = 12.0;
-              final double usable = available - headerReserve - bottomReserve;
-              if (usable > 0) {
-                final double candidate = usable / 6.0;
-                final double maxRow = baseRow * 1.2;
-                rowHeight = candidate > maxRow ? maxRow : candidate;
+              const double headerStatic = 44.0; // タイトル行の概算
+              double estimate = rowHeight;
+              for (int i = 0; i < 5; i++) {
+                final double scale = (estimate / baseRow).clamp(0.3, 1.8);
+                final double dowHeightGuess = (28.0 * scale).clamp(20.0, 48.0);
+                final double headerReserve = headerStatic + dowHeightGuess;
+                final double usable = available - headerReserve;
+                if (usable <= 0) {
+                  estimate = available / 6.0;
+                  break;
+                }
+                final double next = usable / 6.0;
+                if ((next - estimate).abs() < 0.5) {
+                  estimate = next;
+                  break;
+                }
+                estimate = next;
               }
+              rowHeight = estimate;
             }
 
             if (rowHeight <= 0) {
@@ -1719,8 +1758,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             }
 
             final double chipScale =
-                (rowHeight / baseRow).clamp(0.3, 1.2);
-            double dowHeight = (28.0 * chipScale).clamp(20.0, 44.0);
+                (rowHeight / baseRow).clamp(0.3, 1.8);
+            double dowHeight = (28.0 * chipScale).clamp(20.0, 48.0);
 
             return TableCalendar<Object>(
               firstDay: DateTime.utc(2015, 1, 1),
