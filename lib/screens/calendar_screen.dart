@@ -1434,17 +1434,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ? Colors.red
         : (day.weekday == DateTime.saturday ? Colors.blue : textColor);
 
+    final borderColor = selected
+        ? cs.primary.withOpacity(0.40)
+        : cs.primary.withOpacity(0.18);
+
     return SizedBox.expand(
-      child: Container(
+      child: DecoratedBox(
         decoration: BoxDecoration(
           color: selected ? cs.primary.withOpacity(0.10) : null,
-          borderRadius: selected ? BorderRadius.circular(8) : null,
+          borderRadius: selected ? BorderRadius.circular(8) : BorderRadius.zero,
+          border: Border.all(color: borderColor, width: 0.6),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final double effectiveCellHeight =
-                cellHeight ?? constraints.maxHeight;
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final double effectiveCellHeight =
+                  cellHeight ?? constraints.maxHeight;
             int capacity = chips.length;
             if (effectiveCellHeight.isFinite && effectiveCellHeight > 0) {
               final double usableForChips =
@@ -1514,7 +1520,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               mainAxisSize: MainAxisSize.max,
               children: children,
             );
-          },
+            },
+          ),
         ),
       ),
     );
@@ -1691,18 +1698,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
               headerStyle: HeaderStyle(
                 titleCentered: true,
                 formatButtonVisible: false,
-                titleTextStyle: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 24,
-                  height: 1.35,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
+                  ),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: colorScheme.onPrimary.withOpacity(0.35),
+                      width: 2,
+                    ),
+                  ),
                 ),
-                leftChevronIcon:
-                    Icon(Icons.chevron_left, color: colorScheme.onSurface),
-                rightChevronIcon:
-                    Icon(Icons.chevron_right, color: colorScheme.onSurface),
-                headerMargin: const EdgeInsets.symmetric(vertical: 18),
-                headerPadding: const EdgeInsets.symmetric(vertical: 12),
+                titleTextStyle: TextStyle(
+                  color: colorScheme.onPrimary,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 26,
+                  height: 1.4,
+                  letterSpacing: 0.4,
+                ),
+                leftChevronIcon: Icon(
+                  Icons.chevron_left,
+                  color: colorScheme.onPrimary,
+                ),
+                rightChevronIcon: Icon(
+                  Icons.chevron_right,
+                  color: colorScheme.onPrimary,
+                ),
+                headerMargin: const EdgeInsets.only(bottom: 16),
+                headerPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
               calendarStyle: CalendarStyle(
                 defaultTextStyle: TextStyle(color: colorScheme.onSurface),
