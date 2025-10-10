@@ -1693,13 +1693,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 formatButtonVisible: false,
                 titleTextStyle: TextStyle(
                   color: colorScheme.onSurface,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 24,
+                  height: 1.35,
                 ),
                 leftChevronIcon:
                     Icon(Icons.chevron_left, color: colorScheme.onSurface),
                 rightChevronIcon:
                     Icon(Icons.chevron_right, color: colorScheme.onSurface),
+                headerMargin: const EdgeInsets.symmetric(vertical: 18),
+                headerPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
               calendarStyle: CalendarStyle(
                 defaultTextStyle: TextStyle(color: colorScheme.onSurface),
