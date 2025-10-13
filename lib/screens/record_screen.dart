@@ -5704,6 +5704,15 @@ class _RecordScreenState extends State<RecordScreen>
       return const SizedBox.shrink();
 
     final bool isAerobic = section.selectedPart == l10n.aerobicExercise;
+    final Color overlayHeaderBg = cs.primary;
+    final Color overlayHeaderFg = cs.onPrimary;
+    final ButtonStyle overlayButtonStyle = TextButton.styleFrom(
+      backgroundColor: overlayHeaderFg.withOpacity(0.16),
+      foregroundColor: overlayHeaderFg,
+      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+      overlayColor: overlayHeaderFg.withOpacity(0.12),
+    );
 
     final double topGap = 12.0;
     final double bottomGap = media.padding.bottom + 12;
@@ -5759,70 +5768,90 @@ class _RecordScreenState extends State<RecordScreen>
                       children: [
                         // ヘッダー：左=部位、右=＋セット＆保存
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
-                          child: Row(
-                            children: [
-                              Text(
-                                section.selectedPart ?? '',
-                                style: TextStyle(
-                                  color: cs.onSurface,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16,
+                          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: overlayHeaderBg,
+                              borderRadius: BorderRadius.circular(14.0),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14.0,
+                              vertical: 10.0,
+                            ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  section.selectedPart ?? '',
+                                  style: TextStyle(
+                                    color: overlayHeaderFg,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                  ),
                                 ),
-                              ),
-                              const Spacer(),
-                              if (!isAerobic &&
-                                  SettingsManager.showIntervalTimer) ...[
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Center(
-                                    child: ExerciseInputTimer(
-                                      key: _ensureTimerKey(secIndex, menuIndex),
+                                const Spacer(),
+                                if (!isAerobic &&
+                                    SettingsManager.showIntervalTimer) ...[
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Align(
+                                      alignment: Alignment.center,
+                                      child: Theme(
+                                        data: Theme.of(context).copyWith(
+                                          colorScheme: cs.copyWith(
+                                            primary: overlayHeaderFg,
+                                            onPrimary: overlayHeaderBg,
+                                          ),
+                                        ),
+                                        child: ExerciseInputTimer(
+                                          key: _ensureTimerKey(secIndex, menuIndex),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
-                              if (!isAerobic) ...[
-                                const SizedBox(width: 12),
-                                TextButton(
-                                  onPressed: (menuIndex <
-                                              section.setInputDataList.length &&
-                                          section.setInputDataList[menuIndex]
-                                                  .length <
-                                              10)
-                                      ? () {
-                                          HapticFeedback.selectionClick();
-                                          _addOneSetAt(secIndex, menuIndex);
-                                        }
-                                      : null,
-                                  child: Text(l10n.addSet,
+                                  const SizedBox(width: 12),
+                                ],
+                                if (!isAerobic) ...[
+                                  TextButton(
+                                    onPressed: (menuIndex <
+                                                section.setInputDataList.length &&
+                                            section.setInputDataList[menuIndex]
+                                                    .length <
+                                                10)
+                                        ? () {
+                                            HapticFeedback.selectionClick();
+                                            _addOneSetAt(secIndex, menuIndex);
+                                          }
+                                        : null,
+                                    style: overlayButtonStyle,
+                                    child: Text(
+                                      l10n.addSet,
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.w700)),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ),
+                                  const SizedBox(width: 8),
+                                ],
+                                TextButton.icon(
+                                  key: _kMenuSaveButton,
+                                  onPressed: _saveMenuAndClose,
+                                  icon: Icon(
+                                    Icons.check_rounded,
+                                    color: overlayHeaderFg,
+                                  ),
+                                  label: Text(
+                                    l10n.save,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  style: overlayButtonStyle,
                                 ),
                               ],
-                              const SizedBox(width: 4),
-                              TextButton.icon(
-                                key: _kMenuSaveButton,
-                                onPressed: _saveMenuAndClose,
-                                icon: const Icon(Icons.check_rounded),
-                                label: Text(l10n.save,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w700)),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
-                        const Divider(height: 1),
+                        Divider(height: 1, color: overlayHeaderBg.withOpacity(0.3)),
 
                         // 内容：MenuList ...
                         Expanded(
@@ -9613,10 +9642,9 @@ class _MenuListState extends State<MenuList> {
     final unitLabel = currentUnit == 'kg' ? l10n.kg : l10n.lbs;
     final headerStyle = TextStyle(
       color: Colors.white,
-      fontSize: 12.0,
+      fontSize: 14.0,
       fontWeight: FontWeight.w700,
     );
-    final headerStyleCompact = headerStyle.copyWith(fontSize: 9.0);
     final Color _headerBgColor = colorScheme.primary;
     final valueStyle = TextStyle(
       fontFamily: kUiFont,
@@ -9624,11 +9652,11 @@ class _MenuListState extends State<MenuList> {
       fontSize: 13.0,
     );
     final numberEmphasisStyle = valueStyle.copyWith(
-      fontSize: 20.0,
+      fontSize: 30.0,
       fontWeight: FontWeight.w700,
     );
     final rirEmphasisStyle = valueStyle.copyWith(
-      fontSize: 14.0,
+      fontSize: 24.0,
       fontWeight: FontWeight.w600,
     );
     final unitStyle = TextStyle(
@@ -9640,10 +9668,10 @@ class _MenuListState extends State<MenuList> {
 
     // 列幅（SET｜重量｜回数｜RIR｜RM｜失敗｜完了）をスリム化
     const double _wSet = 30.0; // 36→30
-    const double _wWeight = 68.0; // 72→68
-    const double _wReps = 52.0; // 56→52
+    const double _wWeight = 84.0; // 72→84
+    const double _wReps = 64.0; // 56→64
     const double _wRir = 40.0; // 44→40
-    const double _wRm = 48.0; // 56→48
+    const double _wRm = 64.0; // 56→64
     const double _wFail = 44.0; // 48→44
     const double _wDone = 52.0; // 56→52
 
@@ -9740,7 +9768,7 @@ class _MenuListState extends State<MenuList> {
               child: FittedBox(
                 child: Text(
                   failureHeaderLabel,
-                  style: headerStyleCompact,
+                  style: headerStyle.copyWith(fontSize: headerStyle.fontSize! - 3),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -9756,7 +9784,7 @@ class _MenuListState extends State<MenuList> {
             child: FittedBox(
               child: Text(
                 l10n.completionLabel,
-                style: headerStyleCompact,
+                style: headerStyle,
                 textAlign: TextAlign.center,
               ),
             ),
@@ -9767,31 +9795,28 @@ class _MenuListState extends State<MenuList> {
       rows.add(
         Padding(
           padding: const EdgeInsets.only(top: 6.0, bottom: 4.0),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10.0),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                decoration: BoxDecoration(
-                  color: _headerBgColor,
-                  borderRadius: BorderRadius.circular(10.0),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: colorScheme.outlineVariant.withOpacity(0.45),
-                      width: 0.5,
-                    ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10.0),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              decoration: BoxDecoration(
+                color: _headerBgColor,
+                borderRadius: BorderRadius.circular(10.0),
+                border: Border(
+                  bottom: BorderSide(
+                    color: colorScheme.outlineVariant.withOpacity(0.45),
+                    width: 0.5,
                   ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6.0),
-                  child: IntrinsicHeight(
-                    child: Row(
-                      children: _withVerticalDividers(
-                        headerChildren,
-                        colorScheme.outlineVariant.withOpacity(0.45),
-                      ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
+                child: IntrinsicHeight(
+                  child: Row(
+                    children: _withVerticalDividers(
+                      headerChildren,
+                      colorScheme.outlineVariant.withOpacity(0.45),
                     ),
                   ),
                 ),
@@ -9822,7 +9847,7 @@ class _MenuListState extends State<MenuList> {
               '${index + 1}',
               style: TextStyle(
                 color: colorScheme.onSurfaceVariant,
-                fontSize: 13.0,
+                fontSize: 18.0,
               ),
             ),
           ),
@@ -9830,147 +9855,146 @@ class _MenuListState extends State<MenuList> {
         SizedBox(width: kColGap),
         bottomCell(
           _wWeight,
-          Focus(
-            onFocusChange: notifyFocus,
-            child: ConstrainedBox(
-              constraints:
-                  const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
-              child: Align(
-                alignment: Alignment.bottomRight,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: AnimatedScale(
-                        scale: _bounceWeightRows.contains(index) ? 1.05 : 1.0,
-                        duration: const Duration(milliseconds: 120),
-                        curve: Curves.easeOut,
-                        child: TextField(
-                          controller: set.weightController,
-                          readOnly: true,
-                          showCursor: false,
-                          enableInteractiveSelection: false,
-                          textAlign: TextAlign.right,
-                          textAlignVertical: TextAlignVertical.bottom,
-                          style: numberEmphasisStyle.copyWith(
-                            color: set.checked
-                                ? colorScheme.onSurface
-                                : colorScheme.onSurfaceVariant.withOpacity(0.5),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Focus(
+                  onFocusChange: notifyFocus,
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                    child: AnimatedScale(
+                      scale: _bounceWeightRows.contains(index) ? 1.05 : 1.0,
+                      duration: const Duration(milliseconds: 120),
+                      curve: Curves.easeOut,
+                      child: TextField(
+                        controller: set.weightController,
+                        readOnly: true,
+                        showCursor: false,
+                        enableInteractiveSelection: false,
+                        textAlign: TextAlign.right,
+                        textAlignVertical: TextAlignVertical.bottom,
+                        style: numberEmphasisStyle.copyWith(
+                          color: set.checked
+                              ? colorScheme.onSurface
+                              : colorScheme.onSurfaceVariant.withOpacity(0.5),
+                        ),
+                        onTap: () async {
+                          notifyFocus(true);
+                          HapticFeedback.selectionClick();
+                          setState(() => _bounceWeightRows.add(index));
+                          Future.delayed(const Duration(milliseconds: 120), () {
+                            if (mounted) {
+                              setState(() => _bounceWeightRows.remove(index));
+                            }
+                          });
+                          await _openWeightPicker(set);
+                        },
+                        decoration: InputDecoration(
+                          isDense: true,
+                          filled: false,
+                          hintText: '—',
+                          hintStyle: valueStyle.copyWith(
+                            color: colorScheme.onSurfaceVariant.withOpacity(0.5),
                           ),
-                          onTap: () async {
-                            notifyFocus(true);
-                            HapticFeedback.selectionClick();
-                            setState(() => _bounceWeightRows.add(index));
-                            Future.delayed(const Duration(milliseconds: 120), () {
-                              if (mounted) {
-                                setState(() => _bounceWeightRows.remove(index));
-                              }
-                            });
-                            await _openWeightPicker(set);
-                          },
-                          decoration: InputDecoration(
-                            isDense: true,
-                            filled: false,
-                            hintText: '—',
-                            hintStyle: valueStyle.copyWith(
-                              color:
-                                  colorScheme.onSurfaceVariant.withOpacity(0.5),
-                            ),
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            contentPadding: const EdgeInsets.only(
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                            ),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: const EdgeInsets.only(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 2.0),
-                      child: Text(unitLabel, style: unitStyle.copyWith(fontSize: 13.0)),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 4),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2.0),
+                child: Text(
+                  unitLabel,
+                  style: unitStyle.copyWith(fontSize: 13.0),
+                ),
+              ),
+            ],
           ),
         ),
         SizedBox(width: kColGap),
         bottomCell(
           _wReps,
-          Focus(
-            onFocusChange: notifyFocus,
-            child: ConstrainedBox(
-              constraints:
-                  const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
-              child: Align(
-                alignment: Alignment.bottomRight,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: AnimatedScale(
-                        scale: _bounceRepsRows.contains(index) ? 1.05 : 1.0,
-                        duration: const Duration(milliseconds: 120),
-                        curve: Curves.easeOut,
-                        child: TextField(
-                          controller: set.repController,
-                          readOnly: true,
-                          showCursor: false,
-                          enableInteractiveSelection: false,
-                          textAlign: TextAlign.right,
-                          textAlignVertical: TextAlignVertical.bottom,
-                          style: numberEmphasisStyle.copyWith(
-                            color: set.checked
-                                ? colorScheme.onSurface
-                                : colorScheme.onSurfaceVariant.withOpacity(0.5),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Focus(
+                  onFocusChange: notifyFocus,
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                    child: AnimatedScale(
+                      scale: _bounceRepsRows.contains(index) ? 1.05 : 1.0,
+                      duration: const Duration(milliseconds: 120),
+                      curve: Curves.easeOut,
+                      child: TextField(
+                        controller: set.repController,
+                        readOnly: true,
+                        showCursor: false,
+                        enableInteractiveSelection: false,
+                        textAlign: TextAlign.right,
+                        textAlignVertical: TextAlignVertical.bottom,
+                        style: numberEmphasisStyle.copyWith(
+                          color: set.checked
+                              ? colorScheme.onSurface
+                              : colorScheme.onSurfaceVariant.withOpacity(0.5),
+                        ),
+                        onTap: () async {
+                          notifyFocus(true);
+                          HapticFeedback.selectionClick();
+                          setState(() => _bounceRepsRows.add(index));
+                          Future.delayed(const Duration(milliseconds: 120), () {
+                            if (mounted) {
+                              setState(() => _bounceRepsRows.remove(index));
+                            }
+                          });
+                          await _openRepsPicker(set);
+                        },
+                        decoration: InputDecoration(
+                          isDense: true,
+                          filled: false,
+                          hintText: '—',
+                          hintStyle: valueStyle.copyWith(
+                            color: colorScheme.onSurfaceVariant.withOpacity(0.5),
                           ),
-                          onTap: () async {
-                            notifyFocus(true);
-                            HapticFeedback.selectionClick();
-                            setState(() => _bounceRepsRows.add(index));
-                            Future.delayed(const Duration(milliseconds: 120), () {
-                              if (mounted) {
-                                setState(() => _bounceRepsRows.remove(index));
-                              }
-                            });
-                            await _openRepsPicker(set);
-                          },
-                          decoration: InputDecoration(
-                            isDense: true,
-                            filled: false,
-                            hintText: '—',
-                            hintStyle: valueStyle.copyWith(
-                              color:
-                                  colorScheme.onSurfaceVariant.withOpacity(0.5),
-                            ),
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            contentPadding: const EdgeInsets.only(
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                            ),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: const EdgeInsets.only(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 2.0),
-                      child: Text(l10n.reps, style: unitStyle.copyWith(fontSize: 13.0)),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 4),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2.0),
+                child: Text(
+                  l10n.reps,
+                  style: unitStyle.copyWith(fontSize: 13.0),
+                ),
+              ),
+            ],
           ),
         ),
+
       ];
 
       if (showRirColumn && rirController != null) {
@@ -9983,44 +10007,34 @@ class _MenuListState extends State<MenuList> {
               child: ConstrainedBox(
                 constraints:
                     const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
-                child: Align(
-                  alignment: Alignment.bottomRight,
-                  child: TextField(
-                    controller: rirController,
-                    readOnly: true,
-                    showCursor: false,
-                    enableInteractiveSelection: false,
-                    textAlign: TextAlign.right,
-                    textAlignVertical: TextAlignVertical.bottom,
-                    style: rirEmphasisStyle.copyWith(
-                      color: _rirTextColor(
-                        set.rirController.text.trim(),
-                        colorScheme,
-                      ),
+                child: TextField(
+                  controller: rirController,
+                  readOnly: true,
+                  showCursor: false,
+                  enableInteractiveSelection: false,
+                  textAlign: TextAlign.right,
+                  textAlignVertical: TextAlignVertical.bottom,
+                  style: rirEmphasisStyle.copyWith(
+                    color: _rirTextColor(
+                      set.rirController.text.trim(),
+                      colorScheme,
                     ),
-                    onTap: () async {
-                      notifyFocus(true);
-                      await _openRirPicker(set);
-                    },
-                    decoration: InputDecoration(
-                      isDense: true,
-                      filled: true,
-                      fillColor: _rirBgColor(
-                        set.rirController.text.trim(),
-                        colorScheme,
-                      ),
-                      hintText: '—',
-                      hintStyle: rirEmphasisStyle.copyWith(
-                        color: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                      ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.only(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                      ),
+                  ),
+                  onTap: () async {
+                    notifyFocus(true);
+                    await _openRirPicker(set);
+                  },
+                  decoration: InputDecoration(
+                    isDense: true,
+                    filled: false,
+                    hintText: '—',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: const EdgeInsets.only(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
                     ),
                   ),
                 ),
@@ -10043,7 +10057,7 @@ class _MenuListState extends State<MenuList> {
                 rmDisplay,
                 textAlign: TextAlign.right,
                 style: valueStyle.copyWith(
-                  fontSize: 12.0,
+                  fontSize: 17.0,
                   color:
                       isMaxRm ? colorScheme.error : colorScheme.onSurfaceVariant,
                 ),
@@ -10132,15 +10146,12 @@ class _MenuListState extends State<MenuList> {
                 ),
               ),
             ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: _withVerticalDividers(
-                    rowChildren,
-                    colorScheme.outlineVariant.withOpacity(0.45),
-                  ),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: _withVerticalDividers(
+                  rowChildren,
+                  colorScheme.outlineVariant.withOpacity(0.45),
                 ),
               ),
             ),
@@ -10149,7 +10160,11 @@ class _MenuListState extends State<MenuList> {
       );
     }
 
-    return Column(children: rows);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Column(children: rows),
+    );
   }
 
   List<Widget> _withVerticalDividers(List<Widget> children, Color lineColor) {
