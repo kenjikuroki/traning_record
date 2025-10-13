@@ -136,6 +136,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get sets => 'セット';
 
   @override
+  String get setLabel => 'set';
+
+  @override
   String get reps => '回';
 
   @override

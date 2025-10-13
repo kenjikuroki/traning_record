@@ -345,6 +345,12 @@ abstract class AppLocalizations {
   /// **'sets'**
   String get sets;
 
+  /// No description provided for @setLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'set'**
+  String get setLabel;
+
   /// No description provided for @reps.
   ///
   /// In en, this message translates to:

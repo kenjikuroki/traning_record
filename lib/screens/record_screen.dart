@@ -8481,6 +8481,13 @@ class _MenuListState extends State<MenuList> {
 
   bool _prevNameEmpty = true; // ← これを追加
 
+  // 軽いスケール演出用（体重／回数）
+  final Set<int> _bounceWeightRows = <int>{};
+  final Set<int> _bounceRepsRows = <int>{};
+
+  // 行確定の淡緑フラッシュ用
+  final Set<int> _flashDoneRows = <int>{};
+
   // ★追加：単位変更のローカルハンドラ
   void _onLengthUnitChangedLocal() {
     if (!mounted) return;
@@ -8522,6 +8529,9 @@ class _MenuListState extends State<MenuList> {
     _hourController.dispose();
     _minAeroCtrl.dispose();
     _secAeroCtrl.dispose();
+    _bounceWeightRows.clear();
+    _bounceRepsRows.clear();
+    _flashDoneRows.clear();
     // リスナー解除を忘れずに
     widget.menuController.removeListener(_handleNameChanged);
     SettingsManager.lengthUnitNotifier.removeListener(_onLengthUnitChanged);
@@ -9572,6 +9582,24 @@ class _MenuListState extends State<MenuList> {
     );
   }
 
+  Color _rirTextColor(String rirText, ColorScheme cs) {
+    final v = int.tryParse(rirText);
+    if (v == null) return cs.onSurfaceVariant;
+    if (v <= 0) return cs.onErrorContainer;
+    if (v == 1) return cs.error;
+    if (v == 2) return cs.primary;
+    return cs.onSurface;
+  }
+
+  Color _rirBgColor(String rirText, ColorScheme cs) {
+    final v = int.tryParse(rirText);
+    if (v == null) return cs.surfaceVariant.withOpacity(0.4);
+    if (v <= 0) return cs.errorContainer.withOpacity(0.35);
+    if (v == 1) return cs.errorContainer.withOpacity(0.28);
+    if (v == 2) return cs.primaryContainer.withOpacity(0.28);
+    return cs.surfaceVariant.withOpacity(0.28);
+  }
+
   Widget _buildStrengthSetRows(
     AppLocalizations l10n,
     ColorScheme colorScheme,
@@ -9584,14 +9612,24 @@ class _MenuListState extends State<MenuList> {
 
     final unitLabel = currentUnit == 'kg' ? l10n.kg : l10n.lbs;
     final headerStyle = TextStyle(
-      color: colorScheme.onSurfaceVariant,
+      color: Colors.white,
       fontSize: 12.0,
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.w700,
     );
+    final headerStyleCompact = headerStyle.copyWith(fontSize: 9.0);
+    final Color _headerBgColor = colorScheme.primary;
     final valueStyle = TextStyle(
       fontFamily: kUiFont,
       color: colorScheme.onSurface,
       fontSize: 13.0,
+    );
+    final numberEmphasisStyle = valueStyle.copyWith(
+      fontSize: 20.0,
+      fontWeight: FontWeight.w700,
+    );
+    final rirEmphasisStyle = valueStyle.copyWith(
+      fontSize: 14.0,
+      fontWeight: FontWeight.w600,
     );
     final unitStyle = TextStyle(
       fontFamily: kUiFont,
@@ -9599,6 +9637,25 @@ class _MenuListState extends State<MenuList> {
       fontSize: 12.0,
       fontWeight: FontWeight.w700,
     );
+
+    // 列幅（SET｜重量｜回数｜RIR｜RM｜失敗｜完了）をスリム化
+    const double _wSet = 30.0; // 36→30
+    const double _wWeight = 68.0; // 72→68
+    const double _wReps = 52.0; // 56→52
+    const double _wRir = 40.0; // 44→40
+    const double _wRm = 48.0; // 56→48
+    const double _wFail = 44.0; // 48→44
+    const double _wDone = 52.0; // 56→52
+
+    // 列間ギャップ（6→4）
+    const double kColGap = 4.0;
+
+    Widget bottomCell(double width, Widget child) {
+      return Align(
+        alignment: Alignment.bottomCenter,
+        child: SizedBox(width: width, child: child),
+      );
+    }
 
     final maxSetCount = min(10, widget.setInputDataList.length);
     final activeSets = widget.setInputDataList.take(maxSetCount).toList();
@@ -9626,61 +9683,121 @@ class _MenuListState extends State<MenuList> {
     final List<Widget> rows = [];
 
     if (activeSets.isNotEmpty) {
+      final String failureHeaderLabel = l10n.failureLabel.contains('\n')
+          ? l10n.failureLabel
+          : l10n.failureLabel.replaceFirst('フラグ', '\nフラグ');
+
       final headerChildren = <Widget>[
         SizedBox(
-          width: 44,
-          child: Text(l10n.sets, style: headerStyle),
+          width: _wSet,
+          child: Center(
+            child: FittedBox(child: Text(l10n.setLabel, style: headerStyle)),
+          ),
         ),
-        const SizedBox(width: 6),
-        Expanded(
-          flex: 4,
-          child: Text(l10n.weightUnit, style: headerStyle),
+        const SizedBox(width: kColGap),
+        SizedBox(
+          width: _wWeight,
+          child: Center(
+            child: FittedBox(child: Text(l10n.weightUnit, style: headerStyle)),
+          ),
         ),
-        const SizedBox(width: 6),
-        Expanded(
-          flex: 3,
-          child: Text(l10n.reps, style: headerStyle),
+        const SizedBox(width: kColGap),
+        SizedBox(
+          width: _wReps,
+          child: Center(
+            child: FittedBox(child: Text(l10n.reps, style: headerStyle)),
+          ),
         ),
       ];
-      if (showRmColumn) {
-        headerChildren.add(const SizedBox(width: 6));
+      if (showRirColumn) {
+        headerChildren.add(const SizedBox(width: kColGap));
         headerChildren.add(
-          Expanded(
-            flex: 3,
-            child: Text(l10n.rmLabel, style: headerStyle),
+          SizedBox(
+            width: _wRir,
+            child: Center(
+              child: FittedBox(child: Text(l10n.rirLabel, style: headerStyle)),
+            ),
           ),
         );
       }
-      headerChildren.add(const SizedBox(width: 6));
-      headerChildren.add(
-        SizedBox(
-          width: 56,
-          child: Text(l10n.completionLabel, style: headerStyle),
-        ),
-      );
-      if (showRirColumn) {
-        headerChildren.add(const SizedBox(width: 6));
+      if (showRmColumn) {
+        headerChildren.add(const SizedBox(width: kColGap));
         headerChildren.add(
-          Expanded(
-            flex: 2,
-            child: Text(l10n.rirLabel, style: headerStyle),
+          SizedBox(
+            width: _wRm,
+            child: Center(
+              child: FittedBox(child: Text(l10n.rmLabel, style: headerStyle)),
+            ),
           ),
         );
       }
       if (showFailColumn) {
-        headerChildren.add(const SizedBox(width: 6));
+        headerChildren.add(const SizedBox(width: kColGap));
         headerChildren.add(
           SizedBox(
-            width: 48,
-            child: Text(l10n.failureLabel, style: headerStyle),
+            width: _wFail,
+            child: Center(
+              child: FittedBox(
+                child: Text(
+                  failureHeaderLabel,
+                  style: headerStyleCompact,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
           ),
         );
       }
+      headerChildren.add(const SizedBox(width: kColGap));
+      headerChildren.add(
+        SizedBox(
+          width: _wDone,
+          child: Center(
+            child: FittedBox(
+              child: Text(
+                l10n.completionLabel,
+                style: headerStyleCompact,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ),
+      );
 
       rows.add(
         Padding(
-          padding: const EdgeInsets.only(top: 4.0, bottom: 2.0),
-          child: Row(children: headerChildren),
+          padding: const EdgeInsets.only(top: 6.0, bottom: 4.0),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10.0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                decoration: BoxDecoration(
+                  color: _headerBgColor,
+                  borderRadius: BorderRadius.circular(10.0),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: colorScheme.outlineVariant.withOpacity(0.45),
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6.0),
+                  child: IntrinsicHeight(
+                    child: Row(
+                      children: _withVerticalDividers(
+                        headerChildren,
+                        colorScheme.outlineVariant.withOpacity(0.45),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       );
     }
@@ -9698,220 +9815,237 @@ class _MenuListState extends State<MenuList> {
           maxRm != null &&
           (rm - maxRm!).abs() < 1e-6;
       final rowChildren = <Widget>[
-        SizedBox(
-          width: 44,
-          child: Text(
-            '${index + 1}:',
-            style: TextStyle(
-              color: colorScheme.onSurfaceVariant,
-              fontSize: 13.0,
+        bottomCell(
+          _wSet,
+          Center(
+            child: Text(
+              '${index + 1}',
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 13.0,
+              ),
             ),
           ),
         ),
-        const SizedBox(width: 6),
-        Expanded(
-          flex: 4,
-          child: Row(
-            children: [
-              Expanded(
-                child: Focus(
-                  onFocusChange: notifyFocus,
-                  child: ConstrainedBox(
-                    constraints:
-                        const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
-                    child: TextField(
-                      controller: set.weightController,
-                      readOnly: true,
-                      showCursor: false,
-                      enableInteractiveSelection: false,
-                      textAlign: TextAlign.right,
-                      style: valueStyle.copyWith(
-                        color: set.checked
-                            ? colorScheme.onSurface
-                            : colorScheme.onSurfaceVariant.withOpacity(0.5),
-                      ),
-                      onTap: () async {
-                        notifyFocus(true);
-                        await _openWeightPicker(set);
-                      },
-                      decoration: InputDecoration(
-                        isDense: true,
-                        filled: false,
-                        hintText: '—',
-                        hintStyle: valueStyle.copyWith(
-                          color: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                        ),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(
-                            color:
-                                colorScheme.onSurfaceVariant.withOpacity(0.4),
-                            width: 1,
+        SizedBox(width: kColGap),
+        bottomCell(
+          _wWeight,
+          Focus(
+            onFocusChange: notifyFocus,
+            child: ConstrainedBox(
+              constraints:
+                  const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: AnimatedScale(
+                        scale: _bounceWeightRows.contains(index) ? 1.05 : 1.0,
+                        duration: const Duration(milliseconds: 120),
+                        curve: Curves.easeOut,
+                        child: TextField(
+                          controller: set.weightController,
+                          readOnly: true,
+                          showCursor: false,
+                          enableInteractiveSelection: false,
+                          textAlign: TextAlign.right,
+                          textAlignVertical: TextAlignVertical.bottom,
+                          style: numberEmphasisStyle.copyWith(
+                            color: set.checked
+                                ? colorScheme.onSurface
+                                : colorScheme.onSurfaceVariant.withOpacity(0.5),
                           ),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide:
-                              BorderSide(color: colorScheme.primary, width: 2),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 6,
-                          horizontal: 0,
+                          onTap: () async {
+                            notifyFocus(true);
+                            HapticFeedback.selectionClick();
+                            setState(() => _bounceWeightRows.add(index));
+                            Future.delayed(const Duration(milliseconds: 120), () {
+                              if (mounted) {
+                                setState(() => _bounceWeightRows.remove(index));
+                              }
+                            });
+                            await _openWeightPicker(set);
+                          },
+                          decoration: InputDecoration(
+                            isDense: true,
+                            filled: false,
+                            hintText: '—',
+                            hintStyle: valueStyle.copyWith(
+                              color:
+                                  colorScheme.onSurfaceVariant.withOpacity(0.5),
+                            ),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: const EdgeInsets.only(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 2.0),
+                      child: Text(unitLabel, style: unitStyle.copyWith(fontSize: 13.0)),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 4),
-              Text(unitLabel, style: unitStyle.copyWith(fontSize: 13.0)),
-            ],
+            ),
           ),
         ),
-        const SizedBox(width: 6),
-        Expanded(
-          flex: 3,
-          child: Row(
-            children: [
-              Expanded(
-                child: Focus(
-                  onFocusChange: notifyFocus,
-                  child: ConstrainedBox(
-                    constraints:
-                        const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
-                    child: TextField(
-                      controller: set.repController,
-                      readOnly: true,
-                      showCursor: false,
-                      enableInteractiveSelection: false,
-                      textAlign: TextAlign.right,
-                      style: valueStyle.copyWith(
-                        color: set.checked
-                            ? colorScheme.onSurface
-                            : colorScheme.onSurfaceVariant.withOpacity(0.5),
-                      ),
-                      onTap: () async {
-                        notifyFocus(true);
-                        await _openRepsPicker(set);
-                      },
-                      decoration: InputDecoration(
-                        isDense: true,
-                        filled: false,
-                        hintText: '—',
-                        hintStyle: valueStyle.copyWith(
-                          color: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                        ),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(
-                            color:
-                                colorScheme.onSurfaceVariant.withOpacity(0.4),
-                            width: 1,
+        SizedBox(width: kColGap),
+        bottomCell(
+          _wReps,
+          Focus(
+            onFocusChange: notifyFocus,
+            child: ConstrainedBox(
+              constraints:
+                  const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: AnimatedScale(
+                        scale: _bounceRepsRows.contains(index) ? 1.05 : 1.0,
+                        duration: const Duration(milliseconds: 120),
+                        curve: Curves.easeOut,
+                        child: TextField(
+                          controller: set.repController,
+                          readOnly: true,
+                          showCursor: false,
+                          enableInteractiveSelection: false,
+                          textAlign: TextAlign.right,
+                          textAlignVertical: TextAlignVertical.bottom,
+                          style: numberEmphasisStyle.copyWith(
+                            color: set.checked
+                                ? colorScheme.onSurface
+                                : colorScheme.onSurfaceVariant.withOpacity(0.5),
                           ),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide:
-                              BorderSide(color: colorScheme.primary, width: 2),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 6,
-                          horizontal: 0,
+                          onTap: () async {
+                            notifyFocus(true);
+                            HapticFeedback.selectionClick();
+                            setState(() => _bounceRepsRows.add(index));
+                            Future.delayed(const Duration(milliseconds: 120), () {
+                              if (mounted) {
+                                setState(() => _bounceRepsRows.remove(index));
+                              }
+                            });
+                            await _openRepsPicker(set);
+                          },
+                          decoration: InputDecoration(
+                            isDense: true,
+                            filled: false,
+                            hintText: '—',
+                            hintStyle: valueStyle.copyWith(
+                              color:
+                                  colorScheme.onSurfaceVariant.withOpacity(0.5),
+                            ),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: const EdgeInsets.only(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 2.0),
+                      child: Text(l10n.reps, style: unitStyle.copyWith(fontSize: 13.0)),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 4),
-              Text(l10n.reps, style: unitStyle.copyWith(fontSize: 13.0)),
-            ],
+            ),
           ),
         ),
       ];
 
-      if (showRmColumn) {
-        final String rmDisplay = rm != null ? rm.toStringAsFixed(1) : '—';
-        rowChildren.add(const SizedBox(width: 6));
+      if (showRirColumn && rirController != null) {
+        rowChildren.add(SizedBox(width: kColGap));
         rowChildren.add(
-          Expanded(
-            flex: 3,
-            child: Text(
-              rmDisplay,
-              textAlign: TextAlign.right,
-              style: valueStyle.copyWith(
-                color: isMaxRm ? colorScheme.error : colorScheme.onSurface,
+          bottomCell(
+            _wRir,
+            Focus(
+              onFocusChange: notifyFocus,
+              child: ConstrainedBox(
+                constraints:
+                    const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                child: Align(
+                  alignment: Alignment.bottomRight,
+                  child: TextField(
+                    controller: rirController,
+                    readOnly: true,
+                    showCursor: false,
+                    enableInteractiveSelection: false,
+                    textAlign: TextAlign.right,
+                    textAlignVertical: TextAlignVertical.bottom,
+                    style: rirEmphasisStyle.copyWith(
+                      color: _rirTextColor(
+                        set.rirController.text.trim(),
+                        colorScheme,
+                      ),
+                    ),
+                    onTap: () async {
+                      notifyFocus(true);
+                      await _openRirPicker(set);
+                    },
+                    decoration: InputDecoration(
+                      isDense: true,
+                      filled: true,
+                      fillColor: _rirBgColor(
+                        set.rirController.text.trim(),
+                        colorScheme,
+                      ),
+                      hintText: '—',
+                      hintStyle: rirEmphasisStyle.copyWith(
+                        color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                      ),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: const EdgeInsets.only(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
         );
       }
 
-      rowChildren.add(const SizedBox(width: 6));
-      rowChildren.add(
-        SizedBox(
-          width: 56,
-          child: SizedBox(
-            height: kUnifiedFieldMinHeight,
-            child: Checkbox(
-              value: set.checked,
-              onChanged: (weightText.isNotEmpty || repsText.isNotEmpty)
-                  ? (v) {
-                      setState(() {
-                        final bool nextChecked = v ?? false;
-                        set.checked = nextChecked;
-                        set.isSuggestion = !nextChecked;
-                      });
-                      if ((v ?? false) == true) {
-                        widget.timerKey.currentState?.restart();
-                      }
-                    }
-                  : null,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          ),
-        ),
-      );
-
-      if (showRirColumn && rirController != null) {
-        rowChildren.add(const SizedBox(width: 6));
+      if (showRmColumn) {
+        final String rmDisplay = rm != null ? rm.toStringAsFixed(1) : '—';
+        rowChildren.add(SizedBox(width: kColGap));
         rowChildren.add(
-          Expanded(
-            flex: 2,
-            child: Focus(
-              onFocusChange: notifyFocus,
-              child: ConstrainedBox(
-                constraints:
-                    const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
-                child: TextField(
-                  controller: rirController,
-                  readOnly: true,
-                  showCursor: false,
-                  enableInteractiveSelection: false,
-                  textAlign: TextAlign.right,
-                  style: valueStyle,
-                  onTap: () async {
-                    notifyFocus(true);
-                    await _openRirPicker(set);
-                  },
-                  decoration: InputDecoration(
-                    isDense: true,
-                    filled: false,
-                    hintText: '—',
-                    hintStyle: valueStyle.copyWith(
-                      color: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                    ),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(
-                        color: colorScheme.onSurfaceVariant.withOpacity(0.4),
-                        width: 1,
-                      ),
-                    ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide:
-                          BorderSide(color: colorScheme.primary, width: 2),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      vertical: 6,
-                      horizontal: 0,
-                    ),
-                  ),
+          bottomCell(
+            _wRm,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                rmDisplay,
+                textAlign: TextAlign.right,
+                style: valueStyle.copyWith(
+                  fontSize: 12.0,
+                  color:
+                      isMaxRm ? colorScheme.error : colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
@@ -9920,15 +10054,16 @@ class _MenuListState extends State<MenuList> {
       }
 
       if (showFailColumn) {
-        rowChildren.add(const SizedBox(width: 6));
+        rowChildren.add(const SizedBox(width: kColGap));
         rowChildren.add(
           SizedBox(
-            width: 48,
+            width: _wFail,
             child: SizedBox(
               height: kUnifiedFieldMinHeight,
               child: Checkbox(
                 value: set.failureChecked,
                 onChanged: (value) {
+                  HapticFeedback.mediumImpact();
                   setState(() {
                     set.failureChecked = value ?? false;
                   });
@@ -9940,18 +10075,96 @@ class _MenuListState extends State<MenuList> {
         );
       }
 
+      rowChildren.add(const SizedBox(width: kColGap));
+      rowChildren.add(
+        SizedBox(
+          width: _wDone,
+          child: SizedBox(
+            height: kUnifiedFieldMinHeight,
+            child: Checkbox(
+              value: set.checked,
+              onChanged: (weightText.isNotEmpty || repsText.isNotEmpty)
+                  ? (v) {
+                      setState(() {
+                        final bool nextChecked = v ?? false;
+                        set.checked = nextChecked;
+                        set.isSuggestion = !nextChecked;
+                        if (nextChecked) {
+                          _flashDoneRows.add(index);
+                        } else {
+                          _flashDoneRows.remove(index);
+                        }
+                      });
+                      if ((v ?? false) == true) {
+                        HapticFeedback.lightImpact();
+                        widget.timerKey.currentState?.restart();
+                        Future.delayed(const Duration(milliseconds: 500), () {
+                          if (mounted) {
+                            setState(() => _flashDoneRows.remove(index));
+                          }
+                        });
+                      }
+                    }
+                  : null,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ),
+      );
+
       rows.add(
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 6.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: rowChildren,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOut,
+            decoration: BoxDecoration(
+              color: _flashDoneRows.contains(index)
+                  ? colorScheme.primaryContainer.withOpacity(0.20)
+                  : (index.isOdd
+                      ? colorScheme.surfaceVariant.withOpacity(0.25)
+                      : colorScheme.surfaceVariant.withOpacity(0.12)),
+              borderRadius: BorderRadius.circular(8),
+              border: Border(
+                bottom: BorderSide(
+                  color: colorScheme.outlineVariant.withOpacity(0.45),
+                  width: 0.5,
+                ),
+              ),
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: _withVerticalDividers(
+                    rowChildren,
+                    colorScheme.outlineVariant.withOpacity(0.45),
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       );
     }
 
     return Column(children: rows);
+  }
+
+  List<Widget> _withVerticalDividers(List<Widget> children, Color lineColor) {
+    final List<Widget> out = [];
+    for (int i = 0; i < children.length; i++) {
+      if (i > 0) {
+        out.add(Container(
+          width: 0.5,
+          margin: const EdgeInsets.symmetric(vertical: 4.0),
+          color: lineColor,
+        ));
+      }
+      out.add(children[i]);
+    }
+    return out;
   }
 
   @override

@@ -41,6 +41,7 @@
   "minutesHint": "Min",
   "secondsHint": "Sec",
   "sets": "sets",
+  "setLabel": "set",
   "reps": "reps",
   "distance": "distance",
   "km": "km",

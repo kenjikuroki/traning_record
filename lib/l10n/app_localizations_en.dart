@@ -136,6 +136,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sets => 'sets';
 
   @override
+  String get setLabel => 'set';
+
+  @override
   String get reps => 'reps';
 
   @override
