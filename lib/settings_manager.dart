@@ -33,6 +33,9 @@ class SettingsManager {
   static const String _showSatisfactionKey = 'show_satisfaction';
   static const String _showIntervalTimerKey = 'show_interval_timer';
   static const String _manageBmrKey = 'manage.bmr';
+  static const String _showRmKey = 'show_rm';
+  static const String _showRirKey = 'show_rir';
+  static const String _showFailKey = 'show_fail';
 
   // ===== Notifiers =====
   // 重さ
@@ -51,8 +54,6 @@ class SettingsManager {
   static final ValueNotifier<int> _appColorThemeIndexNotifier =
       ValueNotifier<int>(2);
 
-
-
   // 背景（使っていない場合は空文字）
   static final ValueNotifier<String> _backgroundAssetNotifier =
       ValueNotifier<String>('');
@@ -66,6 +67,10 @@ class SettingsManager {
       ValueNotifier<bool>(true);
   static final ValueNotifier<bool> _showIntervalTimerNotifier =
       ValueNotifier<bool>(false);
+  static final ValueNotifier<bool> _showRmNotifier = ValueNotifier<bool>(true);
+  static final ValueNotifier<bool> _showRirNotifier = ValueNotifier<bool>(true);
+  static final ValueNotifier<bool> _showFailNotifier =
+      ValueNotifier<bool>(true);
 
   static final ValueNotifier<bool> _manageBmrNotifier =
       ValueNotifier<bool>(false);
@@ -141,6 +146,9 @@ class SettingsManager {
         (box.get(_showSatisfactionKey) as bool?) ?? true;
     _showIntervalTimerNotifier.value =
         (box.get(_showIntervalTimerKey) as bool?) ?? false;
+    _showRmNotifier.value = (box.get(_showRmKey) as bool?) ?? true;
+    _showRirNotifier.value = (box.get(_showRirKey) as bool?) ?? true;
+    _showFailNotifier.value = (box.get(_showFailKey) as bool?) ?? true;
 
     // 体重入力の表示
     _showWeightInputNotifier.value =
@@ -150,8 +158,7 @@ class SettingsManager {
     _aerobicCalorieNotifier.value =
         (box.get(_aerobicCalorieKey) as bool?) ?? false;
 
-    _manageBmrNotifier.value =
-        (box.get(_manageBmrKey) as bool?) ?? false;
+    _manageBmrNotifier.value = (box.get(_manageBmrKey) as bool?) ?? false;
 
     final storedWeight = box.get(_personalWeightKey);
     double? weightKg;
@@ -205,8 +212,7 @@ class SettingsManager {
   static ValueNotifier<ThemeMode> get themeModeNotifier => _themeModeNotifier;
 
   /// カラーテーマ（0:mono,1:purple,2:blue,3:green,4:yellow）← 追加
-  static int get currentAppColorThemeIndex =>
-      _appColorThemeIndexNotifier.value;
+  static int get currentAppColorThemeIndex => _appColorThemeIndexNotifier.value;
   static ValueNotifier<int> get appColorThemeIndexNotifier =>
       _appColorThemeIndexNotifier;
 
@@ -231,6 +237,15 @@ class SettingsManager {
   static bool get showIntervalTimer => _showIntervalTimerNotifier.value;
   static ValueNotifier<bool> get showIntervalTimerNotifier =>
       _showIntervalTimerNotifier;
+
+  static bool get showRM => _showRmNotifier.value;
+  static ValueNotifier<bool> get showRmNotifier => _showRmNotifier;
+
+  static bool get showRIR => _showRirNotifier.value;
+  static ValueNotifier<bool> get showRirNotifier => _showRirNotifier;
+
+  static bool get showFail => _showFailNotifier.value;
+  static ValueNotifier<bool> get showFailNotifier => _showFailNotifier;
 
   /// 体重入力の表示
   static bool get showWeightInput => _showWeightInputNotifier.value;
@@ -333,6 +348,24 @@ class SettingsManager {
     await _ensureBox();
     await _box?.put(_showIntervalTimerKey, show);
     _showIntervalTimerNotifier.value = show;
+  }
+
+  static Future<void> setShowRM(bool show) async {
+    await _ensureBox();
+    await _box?.put(_showRmKey, show);
+    _showRmNotifier.value = show;
+  }
+
+  static Future<void> setShowRIR(bool show) async {
+    await _ensureBox();
+    await _box?.put(_showRirKey, show);
+    _showRirNotifier.value = show;
+  }
+
+  static Future<void> setShowFail(bool show) async {
+    await _ensureBox();
+    await _box?.put(_showFailKey, show);
+    _showFailNotifier.value = show;
   }
 
   /// 体重入力の表示設定

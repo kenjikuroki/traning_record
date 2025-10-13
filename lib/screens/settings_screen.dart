@@ -52,6 +52,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late bool _showTotalVolume;
   late bool _showSatisfaction;
   late bool _showWeightInput; // 体重管理（※パーソナル設定内に移動）
+  late bool _showRM;
+  late bool _showRIR;
+  late bool _showFail;
 
   final List<String> _bodyPartsOriginal = const [
     '有酸素運動',
@@ -69,6 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ];
   late Map<String, bool> _selectedBodyParts;
   bool _isBodyPartsExpanded = false;
+  bool _isDisplayOptionsExpanded = true;
 
   late int _setCount;
   ThemeMode _themeMode = ThemeMode.system;
@@ -117,6 +121,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _showIntervalTimer = SettingsManager.showIntervalTimer;
     _showTotalVolume = SettingsManager.showTotalVolume;
     _showSatisfaction = SettingsManager.showSatisfaction;
+    _showRM = SettingsManager.showRM;
+    _showRIR = SettingsManager.showRIR;
+    _showFail = SettingsManager.showFail;
 
     final Map stored =
         (widget.settingsBox.get('selectedBodyParts') as Map?) ?? {};
@@ -1017,51 +1024,88 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 margin: _kCardMargin,
                 child: Padding(
                   padding: _kOuterPad,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.tune_outlined),
-                          const SizedBox(width: _kIconGap),
-                          Expanded(
-                            child: Text(
-                              l10n.recordDisplayOptions,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 15.0),
-                            ),
-                          ),
-                        ],
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      dividerColor: Colors.transparent,
+                      splashFactory: NoSplash.splashFactory,
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
+                      hoverColor: Colors.transparent,
+                    ),
+                    child: ExpansionTile(
+                      leading: const Icon(Icons.tune_outlined),
+                      initiallyExpanded: _isDisplayOptionsExpanded,
+                      onExpansionChanged: (v) =>
+                          setState(() => _isDisplayOptionsExpanded = v),
+                      tilePadding: EdgeInsets.zero,
+                      childrenPadding: const EdgeInsets.only(bottom: 4.0),
+                      title: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          l10n.recordDisplayOptions,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15.0),
+                        ),
                       ),
-                      const SizedBox(height: 12),
-                      _toggleRow(
-                        context,
-                        title: l10n.intervalTimer,
-                        value: _showIntervalTimer,
-                        onChanged: (v) {
-                          setState(() => _showIntervalTimer = v);
-                          SettingsManager.setShowIntervalTimer(v);
-                        },
-                      ),
-                      _toggleRow(
-                        context,
-                        title: l10n.totalVolumeLabel,
-                        value: _showTotalVolume,
-                        onChanged: (v) {
-                          setState(() => _showTotalVolume = v);
-                          SettingsManager.setShowTotalVolume(v);
-                        },
-                      ),
-                      _toggleRow(
-                        context,
-                        title: l10n.satisfaction,
-                        value: _showSatisfaction,
-                        onChanged: (v) {
-                          setState(() => _showSatisfaction = v);
-                          SettingsManager.setShowSatisfaction(v);
-                        },
-                      ),
-                    ],
+                      children: [
+                        const SizedBox(height: 4),
+                        _toggleRow(
+                          context,
+                          title: l10n.intervalTimer,
+                          value: _showIntervalTimer,
+                          onChanged: (v) {
+                            setState(() => _showIntervalTimer = v);
+                            SettingsManager.setShowIntervalTimer(v);
+                          },
+                        ),
+                        _toggleRow(
+                          context,
+                          title: l10n.totalVolumeLabel,
+                          value: _showTotalVolume,
+                          onChanged: (v) {
+                            setState(() => _showTotalVolume = v);
+                            SettingsManager.setShowTotalVolume(v);
+                          },
+                        ),
+                        _toggleRow(
+                          context,
+                          title: l10n.satisfaction,
+                          value: _showSatisfaction,
+                          onChanged: (v) {
+                            setState(() => _showSatisfaction = v);
+                            SettingsManager.setShowSatisfaction(v);
+                          },
+                        ),
+                        _toggleRow(
+                          context,
+                          title: _toggleLabelShowRM(l10n),
+                          value: _showRM,
+                          onChanged: (v) {
+                            setState(() => _showRM = v);
+                            SettingsManager.setShowRM(v);
+                          },
+                        ),
+                        _toggleRow(
+                          context,
+                          title: _toggleLabelShowRIR(l10n),
+                          value: _showRIR,
+                          onChanged: (v) {
+                            setState(() => _showRIR = v);
+                            SettingsManager.setShowRIR(v);
+                          },
+                        ),
+                        _toggleRow(
+                          context,
+                          title: _toggleLabelShowFail(l10n),
+                          value: _showFail,
+                          onChanged: (v) {
+                            setState(() => _showFail = v);
+                            SettingsManager.setShowFail(v);
+                          },
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -1574,6 +1618,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  String _toggleLabelShowRM(AppLocalizations l10n) {
+    final locale = l10n.localeName;
+    if (locale.startsWith('ja')) return 'RMを表示';
+    if (locale.startsWith('es')) return 'Mostrar RM';
+    if (locale.startsWith('id')) return 'Tampilkan RM';
+    return 'Show RM';
+  }
+
+  String _toggleLabelShowRIR(AppLocalizations l10n) {
+    final locale = l10n.localeName;
+    if (locale.startsWith('ja')) return 'RIRを表示';
+    if (locale.startsWith('es')) return 'Mostrar RIR';
+    if (locale.startsWith('id')) return 'Tampilkan RIR';
+    return 'Show RIR';
+  }
+
+  String _toggleLabelShowFail(AppLocalizations l10n) {
+    final locale = l10n.localeName;
+    if (locale.startsWith('ja')) return '失敗フラグを表示';
+    if (locale.startsWith('es')) return 'Mostrar indicador de fallo';
+    if (locale.startsWith('id')) return 'Tampilkan flag kegagalan';
+    return 'Show Failure Flag';
   }
 
   // スイッチ（テキストサイズを他と合わせる）

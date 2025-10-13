@@ -19,6 +19,13 @@ double? _readTotalVolume(dynamic value) {
   return null;
 }
 
+List<String>? _readStringList(dynamic value) {
+  if (value is Iterable && value is! String) {
+    return value.map((e) => e?.toString() ?? '').toList();
+  }
+  return null;
+}
+
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
@@ -39,6 +46,8 @@ class MenuDataAdapter extends TypeAdapter<MenuData> {
     int? sat;
     List<bool>? checked;
     double? totalVolume;
+    List<String>? rirValues;
+    List<bool>? failureFlags;
 
     if (fields.containsKey(5)) {
       final dynamic v5 = fields[5];
@@ -73,6 +82,13 @@ class MenuDataAdapter extends TypeAdapter<MenuData> {
       totalVolume = _readTotalVolume(fields[9]);
     }
 
+    if (fields.containsKey(9)) {
+      rirValues = _readStringList(fields[9]);
+    }
+    if (fields.containsKey(10)) {
+      failureFlags = _readBoolList(fields[10]);
+    }
+
     return MenuData(
       name: fields[0] as String,
       weights: (fields[1] as List).cast<String>(),
@@ -83,13 +99,15 @@ class MenuDataAdapter extends TypeAdapter<MenuData> {
       satisfaction: sat,
       checkedStates: checked,
       totalVolume: totalVolume,
+      rirValues: rirValues,
+      failureFlags: failureFlags,
     );
   }
 
   @override
   void write(BinaryWriter writer, MenuData obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -107,7 +125,11 @@ class MenuDataAdapter extends TypeAdapter<MenuData> {
       ..writeByte(7)
       ..write(obj.checkedStates)
       ..writeByte(8)
-      ..write(obj.totalVolume);
+      ..write(obj.totalVolume)
+      ..writeByte(9)
+      ..write(obj.rirValues)
+      ..writeByte(10)
+      ..write(obj.failureFlags);
   }
 
   @override

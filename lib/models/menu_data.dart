@@ -14,6 +14,10 @@ class MenuData extends HiveObject {
   @HiveField(6) final int? satisfaction; // 追加
   @HiveField(7) final List<bool>? checkedStates; // 追加
   @HiveField(8) final double? totalVolume; // 追加
+  @HiveField(9) final List<String>? rirValues;
+  @HiveField(10) final List<bool>? failureFlags;
+
+  List<bool>? get failureStates => failureFlags;
 
   MenuData({
     required this.name,
@@ -25,6 +29,8 @@ class MenuData extends HiveObject {
     this.satisfaction, // 追加
     this.checkedStates, // 追加
     this.totalVolume, // 追加
+    this.rirValues,
+    this.failureFlags,
   });
 
   factory MenuData.fromJson(Map<String, dynamic> json) {
@@ -39,6 +45,11 @@ class MenuData extends HiveObject {
           ?.map((e) => e == true)
           .toList(),
       totalVolume: (json['totalVolume'] as num?)?.toDouble(),
+      rirValues: (json['rirValues'] as List?)
+          ?.map((e) => e?.toString() ?? '')
+          .toList(),
+      failureFlags:
+          (json['failureFlags'] as List?)?.map((e) => e == true).toList(),
     );
   }
 
@@ -52,6 +63,8 @@ class MenuData extends HiveObject {
       'satisfaction': satisfaction, // ★追加
       'checkedStates': checkedStates,
       'totalVolume': totalVolume,
+      'rirValues': rirValues,
+      'failureFlags': failureFlags,
     };
   }
 }

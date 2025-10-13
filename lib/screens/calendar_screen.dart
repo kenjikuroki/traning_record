@@ -209,8 +209,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final bool hasWeight = record?.weight != null;
     final List<String> partsAll =
         (record == null) ? <String>[] : _partsWithDataForDay(record);
-    final Iterable<String> strengthParts =
-        partsAll.where((p) => p != '有酸素運動');
+    final Iterable<String> strengthParts = partsAll.where((p) => p != '有酸素運動');
     final bool hasAerobic = partsAll.contains('有酸素運動');
 
     final List<CalendarWidgetChipData> chips = [];
@@ -422,7 +421,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 });
 
                 final String monthLabel = _widgetMonthLabel(ctx);
-                final String yearLabel = DateFormat.y(localeTag).format(_focusedDay);
+                final String yearLabel =
+                    DateFormat.y(localeTag).format(_focusedDay);
 
                 return SizedBox(
                   width: captureSize.width,
@@ -510,6 +510,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
       await _showWelcomeCardSequence(context);
       await widget.settingsBox.put('hint_seen_calendar', true);
     });
+
+    SettingsManager.showRmNotifier.addListener(_onDisplayToggleChanged);
+    SettingsManager.showRirNotifier.addListener(_onDisplayToggleChanged);
+    SettingsManager.showFailNotifier.addListener(_onDisplayToggleChanged);
+  }
+
+  @override
+  void dispose() {
+    SettingsManager.showRmNotifier.removeListener(_onDisplayToggleChanged);
+    SettingsManager.showRirNotifier.removeListener(_onDisplayToggleChanged);
+    SettingsManager.showFailNotifier.removeListener(_onDisplayToggleChanged);
+    super.dispose();
   }
 
   bool _isPastDate(DateTime d) {
@@ -517,6 +529,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final DateTime a = DateTime(d.year, d.month, d.day);
     final DateTime b = DateTime(t.year, t.month, t.day);
     return a.isBefore(b);
+  }
+
+  void _onDisplayToggleChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   Widget _satisfactionLine(AppLocalizations l10n, int value, ColorScheme cs) {
@@ -2482,24 +2499,126 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ? m.weights.length
             : m.reps.length;
         final unit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
-        for (int i = 0; i < len; i++) {
-          final w = m.weights[i].toString().trim();
-          final r = m.reps[i].toString().trim();
-          final setDisplay = formatStrengthSetDisplay(
-            l10n: l10n,
-            weight: w,
-            unit: unit,
-            reps: r,
-          );
-          if (setDisplay == '-') continue;
+        final bool showRmColumn = SettingsManager.showRM;
+        final bool showRirColumn = SettingsManager.showRIR;
+        final bool showFailColumn = SettingsManager.showFail;
+        List<String>? rirValues;
+        List<bool>? failureStates;
+        try {
+          final dynamic menuDynamic = m;
+          final dynamic rawRir = menuDynamic.rirValues;
+          if (rawRir is List) {
+            rirValues = rawRir.map((e) => e?.toString() ?? '').toList();
+          }
+          final dynamic rawFailure = menuDynamic.failureStates;
+          if (rawFailure is List) {
+            failureStates = rawFailure.map((e) => e == true).toList();
+          }
+        } catch (_) {
+          rirValues = null;
+          failureStates = null;
+        }
+
+        List<double?>? rmValues;
+        double? maxRm;
+        if (showRmColumn && len > 0) {
+          rmValues = List<double?>.filled(len, null);
+          for (int i = 0; i < len; i++) {
+            final weightValue = double.tryParse(m.weights[i].toString().trim());
+            final repsValue = double.tryParse(m.reps[i].toString().trim());
+            if (weightValue != null && repsValue != null) {
+              final rm = weightValue * (1 + repsValue / 30);
+              rmValues[i] = rm;
+              if (maxRm == null || rm > maxRm!) {
+                maxRm = rm;
+              }
+            }
+          }
+        }
+
+        final String locale = l10n.localeName;
+        final String failureLabel = locale.startsWith('ja')
+            ? '失敗フラグ'
+            : locale.startsWith('es')
+                ? 'Indicador de fallo'
+                : locale.startsWith('id')
+                    ? 'Flag kegagalan'
+                    : 'Failure Flag';
+
+        if (len > 0) {
+          final headerParts = <String>[
+            l10n.sets,
+            l10n.weightUnit,
+            l10n.reps,
+          ];
+          if (showRmColumn) {
+            headerParts.add('RM');
+          }
+          if (showRirColumn) {
+            headerParts.add('RIR');
+          }
+          if (showFailColumn) {
+            headerParts.add(failureLabel);
+          }
           strengthWidgets.add(
             _selectableLine(
-              text: '${i + 1}${l10n.sets}：$setDisplay',
+              text: headerParts.join('｜'),
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(
-                  color: cs.onSurface,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400),
+                color: cs.onSurfaceVariant,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          );
+        }
+
+        for (int i = 0; i < len; i++) {
+          final wRaw = m.weights[i].toString().trim();
+          final rRaw = m.reps[i].toString().trim();
+          final String weightDisplay =
+              wRaw.isNotEmpty ? '$wRaw $unit' : '— $unit';
+          final String repsDisplay =
+              rRaw.isNotEmpty ? '$rRaw ${l10n.reps}' : '— ${l10n.reps}';
+          final double? rm =
+              showRmColumn && rmValues != null ? rmValues[i] : null;
+          final bool isMaxRm = showRmColumn && rm != null && maxRm != null
+              ? (rm - maxRm!).abs() < 1e-6
+              : false;
+
+          final buffer =
+              StringBuffer('${i + 1}:  $weightDisplay × $repsDisplay');
+          if (showRmColumn) {
+            final String rmText = rm != null ? rm.toStringAsFixed(1) : '—';
+            final String rmDisplay =
+                isMaxRm ? '$rmText (MAX)' : rmText;
+            buffer.write('｜$rmDisplay');
+          }
+          if (showRirColumn) {
+            final String rirValue = (rirValues != null && i < rirValues.length)
+                ? rirValues[i].trim()
+                : '';
+            final String formattedRir = rirValue.isNotEmpty ? rirValue : '—';
+            buffer.write('｜$formattedRir');
+          }
+          if (showFailColumn) {
+            final bool failed =
+                (failureStates != null && i < failureStates.length)
+                    ? (failureStates[i] == true)
+                    : false;
+            final String failureMark = failed ? '×' : ' ';
+            buffer.write('｜$failureMark');
+          }
+
+          strengthWidgets.add(
+            _selectableLine(
+              text: buffer.toString(),
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+              style: TextStyle(
+                color: cs.onSurface,
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+              ),
             ),
           );
         }
@@ -2796,17 +2915,108 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ? m.weights.length
             : m.reps.length;
         final unit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
+        final bool showRmColumn = SettingsManager.showRM;
+        final bool showRirColumn = SettingsManager.showRIR;
+        final bool showFailColumn = SettingsManager.showFail;
+        List<String>? rirValues;
+        List<bool>? failureStates;
+        try {
+          final dynamic menuDynamic = m;
+          final dynamic rawRir = menuDynamic.rirValues;
+          if (rawRir is List) {
+            rirValues = rawRir.map((e) => e?.toString() ?? '').toList();
+          }
+          final dynamic rawFailure = menuDynamic.failureStates;
+          if (rawFailure is List) {
+            failureStates = rawFailure.map((e) => e == true).toList();
+          }
+        } catch (_) {
+          rirValues = null;
+          failureStates = null;
+        }
+
+        List<double?>? rmValues;
+        double? maxRm;
+        if (showRmColumn && len > 0) {
+          rmValues = List<double?>.filled(len, null);
+          for (int i = 0; i < len; i++) {
+            final weightValue = double.tryParse(m.weights[i].toString().trim());
+            final repsValue = double.tryParse(m.reps[i].toString().trim());
+            if (weightValue != null && repsValue != null) {
+              final rm = weightValue * (1 + repsValue / 30);
+              rmValues[i] = rm;
+              if (maxRm == null || rm > maxRm!) {
+                maxRm = rm;
+              }
+            }
+          }
+        }
+
+        final String locale = l10n.localeName;
+        final String failureLabel = locale.startsWith('ja')
+            ? '失敗フラグ'
+            : locale.startsWith('es')
+                ? 'Indicador de fallo'
+                : locale.startsWith('id')
+                    ? 'Flag kegagalan'
+                    : 'Failure Flag';
+
+        if (len > 0) {
+          final headerParts = <String>[
+            l10n.sets,
+            l10n.weightUnit,
+            l10n.reps,
+          ];
+          if (showRmColumn) {
+            headerParts.add('RM');
+          }
+          if (showRirColumn) {
+            headerParts.add('RIR');
+          }
+          if (showFailColumn) {
+            headerParts.add(failureLabel);
+          }
+          sectionLines.add('  ${headerParts.join('｜')}');
+        }
+
         for (int i = 0; i < len; i++) {
-          final w = m.weights[i].toString().trim();
-          final r = m.reps[i].toString().trim();
-          final setDisplay = formatStrengthSetDisplay(
-            l10n: l10n,
-            weight: w,
-            unit: unit,
-            reps: r,
-          );
-          if (setDisplay == '-') continue;
-          sectionLines.add('  ${i + 1}${l10n.sets}：$setDisplay');
+          final wRaw = m.weights[i].toString().trim();
+          final rRaw = m.reps[i].toString().trim();
+          final String weightDisplay =
+              wRaw.isNotEmpty ? '$wRaw $unit' : '— $unit';
+          final String repsDisplay =
+              rRaw.isNotEmpty ? '$rRaw ${l10n.reps}' : '— ${l10n.reps}';
+          final double? rm =
+              showRmColumn && rmValues != null ? rmValues[i] : null;
+          final bool isMaxRm = showRmColumn && rm != null && maxRm != null
+              ? (rm - maxRm!).abs() < 1e-6
+              : false;
+
+          final buffer =
+              StringBuffer('  ${i + 1}:  $weightDisplay × $repsDisplay');
+          if (showRmColumn) {
+            final String rmText = rm != null ? rm.toStringAsFixed(1) : '—';
+            final String rmDisplay =
+                isMaxRm ? '$rmText (MAX)' : rmText;
+            buffer.write('｜$rmDisplay');
+          }
+          if (showRirColumn) {
+            final String rirValue = (rirValues != null && i < rirValues.length)
+                ? rirValues[i].trim()
+                : '';
+            final String formattedRir = rirValue.isNotEmpty ? rirValue : '—';
+            buffer.write('｜$formattedRir');
+          }
+          if (showFailColumn) {
+            final bool failed =
+                (failureStates != null && i < failureStates.length)
+                    ? (failureStates[i] == true)
+                    : false;
+            final String failureMark = failed ? '×' : ' ';
+            buffer.write('｜$failureMark');
+          }
+
+          sectionLines.add(buffer.toString());
         }
         if (m.totalVolume != null) {
           sectionLines.add(
@@ -3234,24 +3444,126 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ? m.weights.length
             : m.reps.length;
         final unit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
-        for (int i = 0; i < len; i++) {
-          final w = m.weights[i].toString().trim();
-          final r = m.reps[i].toString().trim();
-          final setDisplay = formatStrengthSetDisplay(
-            l10n: l10n,
-            weight: w,
-            unit: unit,
-            reps: r,
-          );
-          if (setDisplay == '-') continue;
+        final bool showRmColumn = SettingsManager.showRM;
+        final bool showRirColumn = SettingsManager.showRIR;
+        final bool showFailColumn = SettingsManager.showFail;
+        List<String>? rirValues;
+        List<bool>? failureStates;
+        try {
+          final dynamic menuDynamic = m;
+          final dynamic rawRir = menuDynamic.rirValues;
+          if (rawRir is List) {
+            rirValues = rawRir.map((e) => e?.toString() ?? '').toList();
+          }
+          final dynamic rawFailure = menuDynamic.failureStates;
+          if (rawFailure is List) {
+            failureStates = rawFailure.map((e) => e == true).toList();
+          }
+        } catch (_) {
+          rirValues = null;
+          failureStates = null;
+        }
+
+        List<double?>? rmValues;
+        double? maxRm;
+        if (showRmColumn && len > 0) {
+          rmValues = List<double?>.filled(len, null);
+          for (int i = 0; i < len; i++) {
+            final weightValue = double.tryParse(m.weights[i].toString().trim());
+            final repsValue = double.tryParse(m.reps[i].toString().trim());
+            if (weightValue != null && repsValue != null) {
+              final rm = weightValue * (1 + repsValue / 30);
+              rmValues[i] = rm;
+              if (maxRm == null || rm > maxRm!) {
+                maxRm = rm;
+              }
+            }
+          }
+        }
+
+        final String locale = l10n.localeName;
+        final String failureLabel = locale.startsWith('ja')
+            ? '失敗フラグ'
+            : locale.startsWith('es')
+                ? 'Indicador de fallo'
+                : locale.startsWith('id')
+                    ? 'Flag kegagalan'
+                    : 'Failure Flag';
+
+        if (len > 0) {
+          final headerParts = <String>[
+            l10n.sets,
+            l10n.weightUnit,
+            l10n.reps,
+          ];
+          if (showRmColumn) {
+            headerParts.add('RM');
+          }
+          if (showRirColumn) {
+            headerParts.add('RIR');
+          }
+          if (showFailColumn) {
+            headerParts.add(failureLabel);
+          }
           summaryChildren.add(
             _selectableLine(
-              text: '${i + 1}${l10n.sets}：$setDisplay',
+              text: headerParts.join('｜'),
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(
-                  color: cs.onSurface,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400),
+                color: cs.onSurfaceVariant,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          );
+        }
+
+        for (int i = 0; i < len; i++) {
+          final wRaw = m.weights[i].toString().trim();
+          final rRaw = m.reps[i].toString().trim();
+          final String weightDisplay =
+              wRaw.isNotEmpty ? '$wRaw $unit' : '— $unit';
+          final String repsDisplay =
+              rRaw.isNotEmpty ? '$rRaw ${l10n.reps}' : '— ${l10n.reps}';
+          final double? rm =
+              showRmColumn && rmValues != null ? rmValues[i] : null;
+          final bool isMaxRm = showRmColumn && rm != null && maxRm != null
+              ? (rm - maxRm!).abs() < 1e-6
+              : false;
+
+          final buffer =
+              StringBuffer('${i + 1}:  $weightDisplay × $repsDisplay');
+          if (showRmColumn) {
+            final String rmText = rm != null ? rm.toStringAsFixed(1) : '—';
+            final String rmDisplay =
+                isMaxRm ? '$rmText (MAX)' : rmText;
+            buffer.write('｜$rmDisplay');
+          }
+          if (showRirColumn) {
+            final String rirValue = (rirValues != null && i < rirValues.length)
+                ? rirValues[i].trim()
+                : '';
+            final String formattedRir = rirValue.isNotEmpty ? rirValue : '—';
+            buffer.write('｜$formattedRir');
+          }
+          if (showFailColumn) {
+            final bool failed =
+                (failureStates != null && i < failureStates.length)
+                    ? (failureStates[i] == true)
+                    : false;
+            final String failureMark = failed ? '×' : ' ';
+            buffer.write('｜$failureMark');
+          }
+
+          summaryChildren.add(
+            _selectableLine(
+              text: buffer.toString(),
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+              style: TextStyle(
+                color: cs.onSurface,
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+              ),
             ),
           );
         }

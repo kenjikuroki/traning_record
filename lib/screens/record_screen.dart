@@ -64,6 +64,38 @@ void showAppSnack(
   );
 }
 
+extension _RecordScreenL10nExt on AppLocalizations {
+  String get rmLabel => 'RM';
+
+  String get rirLabel => 'RIR';
+
+  String get completionLabel {
+    if (localeName.startsWith('ja')) {
+      return '完了';
+    }
+    if (localeName.startsWith('es')) {
+      return 'Completado';
+    }
+    if (localeName.startsWith('id')) {
+      return 'Selesai';
+    }
+    return 'Complete';
+  }
+
+  String get failureLabel {
+    if (localeName.startsWith('ja')) {
+      return '失敗フラグ';
+    }
+    if (localeName.startsWith('es')) {
+      return 'Indicador de fallo';
+    }
+    if (localeName.startsWith('id')) {
+      return 'Flag kegagalan';
+    }
+    return 'Failure Flag';
+  }
+}
+
 class _MealRowControllers {
   _MealRowControllers({
     required this.nameController,
@@ -349,6 +381,9 @@ class _RecordScreenState extends State<RecordScreen>
         .addListener(_onDisplayPreferencesChanged);
     SettingsManager.showSatisfactionNotifier
         .addListener(_onDisplayPreferencesChanged);
+    SettingsManager.showRmNotifier.addListener(_onDisplayPreferencesChanged);
+    SettingsManager.showRirNotifier.addListener(_onDisplayPreferencesChanged);
+    SettingsManager.showFailNotifier.addListener(_onDisplayPreferencesChanged);
 
     // ★追加：単位切替（inch/cm 等）のUI反映
     SettingsManager.lengthUnitNotifier.addListener(_onLengthUnitChanged);
@@ -450,6 +485,11 @@ class _RecordScreenState extends State<RecordScreen>
     SettingsManager.showTotalVolumeNotifier
         .removeListener(_onDisplayPreferencesChanged);
     SettingsManager.showSatisfactionNotifier
+        .removeListener(_onDisplayPreferencesChanged);
+    SettingsManager.showRmNotifier.removeListener(_onDisplayPreferencesChanged);
+    SettingsManager.showRirNotifier
+        .removeListener(_onDisplayPreferencesChanged);
+    SettingsManager.showFailNotifier
         .removeListener(_onDisplayPreferencesChanged);
     WidgetsBinding.instance.removeObserver(this);
 
@@ -2042,7 +2082,8 @@ class _RecordScreenState extends State<RecordScreen>
         _currentMealIndex = null;
       } else if (_currentMealIndex != null) {
         if (_currentMealIndex! == index) {
-          final nextIndex = index >= _mealCards.length ? _mealCards.length - 1 : index;
+          final nextIndex =
+              index >= _mealCards.length ? _mealCards.length - 1 : index;
           _currentMealIndex = nextIndex;
         } else if (_currentMealIndex! > index) {
           _currentMealIndex = _currentMealIndex! - 1;
@@ -2426,6 +2467,11 @@ class _RecordScreenState extends State<RecordScreen>
               lu == null ? 0 : min(lu.weights.length, lu.reps.length);
           final int mergedLen = max(_currentSetCount, max(recLen, luLen));
 
+          final List<String>? rirFromRec = rec?.rirValues;
+          final List<String>? rirFromLu = lu?.rirValues;
+          final List<bool>? failFromRec = rec?.failureFlags;
+          final List<bool>? failFromLu = lu?.failureFlags;
+
           final row = <SetInputData>[];
           for (int i = 0; i < mergedLen; i++) {
             String w = '';
@@ -2459,6 +2505,29 @@ class _RecordScreenState extends State<RecordScreen>
               isSuggestion: isSuggestion,
               checked: checked,
             ));
+
+            final set = row.last;
+            String? rirValue;
+            if (rirFromRec != null && i < rirFromRec.length) {
+              rirValue = rirFromRec[i];
+            } else if (rirFromLu != null && i < rirFromLu.length) {
+              rirValue = rirFromLu[i];
+            }
+            if (rirValue != null) {
+              set.rirController.text = rirValue;
+            }
+
+            bool? failValue;
+            if (failFromRec != null && i < failFromRec.length) {
+              failValue = failFromRec[i];
+            } else if (failFromLu != null && i < failFromLu.length) {
+              failValue = failFromLu[i];
+            }
+            if (failValue == true) {
+              set.failureChecked = true;
+            } else {
+              set.failureChecked = false;
+            }
           }
           section.setInputDataList.add(row);
           section.previousVolumeList.add(lu?.totalVolume ?? rec?.totalVolume);
@@ -2652,11 +2721,15 @@ class _RecordScreenState extends State<RecordScreen>
           final weightsAll = <String>[];
           final repsAll = <String>[];
           final checkedAll = <bool>[];
+          final rirAll = <String>[];
+          final failAll = <bool>[];
           for (int s = 0; s < section.setInputDataList[i].length; s++) {
             final set = section.setInputDataList[i][s];
             weightsAll.add(set.weightController.text);
             repsAll.add(set.repController.text);
             checkedAll.add(set.checked);
+            rirAll.add(set.rirController.text.trim());
+            failAll.add(set.failureChecked);
           }
           final double? totalVolume =
               calculateTotalVolume(section.setInputDataList[i]);
@@ -2668,11 +2741,15 @@ class _RecordScreenState extends State<RecordScreen>
             satisfaction: sat,
             checkedStates: checkedAll,
             totalVolume: totalVolume,
+            rirValues: rirAll,
+            failureFlags: failAll,
           ));
 
           final weightsConfirmed = <String>[];
           final repsConfirmed = <String>[];
           final checkedConfirmed = <bool>[];
+          final rirConfirmed = <String>[];
+          final failConfirmed = <bool>[];
           for (int s = 0; s < section.setInputDataList[i].length; s++) {
             final set = section.setInputDataList[i][s];
             final w = set.weightController.text;
@@ -2682,6 +2759,8 @@ class _RecordScreenState extends State<RecordScreen>
               weightsConfirmed.add(w);
               repsConfirmed.add(r);
               checkedConfirmed.add(true);
+              rirConfirmed.add(set.rirController.text.trim());
+              failConfirmed.add(set.failureChecked);
             }
           }
           if (weightsConfirmed.isNotEmpty || repsConfirmed.isNotEmpty) {
@@ -2693,6 +2772,8 @@ class _RecordScreenState extends State<RecordScreen>
               satisfaction: sat,
               checkedStates: checkedConfirmed,
               totalVolume: totalVolume,
+              rirValues: rirConfirmed,
+              failureFlags: failConfirmed,
             ));
             hasAnyRecordData = true;
             lastModifiedPart ??= originalPart;
@@ -4232,9 +4313,8 @@ class _RecordScreenState extends State<RecordScreen>
     final bool isLight = theme.brightness == Brightness.light;
     const Color kBrandBlue = Color(0xFF2563EB);
     final bool highlight = isExpanded || isActive;
-    final borderColor = highlight
-        ? (isLight ? kBrandBlue : cs.primary)
-        : Colors.transparent;
+    final borderColor =
+        highlight ? (isLight ? kBrandBlue : cs.primary) : Colors.transparent;
     final shadowColor = highlight
         ? (isLight
             ? kBrandBlue.withOpacity(0.45)
@@ -4267,55 +4347,54 @@ class _RecordScreenState extends State<RecordScreen>
 
       final children = <Widget>[];
       for (var i = 0; i < summaryItems.length; i++) {
-          final item = summaryItems[i];
-          final name = item.name.trim().isEmpty ? '—' : item.name.trim();
-          final kcalText = (item.kcal == null || item.kcal! <= 0)
-              ? '—'
-              : '${_formatKcalDisplay(item.kcal!)} ${l10n.kcalUnit}';
-          children.add(
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    '${i + 1}.',
-                    style: TextStyle(
-                      fontFamily: kUiFont,
-                      color: cs.onSurfaceVariant,
-                      fontSize: 13.0,
-                    ),
+        final item = summaryItems[i];
+        final name = item.name.trim().isEmpty ? '—' : item.name.trim();
+        final kcalText = (item.kcal == null || item.kcal! <= 0)
+            ? '—'
+            : '${_formatKcalDisplay(item.kcal!)} ${l10n.kcalUnit}';
+        children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  '${i + 1}.',
+                  style: TextStyle(
+                    fontFamily: kUiFont,
+                    color: cs.onSurfaceVariant,
+                    fontSize: 13.0,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      name,
-                      style: TextStyle(
-                        fontFamily: kUiFont,
-                        color: cs.onSurface,
-                        fontSize: 13.0,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    kcalText,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    name,
                     style: TextStyle(
                       fontFamily: kUiFont,
                       color: cs.onSurface,
                       fontSize: 13.0,
                       fontWeight: FontWeight.w600,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  kcalText,
+                  style: TextStyle(
+                    fontFamily: kUiFont,
+                    color: cs.onSurface,
+                    fontSize: 13.0,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-          );
-        }
+          ),
+        );
+      }
       children.addAll([
         const SizedBox(height: 8),
         Padding(
@@ -5294,24 +5373,34 @@ class _RecordScreenState extends State<RecordScreen>
                                               SizedBox(
                                                 width: 110,
                                                 child: Row(
-                                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.center,
                                                   children: [
                                                     // 入力欄（下線）— 余白を確保して右側に単位を置く
                                                     Expanded(
                                                       child: TextField(
-                                                        controller: row.kcalController,
-                                                        decoration: _underlineDec(context).copyWith(
+                                                        controller:
+                                                            row.kcalController,
+                                                        decoration:
+                                                            _underlineDec(
+                                                                    context)
+                                                                .copyWith(
                                                           labelText: null,
                                                           // プレースホルダーは不要
                                                           // hintText: '0',
                                                           // ← suffix/suffixText は使わない（常時固定表示のため）
                                                         ),
-                                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                        textAlign: TextAlign.right,
+                                                        keyboardType:
+                                                            const TextInputType
+                                                                .numberWithOptions(
+                                                                decimal: true),
+                                                        textAlign:
+                                                            TextAlign.right,
                                                         style: TextStyle(
                                                           color: cs.onSurface,
                                                           fontSize: 14,
-                                                          fontWeight: FontWeight.w600,
+                                                          fontWeight:
+                                                              FontWeight.w600,
                                                         ),
                                                         onChanged: (value) {
                                                           _onMealKcalChanged(
@@ -5328,9 +5417,11 @@ class _RecordScreenState extends State<RecordScreen>
                                                     Text(
                                                       l10n.kcalUnit,
                                                       style: TextStyle(
-                                                        color: cs.onSurfaceVariant,
+                                                        color:
+                                                            cs.onSurfaceVariant,
                                                         fontSize: 13,
-                                                        fontWeight: FontWeight.w600,
+                                                        fontWeight:
+                                                            FontWeight.w600,
                                                       ),
                                                     ),
                                                   ],
@@ -7149,8 +7240,8 @@ class _RecordScreenState extends State<RecordScreen>
                     const SizedBox(height: 8),
                     _stagger(
                         5,
-                        chipAction('＋${l10n.weightCardTitle}',
-                            _handleAddPersonal,
+                        chipAction(
+                            '＋${l10n.weightCardTitle}', _handleAddPersonal,
                             enabled: !_showPersonalCard)),
                   ],
                   const SizedBox(height: 8),
@@ -7454,19 +7545,24 @@ class SectionData {
 class SetInputData {
   TextEditingController weightController;
   TextEditingController repController;
+  TextEditingController rirController;
   bool isSuggestion;
   bool checked; // ← 追加：回の右側チェックボックスの状態
+  bool failureChecked;
 
   SetInputData({
     required this.weightController,
     required this.repController,
+    TextEditingController? rirController,
     this.isSuggestion = true,
     this.checked = false, // ← 追加：既定は未チェック
-  });
+    this.failureChecked = false,
+  }) : rirController = rirController ?? TextEditingController();
 
   void dispose() {
     weightController.dispose();
     repController.dispose();
+    rirController.dispose();
   }
 }
 
@@ -8367,6 +8463,10 @@ class _MenuListState extends State<MenuList> {
     0.75
   ];
 
+  static final List<double> _rirPickerValues = [
+    for (int i = 0; i <= 20; i++) i / 2,
+  ];
+
   String _formatNumber(double value, {int fractionDigits = 2}) {
     final String fixed = value.toStringAsFixed(fractionDigits);
     if (!fixed.contains('.')) {
@@ -8422,7 +8522,6 @@ class _MenuListState extends State<MenuList> {
     _hourController.dispose();
     _minAeroCtrl.dispose();
     _secAeroCtrl.dispose();
-
     // リスナー解除を忘れずに
     widget.menuController.removeListener(_handleNameChanged);
     SettingsManager.lengthUnitNotifier.removeListener(_onLengthUnitChanged);
@@ -8808,6 +8907,137 @@ class _MenuListState extends State<MenuList> {
     setState(() {
       set.repController.text = formatted;
       set.isSuggestion = false;
+    });
+  }
+
+  Future<void> _openRirPicker(SetInputData set) async {
+    FocusScope.of(context).unfocus();
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final material = MaterialLocalizations.of(context);
+    final controller = set.rirController;
+
+    int initialIndex = 0;
+    final currentText = controller.text.trim();
+    if (currentText.isNotEmpty) {
+      final currentValue = double.tryParse(currentText);
+      if (currentValue != null) {
+        final foundIndex = _rirPickerValues.indexWhere(
+          (value) => (value - currentValue).abs() < 1e-6,
+        );
+        if (foundIndex != -1) {
+          initialIndex = foundIndex;
+        } else {
+          double minDiff = double.infinity;
+          for (var i = 0; i < _rirPickerValues.length; i++) {
+            final diff = (_rirPickerValues[i] - currentValue).abs();
+            if (diff < minDiff) {
+              minDiff = diff;
+              initialIndex = i;
+            }
+          }
+        }
+      }
+    }
+    int tempIndex = initialIndex;
+
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: cs.surfaceContainerHighest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: SizedBox(
+            height: 300,
+            child: Column(
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurfaceVariant.withOpacity(0.35),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(
+                  height: 48,
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 12),
+                      Text(
+                        l10n.rirLabel,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, null),
+                        child: Text(material.cancelButtonLabel),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, tempIndex),
+                        child: Text(material.okButtonLabel),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: CupertinoPicker(
+                    itemExtent: 36,
+                    useMagnifier: true,
+                    magnification: 1.08,
+                    scrollController: FixedExtentScrollController(
+                      initialItem: initialIndex,
+                    ),
+                    onSelectedItemChanged: (i) => tempIndex = i,
+                    children: [
+                      for (final value in _rirPickerValues)
+                        Center(
+                          child: Text(
+                            value % 1 == 0
+                                ? value.toInt().toString()
+                                : value.toStringAsFixed(1),
+                            style: TextStyle(
+                              fontFamily: kUiFont,
+                              color: cs.onSurface,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || selected == null) {
+      return;
+    }
+
+    final double selectedValue = _rirPickerValues[selected];
+    final String formatted = selectedValue % 1 == 0
+        ? selectedValue.toInt().toString()
+        : selectedValue.toStringAsFixed(1);
+    if (controller.text.trim() == formatted) {
+      return;
+    }
+
+    setState(() {
+      controller.text = formatted;
     });
   }
 
@@ -9348,144 +9578,380 @@ class _MenuListState extends State<MenuList> {
     String currentUnit,
     void Function(bool) notifyFocus,
   ) {
-    return Column(
-      children: List.generate(
-        min(10, widget.setInputDataList.length),
-        (setIndex) {
-          final set = widget.setInputDataList[setIndex];
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6.0),
-            child: Row(
-              children: [
-                Text(
-                  '${setIndex + 1}${l10n.sets}：',
-                  style: TextStyle(
-                      color: colorScheme.onSurfaceVariant, fontSize: 13.0),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Focus(
-                    onFocusChange: notifyFocus,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                          minHeight: kUnifiedFieldMinHeight),
-                      child: TextField(
-                        controller: set.weightController,
-                        readOnly: true,
-                        showCursor: false,
-                        enableInteractiveSelection: false,
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontFamily: kUiFont,
-                          color: set.checked
-                              ? colorScheme.onSurface
-                              : colorScheme.onSurfaceVariant.withOpacity(0.5),
-                        ),
-                        onTap: () async {
-                          notifyFocus(true);
-                          await _openWeightPicker(set);
-                        },
-                        decoration: InputDecoration(
-                          isDense: true,
-                          filled: false,
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(
-                                color: colorScheme.onSurfaceVariant
-                                    .withOpacity(0.4),
-                                width: 1),
-                          ),
-                          focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(
-                                color: colorScheme.primary, width: 2),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              vertical: 6, horizontal: 0),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Text(
-                  ' ${currentUnit == "kg" ? l10n.kg : l10n.lbs} ',
-                  style: TextStyle(
-                    fontFamily: kUiFont,
-                    color: colorScheme.onSurfaceVariant,
-                    fontSize: 13.0,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Focus(
-                    onFocusChange: notifyFocus,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                          minHeight: kUnifiedFieldMinHeight),
-                      child: TextField(
-                        controller: set.repController,
-                        readOnly: true,
-                        showCursor: false,
-                        enableInteractiveSelection: false,
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontFamily: kUiFont,
-                          color: set.checked
-                              ? colorScheme.onSurface
-                              : colorScheme.onSurfaceVariant.withOpacity(0.5),
-                        ),
-                        onTap: () async {
-                          notifyFocus(true);
-                          await _openRepsPicker(set);
-                        },
-                        decoration: InputDecoration(
-                          isDense: true,
-                          filled: false,
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(
-                              color:
-                                  colorScheme.onSurfaceVariant.withOpacity(0.4),
-                              width: 1,
-                            ),
-                          ),
-                          focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(
-                                color: colorScheme.primary, width: 2),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              vertical: 6, horizontal: 0),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Text(' ${l10n.reps}'),
-                const SizedBox(width: 6),
-                SizedBox(
-                  height: kUnifiedFieldMinHeight,
-                  child: Checkbox(
-                    value: set.checked,
-                    onChanged: (set.weightController.text.trim().isNotEmpty ||
-                            set.repController.text.trim().isNotEmpty)
-                        ? (v) {
-                            setState(() {
-                              final bool nextChecked = v ?? false;
-                              set.checked = nextChecked;
-                              set.isSuggestion = !nextChecked;
-                            });
-                            if ((v ?? false) == true) {
-                              widget.timerKey.currentState?.restart();
-                            }
-                          }
-                        : null,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+    final bool showRmColumn = SettingsManager.showRM;
+    final bool showRirColumn = SettingsManager.showRIR;
+    final bool showFailColumn = SettingsManager.showFail;
+
+    final unitLabel = currentUnit == 'kg' ? l10n.kg : l10n.lbs;
+    final headerStyle = TextStyle(
+      color: colorScheme.onSurfaceVariant,
+      fontSize: 12.0,
+      fontWeight: FontWeight.w600,
     );
+    final valueStyle = TextStyle(
+      fontFamily: kUiFont,
+      color: colorScheme.onSurface,
+      fontSize: 13.0,
+    );
+    final unitStyle = TextStyle(
+      fontFamily: kUiFont,
+      color: colorScheme.onSurfaceVariant,
+      fontSize: 12.0,
+      fontWeight: FontWeight.w700,
+    );
+
+    final maxSetCount = min(10, widget.setInputDataList.length);
+    final activeSets = widget.setInputDataList.take(maxSetCount).toList();
+
+    List<double?>? rmValues;
+    double? maxRm;
+    if (showRmColumn && activeSets.isNotEmpty) {
+      rmValues = List<double?>.filled(activeSets.length, null);
+      for (var i = 0; i < activeSets.length; i++) {
+        final weightText = activeSets[i].weightController.text.trim();
+        final repsText = activeSets[i].repController.text.trim();
+        final double? weight = double.tryParse(weightText);
+        final double? reps = double.tryParse(repsText);
+        if (weight == null || reps == null) {
+          continue;
+        }
+        final double rm = weight * (1 + reps / 30);
+        rmValues[i] = rm;
+        if (maxRm == null || rm > maxRm!) {
+          maxRm = rm;
+        }
+      }
+    }
+
+    final List<Widget> rows = [];
+
+    if (activeSets.isNotEmpty) {
+      final headerChildren = <Widget>[
+        SizedBox(
+          width: 44,
+          child: Text(l10n.sets, style: headerStyle),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          flex: 4,
+          child: Text(l10n.weightUnit, style: headerStyle),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          flex: 3,
+          child: Text(l10n.reps, style: headerStyle),
+        ),
+      ];
+      if (showRmColumn) {
+        headerChildren.add(const SizedBox(width: 6));
+        headerChildren.add(
+          Expanded(
+            flex: 3,
+            child: Text(l10n.rmLabel, style: headerStyle),
+          ),
+        );
+      }
+      headerChildren.add(const SizedBox(width: 6));
+      headerChildren.add(
+        SizedBox(
+          width: 56,
+          child: Text(l10n.completionLabel, style: headerStyle),
+        ),
+      );
+      if (showRirColumn) {
+        headerChildren.add(const SizedBox(width: 6));
+        headerChildren.add(
+          Expanded(
+            flex: 2,
+            child: Text(l10n.rirLabel, style: headerStyle),
+          ),
+        );
+      }
+      if (showFailColumn) {
+        headerChildren.add(const SizedBox(width: 6));
+        headerChildren.add(
+          SizedBox(
+            width: 48,
+            child: Text(l10n.failureLabel, style: headerStyle),
+          ),
+        );
+      }
+
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 4.0, bottom: 2.0),
+          child: Row(children: headerChildren),
+        ),
+      );
+    }
+
+    for (var index = 0; index < activeSets.length; index++) {
+      final set = activeSets[index];
+      final TextEditingController? rirController =
+          showRirColumn ? set.rirController : null;
+      final weightText = set.weightController.text.trim();
+      final repsText = set.repController.text.trim();
+      final double? rm =
+          showRmColumn && rmValues != null ? rmValues[index] : null;
+      final bool isMaxRm = showRmColumn &&
+          rm != null &&
+          maxRm != null &&
+          (rm - maxRm!).abs() < 1e-6;
+      final rowChildren = <Widget>[
+        SizedBox(
+          width: 44,
+          child: Text(
+            '${index + 1}:',
+            style: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 13.0,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          flex: 4,
+          child: Row(
+            children: [
+              Expanded(
+                child: Focus(
+                  onFocusChange: notifyFocus,
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                    child: TextField(
+                      controller: set.weightController,
+                      readOnly: true,
+                      showCursor: false,
+                      enableInteractiveSelection: false,
+                      textAlign: TextAlign.right,
+                      style: valueStyle.copyWith(
+                        color: set.checked
+                            ? colorScheme.onSurface
+                            : colorScheme.onSurfaceVariant.withOpacity(0.5),
+                      ),
+                      onTap: () async {
+                        notifyFocus(true);
+                        await _openWeightPicker(set);
+                      },
+                      decoration: InputDecoration(
+                        isDense: true,
+                        filled: false,
+                        hintText: '—',
+                        hintStyle: valueStyle.copyWith(
+                          color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                        ),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(
+                            color:
+                                colorScheme.onSurfaceVariant.withOpacity(0.4),
+                            width: 1,
+                          ),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide:
+                              BorderSide(color: colorScheme.primary, width: 2),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 6,
+                          horizontal: 0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(unitLabel, style: unitStyle.copyWith(fontSize: 13.0)),
+            ],
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          flex: 3,
+          child: Row(
+            children: [
+              Expanded(
+                child: Focus(
+                  onFocusChange: notifyFocus,
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                    child: TextField(
+                      controller: set.repController,
+                      readOnly: true,
+                      showCursor: false,
+                      enableInteractiveSelection: false,
+                      textAlign: TextAlign.right,
+                      style: valueStyle.copyWith(
+                        color: set.checked
+                            ? colorScheme.onSurface
+                            : colorScheme.onSurfaceVariant.withOpacity(0.5),
+                      ),
+                      onTap: () async {
+                        notifyFocus(true);
+                        await _openRepsPicker(set);
+                      },
+                      decoration: InputDecoration(
+                        isDense: true,
+                        filled: false,
+                        hintText: '—',
+                        hintStyle: valueStyle.copyWith(
+                          color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                        ),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(
+                            color:
+                                colorScheme.onSurfaceVariant.withOpacity(0.4),
+                            width: 1,
+                          ),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide:
+                              BorderSide(color: colorScheme.primary, width: 2),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 6,
+                          horizontal: 0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(l10n.reps, style: unitStyle.copyWith(fontSize: 13.0)),
+            ],
+          ),
+        ),
+      ];
+
+      if (showRmColumn) {
+        final String rmDisplay = rm != null ? rm.toStringAsFixed(1) : '—';
+        rowChildren.add(const SizedBox(width: 6));
+        rowChildren.add(
+          Expanded(
+            flex: 3,
+            child: Text(
+              rmDisplay,
+              textAlign: TextAlign.right,
+              style: valueStyle.copyWith(
+                color: isMaxRm ? colorScheme.error : colorScheme.onSurface,
+              ),
+            ),
+          ),
+        );
+      }
+
+      rowChildren.add(const SizedBox(width: 6));
+      rowChildren.add(
+        SizedBox(
+          width: 56,
+          child: SizedBox(
+            height: kUnifiedFieldMinHeight,
+            child: Checkbox(
+              value: set.checked,
+              onChanged: (weightText.isNotEmpty || repsText.isNotEmpty)
+                  ? (v) {
+                      setState(() {
+                        final bool nextChecked = v ?? false;
+                        set.checked = nextChecked;
+                        set.isSuggestion = !nextChecked;
+                      });
+                      if ((v ?? false) == true) {
+                        widget.timerKey.currentState?.restart();
+                      }
+                    }
+                  : null,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ),
+      );
+
+      if (showRirColumn && rirController != null) {
+        rowChildren.add(const SizedBox(width: 6));
+        rowChildren.add(
+          Expanded(
+            flex: 2,
+            child: Focus(
+              onFocusChange: notifyFocus,
+              child: ConstrainedBox(
+                constraints:
+                    const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
+                child: TextField(
+                  controller: rirController,
+                  readOnly: true,
+                  showCursor: false,
+                  enableInteractiveSelection: false,
+                  textAlign: TextAlign.right,
+                  style: valueStyle,
+                  onTap: () async {
+                    notifyFocus(true);
+                    await _openRirPicker(set);
+                  },
+                  decoration: InputDecoration(
+                    isDense: true,
+                    filled: false,
+                    hintText: '—',
+                    hintStyle: valueStyle.copyWith(
+                      color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                    ),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                        width: 1,
+                      ),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide:
+                          BorderSide(color: colorScheme.primary, width: 2),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 6,
+                      horizontal: 0,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      if (showFailColumn) {
+        rowChildren.add(const SizedBox(width: 6));
+        rowChildren.add(
+          SizedBox(
+            width: 48,
+            child: SizedBox(
+              height: kUnifiedFieldMinHeight,
+              child: Checkbox(
+                value: set.failureChecked,
+                onChanged: (value) {
+                  setState(() {
+                    set.failureChecked = value ?? false;
+                  });
+                },
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ),
+        );
+      }
+
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: rowChildren,
+          ),
+        ),
+      );
+    }
+
+    return Column(children: rows);
   }
 
   @override
@@ -9684,7 +10150,8 @@ class _MenuListState extends State<MenuList> {
                                             style: TextStyle(
                                               fontFamily: kUiFont,
                                               color: widget.aerobicIsSuggestion
-                                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                                                  ? colorScheme.onSurfaceVariant
+                                                      .withOpacity(0.5)
                                                   : colorScheme.onSurface,
                                             ),
                                             onTap: () async {
@@ -9755,7 +10222,8 @@ class _MenuListState extends State<MenuList> {
                                             style: TextStyle(
                                               fontFamily: kUiFont,
                                               color: widget.aerobicIsSuggestion
-                                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                                                  ? colorScheme.onSurfaceVariant
+                                                      .withOpacity(0.5)
                                                   : colorScheme.onSurface,
                                             ),
                                             onTap: () async {
@@ -9836,7 +10304,8 @@ class _MenuListState extends State<MenuList> {
                                             style: TextStyle(
                                               fontFamily: kUiFont,
                                               color: widget.aerobicIsSuggestion
-                                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                                                  ? colorScheme.onSurfaceVariant
+                                                      .withOpacity(0.5)
                                                   : colorScheme.onSurface,
                                             ),
                                             onTap: () async {
@@ -9905,7 +10374,8 @@ class _MenuListState extends State<MenuList> {
                                             style: TextStyle(
                                               fontFamily: kUiFont,
                                               color: widget.aerobicIsSuggestion
-                                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                                                  ? colorScheme.onSurfaceVariant
+                                                      .withOpacity(0.5)
                                                   : colorScheme.onSurface,
                                             ),
                                             onTap: () async {
@@ -9974,7 +10444,8 @@ class _MenuListState extends State<MenuList> {
                                             style: TextStyle(
                                               fontFamily: kUiFont,
                                               color: widget.aerobicIsSuggestion
-                                                  ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+                                                  ? colorScheme.onSurfaceVariant
+                                                      .withOpacity(0.5)
                                                   : colorScheme.onSurface,
                                             ),
                                             onTap: () async {
@@ -10059,9 +10530,15 @@ class _MenuListState extends State<MenuList> {
                                                   textAlign: TextAlign.right,
                                                   style: TextStyle(
                                                     fontFamily: kUiFont,
-                                                    color: (widget.calorieIsSuggestion &&
-                                                            (widget.calorieController?.text.trim().isEmpty ?? true))
-                                                        ? colorScheme.onSurfaceVariant
+                                                    color: (widget
+                                                                .calorieIsSuggestion &&
+                                                            (widget.calorieController
+                                                                    ?.text
+                                                                    .trim()
+                                                                    .isEmpty ??
+                                                                true))
+                                                        ? colorScheme
+                                                            .onSurfaceVariant
                                                             .withOpacity(0.5)
                                                         : colorScheme.onSurface,
                                                   ),
