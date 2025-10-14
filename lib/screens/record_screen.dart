@@ -9667,7 +9667,7 @@ class _MenuListState extends State<MenuList> {
     );
 
     // 列幅（SET｜重量｜回数｜RIR｜RM｜失敗｜完了）をスリム化
-    const double _wSet = 30.0; // 36→30
+    const double _wSet = 36.0; // 36→30→36
     const double _wWeight = 84.0; // 72→84
     const double _wReps = 64.0; // 56→64
     const double _wRir = 40.0; // 44→40
@@ -9811,7 +9811,7 @@ class _MenuListState extends State<MenuList> {
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
+                padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 6.0),
                 child: IntrinsicHeight(
                   child: Row(
                     children: _withVerticalDividers(
@@ -11017,12 +11017,14 @@ class ExerciseInputTimerState extends State<ExerciseInputTimer> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Text(
       _format(_elapsed),
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w600,
-        fontFeatures: [FontFeature.tabularFigures()],
+        fontFeatures: const [FontFeature.tabularFigures()],
+        color: colorScheme.primary,
       ),
     );
   }
