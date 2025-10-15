@@ -7764,6 +7764,7 @@ class MenuListPreview extends StatelessWidget {
       fontFamily: kUiFont,
       color: cs.onSurface,
       fontSize: 15.0,
+      fontWeight: FontWeight.w700,
     );
     final hintStyle = TextStyle(
       color: cs.onSurfaceVariant.withOpacity(0.5),
@@ -7773,11 +7774,6 @@ class MenuListPreview extends StatelessWidget {
     Widget underlineBox(Widget child) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: cs.onSurfaceVariant.withOpacity(0.35)),
-          ),
-        ),
         child: child,
       );
     }
