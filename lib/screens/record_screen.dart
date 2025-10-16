@@ -4831,6 +4831,11 @@ class _RecordScreenState extends State<RecordScreen>
     final double overlayHeight = media.size.height * 0.4;
     final Color headerBg = cs.primary;
     final Color headerFg = cs.onPrimary;
+    final TextStyle headerLabelStyle = TextStyle(
+      color: headerFg,
+      fontSize: 13,
+      fontWeight: FontWeight.w700,
+    );
 
     // ラベル右側の入力域で「下線 2/3」を実現する版
     Widget underlineField({
@@ -4991,17 +4996,14 @@ class _RecordScreenState extends State<RecordScreen>
                                 TextButton.icon(
                                   onPressed: _savePersonalAndClose,
                                   style: TextButton.styleFrom(
-                                    backgroundColor:
-                                        headerFg.withOpacity(0.16),
+                                    backgroundColor: headerFg.withOpacity(0.16),
                                     foregroundColor: headerFg,
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 14.0, vertical: 8.0),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(10.0),
+                                      borderRadius: BorderRadius.circular(10.0),
                                     ),
-                                    overlayColor:
-                                        headerFg.withOpacity(0.12),
+                                    overlayColor: headerFg.withOpacity(0.12),
                                   ),
                                   icon: Icon(Icons.check_rounded,
                                       color: headerFg),
@@ -5238,6 +5240,34 @@ class _RecordScreenState extends State<RecordScreen>
     const double topOffset = 12.0;
     final Color headerBg = cs.primary;
     final Color headerFg = cs.onPrimary;
+    const double mealNoColumnWidth = 36.0;
+    const double mealKcalColumnWidth = 88.0;
+    final Color mealDividerColor = cs.outlineVariant.withOpacity(0.45);
+    final Color mealHeaderDividerColor = headerFg.withOpacity(0.55);
+
+    List<Widget> buildCellsWithDividers(
+      List<Widget> children,
+      Color lineColor,
+    ) {
+      final result = <Widget>[];
+      for (int i = 0; i < children.length; i++) {
+        if (i > 0) {
+          result.add(Container(
+            width: 0.5,
+            margin: const EdgeInsets.symmetric(vertical: 4.0),
+            color: lineColor,
+          ));
+        }
+        result.add(children[i]);
+      }
+      return result;
+    }
+
+    final TextStyle headerLabelStyle = TextStyle(
+      color: headerFg,
+      fontSize: 13,
+      fontWeight: FontWeight.w700,
+    );
 
     return Stack(
       children: [
@@ -5315,33 +5345,6 @@ class _RecordScreenState extends State<RecordScreen>
                                       ),
                                     ),
                                     const Spacer(),
-                                    TextButton(
-                                      onPressed: () {
-                                        setState(() {
-                                          _addMealItemRow(cardIndex);
-                                        });
-                                      },
-                                      style: TextButton.styleFrom(
-                                        backgroundColor:
-                                            headerFg.withOpacity(0.16),
-                                        foregroundColor: headerFg,
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 14.0, vertical: 8.0),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(10.0),
-                                        ),
-                                        overlayColor:
-                                            headerFg.withOpacity(0.12),
-                                      ),
-                                      child: Text(
-                                        l10n.addMealItem,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
                                     TextButton.icon(
                                       onPressed: _saveMealOverlayAndClose,
                                       style: TextButton.styleFrom(
@@ -5370,7 +5373,77 @@ class _RecordScreenState extends State<RecordScreen>
                                 ),
                               ),
                             ),
-                            const Divider(height: 1),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16.0),
+                              child: Divider(
+                                height: 8,
+                                thickness: 1,
+                                color: mealHeaderDividerColor,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10.0),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: headerBg,
+                                    border: Border.all(
+                                      color: mealHeaderDividerColor,
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 9.0,
+                                    horizontal: 10.0,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: mealNoColumnWidth,
+                                        child: Center(
+                                          child: FittedBox(
+                                            child: Text(
+                                              l10n.mealHeaderNo,
+                                              style: headerLabelStyle,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        width: 1.0,
+                                        height: 26,
+                                        color: mealHeaderDividerColor,
+                                      ),
+                                      Expanded(
+                                        child: Center(
+                                          child: Text(
+                                            l10n.mealHeaderMenu,
+                                            style: headerLabelStyle,
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        width: 1.0,
+                                        height: 26,
+                                        color: mealHeaderDividerColor,
+                                      ),
+                                      SizedBox(
+                                        width: mealKcalColumnWidth,
+                                        child: Center(
+                                          child: Text(
+                                            l10n.mealHeaderKcal,
+                                            style: headerLabelStyle,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
                             Expanded(
                               child: Padding(
                                 padding:
@@ -5383,91 +5456,167 @@ class _RecordScreenState extends State<RecordScreen>
                                       keyboardDismissBehavior:
                                           ScrollViewKeyboardDismissBehavior
                                               .onDrag,
-                                      itemCount: controllers.length + 1,
+                                      itemCount: controllers.length + 2,
                                       itemBuilder: (_, index) {
                                         if (index == controllers.length) {
+                                          return Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                                12, 4, 12, 8),
+                                            child: OutlinedButton.icon(
+                                              onPressed: () {
+                                                setState(() {
+                                                  _addMealItemRow(cardIndex);
+                                                });
+                                              },
+                                              icon: Icon(
+                                                Icons.add,
+                                                size: 18,
+                                                color: cs.primary,
+                                              ),
+                                              label: Text(
+                                                l10n.addMealItem,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: cs.primary,
+                                                ),
+                                              ),
+                                              style: OutlinedButton.styleFrom(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 12.0),
+                                                side: BorderSide(
+                                                  color: cs.primary,
+                                                ),
+                                                foregroundColor: cs.primary,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          12.0),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                        if (index == controllers.length + 1) {
                                           return SizedBox(
                                             height: bottomSpacerHeight,
                                           );
                                         }
                                         final row = controllers[index];
-                                        return Padding(
-                                          padding: EdgeInsets.only(
-                                            bottom:
-                                                index == controllers.length - 1
-                                                    ? 0
-                                                    : 12,
+                                        final Color rowBgColor =
+                                            cs.surfaceContainerHigh;
+                                        final InputDecoration
+                                            mealInputDecoration =
+                                            InputDecoration(
+                                          isDense: true,
+                                          border: InputBorder.none,
+                                          enabledBorder: InputBorder.none,
+                                          focusedBorder: InputBorder.none,
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                  vertical: 4),
+                                          filled: true,
+                                          fillColor: rowBgColor,
+                                        );
+
+                                        final TextStyle mealIndexStyle =
+                                            TextStyle(
+                                          color: cs.onSurfaceVariant,
+                                          fontSize: 18.0,
+                                        );
+
+                                        final rowCells = <Widget>[
+                                          SizedBox(
+                                            width: mealNoColumnWidth,
+                                            child: Center(
+                                              child: Text(
+                                                '${index + 1}',
+                                                style: mealIndexStyle,
+                                              ),
+                                            ),
                                           ),
-                                          child: Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: [
-                                              Expanded(
-                                                child: TextField(
-                                                  controller:
-                                                      row.nameController,
-                                                  decoration:
-                                                      _underlineDec(context)
-                                                          .copyWith(
-                                                    labelText: l10n.mealItem,
+                                          Expanded(
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8.0),
+                                              child: SizedBox(
+                                                height: double.infinity,
+                                                child: Align(
+                                                  alignment:
+                                                      Alignment.centerLeft,
+                                                  child: TextField(
+                                                    controller:
+                                                        row.nameController,
+                                                    decoration:
+                                                        mealInputDecoration,
+                                                    style: TextStyle(
+                                                      color: cs.onSurface,
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                    textAlignVertical:
+                                                        TextAlignVertical
+                                                            .center,
+                                                    onChanged: (value) {
+                                                      _onMealNameChanged(
+                                                        cardIndex,
+                                                        index,
+                                                        value,
+                                                      );
+                                                      setState(() {});
+                                                    },
                                                   ),
-                                                  onChanged: (value) {
-                                                    _onMealNameChanged(
-                                                      cardIndex,
-                                                      index,
-                                                      value,
-                                                    );
-                                                    setState(() {});
-                                                  },
                                                 ),
                                               ),
-                                              const SizedBox(width: 12),
-                                              // 下線の中に単位を入れない。行レイアウトで右側に固定配置
-                                              SizedBox(
-                                                width: 110,
-                                                child: Row(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.center,
-                                                  children: [
-                                                    // 入力欄（下線）— 余白を確保して右側に単位を置く
-                                                    Expanded(
-                                                      child: TextField(
-                                                        controller:
-                                                            row.kcalController,
-                                                        decoration:
-                                                            _underlineDec(
-                                                                    context)
-                                                                .copyWith(
-                                                          labelText: null,
-                                                          // プレースホルダーは不要
-                                                          // hintText: '0',
-                                                          // ← suffix/suffixText は使わない（常時固定表示のため）
-                                                        ),
-                                                        keyboardType:
-                                                            const TextInputType
-                                                                .numberWithOptions(
-                                                                decimal: true),
-                                                        textAlign:
-                                                            TextAlign.right,
-                                                        style: TextStyle(
-                                                          color: cs.onSurface,
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                        ),
-                                                        onChanged: (value) {
-                                                          _onMealKcalChanged(
-                                                            cardIndex,
-                                                            index,
-                                                            value,
-                                                          );
-                                                          setState(() {});
-                                                        },
-                                                      ),
+                                            ),
+                                          ),
+                                          SizedBox(
+                                            width: mealKcalColumnWidth,
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.end,
+                                              children: [
+                                                Expanded(
+                                                  child: TextField(
+                                                    controller:
+                                                        row.kcalController,
+                                                    decoration:
+                                                        mealInputDecoration,
+                                                    keyboardType:
+                                                        const TextInputType
+                                                            .numberWithOptions(
+                                                            decimal: true),
+                                                    textAlign: TextAlign.right,
+                                                    textAlignVertical:
+                                                        TextAlignVertical
+                                                            .bottom,
+                                                    style: TextStyle(
+                                                      color: cs.onSurface,
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                     ),
-                                                    const SizedBox(width: 6),
-                                                    // 右側固定の「kcal」— 初期から常時表示
-                                                    Text(
+                                                    onChanged: (value) {
+                                                      _onMealKcalChanged(
+                                                        cardIndex,
+                                                        index,
+                                                        value,
+                                                      );
+                                                      setState(() {});
+                                                    },
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Align(
+                                                  alignment:
+                                                      Alignment.bottomCenter,
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                            bottom: 1.0),
+                                                    child: Text(
                                                       l10n.kcalUnit,
                                                       style: TextStyle(
                                                         color:
@@ -5477,10 +5626,47 @@ class _RecordScreenState extends State<RecordScreen>
                                                             FontWeight.w600,
                                                       ),
                                                     ),
-                                                  ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ];
+
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 3.0),
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(8.0),
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                color: rowBgColor,
+                                                border: Border.all(
+                                                  color: mealDividerColor,
+                                                  width: 0.8,
                                                 ),
                                               ),
-                                            ],
+                                              constraints: const BoxConstraints(
+                                                minHeight: 48.0,
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                vertical: 9.0,
+                                                horizontal: 10.0,
+                                              ),
+                                              child: IntrinsicHeight(
+                                                child: Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.end,
+                                                  children:
+                                                      buildCellsWithDividers(
+                                                    rowCells,
+                                                    mealDividerColor,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
                                           ),
                                         );
                                       },
@@ -5880,7 +6066,8 @@ class _RecordScreenState extends State<RecordScreen>
                                           ),
                                         ),
                                         child: ExerciseInputTimer(
-                                          key: _ensureTimerKey(secIndex, menuIndex),
+                                          key: _ensureTimerKey(
+                                              secIndex, menuIndex),
                                         ),
                                       ),
                                     ),
@@ -5890,7 +6077,8 @@ class _RecordScreenState extends State<RecordScreen>
                                 if (!isAerobic) ...[
                                   TextButton(
                                     onPressed: (menuIndex <
-                                                section.setInputDataList.length &&
+                                                section
+                                                    .setInputDataList.length &&
                                             section.setInputDataList[menuIndex]
                                                     .length <
                                                 10)
@@ -5928,7 +6116,8 @@ class _RecordScreenState extends State<RecordScreen>
                             ),
                           ),
                         ),
-                        Divider(height: 1, color: overlayHeaderBg.withOpacity(0.3)),
+                        Divider(
+                            height: 1, color: overlayHeaderBg.withOpacity(0.3)),
 
                         // 内容：MenuList ...
                         Expanded(
@@ -6378,25 +6567,50 @@ class _RecordScreenState extends State<RecordScreen>
                                                           descendantsAreFocusable:
                                                               false,
                                                           child: TextField(
-                                                            controller: TextEditingController(text: l10n.weightCardTitle),
+                                                            controller:
+                                                                TextEditingController(
+                                                                    text: l10n
+                                                                        .weightCardTitle),
                                                             readOnly: true,
                                                             showCursor: false,
-                                                            enableInteractiveSelection: false,
-                                                            onTap: _openPersonalOverlaySmooth,
+                                                            enableInteractiveSelection:
+                                                                false,
+                                                            onTap:
+                                                                _openPersonalOverlaySmooth,
                                                             // ▼ 追加：タイトルを太字に
                                                             style: TextStyle(
-                                                              fontFamily: kUiFont,
-                                                              color: Theme.of(context).colorScheme.onSurface,
+                                                              fontFamily:
+                                                                  kUiFont,
+                                                              color: Theme.of(
+                                                                      context)
+                                                                  .colorScheme
+                                                                  .onSurface,
                                                               fontSize: 15.0,
-                                                              fontWeight: FontWeight.w700,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
                                                             ),
-                                                            decoration: const InputDecoration(
+                                                            decoration:
+                                                                const InputDecoration(
                                                               filled: true,
-                                                              fillColor: Colors.transparent,
-                                                              border: InputBorder.none,
-                                                              enabledBorder: InputBorder.none,
-                                                              focusedBorder: InputBorder.none,
-                                                              contentPadding: EdgeInsets.fromLTRB(28, 6, 0, 5),
+                                                              fillColor: Colors
+                                                                  .transparent,
+                                                              border:
+                                                                  InputBorder
+                                                                      .none,
+                                                              enabledBorder:
+                                                                  InputBorder
+                                                                      .none,
+                                                              focusedBorder:
+                                                                  InputBorder
+                                                                      .none,
+                                                              contentPadding:
+                                                                  EdgeInsets
+                                                                      .fromLTRB(
+                                                                          28,
+                                                                          6,
+                                                                          0,
+                                                                          5),
                                                             ),
                                                           ),
                                                         ),
@@ -9839,7 +10053,8 @@ class _MenuListState extends State<MenuList> {
               child: FittedBox(
                 child: Text(
                   failureHeaderLabel,
-                  style: headerStyle.copyWith(fontSize: headerStyle.fontSize! - 3),
+                  style:
+                      headerStyle.copyWith(fontSize: headerStyle.fontSize! - 3),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -9882,7 +10097,8 @@ class _MenuListState extends State<MenuList> {
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 6.0),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 6.0, horizontal: 6.0),
                 child: IntrinsicHeight(
                   child: Row(
                     children: _withVerticalDividers(
@@ -9967,7 +10183,8 @@ class _MenuListState extends State<MenuList> {
                           filled: false,
                           hintText: '—',
                           hintStyle: valueStyle.copyWith(
-                            color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                            color:
+                                colorScheme.onSurfaceVariant.withOpacity(0.5),
                           ),
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
@@ -10038,7 +10255,8 @@ class _MenuListState extends State<MenuList> {
                           filled: false,
                           hintText: '—',
                           hintStyle: valueStyle.copyWith(
-                            color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                            color:
+                                colorScheme.onSurfaceVariant.withOpacity(0.5),
                           ),
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
@@ -10065,7 +10283,6 @@ class _MenuListState extends State<MenuList> {
             ],
           ),
         ),
-
       ];
 
       if (showRirColumn && rirController != null) {
@@ -10129,8 +10346,9 @@ class _MenuListState extends State<MenuList> {
                 textAlign: TextAlign.right,
                 style: valueStyle.copyWith(
                   fontSize: 17.0,
-                  color:
-                      isMaxRm ? colorScheme.error : colorScheme.onSurfaceVariant,
+                  color: isMaxRm
+                      ? colorScheme.error
+                      : colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
@@ -10311,8 +10529,8 @@ class _MenuListState extends State<MenuList> {
                     style: TextStyle(
                       fontFamily: kUiFont,
                       color: colorScheme.onSurface,
-                      fontSize: 20.0,               
-                      fontWeight: FontWeight.w700,   // ← 太字
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.w700, // ← 太字
                     ),
                     onTap: () {
                       notifyFocus(true);

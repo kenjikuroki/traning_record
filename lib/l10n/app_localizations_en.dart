@@ -235,7 +235,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get customExerciseDuplicate => 'This exercise is already registered';
 
   @override
-  String get customExercisePickerEmpty => 'No saved exercises yet. Tap + to add one.';
+  String get customExercisePickerEmpty =>
+      'No saved exercises yet. Tap + to add one.';
 
   @override
   String get open => 'Open';
@@ -244,7 +245,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get removeCustomExercises => 'Remove Custom Exercises';
 
   @override
-  String get customExerciseRemovalHint => 'Delete previously added custom exercises.';
+  String get customExerciseRemovalHint =>
+      'Delete previously added custom exercises.';
 
   @override
   String get noCustomExercises => 'No custom exercises have been added.';
@@ -297,7 +299,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coachBubbleSemantic => 'Hint';
 
   @override
-  String get hintRecordSelectPart => 'Please select the body part you will train.';
+  String get hintRecordSelectPart =>
+      'Please select the body part you will train.';
 
   @override
   String get hintRecordExerciseField => 'Enter exercise name here.';
@@ -309,7 +312,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hintRecordChangePart => 'You can add another body part here.';
 
   @override
-  String get hintRecordOpenSettings => 'You can change default sets in Settings.';
+  String get hintRecordOpenSettings =>
+      'You can change default sets in Settings.';
 
   @override
   String get hintRecordFab => 'Add a part, exercise, photo, or memo from here.';
@@ -321,7 +325,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hintGraphFavorite => 'Add frequently viewed data to Favorites.';
 
   @override
-  String get hintGraphChartArea => 'The chart of your recorded data will appear here.';
+  String get hintGraphChartArea =>
+      'The chart of your recorded data will appear here.';
 
   @override
   String get hintGraphSelectPart => 'Select body part and exercise.';
@@ -336,7 +341,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get weekDisplay => 'Week';
 
   @override
-  String get noGraphData => 'Select a body part/exercise or weight to display the graph.';
+  String get noGraphData =>
+      'Select a body part/exercise or weight to display the graph.';
 
   @override
   String favorited(Object menuName) {
@@ -445,7 +451,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get autoPausedOver5h => 'Paused after running over 5 hours';
 
   @override
-  String get autoPausedBackground30m => 'Paused after 30+ minutes in background';
+  String get autoPausedBackground30m =>
+      'Paused after 30+ minutes in background';
 
   @override
   String get partLimitReached => 'You can add up to 10 parts.';
@@ -511,7 +518,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get albumEmptyMessage => 'Save your selfies in the album to track your training progress.';
+  String get albumEmptyMessage =>
+      'Save your selfies in the album to track your training progress.';
 
   @override
   String get close => 'Close';
@@ -568,7 +576,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get collapseCard => 'Collapse';
 
   @override
-  String get hintRecordFirst => 'Start by recording a workout or your body weight.';
+  String get hintRecordFirst =>
+      'Start by recording a workout or your body weight.';
 
   @override
   String get hintGraphSetGoal => 'Set your goal.';
@@ -673,7 +682,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get length => 'Length';
 
   @override
-  String get lengthNote => 'Height and waist follow the Length unit (cm or ft·in).';
+  String get lengthNote =>
+      'Height and waist follow the Length unit (cm or ft·in).';
 
   @override
   String get graphTitle => 'Graph';
@@ -730,6 +740,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addMealItem => '+ Menu';
 
   @override
+  String get mealHeaderNo => 'No.';
+
+  @override
+  String get mealHeaderMenu => 'Menu';
+
+  @override
+  String get mealHeaderKcal => 'Kcal';
+
+  @override
   String get bmrTitle => 'BMR:';
 
   @override
@@ -745,7 +764,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bmrDeficit => 'Difference (Intake − BMR)';
 
   @override
-  String get bmrNeedPersonalNotice => 'Weight, height, birth date, and gender are required. Set them in Settings → Personal.';
+  String get bmrNeedPersonalNotice =>
+      'Weight, height, birth date, and gender are required. Set them in Settings → Personal.';
 
   @override
   String get mealInputHint => 'Enter menu name and kcal';
@@ -763,7 +783,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calorieHelpTitle => 'About the calorie estimation';
 
   @override
-  String get calorieHelpBody => 'Formula: calories = MET × weight(kg) × time(hours).\n\nThe MET value is estimated from the exercise name. Because this is only an approximation, feel free to overwrite it with the reading from your smartwatch or other tracker.';
+  String get calorieHelpBody =>
+      'Formula: calories = MET × weight(kg) × time(hours).\n\nThe MET value is estimated from the exercise name. Because this is only an approximation, feel free to overwrite it with the reading from your smartwatch or other tracker.';
 
   @override
   String get dailyCalorieTotal => 'Total calories';
@@ -793,16 +814,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aerobicPickerTitle => 'Choose or type exercise';
 
   @override
-  String get aerobicCalorieUnknownHint => 'Could not estimate calories for this exercise name. Please enter the value obtained from another device if available.';
+  String get aerobicCalorieUnknownHint =>
+      'Could not estimate calories for this exercise name. Please enter the value obtained from another device if available.';
 
   @override
   String get aerobicCalorieInfoTitle => 'About Calorie Estimation';
 
   @override
-  String get aerobicCalorieInfoBody => 'Calories are estimated as MET × weight (kg) × time (hours). MET is inferred from the exercise name, distance, and duration.\n\nBecause this is only an approximation, please overwrite it with the value obtained from your smartwatch or other tracker if available. Distance or time must be provided for the estimate.\n\nEnvironmental conditions and your physical condition affect calorie expenditure. Remember to take breaks and stay hydrated.';
+  String get aerobicCalorieInfoBody =>
+      'Calories are estimated as MET × weight (kg) × time (hours). MET is inferred from the exercise name, distance, and duration.\n\nBecause this is only an approximation, please overwrite it with the value obtained from your smartwatch or other tracker if available. Distance or time must be provided for the estimate.\n\nEnvironmental conditions and your physical condition affect calorie expenditure. Remember to take breaks and stay hydrated.';
 
   @override
-  String get aerobicCalorieWeightRequired => 'Enter your body weight in Personal settings to enable calorie estimation.';
+  String get aerobicCalorieWeightRequired =>
+      'Enter your body weight in Personal settings to enable calorie estimation.';
 
   @override
   String get add => 'Add';
@@ -823,7 +847,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsThemeConfirmTitle => 'Change theme?';
 
   @override
-  String get settingsThemeConfirmMessage => 'This will update the app\'s colors. Continue?';
+  String get settingsThemeConfirmMessage =>
+      'This will update the app\'s colors. Continue?';
 
   @override
   String get themeMonotone => 'Monotone';
@@ -1264,7 +1289,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bodyweight => 'Bodyweight';
 
   @override
-  String get welcomeThankYou => 'Thanks for downloading. Have a great training life!';
+  String get welcomeThankYou =>
+      'Thanks for downloading. Have a great training life!';
 
   @override
   String get hintTapPlus => 'Tap the “+” at bottom-right to start logging.';

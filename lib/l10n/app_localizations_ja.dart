@@ -730,6 +730,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get addMealItem => '＋メニュー';
 
   @override
+  String get mealHeaderNo => 'No.';
+
+  @override
+  String get mealHeaderMenu => 'メニュー';
+
+  @override
+  String get mealHeaderKcal => 'kcal';
+
+  @override
   String get bmrTitle => '基礎代謝：';
 
   @override
@@ -763,7 +772,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get calorieHelpTitle => 'カロリー計算について';
 
   @override
-  String get calorieHelpBody => '計算式: 消費エネルギー = MET × 体重(kg) × 時間(h)。\n\n種目名から推測したMET値で概算しています。スマートウォッチなどで正確な値が分かる場合は、この項目を手入力で上書きしてください。';
+  String get calorieHelpBody =>
+      '計算式: 消費エネルギー = MET × 体重(kg) × 時間(h)。\n\n種目名から推測したMET値で概算しています。スマートウォッチなどで正確な値が分かる場合は、この項目を手入力で上書きしてください。';
 
   @override
   String get dailyCalorieTotal => '総消費カロリー';
@@ -793,16 +803,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get aerobicPickerTitle => '種目を入力・選択';
 
   @override
-  String get aerobicCalorieUnknownHint => '不明な種目名のためカロリーを算出できませんでした。スマートウォッチなどで取得した値があれば入力してください。';
+  String get aerobicCalorieUnknownHint =>
+      '不明な種目名のためカロリーを算出できませんでした。スマートウォッチなどで取得した値があれば入力してください。';
 
   @override
   String get aerobicCalorieInfoTitle => 'カロリー計算について';
 
   @override
-  String get aerobicCalorieInfoBody => '消費カロリー = MET × 体重(kg) × 運動時間(時間) で概算しています。種目名・距離・時間から運動強度(MET)を推定します。\n\n推定値のため、スマートウォッチ等で取得した値があれば上書きしてください。距離や時間が空欄の場合は推定されません。\n\n暑熱環境や体調によって消費量は変動します。休憩と水分補給も心掛けてください。';
+  String get aerobicCalorieInfoBody =>
+      '消費カロリー = MET × 体重(kg) × 運動時間(時間) で概算しています。種目名・距離・時間から運動強度(MET)を推定します。\n\n推定値のため、スマートウォッチ等で取得した値があれば上書きしてください。距離や時間が空欄の場合は推定されません。\n\n暑熱環境や体調によって消費量は変動します。休憩と水分補給も心掛けてください。';
 
   @override
-  String get aerobicCalorieWeightRequired => 'カロリー算出を有効にするにはパーソナル設定で体重を入力してください。';
+  String get aerobicCalorieWeightRequired =>
+      'カロリー算出を有効にするにはパーソナル設定で体重を入力してください。';
 
   @override
   String get add => '追加';
@@ -859,7 +872,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get hintRecordTapExerciseCard => 'こちらをタップしてトレーニングする部位を選択してください。';
 
   @override
-  String get hintRecordPickExercise => 'トレーニングする種目をタップするか、新しいカード種目カードを作成してください。';
+  String get hintRecordPickExercise =>
+      'トレーニングする種目をタップするか、新しいカード種目カードを作成してください。';
 
   @override
   String get hintRecordCheckbox => '重量と回数を入力し、チェックボックスにチェックをいれてください';
