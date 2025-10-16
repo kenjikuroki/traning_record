@@ -6273,7 +6273,7 @@ class _RecordScreenState extends State<RecordScreen>
                                       ),
                                       child: Padding(
                                         padding: const EdgeInsets.fromLTRB(
-                                            6.0, 10.0, 10.0, 10.0),
+                                            6.0, 2.0, 10.0, 2.0),
                                         child: Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
@@ -6301,27 +6301,25 @@ class _RecordScreenState extends State<RecordScreen>
                                                           descendantsAreFocusable:
                                                               false,
                                                           child: TextField(
-                                                            controller:
-                                                                TextEditingController(
-                                                                    text: l10n
-                                                                        .weightCardTitle),
+                                                            controller: TextEditingController(text: l10n.weightCardTitle),
                                                             readOnly: true,
                                                             showCursor: false,
-                                                            enableInteractiveSelection:
-                                                                false,
-                                                            onTap:
-                                                                _openPersonalOverlaySmooth,
-                                                            decoration:
-                                                                _underlineDec()
-                                                                    .copyWith(
-                                                              contentPadding:
-                                                                  const EdgeInsets
-                                                                      .fromLTRB(
-                                                                8,
-                                                                6,
-                                                                0,
-                                                                6,
-                                                              ),
+                                                            enableInteractiveSelection: false,
+                                                            onTap: _openPersonalOverlaySmooth,
+                                                            // ▼ 追加：タイトルを太字に
+                                                            style: TextStyle(
+                                                              fontFamily: kUiFont,
+                                                              color: Theme.of(context).colorScheme.onSurface,
+                                                              fontSize: 15.0,
+                                                              fontWeight: FontWeight.w700,
+                                                            ),
+                                                            decoration: const InputDecoration(
+                                                              filled: true,
+                                                              fillColor: Colors.transparent,
+                                                              border: InputBorder.none,
+                                                              enabledBorder: InputBorder.none,
+                                                              focusedBorder: InputBorder.none,
+                                                              contentPadding: EdgeInsets.fromLTRB(28, 6, 0, 5),
                                                             ),
                                                           ),
                                                         ),
@@ -10236,6 +10234,8 @@ class _MenuListState extends State<MenuList> {
                     style: TextStyle(
                       fontFamily: kUiFont,
                       color: colorScheme.onSurface,
+                      fontSize: 20.0,               
+                      fontWeight: FontWeight.w700,   // ← 太字
                     ),
                     onTap: () {
                       notifyFocus(true);
