@@ -4827,8 +4827,10 @@ class _RecordScreenState extends State<RecordScreen>
     final bool showBmr =
         (widget.settingsBox.get('manage.bmr') as bool?) ?? false;
 
-    final double topGap = media.padding.top + kToolbarHeight + 8;
+    const double topGap = 12.0;
     final double overlayHeight = media.size.height * 0.4;
+    final Color headerBg = cs.primary;
+    final Color headerFg = cs.onPrimary;
 
     // ラベル右側の入力域で「下線 2/3」を実現する版
     Widget underlineField({
@@ -4965,44 +4967,53 @@ class _RecordScreenState extends State<RecordScreen>
                       children: [
                         // ヘッダー
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(18, 12, 6, 8),
-                          child: Row(
-                            children: [
-                              Text(
-                                l10n.personal,
-                                style: TextStyle(
-                                  color: cs.onSurface,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const Spacer(),
-                              TextButton.icon(
-                                onPressed: _savePersonalAndClose,
-                                icon: const Icon(Icons.check_rounded),
-                                label: Text(
-                                  l10n.save,
+                          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: headerBg,
+                              borderRadius: BorderRadius.circular(14.0),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14.0,
+                              vertical: 10.0,
+                            ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  l10n.personal,
                                   style: TextStyle(
+                                    color: headerFg,
                                     fontWeight: FontWeight.w700,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface, // ← ラベル側で濃色を強制
+                                    fontSize: 18,
                                   ),
                                 ),
-                                style: ButtonStyle(
-                                  // ボタン側も濃色で統一（アイコン含む）
-                                  foregroundColor: MaterialStatePropertyAll(
-                                    Theme.of(context).colorScheme.onSurface,
+                                const Spacer(),
+                                TextButton.icon(
+                                  onPressed: _savePersonalAndClose,
+                                  style: TextButton.styleFrom(
+                                    backgroundColor:
+                                        headerFg.withOpacity(0.16),
+                                    foregroundColor: headerFg,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14.0, vertical: 8.0),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(10.0),
+                                    ),
+                                    overlayColor:
+                                        headerFg.withOpacity(0.12),
                                   ),
-                                  iconColor: MaterialStatePropertyAll(
-                                    Theme.of(context).colorScheme.onSurface,
+                                  icon: Icon(Icons.check_rounded,
+                                      color: headerFg),
+                                  label: Text(
+                                    l10n.save,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
-                                  // 押下時の被せ色が薄さに見えないよう完全透明に（任意）
-                                  overlayColor: const MaterialStatePropertyAll(
-                                      Colors.transparent),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                         const Divider(height: 1),
@@ -5224,6 +5235,9 @@ class _RecordScreenState extends State<RecordScreen>
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final safeBottom = media.padding.bottom;
     final double bottomSpacerHeight = bottomInset + safeBottom + 12;
+    const double topOffset = 12.0;
+    final Color headerBg = cs.primary;
+    final Color headerFg = cs.onPrimary;
 
     return Stack(
       children: [
@@ -5241,7 +5255,7 @@ class _RecordScreenState extends State<RecordScreen>
         Positioned(
           left: 12,
           right: 12,
-          top: 0,
+          top: topOffset,
           bottom: safeBottom + 12,
           child: AnimatedSlide(
             duration: _overlaySlideDuration,
@@ -5280,49 +5294,80 @@ class _RecordScreenState extends State<RecordScreen>
                         child: Column(
                           children: [
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    _mealCategoryLabel(card.category, l10n),
-                                    style: TextStyle(
-                                      color: cs.onSurface,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  TextButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        _addMealItemRow(cardIndex);
-                                      });
-                                    },
-                                    child: Text(
-                                      l10n.addMealItem,
-                                      style: const TextStyle(
+                              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: headerBg,
+                                  borderRadius: BorderRadius.circular(14.0),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14.0,
+                                  vertical: 10.0,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      _mealCategoryLabel(card.category, l10n),
+                                      style: TextStyle(
+                                        color: headerFg,
                                         fontWeight: FontWeight.w700,
+                                        fontSize: 18,
                                       ),
                                     ),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: cs.onSurfaceVariant,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  TextButton.icon(
-                                    onPressed: _saveMealOverlayAndClose,
-                                    icon: const Icon(Icons.check_rounded),
-                                    label: Text(
-                                      l10n.save,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
+                                    const Spacer(),
+                                    TextButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _addMealItemRow(cardIndex);
+                                        });
+                                      },
+                                      style: TextButton.styleFrom(
+                                        backgroundColor:
+                                            headerFg.withOpacity(0.16),
+                                        foregroundColor: headerFg,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 14.0, vertical: 8.0),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10.0),
+                                        ),
+                                        overlayColor:
+                                            headerFg.withOpacity(0.12),
+                                      ),
+                                      child: Text(
+                                        l10n.addMealItem,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: cs.onSurfaceVariant,
+                                    const SizedBox(width: 8),
+                                    TextButton.icon(
+                                      onPressed: _saveMealOverlayAndClose,
+                                      style: TextButton.styleFrom(
+                                        backgroundColor:
+                                            headerFg.withOpacity(0.16),
+                                        foregroundColor: headerFg,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 14.0, vertical: 8.0),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10.0),
+                                        ),
+                                        overlayColor:
+                                            headerFg.withOpacity(0.12),
+                                      ),
+                                      icon: Icon(Icons.check_rounded,
+                                          color: headerFg),
+                                      label: Text(
+                                        l10n.save,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                             const Divider(height: 1),
@@ -5515,6 +5560,9 @@ class _RecordScreenState extends State<RecordScreen>
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final safeBottom = media.padding.bottom;
     final double bottomSpacerHeight = bottomInset + safeBottom + 12;
+    const double topOffset = 12.0;
+    final Color headerBg = cs.primary;
+    final Color headerFg = cs.onPrimary;
 
     return Stack(
       children: [
@@ -5532,7 +5580,7 @@ class _RecordScreenState extends State<RecordScreen>
         Positioned(
           left: 12,
           right: 12,
-          top: 0,
+          top: topOffset,
           bottom: safeBottom + 12,
           child: AnimatedSlide(
             duration: _overlaySlideDuration,
@@ -5572,32 +5620,53 @@ class _RecordScreenState extends State<RecordScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    l10n.memo,
-                                    style: TextStyle(
-                                      color: cs.onSurface,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  TextButton.icon(
-                                    onPressed: _saveMemoAndClose,
-                                    icon: const Icon(Icons.check_rounded),
-                                    label: Text(
-                                      l10n.save,
-                                      style: const TextStyle(
+                              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: headerBg,
+                                  borderRadius: BorderRadius.circular(14.0),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14.0,
+                                  vertical: 10.0,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      l10n.memo,
+                                      style: TextStyle(
+                                        color: headerFg,
                                         fontWeight: FontWeight.w700,
+                                        fontSize: 18,
                                       ),
                                     ),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: cs.onSurfaceVariant,
+                                    const Spacer(),
+                                    TextButton.icon(
+                                      onPressed: _saveMemoAndClose,
+                                      style: TextButton.styleFrom(
+                                        backgroundColor:
+                                            headerFg.withOpacity(0.16),
+                                        foregroundColor: headerFg,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 14.0, vertical: 8.0),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10.0),
+                                        ),
+                                        overlayColor:
+                                            headerFg.withOpacity(0.12),
+                                      ),
+                                      icon: Icon(Icons.check_rounded,
+                                          color: headerFg),
+                                      label: Text(
+                                        l10n.save,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                             const Divider(height: 1),
