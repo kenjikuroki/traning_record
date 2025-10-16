@@ -4786,6 +4786,14 @@ class _RecordScreenState extends State<RecordScreen>
       await _saveMemoAndClose();
       return;
     }
+    if (_mealOverlayVisible) {
+      await _saveMealOverlayAndClose();
+      return;
+    }
+    if (_personalOverlayVisible) {
+      await _savePersonalAndClose();
+      return;
+    }
 
     await _dismissKeyboardSafely(context);
 
