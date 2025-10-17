@@ -5459,11 +5459,12 @@ class _RecordScreenState extends State<RecordScreen>
                                       itemCount: controllers.length + 2,
                                       itemBuilder: (_, index) {
                                         if (index == controllers.length) {
-                                          return Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                                12, 4, 12, 8),
-                                            child: Align(
-                                              alignment: Alignment.centerRight,
+                                          return Align(
+                                            alignment: Alignment.centerRight,
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                      12, 4, 12, 8),
                                               child: TextButton(
                                                 onPressed: () {
                                                   setState(() {
@@ -5473,11 +5474,11 @@ class _RecordScreenState extends State<RecordScreen>
                                                 style: TextButton.styleFrom(
                                                   backgroundColor: cs.primary
                                                       .withOpacity(0.12),
+                                                  foregroundColor: cs.primary,
                                                   padding: const EdgeInsets
                                                       .symmetric(
-                                                    horizontal: 14.0,
-                                                    vertical: 8.0,
-                                                  ),
+                                                      horizontal: 16.0,
+                                                      vertical: 8.0),
                                                   minimumSize: const Size(0, 0),
                                                   tapTargetSize:
                                                       MaterialTapTargetSize
@@ -5485,15 +5486,15 @@ class _RecordScreenState extends State<RecordScreen>
                                                   shape: RoundedRectangleBorder(
                                                     borderRadius:
                                                         BorderRadius.circular(
-                                                            10.0),
+                                                            12.0),
                                                   ),
+                                                  overlayColor: cs.primary
+                                                      .withOpacity(0.14),
                                                 ),
                                                 child: Text(
                                                   l10n.addMealItem,
-                                                  style: TextStyle(
+                                                  style: const TextStyle(
                                                     fontWeight: FontWeight.w700,
-                                                    color: cs.primary
-                                                        .withOpacity(0.85),
                                                   ),
                                                 ),
                                               ),
@@ -5982,6 +5983,9 @@ class _RecordScreenState extends State<RecordScreen>
 
     final double topGap = 12.0;
     final double bottomGap = media.padding.bottom + 12;
+    final bool canAddSetButton = !isAerobic &&
+        menuIndex < section.setInputDataList.length &&
+        section.setInputDataList[menuIndex].length < 10;
 
     return Stack(
       children: [
@@ -6076,29 +6080,6 @@ class _RecordScreenState extends State<RecordScreen>
                                     ),
                                   ),
                                   const SizedBox(width: 12),
-                                ],
-                                if (!isAerobic) ...[
-                                  TextButton(
-                                    onPressed: (menuIndex <
-                                                section
-                                                    .setInputDataList.length &&
-                                            section.setInputDataList[menuIndex]
-                                                    .length <
-                                                10)
-                                        ? () {
-                                            HapticFeedback.selectionClick();
-                                            _addOneSetAt(secIndex, menuIndex);
-                                          }
-                                        : null,
-                                    style: overlayButtonStyle,
-                                    child: Text(
-                                      l10n.addSet,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
                                 ],
                                 TextButton.icon(
                                   key: _kMenuSaveButton,
@@ -6224,13 +6205,15 @@ class _RecordScreenState extends State<RecordScreen>
                                     forceExpanded: true,
                                     timerKey:
                                         _ensureTimerKey(secIndex, menuIndex),
+                                    onAddSet: () =>
+                                        _addOneSetAt(secIndex, menuIndex),
+                                    canAddSet: canAddSetButton,
                                   ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-
                         const Divider(height: 1),
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -6902,6 +6885,16 @@ class _RecordScreenState extends State<RecordScreen>
                                                 : Colors.black
                                                     .withOpacity(0.20);
                                             final bool isEditingThisOne = true;
+                                            final bool isAerobicPart =
+                                                section.selectedPart ==
+                                                    l10n.aerobicExercise;
+                                            final bool canAddSetButton =
+                                                !isAerobicPart &&
+                                                    section
+                                                            .setInputDataList[
+                                                                menuIndex]
+                                                            .length <
+                                                        10;
 
                                             Widget content;
                                             if (isEditingThisOne) {
@@ -7111,6 +7104,11 @@ class _RecordScreenState extends State<RecordScreen>
                                                         suppressOverlay: true),
                                                 timerKey: _ensureTimerKey(
                                                     secIndex, menuIndex),
+                                                onAddSet: canAddSetButton
+                                                    ? () => _addOneSetAt(
+                                                        secIndex, menuIndex)
+                                                    : null,
+                                                canAddSet: canAddSetButton,
                                               );
                                             }
 
@@ -8668,6 +8666,8 @@ class MenuList extends StatefulWidget {
   final VoidCallback onToggleCollapse;
   final bool forceExpanded;
   final VoidCallback? onPrepareAction;
+  final VoidCallback? onAddSet;
+  final bool canAddSet;
 
   const MenuList({
     required this.timerKey,
@@ -8699,6 +8699,8 @@ class MenuList extends StatefulWidget {
     required this.onToggleCollapse,
     this.forceExpanded = false,
     this.onPrepareAction,
+    this.onAddSet,
+    this.canAddSet = false,
   });
 
   final GlobalKey<ExerciseInputTimerState> timerKey;
@@ -11117,6 +11119,42 @@ class _MenuListState extends State<MenuList> {
                             children: [
                               _buildStrengthSetRows(
                                   l10n, colorScheme, currentUnit, notifyFocus),
+                              if (widget.onAddSet != null)
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                                    child: TextButton(
+                                      onPressed: widget.canAddSet
+                                          ? () => widget.onAddSet!.call()
+                                          : null,
+                                      style: TextButton.styleFrom(
+                                        backgroundColor: colorScheme.primary
+                                            .withOpacity(
+                                                widget.canAddSet ? 0.16 : 0.08),
+                                        foregroundColor: colorScheme.primary,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 18.0, vertical: 10.0),
+                                        minimumSize: const Size(0, 0),
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12.0),
+                                        ),
+                                        overlayColor: colorScheme.primary
+                                            .withOpacity(0.12),
+                                      ),
+                                      child: Text(
+                                        l10n.addSet,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               if (SettingsManager.showTotalVolume) ...[
                                 const SizedBox(height: 12),
                                 _buildTotalVolumeRow(nameFilled),
