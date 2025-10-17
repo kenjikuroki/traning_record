@@ -5462,36 +5462,39 @@ class _RecordScreenState extends State<RecordScreen>
                                           return Padding(
                                             padding: const EdgeInsets.fromLTRB(
                                                 12, 4, 12, 8),
-                                            child: OutlinedButton.icon(
-                                              onPressed: () {
-                                                setState(() {
-                                                  _addMealItemRow(cardIndex);
-                                                });
-                                              },
-                                              icon: Icon(
-                                                Icons.add,
-                                                size: 18,
-                                                color: cs.primary,
-                                              ),
-                                              label: Text(
-                                                l10n.addMealItem,
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: cs.primary,
+                                            child: Align(
+                                              alignment: Alignment.centerRight,
+                                              child: TextButton(
+                                                onPressed: () {
+                                                  setState(() {
+                                                    _addMealItemRow(cardIndex);
+                                                  });
+                                                },
+                                                style: TextButton.styleFrom(
+                                                  backgroundColor: cs.primary
+                                                      .withOpacity(0.12),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                    horizontal: 14.0,
+                                                    vertical: 8.0,
+                                                  ),
+                                                  minimumSize: const Size(0, 0),
+                                                  tapTargetSize:
+                                                      MaterialTapTargetSize
+                                                          .shrinkWrap,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            10.0),
+                                                  ),
                                                 ),
-                                              ),
-                                              style: OutlinedButton.styleFrom(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        vertical: 12.0),
-                                                side: BorderSide(
-                                                  color: cs.primary,
-                                                ),
-                                                foregroundColor: cs.primary,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          12.0),
+                                                child: Text(
+                                                  l10n.addMealItem,
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    color: cs.primary
+                                                        .withOpacity(0.85),
+                                                  ),
                                                 ),
                                               ),
                                             ),
