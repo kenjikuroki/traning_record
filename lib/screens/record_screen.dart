@@ -9958,6 +9958,8 @@ class _MenuListState extends State<MenuList> {
 
     final Color rowBgColor = colorScheme.surfaceContainerHigh;
     final Color rowDividerColor = colorScheme.outlineVariant.withOpacity(0.45);
+    final Color headerDividerColor =
+        (headerStyle.color ?? Colors.white).withOpacity(0.55);
 
     InputDecoration buildCellDecoration({
       String? hintText,
@@ -10124,8 +10126,8 @@ class _MenuListState extends State<MenuList> {
                 borderRadius: BorderRadius.circular(10.0),
                 border: Border(
                   bottom: BorderSide(
-                    color: colorScheme.outlineVariant.withOpacity(0.45),
-                    width: 0.5,
+                    color: headerDividerColor,
+                    width: 0.8,
                   ),
                 ),
               ),
@@ -10136,7 +10138,9 @@ class _MenuListState extends State<MenuList> {
                   child: Row(
                     children: _withVerticalDividers(
                       headerChildren,
-                      rowDividerColor,
+                      headerDividerColor,
+                      gapWidth: kColGap,
+                      lineWidth: 0.6,
                     ),
                   ),
                 ),
@@ -10415,10 +10419,7 @@ class _MenuListState extends State<MenuList> {
                   ? colorScheme.primaryContainer.withOpacity(0.20)
                   : rowBgColor,
               borderRadius: BorderRadius.circular(10.0),
-              border: Border.all(
-                color: rowDividerColor,
-                width: 0.8,
-              ),
+              border: Border.all(color: rowDividerColor, width: 0.8),
             ),
             constraints: const BoxConstraints(minHeight: 48),
             padding:
@@ -10429,6 +10430,8 @@ class _MenuListState extends State<MenuList> {
                 children: _withVerticalDividers(
                   rowChildren,
                   rowDividerColor,
+                  gapWidth: kColGap,
+                  lineWidth: 0.8,
                 ),
               ),
             ),
@@ -10444,18 +10447,54 @@ class _MenuListState extends State<MenuList> {
     );
   }
 
-  List<Widget> _withVerticalDividers(List<Widget> children, Color lineColor) {
+  List<Widget> _withVerticalDividers(
+    List<Widget> children,
+    Color lineColor, {
+    double gapWidth = 0,
+    double lineWidth = 0.8,
+  }) {
+    const double defaultGap = 4.0;
     final List<Widget> out = [];
-    for (int i = 0; i < children.length; i++) {
-      if (i > 0) {
+    bool hasPreviousContent = false;
+    double pendingGapWidth = 0;
+
+    for (final child in children) {
+      final bool isGap = gapWidth > 0 &&
+          child is SizedBox &&
+          child.child == null &&
+          child.width != null &&
+          (child.height == null || child.height == 0) &&
+          (child.width! - gapWidth).abs() < 0.01;
+
+      if (isGap) {
+        pendingGapWidth += child.width!;
+        continue;
+      }
+
+      if (hasPreviousContent) {
+        final double effectiveGap =
+            pendingGapWidth > 0 ? pendingGapWidth : gapWidth;
+        final double halfGap =
+            (effectiveGap > 0 ? effectiveGap : defaultGap) / 2;
+
+        if (halfGap > 0) {
+          out.add(SizedBox(width: halfGap));
+        }
         out.add(Container(
-          width: 0.5,
-          margin: const EdgeInsets.symmetric(vertical: 4.0),
+          width: lineWidth,
+          margin: const EdgeInsets.symmetric(vertical: 2.0),
           color: lineColor,
         ));
+        if (halfGap > 0) {
+          out.add(SizedBox(width: halfGap));
+        }
       }
-      out.add(children[i]);
+
+      out.add(child);
+      hasPreviousContent = true;
+      pendingGapWidth = 0;
     }
+
     return out;
   }
 
