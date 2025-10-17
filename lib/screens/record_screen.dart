@@ -9956,6 +9956,34 @@ class _MenuListState extends State<MenuList> {
       fontWeight: FontWeight.w700,
     );
 
+    final Color rowBgColor = colorScheme.surfaceContainerHigh;
+    final Color rowDividerColor = colorScheme.outlineVariant.withOpacity(0.45);
+
+    InputDecoration buildCellDecoration({
+      String? hintText,
+      EdgeInsetsGeometry? padding,
+      TextStyle? hintStyle,
+    }) {
+      return InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: rowBgColor,
+        hintText: hintText,
+        hintStyle: hintStyle ??
+            valueStyle.copyWith(
+              color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+            ),
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        contentPadding: padding ??
+            const EdgeInsets.symmetric(
+              vertical: 4,
+              horizontal: 0,
+            ),
+      );
+    }
+
     // 列幅（SET｜重量｜回数｜RIR｜RM｜失敗｜完了）をスリム化
     const double _wSet = 36.0; // 36→30→36
     const double _wWeight = 84.0; // 72→84
@@ -10108,7 +10136,7 @@ class _MenuListState extends State<MenuList> {
                   child: Row(
                     children: _withVerticalDividers(
                       headerChildren,
-                      colorScheme.outlineVariant.withOpacity(0.45),
+                      rowDividerColor,
                     ),
                   ),
                 ),
@@ -10183,23 +10211,7 @@ class _MenuListState extends State<MenuList> {
                           });
                           await _openWeightPicker(set);
                         },
-                        decoration: InputDecoration(
-                          isDense: true,
-                          filled: false,
-                          hintText: '—',
-                          hintStyle: valueStyle.copyWith(
-                            color:
-                                colorScheme.onSurfaceVariant.withOpacity(0.5),
-                          ),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding: const EdgeInsets.only(
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                          ),
-                        ),
+                        decoration: buildCellDecoration(hintText: '—'),
                       ),
                     ),
                   ),
@@ -10255,23 +10267,7 @@ class _MenuListState extends State<MenuList> {
                           });
                           await _openRepsPicker(set);
                         },
-                        decoration: InputDecoration(
-                          isDense: true,
-                          filled: false,
-                          hintText: '—',
-                          hintStyle: valueStyle.copyWith(
-                            color:
-                                colorScheme.onSurfaceVariant.withOpacity(0.5),
-                          ),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding: const EdgeInsets.only(
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                          ),
-                        ),
+                        decoration: buildCellDecoration(hintText: '—'),
                       ),
                     ),
                   ),
@@ -10317,19 +10313,7 @@ class _MenuListState extends State<MenuList> {
                     notifyFocus(true);
                     await _openRirPicker(set);
                   },
-                  decoration: InputDecoration(
-                    isDense: true,
-                    filled: false,
-                    hintText: '—',
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    contentPadding: const EdgeInsets.only(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                    ),
-                  ),
+                  decoration: buildCellDecoration(hintText: '—'),
                 ),
               ),
             ),
@@ -10422,30 +10406,29 @@ class _MenuListState extends State<MenuList> {
 
       rows.add(
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6.0),
+          padding: const EdgeInsets.symmetric(vertical: 3.0),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 500),
             curve: Curves.easeOut,
             decoration: BoxDecoration(
               color: _flashDoneRows.contains(index)
                   ? colorScheme.primaryContainer.withOpacity(0.20)
-                  : (index.isOdd
-                      ? colorScheme.surfaceVariant.withOpacity(0.25)
-                      : colorScheme.surfaceVariant.withOpacity(0.12)),
-              borderRadius: BorderRadius.circular(8),
-              border: Border(
-                bottom: BorderSide(
-                  color: colorScheme.outlineVariant.withOpacity(0.45),
-                  width: 0.5,
-                ),
+                  : rowBgColor,
+              borderRadius: BorderRadius.circular(10.0),
+              border: Border.all(
+                color: rowDividerColor,
+                width: 0.8,
               ),
             ),
+            constraints: const BoxConstraints(minHeight: 48),
+            padding:
+                const EdgeInsets.symmetric(vertical: 9.0, horizontal: 10.0),
             child: IntrinsicHeight(
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: _withVerticalDividers(
                   rowChildren,
-                  colorScheme.outlineVariant.withOpacity(0.45),
+                  rowDividerColor,
                 ),
               ),
             ),
