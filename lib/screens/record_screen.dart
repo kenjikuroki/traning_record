@@ -9993,18 +9993,18 @@ class _MenuListState extends State<MenuList> {
     return Tooltip(
       message: tooltip,
       child: InkWell(
-        customBorder: const CircleBorder(), // タップ範囲は確保
+        customBorder: const CircleBorder(),
         onTap: () {
-          final newVal = selected ? null : value; // 再タップで解除
+          final newVal = selected ? null : value;
           widget.onSatisfactionChanged?.call(newVal);
         },
         child: Padding(
-          padding: const EdgeInsets.all(6), // 見た目は小さく/ヒットエリアは広く
+          padding: const EdgeInsets.all(8),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
             curve: Curves.easeOutCubic,
-            width: 28, // ★背景を小さく（42→28等）
-            height: 28, // ★背景を小さく（36→28等）
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: selected ? cs.primary : cs.surfaceContainer,
@@ -10017,8 +10017,8 @@ class _MenuListState extends State<MenuList> {
               boxShadow: selected
                   ? [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 2,
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 3,
                         offset: const Offset(0, 1),
                       ),
                     ]
@@ -10026,7 +10026,7 @@ class _MenuListState extends State<MenuList> {
             ),
             child: Icon(
               icon,
-              size: 25, // ★絵文字サイズはそのまま
+              size: 28,
               color: selected ? cs.onPrimary : cs.onSurfaceVariant,
             ),
           ),
@@ -10077,12 +10077,14 @@ class _MenuListState extends State<MenuList> {
     Widget content(double? current) {
       final labelStyle = TextStyle(
         color: cs.onSurfaceVariant,
-        fontSize: 13.0,
+        fontSize: 15.0,
+        fontWeight: FontWeight.w600,
       );
       final valueStyle = TextStyle(
         fontFamily: kUiFont,
         color: cs.onSurface,
-        fontSize: 13.0,
+        fontSize: 16.0,
+        fontWeight: FontWeight.w700,
       );
       final double? prevVolume = widget.previousTotalVolume;
       final double? diffVolume =
@@ -10162,23 +10164,23 @@ class _MenuListState extends State<MenuList> {
                 '${l10n.satisfaction}：',
                 style: TextStyle(
                   color: colorScheme.onSurfaceVariant,
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               _buildFaceButton(
                 value: 0,
                 icon: Icons.sentiment_very_dissatisfied,
                 tooltip: l10n.satisfactionBad,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               _buildFaceButton(
                 value: 1,
                 icon: Icons.sentiment_neutral,
                 tooltip: l10n.satisfactionOkay,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               _buildFaceButton(
                 value: 2,
                 icon: Icons.sentiment_very_satisfied,
