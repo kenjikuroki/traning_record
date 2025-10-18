@@ -4578,17 +4578,24 @@ class _RecordScreenState extends State<RecordScreen>
                 ),
                 const SizedBox(height: 8),
                 if (preview.isNotEmpty)
-                  Text(
-                    preview,
-                    style: TextStyle(color: cs.onSurface, height: 1.35),
-                    maxLines: 6,
-                    overflow: TextOverflow.ellipsis,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      preview,
+                      style: TextStyle(color: cs.onSurface, height: 1.35),
+                      maxLines: 6,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   )
                 else
-                  Text(
-                    l10n.memoBodyPlaceholder,
-                    style:
-                        TextStyle(color: cs.onSurfaceVariant.withOpacity(0.6)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      l10n.memoBodyPlaceholder,
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant.withOpacity(0.6),
+                      ),
+                    ),
                   ),
               ],
             ),
