@@ -11196,6 +11196,14 @@ class _MenuListState extends State<MenuList> {
                               children: [
                                 aerobicGrid,
                                 failureHint,
+                                if (SettingsManager.showSatisfaction) ...[
+                                  const SizedBox(height: 12),
+                                  _buildSatisfactionControlRow(
+                                    l10n,
+                                    colorScheme,
+                                    nameFilled,
+                                  ),
+                                ],
                               ],
                             );
                           })()
