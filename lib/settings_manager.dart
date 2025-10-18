@@ -62,15 +62,15 @@ class SettingsManager {
   static final ValueNotifier<bool> _showStopwatchTimerNotifier =
       ValueNotifier<bool>(true);
   static final ValueNotifier<bool> _showTotalVolumeNotifier =
-      ValueNotifier<bool>(false);
+      ValueNotifier<bool>(true);
   static final ValueNotifier<bool> _showSatisfactionNotifier =
       ValueNotifier<bool>(true);
   static final ValueNotifier<bool> _showIntervalTimerNotifier =
-      ValueNotifier<bool>(false);
-  static final ValueNotifier<bool> _showRmNotifier = ValueNotifier<bool>(true);
-  static final ValueNotifier<bool> _showRirNotifier = ValueNotifier<bool>(true);
-  static final ValueNotifier<bool> _showFailNotifier =
       ValueNotifier<bool>(true);
+  static final ValueNotifier<bool> _showRmNotifier = ValueNotifier<bool>(true);
+  static final ValueNotifier<bool> _showRirNotifier = ValueNotifier<bool>(false);
+  static final ValueNotifier<bool> _showFailNotifier =
+      ValueNotifier<bool>(false);
 
   static final ValueNotifier<bool> _manageBmrNotifier =
       ValueNotifier<bool>(false);
@@ -141,14 +141,14 @@ class SettingsManager {
     _showStopwatchTimerNotifier.value =
         (box.get(_showStopwatchTimerKey) as bool?) ?? true;
     _showTotalVolumeNotifier.value =
-        (box.get(_showTotalVolumeKey) as bool?) ?? false;
+        (box.get(_showTotalVolumeKey) as bool?) ?? true;
     _showSatisfactionNotifier.value =
         (box.get(_showSatisfactionKey) as bool?) ?? true;
     _showIntervalTimerNotifier.value =
-        (box.get(_showIntervalTimerKey) as bool?) ?? false;
+        (box.get(_showIntervalTimerKey) as bool?) ?? true;
     _showRmNotifier.value = (box.get(_showRmKey) as bool?) ?? true;
-    _showRirNotifier.value = (box.get(_showRirKey) as bool?) ?? true;
-    _showFailNotifier.value = (box.get(_showFailKey) as bool?) ?? true;
+    _showRirNotifier.value = (box.get(_showRirKey) as bool?) ?? false;
+    _showFailNotifier.value = (box.get(_showFailKey) as bool?) ?? false;
 
     // 体重入力の表示
     _showWeightInputNotifier.value =
