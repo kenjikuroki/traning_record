@@ -6100,37 +6100,96 @@ class _RecordScreenState extends State<RecordScreen>
                               vertical: 10.0,
                             ),
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                Text(
-                                  section.selectedPart ?? '',
-                                  style: TextStyle(
-                                    color: overlayHeaderFg,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 18,
+                                Expanded(
+                                  child: KeyedSubtree(
+                                    key: section.nameFieldKeys[menuIndex],
+                                    child: Builder(
+                                      builder: (context) {
+                                        final controller =
+                                            section.menuControllers[menuIndex];
+                                        final String rawName =
+                                            controller.text.trim();
+                                        final bool hasName = rawName.isNotEmpty;
+                                        final int length = rawName.length;
+                                        final bool veryLong = length > 28;
+                                        final bool longName =
+                                            !veryLong && length > 18;
+                                        final double fontSize = veryLong
+                                            ? 15.0
+                                            : (longName ? 17.0 : 20.0);
+                                        const int maxLines = 4;
+                                        final double lineHeight = veryLong
+                                            ? 1.2
+                                            : (longName ? 1.16 : 1.1);
+                                        final Color textColor = hasName
+                                            ? overlayHeaderFg
+                                            : overlayHeaderFg.withOpacity(0.6);
+                                        final double underlineWidth = hasName ? 2 : 1;
+
+                                        return GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTap: () =>
+                                              _showExercisePicker(secIndex, menuIndex),
+                                          child: Container(
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: veryLong
+                                                  ? 6
+                                                  : (longName ? 5 : 4),
+                                            ),
+                                            decoration: BoxDecoration(
+                                              border: Border(
+                                                bottom: BorderSide(
+                                                  color: overlayHeaderFg
+                                                      .withOpacity(hasName ? 1 : 0.4),
+                                                  width: underlineWidth,
+                                                ),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              hasName
+                                                  ? rawName
+                                                  : l10n.addExercisePlaceholder,
+                                              style: TextStyle(
+                                                fontFamily: kUiFont,
+                                                color: textColor,
+                                                fontSize: fontSize,
+                                                fontWeight: FontWeight.w700,
+                                                height: lineHeight,
+                                              ),
+                                              maxLines: maxLines,
+                                              softWrap: true,
+                                              overflow: TextOverflow.visible,
+                                              textAlign: TextAlign.left,
+                                              locale: Localizations.localeOf(context),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
-                                const Spacer(),
                                 if (!isAerobic &&
                                     SettingsManager.showIntervalTimer) ...[
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Align(
-                                      alignment: Alignment.center,
-                                      child: Theme(
-                                        data: Theme.of(context).copyWith(
-                                          colorScheme: cs.copyWith(
-                                            primary: overlayHeaderFg,
-                                            onPrimary: overlayHeaderBg,
-                                          ),
+                                  const SizedBox(width: 4),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    widthFactor: 1,
+                                    child: Theme(
+                                      data: Theme.of(context).copyWith(
+                                        colorScheme: cs.copyWith(
+                                          primary: overlayHeaderFg,
+                                          onPrimary: overlayHeaderBg,
                                         ),
-                                        child: ExerciseInputTimer(
-                                          key: _ensureTimerKey(
-                                              secIndex, menuIndex),
-                                        ),
+                                      ),
+                                      child: ExerciseInputTimer(
+                                        key:
+                                            _ensureTimerKey(secIndex, menuIndex),
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 10),
                                 ],
                                 TextButton.icon(
                                   key: _kMenuSaveButton,
@@ -6163,6 +6222,7 @@ class _RecordScreenState extends State<RecordScreen>
                                 child: Focus(
                                   focusNode: _menuOverlayFocus,
                                   child: MenuList(
+                                    showNameField: false,
                                     nameFieldKey:
                                         section.nameFieldKeys[menuIndex],
                                     menuController:
@@ -6828,15 +6888,18 @@ class _RecordScreenState extends State<RecordScreen>
                                                   _showPartPicker(secIndex),
                                               child: Padding(
                                                 padding:
-                                                    const EdgeInsets.symmetric(
-                                                        vertical: 8,
-                                                        horizontal: 20),
+                                                    const EdgeInsets
+                                                        .symmetric(
+                                                  vertical: 8,
+                                                  horizontal: 20,
+                                                ),
                                                 child: Row(
                                                   children: [
                                                     Expanded(
                                                       child: Text(
                                                         section.selectedPart ??
-                                                            l10n.selectTrainingPart,
+                                                            l10n
+                                                                .selectTrainingPart,
                                                         style: TextStyle(
                                                           fontFamily: kUiFont,
                                                           color: (section
@@ -6855,8 +6918,9 @@ class _RecordScreenState extends State<RecordScreen>
                                                       ),
                                                     ),
                                                     const Icon(
-                                                        Icons.expand_more,
-                                                        size: 22),
+                                                      Icons.expand_more,
+                                                      size: 22,
+                                                    ),
                                                   ],
                                                 ),
                                               ),
@@ -8707,6 +8771,7 @@ class MenuList extends StatefulWidget {
   final VoidCallback? onConfirmAerobic;
   final VoidCallback? onAnyFieldFocused;
   final VoidCallback? onMenuNameTap;
+  final bool showNameField;
   final void Function(bool prevEmpty, bool nowEmpty)? onNameChanged;
   final VoidCallback? onAerobicFieldChanged;
   final ValueChanged<String>? onCalorieChanged;
@@ -8741,6 +8806,7 @@ class MenuList extends StatefulWidget {
     this.onConfirmAerobic,
     this.onAnyFieldFocused,
     this.onMenuNameTap,
+    this.showNameField = true,
     this.onNameChanged,
     this.onAerobicFieldChanged,
     this.onCalorieChanged,
@@ -10682,13 +10748,15 @@ class _MenuListState extends State<MenuList> {
       child: collapsed
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [headerRow],
+              children: [
+                if (widget.showNameField) headerRow,
+              ],
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                headerRow,
-                const SizedBox(height: 10.0),
+                if (widget.showNameField) headerRow,
+                if (widget.showNameField) const SizedBox(height: 10.0),
                 IgnorePointer(
                   ignoring: !(widget.enabledForInput || widget.isAerobic),
                   child: Padding(
