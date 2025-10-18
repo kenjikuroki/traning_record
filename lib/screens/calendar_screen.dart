@@ -2327,13 +2327,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final memoText = _getMemoTextForDate(sel);
     final bool hasMemoText = memoText != null && memoText.trim().isNotEmpty;
     final Widget? memoWidget = hasMemoText
-        ? Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: _selectableLine(
-              text: memoText!.trim(),
-              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15),
-              padding: const EdgeInsets.only(left: 4.0, bottom: 0),
-            ),
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _selectableLine(
+                text: '■${l10n.memo}',
+                padding: const EdgeInsets.only(bottom: 2.0),
+                style: TextStyle(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: 4),
+              _selectableLine(
+                text: memoText!.trim(),
+                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15),
+                padding: const EdgeInsets.only(left: 8.0, bottom: 0),
+              ),
+              const SizedBox(height: 8),
+            ],
           )
         : null;
 
@@ -2502,6 +2515,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final bool showRmColumn = SettingsManager.showRM;
         final bool showRirColumn = SettingsManager.showRIR;
         final bool showFailColumn = SettingsManager.showFail;
+        final bool needsSpaceBeforeReps = l10n.reps.length > 1;
+        final String repsSuffix =
+            needsSpaceBeforeReps ? ' ${l10n.reps}' : l10n.reps;
         List<String>? rirValues;
         List<bool>? failureStates;
         try {
@@ -2536,78 +2552,49 @@ class _CalendarScreenState extends State<CalendarScreen> {
           }
         }
 
-        final String locale = l10n.localeName;
-        final String failureLabel = locale.startsWith('ja')
-            ? '失敗フラグ'
-            : locale.startsWith('es')
-                ? 'Indicador de fallo'
-                : locale.startsWith('id')
-                    ? 'Flag kegagalan'
-                    : 'Failure Flag';
-
         if (len > 0) {
-          final headerParts = <String>[
-            l10n.sets,
-            l10n.weightUnit,
-            l10n.reps,
-          ];
-          if (showRmColumn) {
-            headerParts.add('RM');
-          }
-          if (showRirColumn) {
-            headerParts.add('RIR');
-          }
-          if (showFailColumn) {
-            headerParts.add(failureLabel);
-          }
-          strengthWidgets.add(
-            _selectableLine(
-              text: headerParts.join('｜'),
-              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(
-                color: cs.onSurfaceVariant,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          );
+          strengthWidgets.add(const SizedBox(height: 4));
         }
 
         for (int i = 0; i < len; i++) {
           final wRaw = m.weights[i].toString().trim();
           final rRaw = m.reps[i].toString().trim();
           final String weightDisplay =
-              wRaw.isNotEmpty ? '$wRaw $unit' : '— $unit';
-          final String repsDisplay =
-              rRaw.isNotEmpty ? '$rRaw ${l10n.reps}' : '— ${l10n.reps}';
+              wRaw.isNotEmpty ? '$wRaw$unit' : '—$unit';
+          final String repsDisplay = rRaw.isNotEmpty ? rRaw : '—';
           final double? rm =
               showRmColumn && rmValues != null ? rmValues[i] : null;
           final bool isMaxRm = showRmColumn && rm != null && maxRm != null
               ? (rm - maxRm!).abs() < 1e-6
               : false;
 
-          final buffer =
-              StringBuffer('${i + 1}:  $weightDisplay × $repsDisplay');
-          if (showRmColumn) {
-            final String rmText = rm != null ? rm.toStringAsFixed(1) : '—';
-            final String rmDisplay =
-                isMaxRm ? '$rmText (MAX)' : rmText;
-            buffer.write('｜$rmDisplay');
+          final buffer = StringBuffer(
+              '${i + 1}：$weightDisplay X $repsDisplay$repsSuffix');
+
+          final List<String> extraParts = [];
+          if (showRmColumn && rm != null) {
+            final String rmText = rm.toStringAsFixed(1);
+            extraParts.add('1RM:${rmText}${isMaxRm ? '(MAX)' : ''}');
           }
           if (showRirColumn) {
             final String rirValue = (rirValues != null && i < rirValues.length)
                 ? rirValues[i].trim()
                 : '';
-            final String formattedRir = rirValue.isNotEmpty ? rirValue : '—';
-            buffer.write('｜$formattedRir');
+            if (rirValue.isNotEmpty) {
+              extraParts.add('RIR:$rirValue');
+            }
           }
           if (showFailColumn) {
             final bool failed =
                 (failureStates != null && i < failureStates.length)
                     ? (failureStates[i] == true)
                     : false;
-            final String failureMark = failed ? '×' : ' ';
-            buffer.write('｜$failureMark');
+            if (failed) {
+              extraParts.add('(失敗)');
+            }
+          }
+          if (extraParts.isNotEmpty) {
+            buffer.write('｜${extraParts.join(' | ')}');
           }
 
           strengthWidgets.add(
@@ -2765,7 +2752,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     if (memoWidget != null) {
       memoWidgets.add(memoWidget);
-      memoWidgets.add(const SizedBox(height: 8));
     }
 
     summaryChildren
@@ -2918,6 +2904,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final bool showRmColumn = SettingsManager.showRM;
         final bool showRirColumn = SettingsManager.showRIR;
         final bool showFailColumn = SettingsManager.showFail;
+        final bool needsSpaceBeforeReps = l10n.reps.length > 1;
+        final String repsSuffix =
+            needsSpaceBeforeReps ? ' ${l10n.reps}' : l10n.reps;
         List<String>? rirValues;
         List<bool>? failureStates;
         try {
@@ -2952,68 +2941,49 @@ class _CalendarScreenState extends State<CalendarScreen> {
           }
         }
 
-        final String locale = l10n.localeName;
-        final String failureLabel = locale.startsWith('ja')
-            ? '失敗フラグ'
-            : locale.startsWith('es')
-                ? 'Indicador de fallo'
-                : locale.startsWith('id')
-                    ? 'Flag kegagalan'
-                    : 'Failure Flag';
-
         if (len > 0) {
-          final headerParts = <String>[
-            l10n.sets,
-            l10n.weightUnit,
-            l10n.reps,
-          ];
-          if (showRmColumn) {
-            headerParts.add('RM');
-          }
-          if (showRirColumn) {
-            headerParts.add('RIR');
-          }
-          if (showFailColumn) {
-            headerParts.add(failureLabel);
-          }
-          sectionLines.add('  ${headerParts.join('｜')}');
+          sectionLines.add('');
         }
 
         for (int i = 0; i < len; i++) {
           final wRaw = m.weights[i].toString().trim();
           final rRaw = m.reps[i].toString().trim();
           final String weightDisplay =
-              wRaw.isNotEmpty ? '$wRaw $unit' : '— $unit';
-          final String repsDisplay =
-              rRaw.isNotEmpty ? '$rRaw ${l10n.reps}' : '— ${l10n.reps}';
+              wRaw.isNotEmpty ? '$wRaw$unit' : '—$unit';
+          final String repsDisplay = rRaw.isNotEmpty ? rRaw : '—';
           final double? rm =
               showRmColumn && rmValues != null ? rmValues[i] : null;
           final bool isMaxRm = showRmColumn && rm != null && maxRm != null
               ? (rm - maxRm!).abs() < 1e-6
               : false;
 
-          final buffer =
-              StringBuffer('  ${i + 1}:  $weightDisplay × $repsDisplay');
-          if (showRmColumn) {
-            final String rmText = rm != null ? rm.toStringAsFixed(1) : '—';
-            final String rmDisplay =
-                isMaxRm ? '$rmText (MAX)' : rmText;
-            buffer.write('｜$rmDisplay');
+          final buffer = StringBuffer(
+              '  ${i + 1}：$weightDisplay X $repsDisplay$repsSuffix');
+
+          final List<String> extraParts = [];
+          if (showRmColumn && rm != null) {
+            final String rmText = rm.toStringAsFixed(1);
+            extraParts.add('1RM:${rmText}${isMaxRm ? '(MAX)' : ''}');
           }
           if (showRirColumn) {
             final String rirValue = (rirValues != null && i < rirValues.length)
                 ? rirValues[i].trim()
                 : '';
-            final String formattedRir = rirValue.isNotEmpty ? rirValue : '—';
-            buffer.write('｜$formattedRir');
+            if (rirValue.isNotEmpty) {
+              extraParts.add('RIR:$rirValue');
+            }
           }
           if (showFailColumn) {
             final bool failed =
                 (failureStates != null && i < failureStates.length)
                     ? (failureStates[i] == true)
                     : false;
-            final String failureMark = failed ? '×' : ' ';
-            buffer.write('｜$failureMark');
+            if (failed) {
+              extraParts.add('(失敗)');
+            }
+          }
+          if (extraParts.isNotEmpty) {
+            buffer.write('｜${extraParts.join(' | ')}');
           }
 
           sectionLines.add(buffer.toString());
@@ -3033,6 +3003,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     if (memoText != null && memoText.trim().isNotEmpty) {
       memoLines
+        ..add('■${l10n.memo}')
         ..add(memoText.trim())
         ..add('');
     }
@@ -3447,6 +3418,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final bool showRmColumn = SettingsManager.showRM;
         final bool showRirColumn = SettingsManager.showRIR;
         final bool showFailColumn = SettingsManager.showFail;
+        final bool needsSpaceBeforeReps = l10n.reps.length > 1;
+        final String repsSuffix =
+            needsSpaceBeforeReps ? ' ${l10n.reps}' : l10n.reps;
         List<String>? rirValues;
         List<bool>? failureStates;
         try {
@@ -3481,78 +3455,49 @@ class _CalendarScreenState extends State<CalendarScreen> {
           }
         }
 
-        final String locale = l10n.localeName;
-        final String failureLabel = locale.startsWith('ja')
-            ? '失敗フラグ'
-            : locale.startsWith('es')
-                ? 'Indicador de fallo'
-                : locale.startsWith('id')
-                    ? 'Flag kegagalan'
-                    : 'Failure Flag';
-
         if (len > 0) {
-          final headerParts = <String>[
-            l10n.sets,
-            l10n.weightUnit,
-            l10n.reps,
-          ];
-          if (showRmColumn) {
-            headerParts.add('RM');
-          }
-          if (showRirColumn) {
-            headerParts.add('RIR');
-          }
-          if (showFailColumn) {
-            headerParts.add(failureLabel);
-          }
-          summaryChildren.add(
-            _selectableLine(
-              text: headerParts.join('｜'),
-              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
-              style: TextStyle(
-                color: cs.onSurfaceVariant,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          );
+          summaryChildren.add(const SizedBox(height: 4));
         }
 
         for (int i = 0; i < len; i++) {
           final wRaw = m.weights[i].toString().trim();
           final rRaw = m.reps[i].toString().trim();
           final String weightDisplay =
-              wRaw.isNotEmpty ? '$wRaw $unit' : '— $unit';
-          final String repsDisplay =
-              rRaw.isNotEmpty ? '$rRaw ${l10n.reps}' : '— ${l10n.reps}';
+              wRaw.isNotEmpty ? '$wRaw$unit' : '—$unit';
+          final String repsDisplay = rRaw.isNotEmpty ? rRaw : '—';
           final double? rm =
               showRmColumn && rmValues != null ? rmValues[i] : null;
           final bool isMaxRm = showRmColumn && rm != null && maxRm != null
               ? (rm - maxRm!).abs() < 1e-6
               : false;
 
-          final buffer =
-              StringBuffer('${i + 1}:  $weightDisplay × $repsDisplay');
-          if (showRmColumn) {
-            final String rmText = rm != null ? rm.toStringAsFixed(1) : '—';
-            final String rmDisplay =
-                isMaxRm ? '$rmText (MAX)' : rmText;
-            buffer.write('｜$rmDisplay');
+          final buffer = StringBuffer(
+              '${i + 1}：$weightDisplay X $repsDisplay$repsSuffix');
+
+          final List<String> extraParts = [];
+          if (showRmColumn && rm != null) {
+            final String rmText = rm.toStringAsFixed(1);
+            extraParts.add('1RM:${rmText}${isMaxRm ? '(MAX)' : ''}');
           }
           if (showRirColumn) {
             final String rirValue = (rirValues != null && i < rirValues.length)
                 ? rirValues[i].trim()
                 : '';
-            final String formattedRir = rirValue.isNotEmpty ? rirValue : '—';
-            buffer.write('｜$formattedRir');
+            if (rirValue.isNotEmpty) {
+              extraParts.add('RIR:$rirValue');
+            }
           }
           if (showFailColumn) {
             final bool failed =
                 (failureStates != null && i < failureStates.length)
                     ? (failureStates[i] == true)
                     : false;
-            final String failureMark = failed ? '×' : ' ';
-            buffer.write('｜$failureMark');
+            if (failed) {
+              extraParts.add('(失敗)');
+            }
+          }
+          if (extraParts.isNotEmpty) {
+            buffer.write('｜${extraParts.join(' | ')}');
           }
 
           summaryChildren.add(
@@ -3654,16 +3599,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // メモ
     final memo = _getMemoTextForDate(sel);
     if (memo != null && memo.trim().isNotEmpty) {
+      final memoText = memo.trim();
+      summaryChildren.add(const SizedBox(height: 8));
       summaryChildren.add(
-        Padding(
-          padding: const EdgeInsets.only(top: 8.0),
-          child: _selectableLine(
-            text: memo.trim(),
-            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15),
-            padding: const EdgeInsets.only(left: 4.0, bottom: 0),
+        _selectableLine(
+          text: '■${l10n.memo}',
+          padding: const EdgeInsets.only(bottom: 2.0),
+          style: TextStyle(
+            color: cs.onSurface,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
           ),
         ),
       );
+      summaryChildren.add(const SizedBox(height: 4));
+      summaryChildren.add(
+        _selectableLine(
+          text: memoText,
+          padding: const EdgeInsets.only(left: 8.0, bottom: 0),
+          style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15),
+        ),
+      );
+      summaryChildren.add(const SizedBox(height: 8));
     }
     // ====== サマリ生成ここまで ======
 
