@@ -4495,8 +4495,8 @@ class _RecordScreenState extends State<RecordScreen>
               index: index,
               child: Container(
                 width: 40,
-                padding: const EdgeInsets.only(top: 16.0, bottom: 4.0),
-                alignment: AlignmentDirectional.topCenter,
+                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                alignment: Alignment.center,
                 child: Icon(
                   Icons.drag_indicator_rounded,
                   size: 22,
@@ -4514,7 +4514,8 @@ class _RecordScreenState extends State<RecordScreen>
                   _showMealOverlay(index);
                 },
                 child: Padding(
-                  padding: const EdgeInsets.all(10.0),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -4547,23 +4548,23 @@ class _RecordScreenState extends State<RecordScreen>
                               ),
                             ),
                           ),
-                          IconButton(
-                            onPressed: () {
-                              _focusMealCard(index);
-                              _toggleMealCollapse(index);
-                            },
-                            tooltip: isCollapsed
-                                ? l10n.expandCard
-                                : l10n.collapseCard,
-                            icon: Icon(
-                              isCollapsed
-                                  ? Icons.keyboard_arrow_down_rounded
-                                  : Icons.keyboard_arrow_up_rounded,
-                              size: 22,
-                            ),
-                            visualDensity: VisualDensity.compact,
-                            splashRadius: 20,
-                          ),
+                          // IconButton(
+                          //   onPressed: () {
+                          //     _focusMealCard(index);
+                          //     _toggleMealCollapse(index);
+                          //   },
+                          //   tooltip: isCollapsed
+                          //       ? l10n.expandCard
+                          //       : l10n.collapseCard,
+                          //   icon: Icon(
+                          //     isCollapsed
+                          //         ? Icons.keyboard_arrow_down_rounded
+                          //         : Icons.keyboard_arrow_up_rounded,
+                          //     size: 22,
+                          //   ),
+                          //   visualDensity: VisualDensity.compact,
+                          //   splashRadius: 20,
+                          // ),
                         ],
                       ),
                       AnimatedCrossFade(
@@ -6769,25 +6770,25 @@ class _RecordScreenState extends State<RecordScreen>
                                                     ),
                                                   ),
                                                 ),
-                                                IconButton(
-                                                  onPressed: () => setState(() {
-                                                    _personalCollapsed =
-                                                        !_personalCollapsed;
-                                                  }),
-                                                  tooltip: _personalCollapsed
-                                                      ? l10n.expandCard
-                                                      : l10n.collapseCard,
-                                                  icon: Icon(
-                                                    _personalCollapsed
-                                                        ? Icons
-                                                            .keyboard_arrow_down_rounded
-                                                        : Icons
-                                                            .keyboard_arrow_up_rounded,
-                                                  ),
-                                                  visualDensity:
-                                                      VisualDensity.compact,
-                                                  splashRadius: 20,
-                                                ),
+                                                // IconButton(
+                                                //   onPressed: () => setState(() {
+                                                //     _personalCollapsed =
+                                                //         !_personalCollapsed;
+                                                //   }),
+                                                //   tooltip: _personalCollapsed
+                                                //       ? l10n.expandCard
+                                                //       : l10n.collapseCard,
+                                                //   icon: Icon(
+                                                //     _personalCollapsed
+                                                //         ? Icons
+                                                //             .keyboard_arrow_down_rounded
+                                                //         : Icons
+                                                //             .keyboard_arrow_up_rounded,
+                                                //   ),
+                                                //   visualDensity:
+                                                //       VisualDensity.compact,
+                                                //   splashRadius: 20,
+                                                // ),
                                                 _buildCircleCloseButton(
                                                   onPressed:
                                                       _handleRemovePersonalCard,
@@ -6962,10 +6963,10 @@ class _RecordScreenState extends State<RecordScreen>
                                                             .ellipsis,
                                                       ),
                                                     ),
-                                                    const Icon(
-                                                      Icons.expand_more,
-                                                      size: 22,
-                                                    ),
+                                                    // const Icon(
+                                                    //   Icons.expand_more,
+                                                    //   size: 22,
+                                                    // ),
                                                   ],
                                                 ),
                                               ),
@@ -8832,20 +8833,20 @@ class MenuListPreview extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(child: buildMenuName()),
-            IconButton(
-              onPressed: () {
-                onPrepareAction();
-                onToggleCollapse();
-              },
-              tooltip: toggleTooltip,
-              icon: Icon(
-                  isCollapsed
-                      ? Icons.keyboard_arrow_down_rounded
-                      : Icons.keyboard_arrow_up_rounded,
-                  size: 22),
-              visualDensity: VisualDensity.compact,
-              splashRadius: 20,
-            ),
+            // IconButton(
+            //   onPressed: () {
+            //     onPrepareAction();
+            //     onToggleCollapse();
+            //   },
+            //   tooltip: toggleTooltip,
+            //   icon: Icon(
+            //       isCollapsed
+            //           ? Icons.keyboard_arrow_down_rounded
+            //           : Icons.keyboard_arrow_up_rounded,
+            //       size: 22),
+            //   visualDensity: VisualDensity.compact,
+            //   splashRadius: 20,
+            // ),
             buildCircularCloseButton(
               context,
               onPressed: () async {
