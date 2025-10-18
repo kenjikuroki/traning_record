@@ -8268,44 +8268,68 @@ class MenuListPreview extends StatelessWidget {
       );
 
       Widget cell(
-        String text, {
-        FontWeight? fw,
-        Color? color,
-        int maxLines = 1,
-        TextAlign align = TextAlign.center,
-      }) {
-        return Container(
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
-          constraints: const BoxConstraints(minHeight: 32.0),
-          child: Text(
-            text,
-            style: cellText.copyWith(
-              fontWeight: fw,
-              color: color ?? cellText.color,
+          String label, {
+            FontWeight? fw,
+            int maxLines = 1,
+            Color? color,
+            bool rightDivider = false, // ← 追加
+          }) {
+        final cs = Theme.of(context).colorScheme;
+        final dividerSide = BorderSide(color: cs.outlineVariant, width: 1);
+
+        return DecoratedBox(
+          decoration: rightDivider
+              ? BoxDecoration(border: Border(right: dividerSide))
+              : const BoxDecoration(),
+          child: Center(
+            child: Text(
+              label,
+              maxLines: maxLines,
+              overflow: TextOverflow.ellipsis,
+              style: cellText.copyWith(
+                fontWeight: fw,
+                color: color ?? cellText.color,
+              ),
             ),
-            maxLines: maxLines,
-            overflow: TextOverflow.ellipsis,
-            textAlign: align,
           ),
         );
       }
 
+
+
       Widget buildGrid() {
+        final Color headerDividerColor = Theme.of(context).colorScheme.outlineVariant;
+        const double headerDividerHeight = 26.0;
+
         final headers = <Widget>[
           cell('SET', fw: FontWeight.w700),
+          Container(width: 1.0, height: headerDividerHeight, color: headerDividerColor),
+
           cell(l10n.weightUnit, fw: FontWeight.w700),
+          Container(width: 1.0, height: headerDividerHeight, color: headerDividerColor),
+
           cell(l10n.reps, fw: FontWeight.w700),
-          if (showRirColumn) cell(l10n.rirLabel, fw: FontWeight.w700),
-          if (showRmColumn) cell(l10n.rmLabel, fw: FontWeight.w700),
-          if (showFailColumn)
-            cell(
-              l10n.failureLabel,
-              fw: FontWeight.w700,
-              maxLines: 2,
-            ),
+
+          if (showRirColumn) ...[
+            Container(width: 1.0, height: headerDividerHeight, color: headerDividerColor),
+            cell(l10n.rirLabel, fw: FontWeight.w700),
+          ],
+
+          if (showRmColumn) ...[
+            Container(width: 1.0, height: headerDividerHeight, color: headerDividerColor),
+            cell(l10n.rmLabel, fw: FontWeight.w700),
+          ],
+
+          if (showFailColumn) ...[
+            Container(width: 1.0, height: headerDividerHeight, color: headerDividerColor),
+            cell(l10n.failureLabel, fw: FontWeight.w700, maxLines: 2),
+          ],
+
+          // ✔ 列を使っている場合のみ、直前に縦線を入れる
+          Container(width: 1.0, height: headerDividerHeight, color: headerDividerColor),
           cell('✔', fw: FontWeight.w700),
         ];
+
 
         final rows = <TableRow>[
           TableRow(children: headers.map((w) => w).toList()),
@@ -10223,7 +10247,7 @@ class _MenuListState extends State<MenuList> {
 
     final unitLabel = currentUnit == 'kg' ? l10n.kg : l10n.lbs;
     final headerStyle = TextStyle(
-      color: Colors.white,
+      color: colorScheme.onPrimary,
       fontSize: 14.0,
       fontWeight: FontWeight.w700,
     );
@@ -10250,7 +10274,7 @@ class _MenuListState extends State<MenuList> {
 
     final Color rowBgColor = colorScheme.surfaceContainerHigh;
     final Color rowDividerColor = colorScheme.primary.withOpacity(0.45);
-    final Color headerDividerColor = colorScheme.primary.withOpacity(0.55);
+    final Color headerDividerColor = colorScheme.onPrimary.withOpacity(0.55);
 
     InputDecoration buildCellDecoration({
       String? hintText,
