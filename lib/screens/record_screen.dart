@@ -6584,7 +6584,7 @@ class _RecordScreenState extends State<RecordScreen>
                                   : cs.primary.withOpacity(0.45))
                               : Colors.black.withOpacity(0.20),
                           child: Container(
-                            constraints: const BoxConstraints(minHeight: 160),
+                            constraints: const BoxConstraints(minHeight: 110),
                             child: Stack(
                               children: [
                               // 全体タップでオーバーレイを開く透明レイヤー
@@ -6618,8 +6618,7 @@ class _RecordScreenState extends State<RecordScreen>
                                   children: [
                                     // ===== 白いカード =====
                                     Container(
-                                      margin: const EdgeInsets.symmetric(
-                                          vertical: 8.0),
+                                      margin: const EdgeInsets.only(top: 8.0),
                                       decoration: BoxDecoration(
                                         color: cs.surface,
                                         borderRadius:
@@ -8682,7 +8681,7 @@ class MenuListPreview extends StatelessWidget {
             const SizedBox(height: 12),
             buildSatisfactionRow(),
           ],
-          const SizedBox(height: 36),
+          const SizedBox(height: 12),
         ],
       );
     }
@@ -10743,15 +10742,19 @@ class _MenuListState extends State<MenuList> {
         ],
       ),
     );
+    final EdgeInsets effectivePadding = widget.showNameField
+        ? const EdgeInsets.symmetric(vertical: 6.0)
+        : EdgeInsets.zero;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      padding: effectivePadding,
       child: collapsed
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (widget.showNameField) headerRow,
-              ],
-            )
+          ? (widget.showNameField
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [headerRow],
+                )
+              : const SizedBox.shrink())
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
