@@ -94,6 +94,19 @@ extension _RecordScreenL10nExt on AppLocalizations {
     }
     return 'Failure Flag';
   }
+
+  String get failureTag {
+    if (localeName.startsWith('ja')) {
+      return '(失敗)';
+    }
+    if (localeName.startsWith('es')) {
+      return '(Fallo)';
+    }
+    if (localeName.startsWith('id')) {
+      return '(Gagal)';
+    }
+    return '(Fail)';
+  }
 }
 
 class _MealRowControllers {

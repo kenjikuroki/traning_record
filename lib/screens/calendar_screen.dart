@@ -657,6 +657,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  String _failureTag(AppLocalizations l10n) {
+    final locale = l10n.localeName;
+    if (locale.startsWith('ja')) {
+      return '(失敗)';
+    }
+    if (locale.startsWith('es')) {
+      return '(Fallo)';
+    }
+    if (locale.startsWith('id')) {
+      return '(Gagal)';
+    }
+    return '(Fail)';
+  }
+
   Future<void> _showWelcomeCardSequence(BuildContext context) async {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
@@ -2590,7 +2604,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ? (failureStates[i] == true)
                     : false;
             if (failed) {
-              extraParts.add('(失敗)');
+              extraParts.add(_failureTag(l10n));
             }
           }
           if (extraParts.isNotEmpty) {
@@ -2979,7 +2993,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ? (failureStates[i] == true)
                     : false;
             if (failed) {
-              extraParts.add('(失敗)');
+              extraParts.add(_failureTag(l10n));
             }
           }
           if (extraParts.isNotEmpty) {
@@ -3493,7 +3507,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ? (failureStates[i] == true)
                     : false;
             if (failed) {
-              extraParts.add('(失敗)');
+              extraParts.add(_failureTag(l10n));
             }
           }
           if (extraParts.isNotEmpty) {
