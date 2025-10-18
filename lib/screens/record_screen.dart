@@ -10236,13 +10236,13 @@ class _MenuListState extends State<MenuList> {
           ),
         ),
         SizedBox(width: kColGap),
-        bottomCell(
-          _wWeight,
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Focus(
+            bottomCell(
+              _wWeight,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Focus(
                   onFocusChange: notifyFocus,
                   child: ConstrainedBox(
                     constraints:
@@ -10279,26 +10279,26 @@ class _MenuListState extends State<MenuList> {
                     ),
                   ),
                 ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2.0),
+                    child: Text(
+                      unitLabel,
+                      style: unitStyle.copyWith(fontSize: 13.0),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
               ),
-              const SizedBox(width: 4),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2.0),
-                child: Text(
-                  unitLabel,
-                  style: unitStyle.copyWith(fontSize: 13.0),
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
         SizedBox(width: kColGap),
         bottomCell(
           _wReps,
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Focus(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Focus(
                   onFocusChange: notifyFocus,
                   child: ConstrainedBox(
                     constraints:
@@ -10335,18 +10335,18 @@ class _MenuListState extends State<MenuList> {
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2.0),
-                child: Text(
-                  l10n.reps,
-                  style: unitStyle.copyWith(fontSize: 13.0),
                 ),
-              ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 2.0),
+                  child: Text(
+                    l10n.reps,
+                    style: unitStyle.copyWith(fontSize: 13.0),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
           ),
-        ),
       ];
 
       if (showRirColumn && rirController != null) {
@@ -10501,15 +10501,15 @@ class _MenuListState extends State<MenuList> {
             child: IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
-                children: _withVerticalDividers(
-                  rowChildren,
-                  rowDividerColor,
-                  gapWidth: kColGap,
-                  lineWidth: 0.8,
-                ),
+              children: _withVerticalDividers(
+                rowChildren,
+                rowDividerColor,
+                gapWidth: kColGap,
+                lineWidth: 0.8,
               ),
             ),
           ),
+        ),
         ),
       );
     }
@@ -10614,7 +10614,7 @@ class _MenuListState extends State<MenuList> {
             child: Focus(
               onFocusChange: notifyFocus,
               child: Padding(
-                padding: const EdgeInsets.only(left: 8.0),
+                padding: const EdgeInsets.only(left: 8.0, right: 24.0),
                 child: ConstrainedBox(
                   constraints:
                       const BoxConstraints(minHeight: kUnifiedFieldMinHeight),
@@ -10664,59 +10664,6 @@ class _MenuListState extends State<MenuList> {
               ),
             ),
           ),
-          if (!widget.forceExpanded)
-            IconButton(
-              onPressed: () {
-                widget.onPrepareAction?.call();
-                widget.onToggleCollapse();
-              },
-              tooltip: collapsed ? l10n.expandCard : l10n.collapseCard,
-              icon: Icon(
-                collapsed
-                    ? Icons.keyboard_arrow_down_rounded
-                    : Icons.keyboard_arrow_up_rounded,
-                size: 22,
-              ),
-              visualDensity: VisualDensity.compact,
-              splashRadius: 20,
-            ),
-          TextButton(
-            onPressed: () async {
-              widget.onPrepareAction?.call();
-              final l10n = AppLocalizations.of(context)!;
-              final bool? ok = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: Text(l10n.deleteMenuConfirmationTitle),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: Text(l10n.no),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: Text(l10n.yes),
-                    ),
-                  ],
-                ),
-              );
-
-              if (ok == true) {
-                widget.removeMenuCallback();
-              }
-            },
-            style: TextButton.styleFrom(
-              padding: EdgeInsets.zero,
-              minimumSize: const Size(40, 20),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              alignment: Alignment.center,
-            ),
-            child: Icon(
-              Icons.close,
-              color: colorScheme.onSurfaceVariant,
-              size: 16,
-            ),
-          ),
         ],
       ),
     );
@@ -10731,7 +10678,7 @@ class _MenuListState extends State<MenuList> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 headerRow,
-                const SizedBox(height: 2.0),
+                const SizedBox(height: 10.0),
                 IgnorePointer(
                   ignoring: !(widget.enabledForInput || widget.isAerobic),
                   child: Padding(
