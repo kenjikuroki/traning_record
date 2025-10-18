@@ -5048,7 +5048,7 @@ class _RecordScreenState extends State<RecordScreen>
                                   const double spacingDividerToField = 12.0;
                                   const double gridHorizontalPadding = 12.0;
                                   final Color gridColor =
-                                      cs.outlineVariant.withOpacity(0.45);
+                                      cs.primary.withOpacity(0.45);
                                   final Color gridBackground =
                                       cs.surfaceContainerHigh;
 
@@ -5267,7 +5267,7 @@ class _RecordScreenState extends State<RecordScreen>
     final Color headerFg = cs.onPrimary;
     const double mealNoColumnWidth = 36.0;
     const double mealKcalColumnWidth = 88.0;
-    final Color mealDividerColor = cs.outlineVariant.withOpacity(0.45);
+    final Color mealDividerColor = cs.primary.withOpacity(0.45);
     final Color mealHeaderDividerColor = headerFg.withOpacity(0.55);
 
     List<Widget> buildCellsWithDividers(
@@ -5399,24 +5399,30 @@ class _RecordScreenState extends State<RecordScreen>
                               ),
                             ),
                             Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16.0),
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                               child: Divider(
-                                height: 8,
+                                height: 4,
                                 thickness: 1,
                                 color: mealHeaderDividerColor,
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(10.0),
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(10.0),
+                                  topRight: Radius.circular(10.0),
+                                ),
                                 child: Container(
                                   decoration: BoxDecoration(
                                     color: headerBg,
                                     border: Border.all(
                                       color: mealHeaderDividerColor,
                                       width: 0.8,
+                                    ),
+                                    borderRadius: const BorderRadius.only(
+                                      topLeft: Radius.circular(10.0),
+                                      topRight: Radius.circular(10.0),
                                     ),
                                   ),
                                   padding: const EdgeInsets.symmetric(
@@ -5472,7 +5478,7 @@ class _RecordScreenState extends State<RecordScreen>
                             Expanded(
                               child: Padding(
                                 padding:
-                                    const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                                    const EdgeInsets.fromLTRB(16, 0, 16, 16),
                                 child: Scrollbar(
                                   child: Focus(
                                     focusNode: _mealOverlayFocus,
@@ -5662,37 +5668,60 @@ class _RecordScreenState extends State<RecordScreen>
                                           ),
                                         ];
 
-                                        return Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 3.0),
-                                          child: ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(8.0),
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                color: rowBgColor,
-                                                border: Border.all(
-                                                  color: mealDividerColor,
-                                                  width: 0.8,
-                                                ),
+                                        final bool isFirstMealRow = index == 0;
+                                        final bool isLastMealRow =
+                                            index == controllers.length - 1;
+
+                                        final BorderRadius rowRadius =
+                                            BorderRadius.only(
+                                          topLeft: isFirstMealRow
+                                              ? Radius.zero
+                                              : const Radius.circular(8.0),
+                                          topRight: isFirstMealRow
+                                              ? Radius.zero
+                                              : const Radius.circular(8.0),
+                                          bottomLeft: isLastMealRow
+                                              ? const Radius.circular(8.0)
+                                              : Radius.zero,
+                                          bottomRight: isLastMealRow
+                                              ? const Radius.circular(8.0)
+                                              : Radius.zero,
+                                        );
+
+                                        final BorderSide outerSide = BorderSide(
+                                          color: mealDividerColor,
+                                          width: 0.8,
+                                        );
+
+                                        return ClipRRect(
+                                          borderRadius: rowRadius,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: rowBgColor,
+                                              border: Border(
+                                                left: outerSide,
+                                                right: outerSide,
+                                                top: outerSide,
+                                                bottom: isLastMealRow
+                                                    ? outerSide
+                                                    : BorderSide.none,
                                               ),
-                                              constraints: const BoxConstraints(
-                                                minHeight: 48.0,
-                                              ),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                vertical: 9.0,
-                                                horizontal: 10.0,
-                                              ),
-                                              child: IntrinsicHeight(
-                                                child: Row(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.end,
-                                                  children:
-                                                      buildCellsWithDividers(
-                                                    rowCells,
-                                                    mealDividerColor,
-                                                  ),
+                                            ),
+                                            constraints: const BoxConstraints(
+                                              minHeight: 48.0,
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 9.0,
+                                              horizontal: 10.0,
+                                            ),
+                                            child: IntrinsicHeight(
+                                              child: Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.end,
+                                                children:
+                                                    buildCellsWithDividers(
+                                                  rowCells,
+                                                  mealDividerColor,
                                                 ),
                                               ),
                                             ),
@@ -9985,9 +10014,8 @@ class _MenuListState extends State<MenuList> {
     );
 
     final Color rowBgColor = colorScheme.surfaceContainerHigh;
-    final Color rowDividerColor = colorScheme.outlineVariant.withOpacity(0.45);
-    final Color headerDividerColor =
-        (headerStyle.color ?? Colors.white).withOpacity(0.55);
+    final Color rowDividerColor = colorScheme.primary.withOpacity(0.45);
+    final Color headerDividerColor = colorScheme.primary.withOpacity(0.55);
 
     InputDecoration buildCellDecoration({
       String? hintText,
@@ -10142,34 +10170,37 @@ class _MenuListState extends State<MenuList> {
       );
 
       rows.add(
-        Padding(
-          padding: const EdgeInsets.only(top: 6.0, bottom: 4.0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10.0),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              decoration: BoxDecoration(
-                color: _headerBgColor,
-                borderRadius: BorderRadius.circular(10.0),
-                border: Border(
-                  bottom: BorderSide(
-                    color: headerDividerColor,
-                    width: 0.8,
-                  ),
-                ),
+        ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(10.0),
+            topRight: Radius.circular(10.0),
+          ),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            decoration: BoxDecoration(
+              color: _headerBgColor,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(10.0),
+                topRight: Radius.circular(10.0),
               ),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 6.0, horizontal: 6.0),
-                child: IntrinsicHeight(
-                  child: Row(
-                    children: _withVerticalDividers(
-                      headerChildren,
-                      headerDividerColor,
-                      gapWidth: kColGap,
-                      lineWidth: 0.6,
-                    ),
+              border: Border(
+                top: BorderSide(color: headerDividerColor, width: 0.8),
+                left: BorderSide(color: headerDividerColor, width: 0.8),
+                right: BorderSide(color: headerDividerColor, width: 0.8),
+                bottom: BorderSide.none,
+              ),
+            ),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(vertical: 9.0, horizontal: 10.0),
+              child: IntrinsicHeight(
+                child: Row(
+                  children: _withVerticalDividers(
+                    headerChildren,
+                    headerDividerColor,
+                    gapWidth: kColGap,
+                    lineWidth: 0.6,
                   ),
                 ),
               ),
@@ -10436,9 +10467,24 @@ class _MenuListState extends State<MenuList> {
         ),
       );
 
+      final bool isLastRow = index == activeSets.length - 1;
+      final BorderRadius rowRadius = BorderRadius.only(
+        topLeft: Radius.zero,
+        topRight: Radius.zero,
+        bottomLeft: isLastRow ? const Radius.circular(10.0) : Radius.zero,
+        bottomRight: isLastRow ? const Radius.circular(10.0) : Radius.zero,
+      );
+      final BorderSide rowSide = BorderSide(color: rowDividerColor, width: 0.8);
+      final Border rowBorder = Border(
+        top: rowSide,
+        left: rowSide,
+        right: rowSide,
+        bottom: isLastRow ? rowSide : BorderSide.none,
+      );
+
       rows.add(
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 3.0),
+        ClipRRect(
+          borderRadius: rowRadius,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 500),
             curve: Curves.easeOut,
@@ -10446,8 +10492,8 @@ class _MenuListState extends State<MenuList> {
               color: _flashDoneRows.contains(index)
                   ? colorScheme.primaryContainer.withOpacity(0.20)
                   : rowBgColor,
-              borderRadius: BorderRadius.circular(10.0),
-              border: Border.all(color: rowDividerColor, width: 0.8),
+              borderRadius: rowRadius,
+              border: rowBorder,
             ),
             constraints: const BoxConstraints(minHeight: 48),
             padding:
