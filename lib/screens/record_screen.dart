@@ -5097,7 +5097,6 @@ class _RecordScreenState extends State<RecordScreen>
                             ),
                           ),
                         ),
-                        const Divider(height: 1),
 
                         // 本文
                         Expanded(
@@ -5977,7 +5976,6 @@ class _RecordScreenState extends State<RecordScreen>
                                 ),
                               ),
                             ),
-                            const Divider(height: 1),
                             Expanded(
                               child: Padding(
                                 padding:
@@ -6277,9 +6275,6 @@ class _RecordScreenState extends State<RecordScreen>
                             ),
                           ),
                         ),
-                        Divider(
-                            height: 1, color: overlayHeaderBg.withOpacity(0.3)),
-
                         // 内容：MenuList ...
                         Expanded(
                           child: Padding(
@@ -6392,7 +6387,6 @@ class _RecordScreenState extends State<RecordScreen>
                             ),
                           ),
                         ),
-                        const Divider(height: 1),
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                           child: const BigEarningAd(
@@ -10424,7 +10418,7 @@ class _MenuListState extends State<MenuList> {
                 topRight: Radius.circular(10.0),
               ),
               border: Border(
-                top: BorderSide(color: headerDividerColor, width: 0.8),
+                top: BorderSide.none,
                 left: BorderSide(color: headerDividerColor, width: 0.8),
                 right: BorderSide(color: headerDividerColor, width: 0.8),
                 bottom: BorderSide.none,
