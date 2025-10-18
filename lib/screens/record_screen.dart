@@ -139,6 +139,37 @@ enum _QuickReview { save, discard }
 
 enum _AerobicFailureReason { noMatch }
 
+Widget buildCircularCloseButton(
+  BuildContext context, {
+  required VoidCallback onPressed,
+  required String tooltip,
+  double diameter = 24,
+}) {
+  final cs = Theme.of(context).colorScheme;
+  return Tooltip(
+    message: tooltip,
+    child: Material(
+      color: cs.primary.withOpacity(0.55),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onPressed,
+        child: SizedBox(
+          width: diameter,
+          height: diameter,
+          child: Center(
+            child: Icon(
+              Icons.close_rounded,
+              color: cs.onPrimary,
+              size: diameter * 0.5,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class _RecordScreenState extends State<RecordScreen>
     with WidgetsBindingObserver, TickerProviderStateMixin {
 // === Interval Timer Keys (per input card) ===
@@ -3944,6 +3975,19 @@ class _RecordScreenState extends State<RecordScreen>
     });
   }
 
+  Widget _buildCircleCloseButton({
+    required VoidCallback onPressed,
+    required String tooltip,
+    double diameter = 24,
+  }) {
+    return buildCircularCloseButton(
+      context,
+      onPressed: onPressed,
+      tooltip: tooltip,
+      diameter: diameter,
+    );
+  }
+
   void _closeMemoOverlayAndSave() {
     setState(() {
       _memoOverlayOpen = false;
@@ -4249,9 +4293,11 @@ class _RecordScreenState extends State<RecordScreen>
               Positioned(
                 right: 8,
                 top: 8,
-                child: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
+                child: _buildCircleCloseButton(
                   onPressed: () => Navigator.of(ctx).pop(),
+                  tooltip: MaterialLocalizations.of(context)
+                      .closeButtonTooltip,
+                  diameter: 40,
                 ),
               ),
             ],
@@ -6742,18 +6788,11 @@ class _RecordScreenState extends State<RecordScreen>
                                                       VisualDensity.compact,
                                                   splashRadius: 20,
                                                 ),
-                                                IconButton(
+                                                _buildCircleCloseButton(
                                                   onPressed:
                                                       _handleRemovePersonalCard,
                                                   tooltip: l10n
                                                       .removePersonalCardTooltip,
-                                                  icon: const Icon(
-                                                    Icons.close,
-                                                    size: 18,
-                                                  ),
-                                                  visualDensity:
-                                                      VisualDensity.compact,
-                                                  splashRadius: 18,
                                                 ),
                                               ],
                                             ),
@@ -6934,16 +6973,14 @@ class _RecordScreenState extends State<RecordScreen>
                                           ),
                                         ),
                                       ),
-                                      IconButton(
-                                        onPressed: () =>
-                                            _handleRemoveSection(secIndex),
-                                        tooltip: l10n.removePartCardTooltip,
-                                        icon: const Icon(
-                                          Icons.close,
-                                          size: 18,
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 6),
+                                        child: _buildCircleCloseButton(
+                                          onPressed: () =>
+                                              _handleRemoveSection(secIndex),
+                                          tooltip:
+                                              l10n.removePartCardTooltip,
                                         ),
-                                        visualDensity: VisualDensity.compact,
-                                        splashRadius: 18,
                                       ),
                                     ],
                                   ),
@@ -7415,18 +7452,10 @@ class _RecordScreenState extends State<RecordScreen>
                                         ),
                                       ),
                                       const SizedBox(width: 6),
-                                      IconButton(
+                                      _buildCircleCloseButton(
                                         onPressed: () =>
                                             _confirmRemoveAllMealCards(context),
                                         tooltip: l10n.delete,
-                                        icon: const Icon(Icons.close),
-                                        iconSize: 18,
-                                        padding: EdgeInsets.zero,
-                                        constraints:
-                                            const BoxConstraints.tightFor(
-                                                width: 36, height: 36),
-                                        visualDensity: VisualDensity.compact,
-                                        splashRadius: 18,
                                       ),
                                     ],
                                   ),
@@ -8207,6 +8236,8 @@ class MenuListPreview extends StatelessWidget {
     }
 
     Widget buildSetRows() {
+      final cs = Theme.of(context).colorScheme;
+
       if (setInputDataList.isEmpty) {
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
@@ -8218,58 +8249,156 @@ class MenuListPreview extends StatelessWidget {
       }
 
       final unit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
-      return Column(
-        children: List.generate(setInputDataList.length, (index) {
-          final set = setInputDataList[index];
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-            child: ValueListenableBuilder<TextEditingValue>(
-              valueListenable: set.weightController,
-              builder: (_, weightValue, __) {
-                return ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: set.repController,
-                  builder: (_, repValue, __) {
-                    final weightText = weightValue.text.trim();
-                    final repsText = repValue.text.trim();
-                    final baseStyle = TextStyle(
-                      fontFamily: kUiFont,
-                      color: set.isSuggestion
-                          ? cs.onSurfaceVariant.withOpacity(0.55)
-                          : cs.onSurface,
-                      fontSize: 13.0,
-                    );
-                    final display = formatStrengthSetDisplay(
-                      l10n: l10n,
-                      weight: weightText,
-                      unit: unit,
-                      reps: repsText,
-                    );
-                    return Row(
-                      children: [
-                        Text(
-                          '${index + 1}${l10n.sets}：',
-                          style: TextStyle(
-                            color: cs.onSurface,
-                            fontSize: 13.0,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            display,
-                            style: baseStyle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
+
+      final bool showRmColumn = SettingsManager.showRM;
+      final bool showRirColumn = SettingsManager.showRIR;
+      final bool showFailColumn = SettingsManager.showFail;
+      final TextStyle cellText = TextStyle(
+        fontFamily: kUiFont,
+        color: cs.onSurface,
+        fontSize: 13.0,
+      );
+
+      Widget cell(
+        String text, {
+        FontWeight? fw,
+        Color? color,
+        int maxLines = 1,
+        TextAlign align = TextAlign.center,
+      }) {
+        return Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
+          constraints: const BoxConstraints(minHeight: 32.0),
+          child: Text(
+            text,
+            style: cellText.copyWith(
+              fontWeight: fw,
+              color: color ?? cellText.color,
             ),
-          );
-        }),
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
+            textAlign: align,
+          ),
+        );
+      }
+
+      Widget buildGrid() {
+        final headers = <Widget>[
+          cell('SET', fw: FontWeight.w700),
+          cell(l10n.weightUnit, fw: FontWeight.w700),
+          cell(l10n.reps, fw: FontWeight.w700),
+          if (showRirColumn) cell(l10n.rirLabel, fw: FontWeight.w700),
+          if (showRmColumn) cell(l10n.rmLabel, fw: FontWeight.w700),
+          if (showFailColumn)
+            cell(
+              l10n.failureLabel,
+              fw: FontWeight.w700,
+              maxLines: 2,
+            ),
+          cell('✔', fw: FontWeight.w700),
+        ];
+
+        final rows = <TableRow>[
+          TableRow(children: headers.map((w) => w).toList()),
+        ];
+
+        for (int i = 0; i < setInputDataList.length; i++) {
+          final set = setInputDataList[i];
+          final weightText = set.weightController.text.trim();
+          final repsText = set.repController.text.trim();
+          final rirText = set.rirController.text.trim();
+          final bool isSuggestion = set.isSuggestion;
+
+          final Color valueColor = isSuggestion
+              ? cs.onSurfaceVariant.withOpacity(0.55)
+              : cs.onSurface;
+
+          double? rmValue;
+          if (showRmColumn) {
+            final double? weight = double.tryParse(weightText);
+            final double? reps = double.tryParse(repsText);
+            if (weight != null && reps != null && weight > 0 && reps > 0) {
+              rmValue = weight * (1 + reps / 30);
+            }
+          }
+
+          final dataCells = <Widget>[
+            cell('${i + 1}', color: cs.onSurface),
+            cell(weightText.isEmpty ? '-' : '$weightText $unit',
+                color: valueColor),
+            cell(repsText.isEmpty ? '-' : repsText, color: valueColor),
+            if (showRirColumn)
+              cell(rirText.isEmpty ? '-' : rirText, color: valueColor),
+            if (showRmColumn)
+              cell(rmValue != null ? rmValue.toStringAsFixed(1) : '-',
+                  color: valueColor),
+            if (showFailColumn)
+              cell(set.failureChecked ? l10n.yes : l10n.no,
+                  color: valueColor),
+            cell(set.checked ? '✓' : '',
+                color: set.checked ? cs.primary : valueColor),
+          ];
+
+          rows.add(TableRow(children: dataCells));
+        }
+
+        final columnWidthList = <TableColumnWidth>[
+          const FixedColumnWidth(44),
+          const FlexColumnWidth(1.2),
+          const FlexColumnWidth(0.9),
+        ];
+        if (showRirColumn) {
+          columnWidthList.add(const FlexColumnWidth(0.7));
+        }
+        if (showRmColumn) {
+          columnWidthList.add(const FlexColumnWidth(0.8));
+        }
+        if (showFailColumn) {
+          columnWidthList.add(const FixedColumnWidth(52));
+        }
+        columnWidthList.add(const FixedColumnWidth(44));
+
+        final columnWidths = <int, TableColumnWidth>{
+          for (int i = 0; i < columnWidthList.length; i++) i: columnWidthList[i],
+        };
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: cs.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: cs.outlineVariant),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Table(
+                border: TableBorder.all(color: cs.outlineVariant, width: 1),
+                columnWidths: columnWidths,
+                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                children: rows,
+              ),
+            ),
+          ),
+        );
+      }
+
+      final listenables = <Listenable>[
+        for (final set in setInputDataList) ...[
+          set.weightController,
+          set.repController,
+          set.rirController,
+        ],
+      ];
+
+      if (listenables.isEmpty) {
+        return buildGrid();
+      }
+
+      return AnimatedBuilder(
+        animation: Listenable.merge(listenables),
+        builder: (_, __) => buildGrid(),
       );
     }
 
@@ -8717,7 +8846,8 @@ class MenuListPreview extends StatelessWidget {
               visualDensity: VisualDensity.compact,
               splashRadius: 20,
             ),
-            IconButton(
+            buildCircularCloseButton(
+              context,
               onPressed: () async {
                 onPrepareAction();
                 final bool? ok = await showDialog<bool>(
@@ -8741,9 +8871,6 @@ class MenuListPreview extends StatelessWidget {
                 }
               },
               tooltip: l10n.deleteMenuConfirmationTitle,
-              icon: const Icon(Icons.close, size: 18),
-              visualDensity: VisualDensity.compact,
-              splashRadius: 18,
             ),
           ],
         ),
