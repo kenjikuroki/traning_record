@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'dart:math';
 import 'dart:async';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import '../l10n/app_localizations.dart';
 import '../models/exercise_catalog.dart';
 import '../models/meal.dart';
@@ -1629,7 +1629,6 @@ class _RecordScreenState extends State<RecordScreen>
                           ],
                         ),
                       ),
-                      const Divider(height: 1),
                       Expanded(
                         child: Row(
                           children: [
@@ -1640,6 +1639,7 @@ class _RecordScreenState extends State<RecordScreen>
                                 magnification: 1.08,
                                 scrollController: intController,
                                 onSelectedItemChanged: (i) => tempInt = i,
+                                selectionOverlay: const SizedBox.shrink(),
                                 children: [
                                   for (int i = 0; i <= maxInteger; i++)
                                     Center(
@@ -1667,6 +1667,7 @@ class _RecordScreenState extends State<RecordScreen>
                                 magnification: 1.08,
                                 scrollController: decController,
                                 onSelectedItemChanged: (i) => tempDec = i,
+                                selectionOverlay: const SizedBox.shrink(),
                                 children: [
                                   for (int i = 0; i < 10; i++)
                                     Center(
@@ -4828,7 +4829,6 @@ class _RecordScreenState extends State<RecordScreen>
         (widget.settingsBox.get('manage.bmr') as bool?) ?? false;
 
     const double topGap = 12.0;
-    final double overlayHeight = media.size.height * 0.4;
     final Color headerBg = cs.primary;
     final Color headerFg = cs.onPrimary;
     final TextStyle headerLabelStyle = TextStyle(
@@ -4849,11 +4849,36 @@ class _RecordScreenState extends State<RecordScreen>
       return LayoutBuilder(
         builder: (ctx, constraints) {
           final double total = constraints.maxWidth; // ラベル右側の総幅
+          final TextStyle unitStyle = TextStyle(
+            fontFamily: kUiFont,
+            color: cs.onSurfaceVariant,
+            fontSize: 14.0,
+            fontWeight: FontWeight.w700,
+          );
+          double unitWidth = 0;
+          if (unitSuffix != null) {
+            final TextPainter unitPainter = TextPainter(
+              text: TextSpan(text: unitSuffix, style: unitStyle),
+              textDirection: TextDirection.ltr,
+            )..layout();
+            unitWidth = max(_unitReserveW, unitPainter.width + 2);
+          }
           final double unitReserve =
-              (unitSuffix != null) ? (_unitReserveW + 6) : 0;
-          // 単位ぶんを引いた残りの 2/3 を下線に
-          final double fieldW =
-              ((total - unitReserve) * 4 / 5).clamp(120.0, total - unitReserve);
+              (unitSuffix != null) ? (unitWidth + 6) : 0;
+          final TextStyle fieldTextStyle = TextStyle(
+            fontFamily: kUiFont,
+            color: cs.onSurface,
+            fontSize: 28.0,
+            fontWeight: FontWeight.w600,
+          );
+          const String widthSample = '8888.88'; // 7バイト想定のサンプル
+          final TextPainter painter = TextPainter(
+            text: TextSpan(text: widthSample, style: fieldTextStyle),
+            textDirection: TextDirection.ltr,
+          )..layout();
+          final double desiredWidth = painter.width + 6; // わずかな余白を追加
+          final double maxAvailable = max(0, total - unitReserve);
+          final double fieldW = min(maxAvailable, desiredWidth);
           final bool shouldBlockInput = readOnly || onTap != null;
 
           return Row(
@@ -4869,25 +4894,15 @@ class _RecordScreenState extends State<RecordScreen>
                     showCursor: shouldBlockInput ? false : null,
                     enableInteractiveSelection: shouldBlockInput ? false : null,
                     textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontFamily: kUiFont,
-                      color: cs.onSurface,
-                      fontSize: 14.0,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    decoration: InputDecoration(
+                    style: fieldTextStyle,
+                    decoration: const InputDecoration(
                       isDense: true,
                       filled: false,
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                            color: cs.onSurfaceVariant.withOpacity(0.4),
-                            width: 1),
-                      ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: cs.primary, width: 2),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          vertical: 6, horizontal: 0),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding:
+                          EdgeInsets.symmetric(vertical: 6, horizontal: 0),
                     ),
                     onTap: onTap ?? (shouldBlockInput ? () {} : null),
                     onChanged:
@@ -4898,16 +4913,14 @@ class _RecordScreenState extends State<RecordScreen>
               if (unitSuffix != null) ...[
                 const SizedBox(width: 6), // ← ここも 6px
                 SizedBox(
-                  width: _unitReserveW,
+                  width: unitWidth,
                   child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      unitSuffix,
-                      style: TextStyle(
-                        fontFamily: kUiFont,
-                        color: cs.onSurfaceVariant,
-                        fontSize: 12.0,
-                        fontWeight: FontWeight.w700,
+                    alignment: Alignment.bottomRight,
+                    child: Transform.translate(
+                      offset: const Offset(0, 6),
+                      child: Text(
+                        unitSuffix,
+                        style: unitStyle,
                       ),
                     ),
                   ),
@@ -4938,7 +4951,7 @@ class _RecordScreenState extends State<RecordScreen>
           left: 12,
           right: 12,
           top: topGap,
-          height: overlayHeight,
+          bottom: MediaQuery.of(context).padding.bottom + 12,
           child: AnimatedSlide(
             duration: _overlaySlideDuration,
             curve: _overlayInCurve,
@@ -5026,183 +5039,195 @@ class _RecordScreenState extends State<RecordScreen>
                             padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                             child: Focus(
                               focusNode: _personalOverlayFocus,
-                              child: Column(
-                                children: [
-                                  // 体重
-                                  Row(
-                                    children: [
-                                      SizedBox(
-                                        width: 96,
-                                        child: Align(
-                                          alignment: Alignment.centerRight,
-                                          child: Text(
-                                            l10n.bodyWeight,
-                                            style: TextStyle(
-                                              fontFamily: kUiFont,
-                                              color: cs.onSurface,
-                                              fontSize: 14.0,
-                                              fontWeight: FontWeight.w700,
+                              child: Builder(
+                                builder: (_) {
+                                  const double labelColumnWidth = 128.0;
+                                  const double innerHorizontalPadding = 16.0;
+                                  const double innerVerticalPadding = 12.0;
+                                  const double spacingLabelToDivider = 8.0;
+                                  const double spacingDividerToField = 12.0;
+                                  const double gridHorizontalPadding = 12.0;
+                                  final Color gridColor =
+                                      cs.outlineVariant.withOpacity(0.45);
+                                  final Color gridBackground =
+                                      cs.surfaceContainerHigh;
+
+                                  Widget buildMetricRow({
+                                    required String label,
+                                    required Widget field,
+                                  }) {
+                                    return Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: innerHorizontalPadding,
+                                        vertical: innerVerticalPadding,
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: labelColumnWidth,
+                                            child: Center(
+                                              child: Text(
+                                                label,
+                                                style: TextStyle(
+                                                  fontFamily: kUiFont,
+                                                  color: cs.onSurface,
+                                                  fontSize: 18.7,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
                                             ),
                                           ),
+                                          SizedBox(width: spacingLabelToDivider),
+                                          Container(
+                                            width: 1,
+                                            height: 30,
+                                            color: gridColor,
+                                          ),
+                                          SizedBox(width: spacingDividerToField),
+                                          Expanded(child: field),
+                                        ],
+                                      ),
+                                    );
+                                  }
+
+                                  final List<Widget> metricRows = [
+                                    buildMetricRow(
+                                      label: l10n.bodyWeight,
+                                      field: underlineField(
+                                        controller: _weightController,
+                                        unitSuffix:
+                                            SettingsManager.currentUnit == 'kg'
+                                                ? l10n.kg
+                                                : l10n.lbs,
+                                        onTap: _openPersonalWeightPicker,
+                                      ),
+                                    ),
+                                  ];
+
+                                  if (showBodyFat) {
+                                    metricRows.add(
+                                      buildMetricRow(
+                                        label: l10n.bodyFat,
+                                        field: underlineField(
+                                          controller: _bodyFatController,
+                                          unitSuffix: l10n.percentSymbol,
+                                          onTap: _openBodyFatPicker,
                                         ),
                                       ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: underlineField(
-                                          controller: _weightController,
+                                    );
+                                  }
+
+                                  if (showWaist) {
+                                    metricRows.add(
+                                      buildMetricRow(
+                                        label: l10n.waist,
+                                        field: underlineField(
+                                          controller: _waistController,
                                           unitSuffix:
-                                              SettingsManager.currentUnit ==
-                                                      'kg'
-                                                  ? l10n.kg
-                                                  : l10n.lbs,
-                                          onTap: _openPersonalWeightPicker,
+                                              SettingsManager.isWaistInch
+                                                  ? l10n.unitIn
+                                                  : l10n.unitCm,
+                                          onTap: _openWaistPicker,
                                         ),
                                       ),
+                                    );
+                                  }
+
+                                  if (showBMI) {
+                                    metricRows.add(
+                                      buildMetricRow(
+                                        label: l10n.bmi,
+                                        field: underlineField(
+                                          controller: _bmiController,
+                                          readOnly: true,
+                                        ),
+                                      ),
+                                    );
+                                  }
+
+                                  if (showBmr) {
+                                    metricRows.add(
+                                      buildMetricRow(
+                                        label: l10n.bmrTitleShort,
+                                        field: underlineField(
+                                          controller: _bmrController,
+                                          unitSuffix: l10n.kcalUnit,
+                                          onTap: _openBmrPicker,
+                                        ),
+                                      ),
+                                    );
+                                  }
+
+                                  final double bmrDifferenceLeftPadding =
+                                      gridHorizontalPadding +
+                                      innerHorizontalPadding +
+                                      labelColumnWidth +
+                                      spacingLabelToDivider +
+                                      1.0 +
+                                      spacingDividerToField;
+
+                                  final Widget metricsGrid = metricRows.isEmpty
+                                      ? const SizedBox.shrink()
+                                      : Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: gridHorizontalPadding,
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                color: gridBackground,
+                                                border: Border.all(
+                                                  color: gridColor,
+                                                  width: 0.8,
+                                                ),
+                                              ),
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  for (int i = 0;
+                                                      i < metricRows.length;
+                                                      i++) ...[
+                                                    if (i > 0)
+                                                      Container(
+                                                        height: 0.8,
+                                                        color: gridColor,
+                                                      ),
+                                                    metricRows[i],
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        );
+
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      metricsGrid,
+                                      if (showBmr)
+                                        Padding(
+                                          padding: EdgeInsets.only(
+                                            left: bmrDifferenceLeftPadding,
+                                            top: 8.0,
+                                          ),
+                                          child: Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              _formattedBmrDifference(l10n),
+                                              style: TextStyle(
+                                                color: cs.onSurfaceVariant,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
                                     ],
-                                  ),
-
-                                  // 体脂肪
-                                  if (showBodyFat) ...[
-                                    const SizedBox(height: 10),
-                                    Row(
-                                      children: [
-                                        SizedBox(
-                                          width: 96,
-                                          child: Align(
-                                            alignment: Alignment.centerRight,
-                                            child: Text(
-                                              l10n.bodyFat,
-                                              style: TextStyle(
-                                                fontFamily: kUiFont,
-                                                color: cs.onSurface,
-                                                fontSize: 14.0,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: underlineField(
-                                            controller: _bodyFatController,
-                                            unitSuffix: l10n.percentSymbol,
-                                            onTap: _openBodyFatPicker,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-
-                                  // ウエスト
-                                  if (showWaist) ...[
-                                    const SizedBox(height: 10),
-                                    Row(
-                                      children: [
-                                        SizedBox(
-                                          width: 96,
-                                          child: Align(
-                                            alignment: Alignment.centerRight,
-                                            child: Text(
-                                              l10n.waist,
-                                              style: TextStyle(
-                                                fontFamily: kUiFont,
-                                                color: cs.onSurface,
-                                                fontSize: 14.0,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: underlineField(
-                                            controller: _waistController,
-                                            unitSuffix:
-                                                SettingsManager.isWaistInch
-                                                    ? l10n.unitIn
-                                                    : l10n.unitCm,
-                                            onTap: _openWaistPicker,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                  if (showBMI) ...[
-                                    const SizedBox(height: 10),
-                                    Row(
-                                      children: [
-                                        SizedBox(
-                                          width: 96,
-                                          child: Align(
-                                            alignment: Alignment.centerRight,
-                                            child: Text(
-                                              l10n.bmi,
-                                              style: TextStyle(
-                                                fontFamily: kUiFont,
-                                                color: cs.onSurface,
-                                                fontSize: 14.0,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: underlineField(
-                                            controller: _bmiController,
-                                            readOnly: true,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                  if (showBmr) ...[
-                                    const SizedBox(height: 10),
-                                    Row(
-                                      children: [
-                                        SizedBox(
-                                          width: 96,
-                                          child: Align(
-                                            alignment: Alignment.centerRight,
-                                            child: Text(
-                                              l10n.bmrTitleShort,
-                                              style: TextStyle(
-                                                fontFamily: kUiFont,
-                                                color: cs.onSurface,
-                                                fontSize: 14.0,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: underlineField(
-                                            controller: _bmrController,
-                                            unitSuffix: l10n.kcalUnit,
-                                            onTap: _openBmrPicker,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        left: 108,
-                                        top: 4,
-                                      ),
-                                      child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          _formattedBmrDifference(l10n),
-                                          style: TextStyle(
-                                            color: cs.onSurfaceVariant,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
+                                  );
+                                },
                               ),
                             ),
                           ),
@@ -6472,8 +6497,10 @@ class _RecordScreenState extends State<RecordScreen>
                                   ? kBrandBlue.withOpacity(0.35)
                                   : cs.primary.withOpacity(0.45))
                               : Colors.black.withOpacity(0.20),
-                          child: Stack(
-                            children: [
+                          child: Container(
+                            constraints: const BoxConstraints(minHeight: 160),
+                            child: Stack(
+                              children: [
                               // 全体タップでオーバーレイを開く透明レイヤー
                               Positioned.fill(
                                 child: Material(
@@ -6714,7 +6741,8 @@ class _RecordScreenState extends State<RecordScreen>
                             ],
                           ),
                         ),
-                      );
+                      ),
+                    );
                     }
 
                     final int mealCount = _mealCards.length;
