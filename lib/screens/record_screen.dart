@@ -3273,10 +3273,9 @@ class _RecordScreenState extends State<RecordScreen>
   bool _shouldShowCalorieField(SectionData section, int menuIndex) {
     final l10n = AppLocalizations.of(context)!;
     if (section.selectedPart != l10n.aerobicExercise) return false;
-    final hasValue = menuIndex < section.aerobicCaloriesCtrls.length
-        ? section.aerobicCaloriesCtrls[menuIndex].text.trim().isNotEmpty
-        : false;
-    return SettingsManager.enableAerobicCalories || hasValue;
+    if (!SettingsManager.enableAerobicCalories) return false;
+    if (menuIndex >= section.aerobicCaloriesCtrls.length) return false;
+    return true;
   }
 
   void _onAerobicFieldChanged(int sectionIndex, int menuIndex) {
@@ -4356,8 +4355,8 @@ class _RecordScreenState extends State<RecordScreen>
         children.add(
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   '${i + 1}.',
@@ -5180,6 +5179,7 @@ class _RecordScreenState extends State<RecordScreen>
                                             child: Container(
                                               decoration: BoxDecoration(
                                                 color: gridBackground,
+                                                borderRadius: BorderRadius.circular(12),
                                                 border: Border.all(
                                                   color: gridColor,
                                                   width: 0.8,
@@ -5620,7 +5620,7 @@ class _RecordScreenState extends State<RecordScreen>
                                                     decoration:
                                                         mealInputDecoration,
                                                     keyboardType:
-                                                        const TextInputType
+                                                        TextInputType
                                                             .numberWithOptions(
                                                             decimal: true),
                                                     textAlign: TextAlign.right,
@@ -5674,12 +5674,8 @@ class _RecordScreenState extends State<RecordScreen>
 
                                         final BorderRadius rowRadius =
                                             BorderRadius.only(
-                                          topLeft: isFirstMealRow
-                                              ? Radius.zero
-                                              : const Radius.circular(8.0),
-                                          topRight: isFirstMealRow
-                                              ? Radius.zero
-                                              : const Radius.circular(8.0),
+                                          topLeft: Radius.zero,
+                                          topRight: Radius.zero,
                                           bottomLeft: isLastMealRow
                                               ? const Radius.circular(8.0)
                                               : Radius.zero,
@@ -5698,6 +5694,7 @@ class _RecordScreenState extends State<RecordScreen>
                                           child: Container(
                                             decoration: BoxDecoration(
                                               color: rowBgColor,
+                                              borderRadius: rowRadius,
                                               border: Border(
                                                 left: outerSide,
                                                 right: outerSide,
@@ -8816,6 +8813,35 @@ class _CustomExerciseDialogState extends State<_CustomExerciseDialog> {
   }
 }
 
+  TextStyle _buildAerobicLabelStyle(ColorScheme colorScheme) {
+    return TextStyle(
+      fontFamily: kUiFont,
+      color: colorScheme.onSurface,
+      fontSize: 16.0,
+      fontWeight: FontWeight.w700,
+    );
+  }
+
+  TextStyle _buildAerobicFieldStyle(ColorScheme colorScheme, bool isSuggestion) {
+    return TextStyle(
+      fontFamily: kUiFont,
+      color: isSuggestion
+          ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+          : colorScheme.onSurface,
+      fontSize: 16.0,
+      fontWeight: FontWeight.w600,
+    );
+  }
+
+  TextStyle _buildAerobicUnitStyle(ColorScheme colorScheme, {required bool emphasis}) {
+    return TextStyle(
+      fontFamily: kUiFont,
+      color: colorScheme.onSurfaceVariant,
+      fontSize: 12.0,
+      fontWeight: emphasis ? FontWeight.w700 : FontWeight.w600,
+    );
+  }
+
 class _MenuListState extends State<MenuList> {
   // 既存
   final TextEditingController _kmController = TextEditingController();
@@ -10588,22 +10614,6 @@ class _MenuListState extends State<MenuList> {
 
     final bool nameFilled = widget.menuController.text.trim().isNotEmpty;
 
-    final TextStyle aerobicLabelStyle = TextStyle(
-      color: colorScheme.onSurfaceVariant,
-      fontSize: 13.0,
-    );
-    final TextStyle aerobicUnitEmphasisStyle = TextStyle(
-      fontFamily: kUiFont,
-      color: colorScheme.onSurfaceVariant,
-      fontSize: 13.0,
-      fontWeight: FontWeight.w700,
-    );
-    final TextStyle aerobicUnitStyle = TextStyle(
-      fontFamily: kUiFont,
-      color: colorScheme.onSurfaceVariant,
-      fontSize: 13.0,
-    );
-
     final bool collapsed = widget.isCollapsed && !widget.forceExpanded;
 
     final headerRow = KeyedSubtree(
@@ -10684,479 +10694,298 @@ class _MenuListState extends State<MenuList> {
                   child: Padding(
                     padding: const EdgeInsets.only(left: 10.0),
                     child: widget.isAerobic
-                        ? Column(
-                            children: [
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 6.0),
-                                child: Row(
-                                  children: [
-                                    Text(l10n.distance,
-                                        style: aerobicLabelStyle),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Focus(
-                                        onFocusChange: (has) {
-                                          notifyFocus(has);
-                                          if (has &&
-                                              widget.aerobicIsSuggestion) {
-                                            widget.onConfirmAerobic?.call();
-                                          }
-                                        },
-                                        child: ConstrainedBox(
-                                          constraints: const BoxConstraints(
-                                              minHeight:
-                                                  kUnifiedFieldMinHeight),
-                                          child: TextField(
-                                            controller: _kmController,
-                                            readOnly: true,
-                                            showCursor: false,
-                                            enableInteractiveSelection: false,
-                                            textAlign: TextAlign.right,
-                                            style: TextStyle(
-                                              fontFamily: kUiFont,
-                                              color: widget.aerobicIsSuggestion
-                                                  ? colorScheme.onSurfaceVariant
-                                                      .withOpacity(0.5)
-                                                  : colorScheme.onSurface,
-                                            ),
-                                            onTap: () async {
-                                              notifyFocus(true);
-                                              await _openDistancePicker();
-                                            },
-                                            decoration: InputDecoration(
-                                              isDense: true,
-                                              filled: false,
-                                              enabledBorder:
-                                                  UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                  color: colorScheme
-                                                      .onSurfaceVariant
-                                                      .withOpacity(0.4),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              focusedBorder:
-                                                  UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                    color: colorScheme.primary,
-                                                    width: 2),
-                                              ),
-                                              contentPadding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 6,
-                                                      horizontal: 0),
-                                              hintText:
-                                                  widget.aerobicIsSuggestion
-                                                      ? '0'
-                                                      : null,
-                                              hintStyle: TextStyle(
-                                                fontFamily: kUiFont,
-                                                color: colorScheme
-                                                    .onSurfaceVariant
-                                                    .withOpacity(0.35),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    Text(
-                                      ' ${useImperialLength ? 'mi' : l10n.km} ',
-                                      style: aerobicUnitEmphasisStyle,
-                                    ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Focus(
-                                        onFocusChange: (has) {
-                                          notifyFocus(has);
-                                          if (has &&
-                                              widget.aerobicIsSuggestion) {
-                                            widget.onConfirmAerobic?.call();
-                                          }
-                                        },
-                                        child: ConstrainedBox(
-                                          constraints: const BoxConstraints(
-                                              minHeight:
-                                                  kUnifiedFieldMinHeight),
-                                          child: TextField(
-                                            controller: _mController,
-                                            readOnly: true,
-                                            showCursor: false,
-                                            enableInteractiveSelection: false,
-                                            textAlign: TextAlign.right,
-                                            style: TextStyle(
-                                              fontFamily: kUiFont,
-                                              color: widget.aerobicIsSuggestion
-                                                  ? colorScheme.onSurfaceVariant
-                                                      .withOpacity(0.5)
-                                                  : colorScheme.onSurface,
-                                            ),
-                                            onTap: () async {
-                                              notifyFocus(true);
-                                              await _openDistancePicker();
-                                            },
-                                            decoration: InputDecoration(
-                                              isDense: true,
-                                              filled: false,
-                                              enabledBorder:
-                                                  UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                  color: colorScheme
-                                                      .onSurfaceVariant
-                                                      .withOpacity(0.4),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              focusedBorder:
-                                                  UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                    color: colorScheme.primary,
-                                                    width: 2),
-                                              ),
-                                              contentPadding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 6,
-                                                      horizontal: 0),
-                                              hintText:
-                                                  widget.aerobicIsSuggestion
-                                                      ? '0'
-                                                      : null,
-                                              hintStyle: TextStyle(
-                                                fontFamily: kUiFont,
-                                                color: colorScheme
-                                                    .onSurfaceVariant
-                                                    .withOpacity(0.35),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    Text(
-                                      ' ${useImperialLength ? 'yd' : l10n.m} ',
-                                      style: aerobicUnitStyle,
-                                    ),
-                                  ],
-                                ),
+                        ? (() {
+                            final Color gridColor =
+                                colorScheme.primary.withOpacity(0.45);
+                            final Color gridBackground =
+                                colorScheme.surfaceContainerHigh;
+                            const double labelColumnWidth = 86.0;
+                            const double labelDividerSpacing = 4.0;
+                            const double dividerContentSpacing = 7.0;
+
+                            final TextStyle labelStyle = _buildAerobicLabelStyle(colorScheme);
+                            final TextStyle baseFieldStyle = _buildAerobicFieldStyle(
+                              colorScheme,
+                              widget.aerobicIsSuggestion,
+                            );
+                            final TextStyle unitEmphasisStyle =
+                                _buildAerobicUnitStyle(colorScheme, emphasis: true);
+                            final TextStyle unitStyle =
+                                _buildAerobicUnitStyle(colorScheme, emphasis: false);
+
+                            const InputDecoration baseInputDecoration =
+                                InputDecoration(
+                              isDense: true,
+                              filled: false,
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 6,
+                                horizontal: 0,
                               ),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 6.0),
-                                child: Row(
-                                  children: [
-                                    Text(l10n.time, style: aerobicLabelStyle),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Focus(
-                                        onFocusChange: (has) {
-                                          notifyFocus(has);
-                                          if (has &&
-                                              widget.aerobicIsSuggestion) {
-                                            widget.onConfirmAerobic?.call();
-                                          }
-                                        },
-                                        child: ConstrainedBox(
-                                          constraints: const BoxConstraints(
-                                              minHeight:
-                                                  kUnifiedFieldMinHeight),
-                                          child: TextField(
-                                            controller: _hourController,
-                                            readOnly: true,
-                                            showCursor: false,
-                                            enableInteractiveSelection: false,
-                                            textAlign: TextAlign.right,
-                                            style: TextStyle(
-                                              fontFamily: kUiFont,
-                                              color: widget.aerobicIsSuggestion
-                                                  ? colorScheme.onSurfaceVariant
-                                                      .withOpacity(0.5)
-                                                  : colorScheme.onSurface,
-                                            ),
-                                            onTap: () async {
-                                              notifyFocus(true);
-                                              await _openDurationPicker();
-                                            },
-                                            decoration: InputDecoration(
-                                              isDense: true,
-                                              filled: false,
-                                              enabledBorder:
-                                                  UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                  color: colorScheme
-                                                      .onSurfaceVariant
-                                                      .withOpacity(0.4),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              focusedBorder:
-                                                  UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                    color: colorScheme.primary,
-                                                    width: 2),
-                                              ),
-                                              contentPadding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 6,
-                                                      horizontal: 0),
-                                              hintText:
-                                                  widget.aerobicIsSuggestion
-                                                      ? '0'
-                                                      : null,
-                                              hintStyle: TextStyle(
-                                                fontFamily: kUiFont,
-                                                color: colorScheme
-                                                    .onSurfaceVariant
-                                                    .withOpacity(0.35),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
+                            );
+
+                            TextStyle _unitStyle({required bool emphasis}) =>
+                                emphasis ? unitEmphasisStyle : unitStyle;
+
+                            Widget buildUnit(String text,
+                                {bool emphasis = false}) {
+                              return Transform.translate(
+                                offset: const Offset(0, 6),
+                                child: Text(text, style: _unitStyle(emphasis: emphasis)),
+                              );
+                            }
+
+                            Widget buildDivider() => Container(
+                                  width: 1,
+                                  height: 30,
+                                  color: gridColor,
+                                );
+
+                            Widget buildPickerField({
+                              required TextEditingController controller,
+                              required Future<void> Function() onTap,
+                              double width = 40,
+                            }) {
+                              return Focus(
+                                onFocusChange: (has) {
+                                  if (has) {
+                                    notifyFocus(true);
+                                    if (widget.aerobicIsSuggestion) {
+                                      widget.onConfirmAerobic?.call();
+                                    }
+                                  }
+                                },
+                                child: SizedBox(
+                                  width: width,
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                        minHeight: kUnifiedFieldMinHeight),
+                                    child: TextField(
+                                      controller: controller,
+                                      readOnly: true,
+                                      showCursor: false,
+                                      enableInteractiveSelection: false,
+                                      textAlign: TextAlign.right,
+                                      style: baseFieldStyle,
+                                      decoration: baseInputDecoration,
+                                      onTap: () async {
+                                        notifyFocus(true);
+                                        await onTap();
+                                      },
                                     ),
-                                    Text(' ${l10n.hour} ',
-                                        style: aerobicUnitStyle),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Focus(
-                                        onFocusChange: (has) {
-                                          notifyFocus(has);
-                                          if (has &&
-                                              widget.aerobicIsSuggestion) {
-                                            widget.onConfirmAerobic?.call();
-                                          }
-                                        },
-                                        child: ConstrainedBox(
-                                          constraints: const BoxConstraints(
-                                              minHeight:
-                                                  kUnifiedFieldMinHeight),
-                                          child: TextField(
-                                            controller: _minAeroCtrl,
-                                            readOnly: true,
-                                            showCursor: false,
-                                            enableInteractiveSelection: false,
-                                            textAlign: TextAlign.right,
-                                            style: TextStyle(
-                                              fontFamily: kUiFont,
-                                              color: widget.aerobicIsSuggestion
-                                                  ? colorScheme.onSurfaceVariant
-                                                      .withOpacity(0.5)
-                                                  : colorScheme.onSurface,
-                                            ),
-                                            onTap: () async {
-                                              notifyFocus(true);
-                                              await _openDurationPicker();
-                                            },
-                                            decoration: InputDecoration(
-                                              isDense: true,
-                                              filled: false,
-                                              enabledBorder:
-                                                  UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                  color: colorScheme
-                                                      .onSurfaceVariant
-                                                      .withOpacity(0.4),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              focusedBorder:
-                                                  UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                    color: colorScheme.primary,
-                                                    width: 2),
-                                              ),
-                                              contentPadding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 6,
-                                                      horizontal: 0),
-                                              hintText:
-                                                  widget.aerobicIsSuggestion
-                                                      ? '0'
-                                                      : null,
-                                              hintStyle: TextStyle(
-                                                fontFamily: kUiFont,
-                                                color: colorScheme
-                                                    .onSurfaceVariant
-                                                    .withOpacity(0.35),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    Text(' ${l10n.min}',
-                                        style: aerobicUnitStyle),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Focus(
-                                        onFocusChange: (has) {
-                                          notifyFocus(has);
-                                          if (has &&
-                                              widget.aerobicIsSuggestion) {
-                                            widget.onConfirmAerobic?.call();
-                                          }
-                                        },
-                                        child: ConstrainedBox(
-                                          constraints: const BoxConstraints(
-                                              minHeight:
-                                                  kUnifiedFieldMinHeight),
-                                          child: TextField(
-                                            controller: _secAeroCtrl,
-                                            readOnly: true,
-                                            showCursor: false,
-                                            enableInteractiveSelection: false,
-                                            textAlign: TextAlign.right,
-                                            style: TextStyle(
-                                              fontFamily: kUiFont,
-                                              color: widget.aerobicIsSuggestion
-                                                  ? colorScheme.onSurfaceVariant
-                                                      .withOpacity(0.5)
-                                                  : colorScheme.onSurface,
-                                            ),
-                                            onTap: () async {
-                                              notifyFocus(true);
-                                              await _openDurationPicker();
-                                            },
-                                            decoration: InputDecoration(
-                                              isDense: true,
-                                              filled: false,
-                                              enabledBorder:
-                                                  UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                  color: colorScheme
-                                                      .onSurfaceVariant
-                                                      .withOpacity(0.4),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              focusedBorder:
-                                                  UnderlineInputBorder(
-                                                borderSide: BorderSide(
-                                                    color: colorScheme.primary,
-                                                    width: 2),
-                                              ),
-                                              contentPadding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 6,
-                                                      horizontal: 0),
-                                              hintText:
-                                                  widget.aerobicIsSuggestion
-                                                      ? '0'
-                                                      : null,
-                                              hintStyle: TextStyle(
-                                                fontFamily: kUiFont,
-                                                color: colorScheme
-                                                    .onSurfaceVariant
-                                                    .withOpacity(0.35),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    Text(' ${l10n.sec}',
-                                        style: aerobicUnitStyle),
-                                  ],
-                                ),
-                              ),
-                              if (widget.showCalorieField &&
-                                  widget.calorieController != null)
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 6.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Text(l10n.calorie,
-                                              style: aerobicLabelStyle),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Focus(
-                                              onFocusChange: notifyFocus,
-                                              child: ConstrainedBox(
-                                                constraints: const BoxConstraints(
-                                                    minHeight:
-                                                        kUnifiedFieldMinHeight),
-                                                child: TextField(
-                                                  controller:
-                                                      widget.calorieController,
-                                                  keyboardType:
-                                                      const TextInputType
-                                                          .numberWithOptions(
-                                                          decimal: true),
-                                                  inputFormatters: [
-                                                    FilteringTextInputFormatter
-                                                        .allow(
-                                                            RegExp(r'[0-9\.]')),
-                                                  ],
-                                                  textAlign: TextAlign.right,
-                                                  style: TextStyle(
-                                                    fontFamily: kUiFont,
-                                                    color: (widget
-                                                                .calorieIsSuggestion &&
-                                                            (widget.calorieController
-                                                                    ?.text
-                                                                    .trim()
-                                                                    .isEmpty ??
-                                                                true))
-                                                        ? colorScheme
-                                                            .onSurfaceVariant
-                                                            .withOpacity(0.5)
-                                                        : colorScheme.onSurface,
-                                                  ),
-                                                  decoration: InputDecoration(
-                                                    isDense: true,
-                                                    filled: false,
-                                                    enabledBorder:
-                                                        UnderlineInputBorder(
-                                                      borderSide: BorderSide(
-                                                        color: colorScheme
-                                                            .onSurfaceVariant
-                                                            .withOpacity(0.4),
-                                                        width: 1,
-                                                      ),
-                                                    ),
-                                                    focusedBorder:
-                                                        UnderlineInputBorder(
-                                                      borderSide: BorderSide(
-                                                          color: colorScheme
-                                                              .primary,
-                                                          width: 2),
-                                                    ),
-                                                    contentPadding:
-                                                        const EdgeInsets
-                                                            .symmetric(
-                                                            vertical: 6,
-                                                            horizontal: 0),
-                                                  ),
-                                                  onChanged:
-                                                      widget.onCalorieChanged,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          Text(' ${l10n.kcalUnit}',
-                                              style: aerobicUnitEmphasisStyle),
-                                        ],
-                                      ),
-                                      AnimatedSwitcher(
-                                        duration:
-                                            const Duration(milliseconds: 220),
-                                        child: widget.showAerobicFailureHint
-                                            ? _buildAerobicFailureHint(
-                                                widget.onAerobicFailureHintTap)
-                                            : const SizedBox.shrink(),
-                                      ),
-                                    ],
                                   ),
                                 ),
-                            ],
-                          )
+                              );
+                            }
+
+                            Widget buildCalorieField() {
+                              final controller = widget.calorieController!;
+                              final bool useSuggestionColor =
+                                  widget.calorieIsSuggestion &&
+                                      (controller.text.trim().isEmpty);
+
+                              return Focus(
+                                onFocusChange: notifyFocus,
+                                child: SizedBox(
+                                  width: 48,
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                        minHeight: kUnifiedFieldMinHeight),
+                                    child: TextField(
+                                      controller: controller,
+                                      keyboardType: TextInputType
+                                          .numberWithOptions(decimal: true),
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.allow(
+                                            RegExp(r'[0-9.]')),
+                                      ],
+                                      textAlign: TextAlign.center,
+                                      style: baseFieldStyle.copyWith(
+                                        color: useSuggestionColor
+                                            ? colorScheme.onSurfaceVariant
+                                                .withOpacity(0.5)
+                                            : colorScheme.onSurface,
+                                      ),
+                                      decoration: baseInputDecoration,
+                                      onChanged: widget.onCalorieChanged,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            Widget buildRow({
+                              required String label,
+                              required List<Widget> content,
+                            }) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10.0,
+                                  vertical: 10.0,
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    SizedBox(
+                                      width: labelColumnWidth,
+                                      child: Align(
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          label,
+                                          style: labelStyle,
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: labelDividerSpacing),
+                                    Container(
+                                      width: 1,
+                                      height: 36,
+                                      color: gridColor,
+                                    ),
+                                    SizedBox(width: dividerContentSpacing),
+                                    Expanded(
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: content,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            final List<Widget> metricRows = [
+                              buildRow(
+                                label: l10n.distance,
+                                content: [
+                                  buildPickerField(
+                                    controller: _kmController,
+                                    onTap: _openDistancePicker,
+                                    width: 48,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  buildUnit(
+                                    useImperialLength ? 'mi' : l10n.km,
+                                    emphasis: true,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  buildDivider(),
+                                  const SizedBox(width: 8),
+                                  buildPickerField(
+                                    controller: _mController,
+                                    onTap: _openDistancePicker,
+                                    width: 38,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  buildUnit(
+                                    useImperialLength ? 'yd' : l10n.m,
+                                  ),
+                                ],
+                              ),
+                              buildRow(
+                                label: l10n.time,
+                                content: [
+                                  buildPickerField(
+                                    controller: _hourController,
+                                    onTap: _openDurationPicker,
+                                    width: 28,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  buildUnit(l10n.hour),
+                                  const SizedBox(width: 8),
+                                  buildDivider(),
+                                  const SizedBox(width: 8),
+                                  buildPickerField(
+                                    controller: _minAeroCtrl,
+                                    onTap: _openDurationPicker,
+                                    width: 28,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  buildUnit(l10n.min),
+                                  const SizedBox(width: 8),
+                                  buildDivider(),
+                                  const SizedBox(width: 8),
+                                  buildPickerField(
+                                    controller: _secAeroCtrl,
+                                    onTap: _openDurationPicker,
+                                    width: 28,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  buildUnit(l10n.sec),
+                                ],
+                              ),
+                            ];
+
+                            if (widget.showCalorieField &&
+                                widget.calorieController != null) {
+                              metricRows.add(
+                                buildRow(
+                                  label: l10n.calorie,
+                                  content: [
+                                    buildCalorieField(),
+                                    const SizedBox(width: 4),
+                                    buildUnit(l10n.kcalUnit, emphasis: true),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            final Widget aerobicGrid = ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: gridBackground,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: gridColor,
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    for (int i = 0;
+                                        i < metricRows.length;
+                                        i++) ...[
+                                      if (i > 0)
+                                        Container(
+                                          height: 0.8,
+                                          color: gridColor,
+                                        ),
+                                      metricRows[i],
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            );
+
+                            final Widget failureHint = AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 220),
+                              child: widget.showAerobicFailureHint
+                                  ? Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 12.0,
+                                        right: 4.0,
+                                      ),
+                                      child: _buildAerobicFailureHint(
+                                          widget.onAerobicFailureHintTap),
+                                    )
+                                  : const SizedBox.shrink(),
+                            );
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                aerobicGrid,
+                                failureHint,
+                              ],
+                            );
+                          })()
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
