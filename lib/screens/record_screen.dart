@@ -5465,15 +5465,7 @@ class _RecordScreenState extends State<RecordScreen>
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                              child: Divider(
-                                height: 4,
-                                thickness: 1,
-                                color: mealHeaderDividerColor,
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                               child: ClipRRect(
                                 borderRadius: const BorderRadius.only(
                                   topLeft: Radius.circular(10.0),
