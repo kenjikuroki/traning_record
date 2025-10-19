@@ -5108,7 +5108,7 @@ class _RecordScreenState extends State<RecordScreen>
                                 builder: (_) {
                                   const double labelColumnWidth = 128.0;
                                   const double innerHorizontalPadding = 16.0;
-                                  const double innerVerticalPadding = 12.0;
+                                  const double innerVerticalPadding = 4.0;
                                   const double spacingLabelToDivider = 8.0;
                                   const double spacingDividerToField = 12.0;
                                   const double gridHorizontalPadding = 12.0;
@@ -6453,10 +6453,10 @@ class _RecordScreenState extends State<RecordScreen>
         _personalOverlayVisible;
     final Widget blurLayer = inputOverlayActive
         ? Positioned.fill(
-            child: _BlurExclusionLayer(
-              exclusionKeys: [_kAdArea, _kStopwatchArea],
-            ),
-          )
+      child: _BlurExclusionLayer(
+        exclusionKeys: const [],
+      ),
+    )
         : const SizedBox.shrink();
 
     // ===== Body (空き領域タップでフォーカス解除) =====
@@ -6532,7 +6532,7 @@ class _RecordScreenState extends State<RecordScreen>
                                     BorderSide(color: cs.primary, width: 2),
                               ),
                               contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 6, horizontal: 0),
+                                  vertical: 4, horizontal: 0),
                             );
 
                         return Padding(
@@ -8264,7 +8264,8 @@ class MenuListPreview extends StatelessWidget {
             FontWeight? fw,
             int maxLines = 1,
             Color? color,
-            bool rightDivider = false, // ← 追加
+            bool rightDivider = false,
+            EdgeInsetsGeometry? padding,
           }) {
         final cs = Theme.of(context).colorScheme;
         final dividerSide = BorderSide(color: cs.outlineVariant, width: 1);
@@ -8273,14 +8274,18 @@ class MenuListPreview extends StatelessWidget {
           decoration: rightDivider
               ? BoxDecoration(border: Border(right: dividerSide))
               : const BoxDecoration(),
-          child: Center(
-            child: Text(
-              label,
-              maxLines: maxLines,
-              overflow: TextOverflow.ellipsis,
-              style: cellText.copyWith(
-                fontWeight: fw,
-                color: color ?? cellText.color,
+          child: Padding(
+            padding:
+                padding ?? const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
+            child: Center(
+              child: Text(
+                label,
+                maxLines: maxLines,
+                overflow: TextOverflow.ellipsis,
+                style: cellText.copyWith(
+                  fontWeight: fw,
+                  color: color ?? cellText.color,
+                ),
               ),
             ),
           ),
@@ -8297,7 +8302,12 @@ class MenuListPreview extends StatelessWidget {
           cell('SET', fw: FontWeight.w700),
           Container(width: 1.0, height: headerDividerHeight, color: headerDividerColor),
 
-          cell(l10n.weightUnit, fw: FontWeight.w700),
+          cell(
+            l10n.weightUnit,
+            fw: FontWeight.w700,
+            padding:
+                const EdgeInsets.symmetric(vertical: 6.0, horizontal: 6.0),
+          ),
           Container(width: 1.0, height: headerDividerHeight, color: headerDividerColor),
 
           cell(l10n.reps, fw: FontWeight.w700),
@@ -8350,17 +8360,19 @@ class MenuListPreview extends StatelessWidget {
           final dataCells = <Widget>[
             cell('${i + 1}', color: cs.onSurface),
             cell(weightText.isEmpty ? '-' : '$weightText $unit',
-                color: valueColor),
+                color: valueColor,
+                padding:
+                    const EdgeInsets.symmetric(vertical: 6.0, horizontal: 6.0)),
             cell(repsText.isEmpty ? '-' : repsText, color: valueColor),
             if (showRirColumn)
-              cell(rirText.isEmpty ? '-' : rirText, color: valueColor),
+            cell(rirText.isEmpty ? '-' : rirText, color: valueColor),
             if (showRmColumn)
               cell(rmValue != null ? rmValue.toStringAsFixed(1) : '-',
                   color: valueColor),
             if (showFailColumn)
               cell(set.failureChecked ? l10n.yes : l10n.no,
                   color: valueColor),
-            cell(set.checked ? '✓' : '',
+            cell(set.checked ? '✔' : '',
                 color: set.checked ? cs.primary : valueColor),
           ];
 
@@ -8369,7 +8381,7 @@ class MenuListPreview extends StatelessWidget {
 
         final columnWidthList = <TableColumnWidth>[
           const FixedColumnWidth(44),
-          const FlexColumnWidth(1.2),
+          const FlexColumnWidth(1.4),
           const FlexColumnWidth(0.9),
         ];
         if (showRirColumn) {
@@ -10250,7 +10262,7 @@ class _MenuListState extends State<MenuList> {
       fontSize: 13.0,
     );
     final numberEmphasisStyle = valueStyle.copyWith(
-      fontSize: 30.0,
+      fontSize: 20.0,
       fontWeight: FontWeight.w700,
     );
     final rirEmphasisStyle = valueStyle.copyWith(
@@ -10295,7 +10307,7 @@ class _MenuListState extends State<MenuList> {
 
     // 列幅（SET｜重量｜回数｜RIR｜RM｜失敗｜完了）をスリム化
     const double _wSet = 36.0; // 36→30→36
-    const double _wWeight = 84.0; // 72→84
+    const double _wWeight = 110.0; // 72→84
     const double _wReps = 64.0; // 56→64
     const double _wRir = 40.0; // 44→40
     const double _wRm = 64.0; // 56→64
@@ -10639,19 +10651,21 @@ class _MenuListState extends State<MenuList> {
         final String rmDisplay = rm != null ? rm.toStringAsFixed(1) : '—';
         rowChildren.add(SizedBox(width: kColGap));
         rowChildren.add(
-          bottomCell(
-            _wRm,
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: Text(
-                rmDisplay,
-                textAlign: TextAlign.right,
-                style: valueStyle.copyWith(
-                  fontSize: 17.0,
-                  color: isMaxRm
-                      ? colorScheme.error
-                      : colorScheme.onSurfaceVariant,
+          SizedBox(
+            width: _wRm,
+            height: kUnifiedFieldMinHeight,
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  rmDisplay,
+                  textAlign: TextAlign.center,
+                  style: valueStyle.copyWith(
+                    fontSize: 17.0,
+                    color: isMaxRm
+                        ? colorScheme.error
+                        : colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ),
