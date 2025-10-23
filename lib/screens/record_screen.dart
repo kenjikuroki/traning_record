@@ -1005,39 +1005,54 @@ class _RecordScreenState extends State<RecordScreen>
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    SizedBox(
-                      height: 48,
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 8),
-                          Text(
-                            AppLocalizations.of(sheetCtx)!.selectTrainingPart,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Theme.of(sheetCtx).colorScheme.onSurface,
-                              decoration: TextDecoration.none,
-                            ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          height: 48,
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 8),
+                              Text(
+                                AppLocalizations.of(sheetCtx)!
+                                    .selectTrainingPart,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: Theme.of(sheetCtx)
+                                      .colorScheme
+                                      .onSurface,
+                                  decoration: TextDecoration.none,
+                                ),
+                              ),
+                              const Spacer(),
+                              TextButton(
+                                onPressed: () => Navigator.pop(sheetCtx, null),
+                                child: Text(
+                                  MaterialLocalizations.of(sheetCtx)
+                                      .cancelButtonLabel,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(sheetCtx, parts[temp]),
+                                child: Text(
+                                  MaterialLocalizations.of(sheetCtx)
+                                      .okButtonLabel,
+                                ),
+                              ),
+                            ],
                           ),
-                          const Spacer(),
-                          TextButton(
-                            onPressed: () => Navigator.pop(sheetCtx, null),
-                            child: Text(
-                              MaterialLocalizations.of(sheetCtx)
-                                  .cancelButtonLabel,
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () =>
-                                Navigator.pop(sheetCtx, parts[temp]),
-                            child: Text(
-                              MaterialLocalizations.of(sheetCtx).okButtonLabel,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                        Container(
+                          height: 0.8,
+                          width: double.infinity,
+                          color: Theme.of(sheetCtx)
+                              .colorScheme
+                              .outlineVariant,
+                        ),
+                      ],
                     ),
-                    const Divider(height: 1),
                     Expanded(
                       child: CupertinoPicker(
                         itemExtent: 36,
@@ -1770,33 +1785,44 @@ class _RecordScreenState extends State<RecordScreen>
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
-                      SizedBox(
-                        height: 48,
-                        child: Row(
-                          children: [
-                            const SizedBox(width: 12),
-                            Text(
-                              header,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: modalCs.onSurface,
-                              ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            height: 48,
+                            child: Row(
+                              children: [
+                                const SizedBox(width: 12),
+                                Text(
+                                  header,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: modalCs.onSurface,
+                                    decoration: TextDecoration.none,
+                                  ),
+                                ),
+                                const Spacer(),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(modalCtx, null),
+                                  child: Text(modalMaterial.cancelButtonLabel),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(
+                                    modalCtx,
+                                    <int>[tempInt, tempDec],
+                                  ),
+                                  child: Text(modalMaterial.okButtonLabel),
+                                ),
+                              ],
                             ),
-                            const Spacer(),
-                            TextButton(
-                              onPressed: () => Navigator.pop(modalCtx, null),
-                              child: Text(modalMaterial.cancelButtonLabel),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(
-                                modalCtx,
-                                <int>[tempInt, tempDec],
-                              ),
-                              child: Text(modalMaterial.okButtonLabel),
-                            ),
-                          ],
-                        ),
+                          ),
+                          Container(
+                            height: 0.8,
+                            width: double.infinity,
+                            color: modalCs.outlineVariant,
+                          ),
+                        ],
                       ),
                       Expanded(
                         child: Row(
@@ -1804,8 +1830,7 @@ class _RecordScreenState extends State<RecordScreen>
                             Expanded(
                               child: CupertinoPicker(
                                 itemExtent: 36,
-                                useMagnifier: true,
-                                magnification: 1.08,
+                                useMagnifier: false,
                                 scrollController: intController,
                                 onSelectedItemChanged: (i) => tempInt = i,
                                 selectionOverlay: const SizedBox.shrink(),
@@ -1832,8 +1857,7 @@ class _RecordScreenState extends State<RecordScreen>
                             Expanded(
                               child: CupertinoPicker(
                                 itemExtent: 36,
-                                useMagnifier: true,
-                                magnification: 1.08,
+                                useMagnifier: false,
                                 scrollController: decController,
                                 onSelectedItemChanged: (i) => tempDec = i,
                                 selectionOverlay: const SizedBox.shrink(),
@@ -5383,6 +5407,13 @@ class _RecordScreenState extends State<RecordScreen>
                                       1.0 +
                                       spacingDividerToField;
 
+                                  if (metricRows.isNotEmpty) {
+                                    metricRows[0] = Padding(
+                                      padding: const EdgeInsets.only(top: 1),
+                                      child: metricRows[0],
+                                    );
+                                  }
+
                                   Widget metricsSection = const SizedBox.shrink();
                                   if (metricRows.isNotEmpty) {
                                     final Widget gridCore = ClipRRect(
@@ -5419,62 +5450,58 @@ class _RecordScreenState extends State<RecordScreen>
                                       padding: EdgeInsets.symmetric(
                                         horizontal: gridHorizontalPadding,
                                       ),
-                                      child: Stack(
-                                        clipBehavior: Clip.none,
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          gridCore,
-                                          if (_showWeightOverlayHint)
-                                            Positioned.fill(
+                                          if (_showWeightOverlayHint) ...[
+                                            GestureDetector(
+                                              behavior:
+                                                  HitTestBehavior.translucent,
+                                              onTap: () {
+                                                if (!mounted) return;
+                                                setState(() =>
+                                                    _showWeightOverlayHint =
+                                                        false);
+                                              },
                                               child: Align(
                                                 alignment: Alignment.topCenter,
-                                                child: Transform.translate(
-                                                  offset: const Offset(0, -24),
-                                                  child: GestureDetector(
-                                                    behavior:
-                                                        HitTestBehavior.translucent,
-                                                    onTap: () {
-                                                      if (!mounted) return;
-                                                      setState(() =>
-                                                          _showWeightOverlayHint =
-                                                              false);
-                                                    },
-                                                    child: Container(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                        horizontal: 16,
-                                                        vertical: 12,
+                                                child: Container(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                    horizontal: 20,
+                                                    vertical: 24,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color:
+                                                        const Color(0xFF2F6AA6),
+                                                    borderRadius:
+                                                        BorderRadius.circular(16),
+                                                    boxShadow: const [
+                                                      BoxShadow(
+                                                        color:
+                                                            Color(0x332F6AA6),
+                                                        blurRadius: 18,
+                                                        offset: Offset(0, 10),
                                                       ),
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(
-                                                            0xFF2F6AA6),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(12),
-                                                        boxShadow: const [
-                                                          BoxShadow(
-                                                            color: Color(
-                                                                0x332F6AA6),
-                                                            blurRadius: 16,
-                                                            offset:
-                                                                Offset(0, 10),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      child: Text(
-                                                        l10n
-                                                            .weightCardExtraFieldsHint,
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          height: 1.4,
-                                                        ),
-                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: Text(
+                                                    l10n
+                                                        .weightCardExtraFieldsHint,
+                                                    textAlign: TextAlign.center,
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      height: 1.45,
                                                     ),
                                                   ),
                                                 ),
                                               ),
                                             ),
+                                            const SizedBox(height: 18),
+                                          ],
+                                          gridCore,
                                         ],
                                       ),
                                     );
@@ -6641,7 +6668,9 @@ class _RecordScreenState extends State<RecordScreen>
 
     const Color kBrandBlue = Color(0xFF2563EB);
 
-    final bool showWeight = _showPersonalCard;
+    final bool showWeight = _showPersonalCard ||
+        _weightController.text.trim().isNotEmpty ||
+        SettingsManager.personalWeightKg != null;
     final bool showBodyFat =
         (widget.settingsBox.get('manage.bodyFat') as bool?) ?? false;
     final bool showWaist =
@@ -6734,6 +6763,9 @@ class _RecordScreenState extends State<RecordScreen>
                           return const SizedBox.shrink();
                         }
 
+                        final bool hideLabel = label == l10n.bodyWeight;
+                        final double leftW = hideLabel ? 0.0 : (_labelColW + 6);
+
                         InputDecoration _underlineDec() => InputDecoration(
                               isDense: true,
                               filled: false,
@@ -6757,8 +6789,6 @@ class _RecordScreenState extends State<RecordScreen>
                               final total = constraints.maxWidth;
 
                               // ← 微妙に左寄せ：ラベルとフィールドの間隔を 8 → 6 に
-                              final leftW = _labelColW + 6;
-
                               // ← 単位の有無に関係なく右側を常に確保（BMI でも確保）
                               const baseRight = _unitReserveW + 6;
 
@@ -6769,18 +6799,19 @@ class _RecordScreenState extends State<RecordScreen>
 
                               return Row(
                                 children: [
-                                  SizedBox(
-                                    width: _labelColW,
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        Text(label, style: labelStyle),
-                                        const SizedBox(width: 2),
-                                        Text('：', style: labelStyle),
-                                      ],
+                                  if (!hideLabel)
+                                    SizedBox(
+                                      width: _labelColW,
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          Text(label, style: labelStyle),
+                                          const SizedBox(width: 2),
+                                          Text('：', style: labelStyle),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 6),
+                                  if (!hideLabel) const SizedBox(width: 6),
 
                                   // ← 下線を 2/3 に縮める（幅指定）
                                   SizedBox(
@@ -6855,7 +6886,7 @@ class _RecordScreenState extends State<RecordScreen>
                               : Colors.black.withOpacity(0.20),
                           child: Container(
                             constraints: const BoxConstraints(minHeight: 110),
-                            child: Stack(
+                                      child: Stack(
                               children: [
                               // 全体タップでオーバーレイを開く透明レイヤー
                               Positioned.fill(
@@ -7013,72 +7044,7 @@ class _RecordScreenState extends State<RecordScreen>
                                                 ),
                                               ],
                                             ),
-                                            AnimatedCrossFade(
-                                              duration: const Duration(
-                                                  milliseconds: 180),
-                                              sizeCurve: Curves.easeOutCubic,
-                                              crossFadeState: _personalCollapsed
-                                                  ? CrossFadeState.showFirst
-                                                  : CrossFadeState.showSecond,
-                                              firstChild:
-                                                  const SizedBox.shrink(),
-                                              secondChild: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  const SizedBox(height: 2),
-                                                  _metricRow(
-                                                      label: l10n.bodyWeight,
-                                                      controller:
-                                                          _weightController,
-                                                      unit: currentUnit == 'kg'
-                                                          ? l10n.kg
-                                                          : l10n.lbs),
-                                                  if (showBodyFat)
-                                                    _metricRow(
-                                                        label: l10n.bodyFat,
-                                                        controller:
-                                                            _bodyFatController,
-                                                        unit:
-                                                            l10n.percentSymbol),
-                                                  if (showWaist)
-                                                    _metricRow(
-                                                        label: l10n.waist,
-                                                        controller:
-                                                            _waistController,
-                                                        unit: SettingsManager
-                                                                .isWaistInch
-                                                            ? l10n.unitIn
-                                                            : l10n.unitCm),
-                                                  if (showBMI)
-                                                    _metricRow(
-                                                        label: l10n.bmi,
-                                                        controller: _bmiCtrl),
-                                                  if (showBmr) ...[
-                                                    _metricRow(
-                                                      label: l10n.bmrTitleShort,
-                                                      controller:
-                                                          _bmrController,
-                                                      unit: l10n.kcalUnit,
-                                                    ),
-                                                    Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                              left: 98, top: 4),
-                                                      child: Text(
-                                                        _formattedBmrDifference(
-                                                            l10n),
-                                                        style: TextStyle(
-                                                          color: colorScheme
-                                                              .onSurfaceVariant,
-                                                          fontSize: 12,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ],
-                                              ),
-                                            ),
+                                            const SizedBox.shrink(),
                                           ],
                                         ),
                                       ),
@@ -9549,33 +9515,45 @@ class _MenuListState extends State<MenuList> {
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                SizedBox(
-                  height: 48,
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 12),
-                      Text(
-                        '${l10n.weightUnit} ($unitLabel)',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: cs.onSurface,
-                        ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 48,
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 12),
+                          Text(
+                            '${l10n.weightUnit} ($unitLabel)',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface,
+                              decoration: TextDecoration.none,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, null),
+                            child: Text(material.cancelButtonLabel),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(
+                              ctx,
+                              <int>[tempInt, tempFraction],
+                            ),
+                            child: Text(material.okButtonLabel),
+                          ),
+                        ],
                       ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, null),
-                        child: Text(material.cancelButtonLabel),
-                      ),
-                      TextButton(
-                        onPressed: () =>
-                            Navigator.pop(ctx, <int>[tempInt, tempFraction]),
-                        child: Text(material.okButtonLabel),
-                      ),
-                    ],
-                  ),
+                    ),
+                    Container(
+                      height: 0.8,
+                      width: double.infinity,
+                      color: cs.outlineVariant,
+                    ),
+                  ],
                 ),
-                const Divider(height: 1),
                 Expanded(
                   child: Row(
                     children: [
@@ -9701,32 +9679,42 @@ class _MenuListState extends State<MenuList> {
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                SizedBox(
-                  height: 48,
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 12),
-                      Text(
-                        l10n.reps,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: cs.onSurface,
-                        ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 48,
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 12),
+                          Text(
+                            l10n.reps,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface,
+                              decoration: TextDecoration.none,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, null),
+                            child: Text(material.cancelButtonLabel),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, tempIndex),
+                            child: Text(material.okButtonLabel),
+                          ),
+                        ],
                       ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, null),
-                        child: Text(material.cancelButtonLabel),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, tempIndex),
-                        child: Text(material.okButtonLabel),
-                      ),
-                    ],
-                  ),
+                    ),
+                    Container(
+                      height: 0.8,
+                      width: double.infinity,
+                      color: cs.outlineVariant,
+                    ),
+                  ],
                 ),
-                const Divider(height: 1),
                 Expanded(
                   child: CupertinoPicker(
                     itemExtent: 36,
@@ -9828,32 +9816,42 @@ class _MenuListState extends State<MenuList> {
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                SizedBox(
-                  height: 48,
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 12),
-                      Text(
-                        l10n.rirLabel,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: cs.onSurface,
-                        ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 48,
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 12),
+                          Text(
+                            l10n.rirLabel,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface,
+                              decoration: TextDecoration.none,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, null),
+                            child: Text(material.cancelButtonLabel),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, tempIndex),
+                            child: Text(material.okButtonLabel),
+                          ),
+                        ],
                       ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, null),
-                        child: Text(material.cancelButtonLabel),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, tempIndex),
-                        child: Text(material.okButtonLabel),
-                      ),
-                    ],
-                  ),
+                    ),
+                    Container(
+                      height: 0.8,
+                      width: double.infinity,
+                      color: cs.outlineVariant,
+                    ),
+                  ],
                 ),
-                const Divider(height: 1),
                 Expanded(
                   child: CupertinoPicker(
                     itemExtent: 36,
@@ -9950,33 +9948,45 @@ class _MenuListState extends State<MenuList> {
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                SizedBox(
-                  height: 48,
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 12),
-                      Text(
-                        l10n.distance,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: cs.onSurface,
-                        ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 48,
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 12),
+                          Text(
+                            l10n.distance,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface,
+                              decoration: TextDecoration.none,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, null),
+                            child: Text(material.cancelButtonLabel),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(
+                              ctx,
+                              <int>[tempMajor, tempMinor],
+                            ),
+                            child: Text(material.okButtonLabel),
+                          ),
+                        ],
                       ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, null),
-                        child: Text(material.cancelButtonLabel),
-                      ),
-                      TextButton(
-                        onPressed: () =>
-                            Navigator.pop(ctx, <int>[tempMajor, tempMinor]),
-                        child: Text(material.okButtonLabel),
-                      ),
-                    ],
-                  ),
+                    ),
+                    Container(
+                      height: 0.8,
+                      width: double.infinity,
+                      color: cs.outlineVariant,
+                    ),
+                  ],
                 ),
-                const Divider(height: 1),
                 Expanded(
                   child: Row(
                     children: [
@@ -10094,35 +10104,45 @@ class _MenuListState extends State<MenuList> {
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                SizedBox(
-                  height: 48,
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 12),
-                      Text(
-                        l10n.time,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: cs.onSurface,
-                        ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 48,
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 12),
+                          Text(
+                            l10n.time,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface,
+                              decoration: TextDecoration.none,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, null),
+                            child: Text(material.cancelButtonLabel),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(
+                              ctx,
+                              <int>[tempHour, tempMinute, tempSecond],
+                            ),
+                            child: Text(material.okButtonLabel),
+                          ),
+                        ],
                       ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, null),
-                        child: Text(material.cancelButtonLabel),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(
-                          ctx,
-                          <int>[tempHour, tempMinute, tempSecond],
-                        ),
-                        child: Text(material.okButtonLabel),
-                      ),
-                    ],
-                  ),
+                    ),
+                    Container(
+                      height: 0.8,
+                      width: double.infinity,
+                      color: cs.outlineVariant,
+                    ),
+                  ],
                 ),
-                const Divider(height: 1),
                 Expanded(
                   child: Row(
                     children: [

@@ -62,7 +62,7 @@
 
     <!-- ATT ダイアログ用のキー（文言は InfoPlist.strings で多言語化） -->
         <key>NSUserTrackingUsageDescription</key>
-        <string>広告の表示最適化、効果測定、不正防止のために、デバイスの広告識別子（IDFA）などの情報を利用します。他社アプリやWebサイトでの活動情報と関連付けられる場合があります。設定からいつでも変更できます。</string>
+        <string>We use your device’s advertising identifier (IDFA) to optimize ads, measure effectiveness, and prevent fraud.</string>
 
     <!-- SKAdNetwork (Google) -->
     <key>SKAdNetworkItems</key>

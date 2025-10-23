@@ -283,7 +283,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get weightCardExtraFieldsHint =>
-      '設定より体脂肪率・ウエストの入力欄などの追加が可能です。';
+      '設定より体脂肪率・ウエストの入力欄などの追加が可能です。単位kg/lbsも設定画面から変更できます。';
 
   @override
   String get bodyWeightTracking => '体重管理';

@@ -1,5 +1,1 @@
-/* App Tracking Transparency (ATT) */
-"NSUserTrackingUsageDescription" = "To optimize ads, measure performance, and prevent fraud, we use your device’s advertising identifier (IDFA) and may associate it with activity across other companies’ apps and websites. You can change this at any time in Settings.";
-"NSCameraUsageDescription" = "We use the camera to capture training photos.";
-"NSMicrophoneUsageDescription" = "Microphone access may be needed for certain audio features.";
-"NSPhotoLibraryAddUsageDescription" = "Allows saving captured training photos to your gallery.";
+NSUserTrackingUsageDescription = "We use your device’s advertising identifier (IDFA) to optimize ads, measure effectiveness, and prevent fraud.";
