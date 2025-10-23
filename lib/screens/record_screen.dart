@@ -360,6 +360,7 @@ class _RecordScreenState extends State<RecordScreen>
   Timer? _capTimer;
   DateTime? _backgroundedAt;
   bool _wasRunning = false;
+  bool _showFirstRecordHint = false;
   DateTime? _resumedAt;
 
   Timer? _scrollDebounce;
@@ -475,8 +476,7 @@ class _RecordScreenState extends State<RecordScreen>
       }
       if (!mounted || _kRecordPart.currentContext == null) return;
 
-      final l10n = AppLocalizations.of(context)!;
-      // (hint removed)
+      setState(() => _showFirstRecordHint = true);
       await box.put('hint_seen_record', true);
     });
 
@@ -624,6 +624,52 @@ class _RecordScreenState extends State<RecordScreen>
         duration: const Duration(seconds: 7),
         action: action,
       ),
+    );
+  }
+
+  void _dismissFirstRecordHint() {
+    if (!_showFirstRecordHint) return;
+    setState(() => _showFirstRecordHint = false);
+  }
+
+  Widget _buildFirstRecordHintCard(BuildContext context, AppLocalizations l10n) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      child: !_showFirstRecordHint
+          ? const SizedBox.shrink()
+          : Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: GestureDetector(
+                onTap: _dismissFirstRecordHint,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  key: const ValueKey('recordFirstHint'),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2F6AA6),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x332F6AA6),
+                        blurRadius: 18,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                  child: Text(
+                    l10n.hintRecordFirst,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      height: 1.45,
+                    ),
+                  ),
+                ),
+              ),
+            ),
     );
   }
 
@@ -6711,6 +6757,7 @@ class _RecordScreenState extends State<RecordScreen>
               child: const AdBanner(screenName: 'record'),
             ),
             const SizedBox(height: 0.0),
+            _buildFirstRecordHintCard(context, l10n),
             Visibility(
               visible: SettingsManager.showStopwatch,
               maintainState: true,

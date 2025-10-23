@@ -581,7 +581,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hintRecordFirst =>
-      'Start by recording a workout or your body weight.';
+      'Start by recording a workout or your body weight. Tap "Select Training Part" to log a workout, or tap the ＋ button to enter your body weight.';
 
   @override
   String get hintGraphSetGoal => 'Set your goal.';
