@@ -273,6 +273,8 @@ class _RecordScreenState extends State<RecordScreen>
   bool _personalOverlayVisible = false;
   bool _personalSlideIn = false;
   final FocusNode _personalOverlayFocus = FocusNode();
+  bool _weightOverlayHintSeen = false;
+  bool _showWeightOverlayHint = false;
 
   final GlobalKey _kRecordPart = GlobalKey();
   final GlobalKey _kExerciseField = GlobalKey();
@@ -301,6 +303,9 @@ class _RecordScreenState extends State<RecordScreen>
   bool _calcAerobicCalories = SettingsManager.enableAerobicCalories;
 
   Map<String, List<String>> _customExercises = {};
+
+  // 日本語デフォルト名 → 現在Locale名のキャッシュ
+  final Map<String, Map<String, String>> _localizedExerciseNameCache = {};
 
   final List<MealCardState> _mealCards = [];
   final List<List<_MealRowControllers>> _mealControllers = [];
@@ -410,6 +415,9 @@ class _RecordScreenState extends State<RecordScreen>
   @override
   void initState() {
     super.initState();
+
+    _weightOverlayHintSeen =
+        (widget.settingsBox.get('hint_seen_weight_card') as bool?) ?? false;
 
     _fabCtrl = AnimationController(
       vsync: this,
@@ -800,16 +808,32 @@ class _RecordScreenState extends State<RecordScreen>
             : <MenuData>[];
 
         final Map<String, MenuData> recBy = {
-          for (final m in recList) m.name: m
+          for (final m in recList)
+            _translateExerciseNameToLocale(originalPart, m.name): m
         };
-        final Map<String, MenuData> luBy = {for (final m in luList) m.name: m};
+        final Map<String, MenuData> luBy = {
+          for (final m in luList)
+            _translateExerciseNameToLocale(originalPart, m.name): m
+        };
 
         final l10n = AppLocalizations.of(context)!;
         final bool isAerobic = current == l10n.aerobicExercise;
 
         final List<String> names = [
-          ...recList.map((m) => m.name),
-          ...luList.where((m) => !recBy.containsKey(m.name)).map((m) => m.name),
+          ...recList.map(
+            (m) => _translateExerciseNameToLocale(originalPart, m.name),
+          ),
+          ...luList
+              .where(
+                (m) =>
+                    !recBy.containsKey(
+                      _translateExerciseNameToLocale(originalPart, m.name),
+                    ),
+              )
+              .map(
+                (m) =>
+                    _translateExerciseNameToLocale(originalPart, m.name),
+              ),
         ];
 
         // 追加要件：最低枚数を保証（筋トレ=7, 有酸素=5）。
@@ -1069,6 +1093,34 @@ class _RecordScreenState extends State<RecordScreen>
     return translatedPart;
   }
 
+  /// 日本語デフォルトで保存されている可能性のある種目名を、
+  /// 現在のLocaleの表示名にマップする。該当がなければそのまま返す。
+  String _translateExerciseNameToLocale(String originalPart, String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return name;
+
+    final l10n = AppLocalizations.of(context)!;
+    final cacheKey = '${l10n.localeName}::$originalPart';
+    Map<String, String>? mapping = _localizedExerciseNameCache[cacheKey];
+    if (mapping == null) {
+      final defaultsJa = ExerciseCatalog.defaultsFor(originalPart);
+      final localizedPart = _translatePartToLocale(context, originalPart);
+      final defaultsLocalized =
+          ExerciseCatalog.defaultsFor(localizedPart, l10n: l10n);
+
+      final pairLength = defaultsJa.length < defaultsLocalized.length
+          ? defaultsJa.length
+          : defaultsLocalized.length;
+      final map = <String, String>{};
+      for (int i = 0; i < pairLength; i++) {
+        map[defaultsJa[i]] = defaultsLocalized[i];
+      }
+      _localizedExerciseNameCache[cacheKey] = map;
+      mapping = map;
+    }
+    return mapping[trimmed] ?? name;
+  }
+
   String _translatePartToLocale(BuildContext context, String part) {
     final l10n = AppLocalizations.of(context)!;
     switch (part) {
@@ -1225,7 +1277,8 @@ class _RecordScreenState extends State<RecordScreen>
     final options = LinkedHashSet<String>();
     final trimmedCurrent = currentName?.trim() ?? '';
     final l10n = AppLocalizations.of(context)!;
-    options.addAll(ExerciseCatalog.defaultsFor(originalPart, l10n: l10n));
+    final localizedPart = _translatePartToLocale(context, originalPart);
+    options.addAll(ExerciseCatalog.defaultsFor(localizedPart, l10n: l10n));
     final customList = _customExercises[originalPart];
     if (customList != null) {
       for (final name in customList) {
@@ -1271,51 +1324,112 @@ class _RecordScreenState extends State<RecordScreen>
   // 人気3＋補助2（有酸素は人気3）のプリセット。
 // originalPart は日本語のオリジナル部位名（例: '胸', '背中', '有酸素運動'）。
   List<String> _presetPopularAndAssistNames(String originalPart) {
+    final l10n = AppLocalizations.of(context)!;
     switch (originalPart) {
       case '有酸素運動':
         // 人気3（+ 下で空2を足す）
-        return ['ランニング', 'ウォーキング', 'エアロバイク'];
+        return [
+          l10n.exerciseAerobic01,
+          l10n.exerciseAerobic02,
+          l10n.exerciseAerobic05,
+        ];
 
       case '腕':
         // 人気3
-        final popular = ['ダンベルカール', 'バーベルカール', 'ケーブルトライセプスプレスダウン'];
+        final popular = [
+          l10n.exerciseArm02,
+          l10n.exerciseArm01,
+          l10n.exerciseArm09,
+        ];
         // 補助2
-        final assist = ['ハンマーカール', 'スカルクラッシャー'];
+        final assist = [
+          l10n.exerciseArm06,
+          l10n.exerciseArm10,
+        ];
         return [...popular, ...assist];
 
       case '胸':
-        final popular = ['バーベルベンチプレス', 'ダンベルベンチプレス', 'インクラインベンチプレス'];
-        final assist = ['ケーブルクロスオーバー', 'ダンベルフライ'];
+        final popular = [
+          l10n.exerciseChest01,
+          l10n.exerciseChest04,
+          l10n.exerciseChest02,
+        ];
+        final assist = [
+          l10n.exerciseChest09,
+          l10n.exerciseChest07,
+        ];
         return [...popular, ...assist];
 
       case '背中':
-        final popular = ['ラットプルダウン', 'ダンベルワンハンドロウ', 'チンニング（アシスト）'];
-        final assist = ['シーテッドロウ', 'フェイスプル'];
+        final popular = [
+          l10n.exerciseBack02,
+          l10n.exerciseBack05,
+          l10n.exerciseBack09,
+        ];
+        final assist = [
+          l10n.exerciseBack06,
+          l10n.exerciseBack10,
+        ];
         return [...popular, ...assist];
 
       case '肩':
-        final popular = ['ダンベルショルダープレス', 'サイドレイズ', 'アーノルドプレス'];
-        final assist = ['リアレイズ', 'フロントレイズ'];
+        final popular = [
+          l10n.exerciseShoulder02,
+          l10n.exerciseShoulder05,
+          l10n.exerciseShoulder04,
+        ];
+        final assist = [
+          l10n.exerciseShoulder06,
+          l10n.exerciseShoulder07,
+        ];
         return [...popular, ...assist];
 
       case '足':
-        final popular = ['バーベルスクワット', 'レッグプレス', 'ヒップスラスト'];
-        final assist = ['レッグエクステンション', 'レッグカール'];
+        final popular = [
+          l10n.exerciseLeg01,
+          l10n.exerciseLeg03,
+          l10n.exerciseLeg15,
+        ];
+        final assist = [
+          l10n.exerciseLeg04,
+          l10n.exerciseLeg05,
+        ];
         return [...popular, ...assist];
 
       case '腹筋':
-        final popular = ['クランチ', 'レッグレイズ', 'アブローラー'];
-        final assist = ['ケーブルクランチ', 'バイシクルクランチ'];
+        final popular = [
+          l10n.exerciseAbs01,
+          l10n.exerciseAbs03,
+          l10n.exerciseAbs05,
+        ];
+        final assist = [
+          l10n.exerciseAbs06,
+          l10n.exerciseAbs10,
+        ];
         return [...popular, ...assist];
 
       case '全身':
-        final popular = ['ケトルベルスイング', 'バーピージャンプ', 'クリーン＆プレス'];
-        final assist = ['ファーマーズウォーク', 'ステップアップ'];
+        final popular = [
+          l10n.exerciseFullBody01,
+          l10n.exerciseFullBody02,
+          l10n.exerciseFullBody04,
+        ];
+        final assist = [
+          l10n.exerciseFullBody11,
+          l10n.exerciseFullBody10,
+        ];
         return [...popular, ...assist];
 
       case '自重':
-        final popular = ['腕立て伏せ', 'スクワット', 'プランク'];
-        final assist = ['ディップス', 'ランジ'];
+        final popular = [
+          l10n.exerciseBodyweight01,
+          l10n.exerciseBodyweight06,
+          l10n.exerciseBodyweight13,
+        ];
+        final assist = [
+          l10n.exerciseBodyweight05,
+          l10n.exerciseBodyweight09,
+        ];
         return [...popular, ...assist];
 
       // その他* はプリセットなし（空2のみ後段で付与）
@@ -1542,11 +1656,19 @@ class _RecordScreenState extends State<RecordScreen>
 
     _personalOverlayFocus.requestFocus();
 
+    bool showHint = false;
+    if (!_weightOverlayHintSeen) {
+      showHint = true;
+      _weightOverlayHintSeen = true;
+      unawaited(widget.settingsBox.put('hint_seen_weight_card', true));
+    }
+
     if (!mounted) return;
     setState(() {
       _personalOverlayVisible = true;
       _fabOpen = false; // FABダイヤルは閉じる
       _personalSlideIn = false; // 初期は少し上
+      _showWeightOverlayHint = showHint;
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1565,7 +1687,10 @@ class _RecordScreenState extends State<RecordScreen>
     setState(() => _personalSlideIn = false);
     await Future.delayed(_overlaySlideDuration);
     if (!mounted) return;
-    setState(() => _personalOverlayVisible = false);
+    setState(() {
+      _personalOverlayVisible = false;
+      _showWeightOverlayHint = false;
+    });
   }
 
   String _formatOneDecimal(double value) {
@@ -2462,12 +2587,29 @@ class _RecordScreenState extends State<RecordScreen>
       final luList =
           (rawLU is List) ? rawLU.whereType<MenuData>().toList() : <MenuData>[];
 
-      final Map<String, MenuData> recBy = {for (final m in recList) m.name: m};
-      final Map<String, MenuData> luBy = {for (final m in luList) m.name: m};
+      final Map<String, MenuData> recBy = {
+        for (final m in recList)
+          _translateExerciseNameToLocale(originalPart, m.name): m
+      };
+      final Map<String, MenuData> luBy = {
+        for (final m in luList)
+          _translateExerciseNameToLocale(originalPart, m.name): m
+      };
 
       final List<String> names = [
-        ...recList.map((m) => m.name),
-        ...luList.where((m) => !recBy.containsKey(m.name)).map((m) => m.name),
+        ...recList.map(
+          (m) => _translateExerciseNameToLocale(originalPart, m.name),
+        ),
+        ...luList
+            .where(
+              (m) =>
+                  !recBy.containsKey(
+                    _translateExerciseNameToLocale(originalPart, m.name),
+                  ),
+            )
+            .map(
+              (m) => _translateExerciseNameToLocale(originalPart, m.name),
+            ),
       ];
 
       if (names.isEmpty) names.add('');
@@ -3821,7 +3963,12 @@ class _RecordScreenState extends State<RecordScreen>
   void _handleAddPersonal() async {
     setState(() {
       _showPersonalCard = true;
+      _personalCollapsed = false;
       _closeFabDial();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _openPersonalOverlaySmooth();
     });
     try {
       await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -3859,7 +4006,10 @@ class _RecordScreenState extends State<RecordScreen>
       setState(() => _personalSlideIn = false);
       await Future.delayed(_overlaySlideDuration);
       if (!mounted) return;
-      setState(() => _personalOverlayVisible = false);
+      setState(() {
+        _personalOverlayVisible = false;
+        _showWeightOverlayHint = false;
+      });
     }
 
     if (!mounted) return;
@@ -5233,47 +5383,107 @@ class _RecordScreenState extends State<RecordScreen>
                                       1.0 +
                                       spacingDividerToField;
 
-                                  final Widget metricsGrid = metricRows.isEmpty
-                                      ? const SizedBox.shrink()
-                                      : Padding(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: gridHorizontalPadding,
+                                  Widget metricsSection = const SizedBox.shrink();
+                                  if (metricRows.isNotEmpty) {
+                                    final Widget gridCore = ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: gridBackground,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: gridColor,
+                                            width: 0.8,
                                           ),
-                                          child: ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                color: gridBackground,
-                                                borderRadius: BorderRadius.circular(12),
-                                                border: Border.all(
+                                        ),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            for (int i = 0;
+                                                i < metricRows.length;
+                                                i++) ...[
+                                              if (i > 0)
+                                                Container(
+                                                  height: 0.8,
                                                   color: gridColor,
-                                                  width: 0.8,
+                                                ),
+                                              metricRows[i],
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                    );
+
+                                    metricsSection = Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: gridHorizontalPadding,
+                                      ),
+                                      child: Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          gridCore,
+                                          if (_showWeightOverlayHint)
+                                            Positioned.fill(
+                                              child: Align(
+                                                alignment: Alignment.topCenter,
+                                                child: Transform.translate(
+                                                  offset: const Offset(0, -24),
+                                                  child: GestureDetector(
+                                                    behavior:
+                                                        HitTestBehavior.translucent,
+                                                    onTap: () {
+                                                      if (!mounted) return;
+                                                      setState(() =>
+                                                          _showWeightOverlayHint =
+                                                              false);
+                                                    },
+                                                    child: Container(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 12,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                            0xFF2F6AA6),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(12),
+                                                        boxShadow: const [
+                                                          BoxShadow(
+                                                            color: Color(
+                                                                0x332F6AA6),
+                                                            blurRadius: 16,
+                                                            offset:
+                                                                Offset(0, 10),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      child: Text(
+                                                        l10n
+                                                            .weightCardExtraFieldsHint,
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          height: 1.4,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  for (int i = 0;
-                                                      i < metricRows.length;
-                                                      i++) ...[
-                                                    if (i > 0)
-                                                      Container(
-                                                        height: 0.8,
-                                                        color: gridColor,
-                                                      ),
-                                                    metricRows[i],
-                                                  ],
-                                                ],
-                                              ),
                                             ),
-                                          ),
-                                        );
+                                        ],
+                                      ),
+                                    );
+                                  }
 
                                   return Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      metricsGrid,
+                                      metricsSection,
                                       if (showBmr)
                                         Padding(
                                           padding: EdgeInsets.only(
@@ -6519,6 +6729,11 @@ class _RecordScreenState extends State<RecordScreen>
                         final labelStyle = TextStyle(
                             color: cs.onSurfaceVariant, fontSize: 13.0);
 
+                        final String trimmed = controller.text.trim();
+                        if (trimmed.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+
                         InputDecoration _underlineDec() => InputDecoration(
                               isDense: true,
                               filled: false,
@@ -6578,6 +6793,8 @@ class _RecordScreenState extends State<RecordScreen>
                                         readOnly: true,
                                         enableInteractiveSelection: false,
                                         textAlign: TextAlign.right,
+                                        textAlignVertical:
+                                            TextAlignVertical.center,
                                         style: TextStyle(
                                             fontFamily: kUiFont,
                                             color: cs.onSurface),
@@ -10599,14 +10816,6 @@ class _MenuListState extends State<MenuList> {
                   ),
                 ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 2.0),
-                  child: Text(
-                    l10n.reps,
-                    style: unitStyle.copyWith(fontSize: 13.0),
-                  ),
-                ),
-                const SizedBox(width: 8),
               ],
             ),
           ),

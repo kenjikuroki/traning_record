@@ -94,6 +94,7 @@
   "defaultSets": "Default Sets",
   "bodyWeight": "BW",
   "weightCardTitle": "Weight",
+  "weightCardExtraFieldsHint": "You can add fields like body fat or waist from Settings.",
   "bodyWeightTracking": "Body Weight Tracking",
   "durationHint": "min:sec",
   "distanceHint": "Enter distance",

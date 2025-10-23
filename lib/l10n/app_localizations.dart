@@ -636,6 +636,12 @@ abstract class AppLocalizations {
   /// **'Weight'**
   String get weightCardTitle;
 
+  /// No description provided for @weightCardExtraFieldsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can add fields like body fat or waist from Settings.'**
+  String get weightCardExtraFieldsHint;
+
   /// No description provided for @bodyWeightTracking.
   ///
   /// In en, this message translates to:

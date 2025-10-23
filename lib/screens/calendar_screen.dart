@@ -14,6 +14,7 @@ import 'package:home_widget/home_widget.dart';
 import '../l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../models/meal.dart';
+import '../models/exercise_catalog.dart';
 import '../widgets/ad_banner.dart';
 import '../settings_manager.dart';
 import '../utils/training_display_utils.dart';
@@ -142,6 +143,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // 写真有無キャッシュ（key = yyyy-MM-dd）
   final Map<String, bool> _photoCache = {};
+  final Map<String, Map<String, String>> _localizedExerciseNameCache = {};
 
   bool _widgetRefreshScheduled = false;
 
@@ -625,8 +627,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return _hasAnyTrainingData(r);
   }
 
-  String _translatePartToLocale(BuildContext context, String part) {
-    final l10n = AppLocalizations.of(context)!;
+  String _translatePartLabel(AppLocalizations l10n, String part) {
     switch (part) {
       case '有酸素運動':
         return l10n.aerobicExercise;
@@ -655,6 +656,52 @@ class _CalendarScreenState extends State<CalendarScreen> {
       default:
         return part;
     }
+  }
+
+  String _translatePartToLocale(BuildContext context, String part) {
+    final l10n = AppLocalizations.of(context)!;
+    return _translatePartLabel(l10n, part);
+  }
+
+  String _localizedMenuName(
+    AppLocalizations l10n,
+    String originalPart,
+    String name,
+  ) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return trimmed;
+    }
+
+    final cacheKey = '${l10n.localeName}::$originalPart';
+    Map<String, String>? mapping = _localizedExerciseNameCache[cacheKey];
+    if (mapping == null) {
+      final defaults = ExerciseCatalog.defaultsFor(originalPart);
+      final localizedPart = _translatePartLabel(l10n, originalPart);
+      final localizedDefaults =
+          ExerciseCatalog.defaultsFor(localizedPart, l10n: l10n);
+
+      final int pairLength =
+          defaults.length < localizedDefaults.length
+              ? defaults.length
+              : localizedDefaults.length;
+      final newMap = <String, String>{};
+      for (int i = 0; i < pairLength; i++) {
+        newMap[defaults[i]] = localizedDefaults[i];
+      }
+      _localizedExerciseNameCache[cacheKey] = newMap;
+      mapping = newMap;
+    }
+
+    final resolved = mapping!;
+    final localized = resolved[trimmed];
+    if (localized != null) {
+      return localized;
+    }
+    if (resolved.values.contains(trimmed)) {
+      return trimmed;
+    }
+    return trimmed;
   }
 
   String _failureTag(AppLocalizations l10n) {
@@ -2426,7 +2473,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       for (final m in aerobicMenus) {
         aerobicWidgets.add(
           _selectableLine(
-            text: m.name,
+            text: _localizedMenuName(l10n, '有酸素運動', m.name),
             padding: const EdgeInsets.only(bottom: 2.0),
             style: TextStyle(
                 color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 16),
@@ -2515,7 +2562,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
         strengthWidgets.add(
           _selectableLine(
-            text: m.name,
+            text: _localizedMenuName(l10n, originalPart, m.name),
             padding: const EdgeInsets.only(bottom: 2.0),
             style: TextStyle(
                 color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 16),
@@ -2868,7 +2915,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ];
       for (final m in aerobicMenus) {
         if (!_menuHasAnyData(m)) continue;
-        sectionLines.add(m.name);
+        sectionLines.add(
+            _localizedMenuName(l10n, '有酸素運動', m.name));
         final bool hasDistance = _hasPositiveDistanceValue(m.distance);
         final bool hasDuration = _hasPositiveDurationValue(m.duration);
         if (hasDistance) {
@@ -2909,7 +2957,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       for (final m in menuList) {
         if (!_menuHasAnyData(m)) continue;
-        sectionLines.add(m.name);
+        sectionLines.add(
+            _localizedMenuName(l10n, originalPart, m.name));
 
         final int len = (m.weights.length < m.reps.length)
             ? m.weights.length
@@ -3329,7 +3378,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       for (final m in aerobicMenus) {
         summaryChildren.add(
           _selectableLine(
-            text: m.name,
+            text: _localizedMenuName(l10n, '有酸素運動', m.name),
             padding: const EdgeInsets.only(bottom: 2.0),
             style: TextStyle(
                 color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 16),
@@ -3418,7 +3467,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
         summaryChildren.add(
           _selectableLine(
-            text: m.name,
+            text: _localizedMenuName(l10n, originalPart, m.name),
             padding: const EdgeInsets.only(bottom: 2.0),
             style: TextStyle(
                 color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 16),

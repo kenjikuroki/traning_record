@@ -72,7 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ];
   late Map<String, bool> _selectedBodyParts;
   bool _isBodyPartsExpanded = false;
-  bool _isDisplayOptionsExpanded = true;
+  bool _isDisplayOptionsExpanded = false;
 
   late int _setCount;
   ThemeMode _themeMode = ThemeMode.system;

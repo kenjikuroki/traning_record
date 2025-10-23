@@ -284,6 +284,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get weightCardTitle => 'Weight';
 
   @override
+  String get weightCardExtraFieldsHint =>
+      'You can add fields like body fat or waist from Settings.';
+
+  @override
   String get bodyWeightTracking => 'Body Weight Tracking';
 
   @override

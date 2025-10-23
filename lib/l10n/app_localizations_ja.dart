@@ -282,6 +282,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get weightCardTitle => '体重';
 
   @override
+  String get weightCardExtraFieldsHint =>
+      '設定より体脂肪率・ウエストの入力欄などの追加が可能です。';
+
+  @override
   String get bodyWeightTracking => '体重管理';
 
   @override
