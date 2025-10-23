@@ -2,81 +2,72 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-<key>CFBundleDevelopmentRegion</key>
-<string>$(DEVELOPMENT_LANGUAGE)</string>
-<key>CFBundleLocalizations</key>
-<array>
-    <string>en</string>
-    <string>es</string>
-    <string>id</string>
-    <string>ja</string>
-</array>
-
-    <!-- アプリ名は全言語で TrainingRecord 固定 -->
-    <key>CFBundleDisplayName</key>
-    <string>TrainingRecord</string>
-
-    <key>CFBundleExecutable</key>
-    <string>$(EXECUTABLE_NAME)</string>
-    <key>CFBundleIdentifier</key>
-    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>ttraining_record</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>$(FLUTTER_BUILD_NAME)</string>
-    <key>CFBundleSignature</key>
-    <string>????</string>
-    <key>CFBundleVersion</key>
-    <string>$(FLUTTER_BUILD_NUMBER)</string>
-    <key>LSRequiresIPhoneOS</key>
-    <true/>
-    <key>UILaunchStoryboardName</key>
-    <string>LaunchScreen</string>
-    <key>UIMainStoryboardFile</key>
-    <string>Main</string>
-    <key>UISupportedInterfaceOrientations</key>
-    <array>
-       <string>UIInterfaceOrientationPortrait</string>
-       <string>UIInterfaceOrientationLandscapeLeft</string>
-       <string>UIInterfaceOrientationLandscapeRight</string>
-    </array>
-    <key>UISupportedInterfaceOrientations~ipad</key>
-    <array>
-       <string>UIInterfaceOrientationPortrait</string>
-       <string>UIInterfaceOrientationPortraitUpsideDown</string>
-       <string>UIInterfaceOrientationLandscapeLeft</string>
-       <string>UIInterfaceOrientationLandscapeRight</string>
-    </array>
-    <key>CADisableMinimumFrameDurationOnPhone</key>
-    <true/>
-    <key>UIApplicationSupportsIndirectInputEvents</key>
-    <true/>
-
-    <!-- AdMob App ID -->
-    <key>GADApplicationIdentifier</key>
-    <string>ca-app-pub-3331079517737737~7860563083</string>
-
-    <!-- ATT ダイアログ用のキー（文言は InfoPlist.strings で多言語化） -->
-        <key>NSUserTrackingUsageDescription</key>
-        <string>We use your device’s advertising identifier (IDFA) to optimize ads, measure effectiveness, and prevent fraud.</string>
-
-    <!-- SKAdNetwork (Google) -->
-    <key>SKAdNetworkItems</key>
-    <array>
-      <dict>
-        <key>SKAdNetworkIdentifier</key>
-        <string>cstr6suwn9.skadnetwork</string>
-      </dict>
-    </array>
-           <key>NSMicrophoneUsageDescription</key>
-           <string>一部の音声機能でマイクを利用する可能性があるためアクセスが必要です。</string>
-           <key>NSPhotoLibraryAddUsageDescription</key>
-           <string>撮影したトレーニング写真をギャラリーに保存するために使用します。</string>
-           <key>NSCameraUsageDescription</key>
-           <string>トレーニングの写真を記録するためにカメラを使用します。</string>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>TrainingRecord</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>es</string>
+		<string>id</string>
+		<string>ja</string>
+	</array>
+	<key>CFBundleName</key>
+	<string>ttraining_record</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3331079517737737~7860563083</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>トレーニングの写真を記録するためにカメラを使用します。</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>一部の音声機能でマイクを利用する可能性があるためアクセスが必要です。</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>撮影したトレーニング写真をギャラリーに保存するために使用します。</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>We use your device’s advertising identifier (IDFA) to optimize ads, measure effectiveness, and prevent fraud.</string>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
 </dict>
 </plist>

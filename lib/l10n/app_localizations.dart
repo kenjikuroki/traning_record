@@ -1200,6 +1200,12 @@ abstract class AppLocalizations {
   /// **'Start by recording a workout or your body weight.'**
   String get hintRecordFirst;
 
+  /// No description provided for @unitChangeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Units can be changed from Settings.'**
+  String get unitChangeHint;
+
   /// No description provided for @hintGraphSetGoal.
   ///
   /// In en, this message translates to:

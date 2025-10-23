@@ -584,6 +584,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Start by recording a workout or your body weight. Tap "Select Training Part" to log a workout, or tap the ＋ button to enter your body weight.';
 
   @override
+  String get unitChangeHint => 'Units can be changed from Settings.';
+
+  @override
   String get hintGraphSetGoal => 'Set your goal.';
 
   @override

@@ -575,6 +575,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get hintRecordFirst =>
       'まずはトレーニングや体重を記録しよう。トレーニングを記録する場合は「トレーニング部位を選択」をタップ、体重を入力する場合は右下の＋ボタンをタップしてください。';
 
+
+  @override
+  String get unitChangeHint => '単位は設定で変更できます。';
+
   @override
   String get hintGraphSetGoal => '目標を設定しよう';
 
