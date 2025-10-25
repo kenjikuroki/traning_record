@@ -4613,7 +4613,7 @@ class _RecordScreenState extends State<RecordScreen>
       final hasRecords = summaryItems.isNotEmpty;
       if (!hasRecords) {
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 6),
           child: Align(
             alignment: Alignment.centerLeft,
             child: Padding(
@@ -4757,9 +4757,9 @@ class _RecordScreenState extends State<RecordScreen>
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(
                     12.0,
-                    14.0,
+                    8.0,
                     0.0,
-                    14.0,
+                    8.0,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
