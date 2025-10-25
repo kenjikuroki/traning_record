@@ -4592,6 +4592,13 @@ class _RecordScreenState extends State<RecordScreen>
     final bool isLight = theme.brightness == Brightness.light;
     const Color kBrandBlue = Color(0xFF2563EB);
     final bool highlight = isExpanded || isActive;
+
+    // ▼ 追加：筋トレ側と同じ考え方で右側の操作領域を予約
+    const double _mealHorizontalPadding = 12; // 左右ベース余白（既存の12に合わせる）
+    const double _mealLabelHeight = 48; // 見出し行の想定高（必要なら調整可）
+    const double _mealCloseDiameter = 24; // 右上の × ボタン直径
+    final double _mealLabelRightPadding =
+        _mealHorizontalPadding + _mealCloseDiameter + 8; // ← 右側の予約幅
     final borderColor =
         highlight ? (isLight ? kBrandBlue : cs.primary) : Colors.transparent;
     final shadowColor = highlight
@@ -4747,58 +4754,72 @@ class _RecordScreenState extends State<RecordScreen>
                   _showMealOverlay(index);
                 },
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
+                  padding: EdgeInsets.fromLTRB(
+                    _mealHorizontalPadding,
+                    14.0,
+                    _mealLabelRightPadding,
+                    14.0,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onLongPress: () async {
-                                _focusMealCard(index);
-                                final selected = await _showMealCategoryPicker(
-                                  current: card.category,
-                                );
-                                if (selected == null || !mounted) return;
-                                if (selected == card.category) return;
-                                setState(() {
-                                  card.category = selected;
-                                });
-                              },
-                              child: Text(
-                                categoryLabel,
-                                style: TextStyle(
-                                  fontFamily: kUiFont,
-                                  color: cs.onSurface,
-                                  fontSize: 15.0,
-                                  fontWeight: FontWeight.w700,
+                      SizedBox(
+                        height: _mealLabelHeight,
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  left: _mealHorizontalPadding,
+                                  right: _mealLabelRightPadding,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onLongPress: () async {
+                                      _focusMealCard(index);
+                                      final selected = await _showMealCategoryPicker(
+                                        current: card.category,
+                                      );
+                                      if (selected == null || !mounted) return;
+                                      if (selected == card.category) return;
+                                      setState(() {
+                                        card.category = selected;
+                                      });
+                                    },
+                                    child: Text(
+                                      categoryLabel,
+                                      style: TextStyle(
+                                        fontFamily: kUiFont,
+                                        color: cs.onSurface,
+                                        fontSize: 15.0,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                          // IconButton(
-                          //   onPressed: () {
-                          //     _focusMealCard(index);
-                          //     _toggleMealCollapse(index);
-                          //   },
-                          //   tooltip: isCollapsed
-                          //       ? l10n.expandCard
-                          //       : l10n.collapseCard,
-                          //   icon: Icon(
-                          //     isCollapsed
-                          //         ? Icons.keyboard_arrow_down_rounded
-                          //         : Icons.keyboard_arrow_up_rounded,
-                          //     size: 22,
-                          //   ),
-                          //   visualDensity: VisualDensity.compact,
-                          //   splashRadius: 20,
-                          // ),
-                        ],
+                            Positioned.fill(
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: Padding(
+                                  padding: EdgeInsets.only(
+                                    right: _mealHorizontalPadding,
+                                  ),
+                                  child: _buildCircleCloseButton(
+                                    onPressed: () => _removeMealCard(index),
+                                    tooltip: l10n.delete,
+                                    diameter: _mealCloseDiameter,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       AnimatedCrossFade(
                         duration: const Duration(milliseconds: 180),
@@ -4819,6 +4840,106 @@ class _RecordScreenState extends State<RecordScreen>
       ),
     );
   }
+
+  Widget _buildWeightClosedCard() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    void handleTap() {
+      setState(() {
+        _personalSelected = true;
+        _currentSectionIndex = null;
+        _currentMenuIndex = null;
+        _currentMealIndex = null;
+        _lastInteractionAt = DateTime.now();
+        _closeFabDial();
+      });
+      _openPersonalOverlaySmooth();
+    }
+
+    const double horizontalPadding = 12;
+    const double verticalPadding = 12;
+    const double labelHeight = 48;
+    const double closeDiameter = 24;
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 72),
+      child: SizedBox(
+        width: double.infinity,
+        child: Card(
+          margin: const EdgeInsets.all(4.0),
+          color: colorScheme.surfaceContainerHighest,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 1.0,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: handleTap,
+            child: Stack(
+              children: [
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    verticalPadding,
+                    horizontalPadding + closeDiameter + 8,
+                    verticalPadding,
+                  ),
+                  child: Container(
+                    height: labelHeight,
+                    alignment: Alignment.centerLeft,
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: colorScheme.onSurfaceVariant.withOpacity(0.08),
+                        width: 0.8,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: Text(
+                      l10n.weightCardTitle,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: EdgeInsets.only(right: horizontalPadding),
+                      child: _buildCircleCloseButton(
+                        onPressed: _handleRemovePersonalCard,
+                        tooltip: l10n.removePersonalCardTooltip,
+                        diameter: closeDiameter,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+
+
+
+
 
   Widget _buildMemoCard() {
     if (!_showMemo) return const SizedBox.shrink();
@@ -6789,321 +6910,12 @@ class _RecordScreenState extends State<RecordScreen>
                       1,
                   itemBuilder: (context, index) {
                     if (showWeight && index == 0) {
-                      final cs = colorScheme;
-                      final l10n = AppLocalizations.of(context)!;
-                      final currentUnit = SettingsManager.currentUnit;
-
-                      // コロン揃え用
-                      const double _labelColW = 92.0;
-
-                      Widget _metricRow({
-                        required String label,
-                        required TextEditingController controller,
-                        String? unit,
-                      }) {
-                        final cs = colorScheme;
-                        final labelStyle = TextStyle(
-                            color: cs.onSurfaceVariant, fontSize: 13.0);
-
-                        final String trimmed = controller.text.trim();
-                        if (trimmed.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-
-                        final bool hideLabel = label == l10n.bodyWeight;
-                        final double leftW = hideLabel ? 0.0 : (_labelColW + 6);
-
-                        InputDecoration _underlineDec() => InputDecoration(
-                              isDense: true,
-                              filled: false,
-                              enabledBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: cs.onSurfaceVariant.withOpacity(0.4),
-                                    width: 1),
-                              ),
-                              focusedBorder: UnderlineInputBorder(
-                                borderSide:
-                                    BorderSide(color: cs.primary, width: 2),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 4, horizontal: 0),
-                            );
-
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6.0),
-                          child: LayoutBuilder(
-                            builder: (ctx, constraints) {
-                              final total = constraints.maxWidth;
-
-                              // ← 微妙に左寄せ：ラベルとフィールドの間隔を 8 → 6 に
-                              // ← 単位の有無に関係なく右側を常に確保（BMI でも確保）
-                              const baseRight = _unitReserveW + 6;
-
-                              // ← 計算は「左側だけ引いた 2/3」に統一（BMIと同じ）
-                              final fieldW = ((total - leftW) * 4 / 5)
-                                  .clamp(120.0, total - leftW - baseRight);
-                              ; // 最小幅ガード
-
-                              return Row(
-                                children: [
-                                  if (!hideLabel)
-                                    SizedBox(
-                                      width: _labelColW,
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
-                                        children: [
-                                          Text(label, style: labelStyle),
-                                          const SizedBox(width: 2),
-                                          Text('：', style: labelStyle),
-                                        ],
-                                      ),
-                                    ),
-                                  if (!hideLabel) const SizedBox(width: 6),
-
-                                  // ← 下線を 2/3 に縮める（幅指定）
-                                  SizedBox(
-                                    width: fieldW.toDouble(),
-                                    child: ConstrainedBox(
-                                      constraints: const BoxConstraints(
-                                          minHeight: kUnifiedFieldMinHeight),
-                                      child: TextField(
-                                        controller: controller,
-                                        readOnly: true,
-                                        enableInteractiveSelection: false,
-                                        textAlign: TextAlign.right,
-                                        textAlignVertical:
-                                            TextAlignVertical.center,
-                                        style: TextStyle(
-                                            fontFamily: kUiFont,
-                                            color: cs.onSurface),
-                                        decoration: _underlineDec(),
-                                        onTap: _openPersonalOverlaySmooth,
-                                      ),
-                                    ),
-                                  ),
-
-                                  if (unit != null) ...[
-                                    const SizedBox(width: 6),
-                                    SizedBox(
-                                      width: _unitReserveW,
-                                      child: Align(
-                                        alignment: Alignment.centerRight,
-                                        child: Text(
-                                          unit,
-                                          style: TextStyle(
-                                            fontFamily: kUiFont,
-                                            color: cs.onSurfaceVariant,
-                                            fontSize: 13.0,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              );
-                            },
-                          ),
-                        );
-                      }
-
-                      // BMI：未計算は空欄の下線
-                      final _bmiCtrl = TextEditingController(
-                        text: _bmiValue?.toStringAsFixed(1) ?? '',
-                      );
-
                       return Padding(
-                        padding: EdgeInsets.zero,
-                        child: Card(
-                          color: cs.surfaceContainerHighest,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16.0),
-                            side: BorderSide(
-                              color: _personalSelected
-                                  ? (isLight ? kBrandBlue : cs.primary)
-                                  : Colors.transparent,
-                              width: _personalSelected ? 1.5 : 0,
-                            ),
-                          ),
-                          elevation: _personalSelected ? 3.0 : 1.0,
-                          shadowColor: _personalSelected
-                              ? (isLight
-                                  ? kBrandBlue.withOpacity(0.35)
-                                  : cs.primary.withOpacity(0.45))
-                              : Colors.black.withOpacity(0.20),
-                          child: Container(
-                            constraints: const BoxConstraints(minHeight: 110),
-                                      child: Stack(
-                              children: [
-                              // 全体タップでオーバーレイを開く透明レイヤー
-                              Positioned.fill(
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(16.0),
-                                    onTap: () {
-                                      if (_personalSelected) {
-                                        _openPersonalOverlaySmooth();
-                                      } else {
-                                        setState(() {
-                                          _personalSelected = true;
-                                          _currentSectionIndex = null;
-                                          _currentMenuIndex = null;
-                                          _currentMealIndex = null;
-                                          _lastInteractionAt = DateTime.now();
-                                          _closeFabDial();
-                                        });
-                                      }
-                                    },
-                                  ),
-                                ),
-                              ),
-                              // ↓ 先に中身（白いカードなど）
-                              Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // ===== 白いカード =====
-                                    Container(
-                                      margin: const EdgeInsets.only(top: 8.0),
-                                      decoration: BoxDecoration(
-                                        color: cs.surface,
-                                        borderRadius:
-                                            BorderRadius.circular(12.0),
-                                        boxShadow: [
-                                          BoxShadow(
-                                              color: Colors.black
-                                                  .withOpacity(0.06),
-                                              blurRadius: 8,
-                                              offset: Offset(0, 2))
-                                        ],
-                                        border: Border.all(
-                                            color: cs.onSurfaceVariant
-                                                .withOpacity(0.08),
-                                            width: 0.8),
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.fromLTRB(
-                                            6.0, 2.0, 10.0, 2.0),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.center,
-                                              children: [
-                                                Expanded(
-                                                  child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            bottom: 6.0,
-                                                            right: 4.0),
-                                                    child: SizedBox(
-                                                      width: double.infinity,
-                                                      child: ConstrainedBox(
-                                                        constraints:
-                                                            const BoxConstraints(
-                                                                minHeight:
-                                                                    kUnifiedFieldMinHeight),
-                                                        child: Focus(
-                                                          canRequestFocus:
-                                                              false,
-                                                          descendantsAreFocusable:
-                                                              false,
-                                                          child: TextField(
-                                                            controller:
-                                                                TextEditingController(
-                                                                    text: l10n
-                                                                        .weightCardTitle),
-                                                            readOnly: true,
-                                                            showCursor: false,
-                                                            enableInteractiveSelection:
-                                                                false,
-                                                            onTap:
-                                                                _openPersonalOverlaySmooth,
-                                                            // ▼ 追加：タイトルを太字に
-                                                            style: TextStyle(
-                                                              fontFamily:
-                                                                  kUiFont,
-                                                              color: Theme.of(
-                                                                      context)
-                                                                  .colorScheme
-                                                                  .onSurface,
-                                                              fontSize: 15.0,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w700,
-                                                            ),
-                                                            decoration:
-                                                                const InputDecoration(
-                                                              filled: true,
-                                                              fillColor: Colors
-                                                                  .transparent,
-                                                              border:
-                                                                  InputBorder
-                                                                      .none,
-                                                              enabledBorder:
-                                                                  InputBorder
-                                                                      .none,
-                                                              focusedBorder:
-                                                                  InputBorder
-                                                                      .none,
-                                                              contentPadding:
-                                                                  EdgeInsets
-                                                                      .fromLTRB(
-                                                                          28,
-                                                                          6,
-                                                                          0,
-                                                                          5),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                // IconButton(
-                                                //   onPressed: () => setState(() {
-                                                //     _personalCollapsed =
-                                                //         !_personalCollapsed;
-                                                //   }),
-                                                //   tooltip: _personalCollapsed
-                                                //       ? l10n.expandCard
-                                                //       : l10n.collapseCard,
-                                                //   icon: Icon(
-                                                //     _personalCollapsed
-                                                //         ? Icons
-                                                //             .keyboard_arrow_down_rounded
-                                                //         : Icons
-                                                //             .keyboard_arrow_up_rounded,
-                                                //   ),
-                                                //   visualDensity:
-                                                //       VisualDensity.compact,
-                                                //   splashRadius: 20,
-                                                // ),
-                                                _buildCircleCloseButton(
-                                                  onPressed:
-                                                      _handleRemovePersonalCard,
-                                                  tooltip: l10n
-                                                      .removePersonalCardTooltip,
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox.shrink(),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 6.0,
                         ),
-                      ),
-                    );
+                        child: _buildWeightClosedCard(),
+                      );
                     }
 
                     final int mealCount = _mealCards.length;
