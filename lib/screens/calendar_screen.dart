@@ -2327,11 +2327,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           style: TextStyle(
                             color: colorScheme.onSurface,
                             fontWeight: FontWeight.w700,
-                            fontSize: _clampDouble(
-                              16.0 * effectiveScale,
-                              11.0,
-                              16.0,
-                            ),
+                            fontSize: 12.0,
                             height: 1.2,
                           ),
                         ),
@@ -2339,11 +2335,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           yearText,
                           style: TextStyle(
                             color: colorScheme.onSurfaceVariant,
-                            fontSize: _clampDouble(
-                              12.0 * effectiveScale,
-                              9.0,
-                              13.0,
-                            ),
+                            fontSize: 12.0,
                             height: 1.1,
                           ),
                         ),
