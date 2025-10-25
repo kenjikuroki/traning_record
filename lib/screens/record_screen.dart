@@ -4087,7 +4087,13 @@ class _RecordScreenState extends State<RecordScreen>
       _showPersonalCard = false;
       _personalSelected = false;
       _personalCollapsed = true;
+      _weightController.clear();
+      _bodyFatController.clear();
+      _waistController.clear();
+      _bmiController.clear();
+      _bmrController.clear();
     });
+    await SettingsManager.setPersonalWeightKg(null);
   }
 
   void _handleAddExercise() {
@@ -4594,11 +4600,6 @@ class _RecordScreenState extends State<RecordScreen>
     final bool highlight = isExpanded || isActive;
 
     // ▼ 追加：筋トレ側と同じ考え方で右側の操作領域を予約
-    const double _mealHorizontalPadding = 12; // 左右ベース余白（既存の12に合わせる）
-    const double _mealLabelHeight = 48; // 見出し行の想定高（必要なら調整可）
-    const double _mealCloseDiameter = 24; // 右上の × ボタン直径
-    final double _mealLabelRightPadding =
-        _mealHorizontalPadding + _mealCloseDiameter + 8; // ← 右側の予約幅
     final borderColor =
         highlight ? (isLight ? kBrandBlue : cs.primary) : Colors.transparent;
     final shadowColor = highlight
@@ -4735,8 +4736,8 @@ class _RecordScreenState extends State<RecordScreen>
               index: index,
               child: Container(
                 width: 40,
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
-                alignment: Alignment.center,
+                padding: const EdgeInsets.only(top: 16.0, bottom: 4.0),
+                alignment: AlignmentDirectional.topCenter,
                 child: Icon(
                   Icons.drag_indicator_rounded,
                   size: 22,
@@ -4754,71 +4755,58 @@ class _RecordScreenState extends State<RecordScreen>
                   _showMealOverlay(index);
                 },
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    _mealHorizontalPadding,
+                  padding: const EdgeInsets.fromLTRB(
+                    12.0,
                     14.0,
-                    _mealLabelRightPadding,
+                    0.0,
                     14.0,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SizedBox(
-                        height: _mealLabelHeight,
-                        child: Stack(
-                          children: [
-                            Positioned.fill(
-                              child: Padding(
-                                padding: EdgeInsets.only(
-                                  left: _mealHorizontalPadding,
-                                  right: _mealLabelRightPadding,
-                                ),
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: GestureDetector(
-                                    behavior: HitTestBehavior.opaque,
-                                    onLongPress: () async {
-                                      _focusMealCard(index);
-                                      final selected = await _showMealCategoryPicker(
-                                        current: card.category,
-                                      );
-                                      if (selected == null || !mounted) return;
-                                      if (selected == card.category) return;
-                                      setState(() {
-                                        card.category = selected;
-                                      });
-                                    },
-                                    child: Text(
-                                      categoryLabel,
-                                      style: TextStyle(
-                                        fontFamily: kUiFont,
-                                        color: cs.onSurface,
-                                        fontSize: 15.0,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                        height: 36.0,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12.0,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onLongPress: () async {
+                                    _focusMealCard(index);
+                                    final selected = await _showMealCategoryPicker(
+                                      current: card.category,
+                                    );
+                                    if (selected == null || !mounted) return;
+                                    if (selected == card.category) return;
+                                    setState(() {
+                                      card.category = selected;
+                                    });
+                                  },
+                                  child: Text(
+                                    categoryLabel,
+                                    style: TextStyle(
+                                      fontFamily: kUiFont,
+                                      color: cs.onSurface,
+                                      fontSize: 15.0,
+                                      fontWeight: FontWeight.w700,
                                     ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ),
-                            ),
-                            Positioned.fill(
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: Padding(
-                                  padding: EdgeInsets.only(
-                                    right: _mealHorizontalPadding,
-                                  ),
-                                  child: _buildCircleCloseButton(
-                                    onPressed: () => _removeMealCard(index),
-                                    tooltip: l10n.delete,
-                                    diameter: _mealCloseDiameter,
-                                  ),
-                                ),
+                              buildCircularCloseButton(
+                                context,
+                                onPressed: () => _removeMealCard(index),
+                                tooltip: l10n.delete,
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       AnimatedCrossFade(
@@ -4859,16 +4847,16 @@ class _RecordScreenState extends State<RecordScreen>
     }
 
     const double horizontalPadding = 12;
-    const double verticalPadding = 12;
-    const double labelHeight = 48;
+    const double verticalPadding = 16;
+    const double labelHeight = 52;
     const double closeDiameter = 24;
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 72),
+      constraints: const BoxConstraints(minHeight: 84),
       child: SizedBox(
         width: double.infinity,
         child: Card(
-          margin: const EdgeInsets.all(4.0),
+          margin: const EdgeInsets.symmetric(horizontal: 4.0),
           color: colorScheme.surfaceContainerHighest,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -6912,7 +6900,7 @@ class _RecordScreenState extends State<RecordScreen>
                     if (showWeight && index == 0) {
                       return Padding(
                         padding: const EdgeInsets.symmetric(
-                          vertical: 6.0,
+                          vertical: 3.0,
                         ),
                         child: _buildWeightClosedCard(),
                       );
