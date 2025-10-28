@@ -2196,7 +2196,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 titleTextStyle: TextStyle(
                   color: colorScheme.onPrimary,
                   fontWeight: FontWeight.w900,
-                  fontSize: headerFontSize,
+                  fontSize: 18.0,
                   height: 1.25,
                   letterSpacing: 0.2,
                 ),
@@ -3290,13 +3290,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.edit),
-                          label: Text(
-                              hasRecord ? l10n.editThisDay : l10n.addOnThisDay),
-                          onPressed: () async {
-                            Navigator.of(ctx).pop();
-                            await _openRecordSheet(sel);
+                        child: Builder(
+                          builder: (buttonCtx) {
+                            final colorScheme = Theme.of(buttonCtx).colorScheme;
+                            return ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: colorScheme.primary,
+                                foregroundColor: colorScheme.onPrimary,
+                              ),
+                              icon: const Icon(Icons.edit),
+                              label: Text(
+                                hasRecord
+                                    ? l10n.editThisDay
+                                    : l10n.addOnThisDay,
+                              ),
+                              onPressed: () async {
+                                Navigator.of(ctx).pop();
+                                await _openRecordSheet(sel);
+                              },
+                            );
                           },
                         ),
                       ),
