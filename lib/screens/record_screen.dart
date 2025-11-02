@@ -1075,16 +1075,14 @@ class _RecordScreenState extends State<RecordScreen>
                               TextButton(
                                 onPressed: () => Navigator.pop(sheetCtx, null),
                                 child: Text(
-                                  MaterialLocalizations.of(sheetCtx)
-                                      .cancelButtonLabel,
+                                  AppLocalizations.of(sheetCtx)!.cancel,
                                 ),
                               ),
                               TextButton(
                                 onPressed: () =>
                                     Navigator.pop(sheetCtx, parts[temp]),
                                 child: Text(
-                                  MaterialLocalizations.of(sheetCtx)
-                                      .okButtonLabel,
+                                  AppLocalizations.of(sheetCtx)!.ok,
                                 ),
                               ),
                             ],
@@ -5277,6 +5275,7 @@ class _RecordScreenState extends State<RecordScreen>
           final bool shouldBlockInput = readOnly || onTap != null;
 
           return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
                 width: fieldW,
@@ -5288,7 +5287,7 @@ class _RecordScreenState extends State<RecordScreen>
                     readOnly: shouldBlockInput,
                     showCursor: shouldBlockInput ? false : null,
                     enableInteractiveSelection: shouldBlockInput ? false : null,
-                    textAlign: TextAlign.right,
+                    textAlign: TextAlign.center,
                     style: fieldTextStyle,
                     decoration: const InputDecoration(
                       isDense: true,
@@ -5310,12 +5309,13 @@ class _RecordScreenState extends State<RecordScreen>
                 SizedBox(
                   width: unitWidth,
                   child: Align(
-                    alignment: Alignment.bottomRight,
+                    alignment: Alignment.bottomCenter,
                     child: Transform.translate(
                       offset: const Offset(0, 6),
                       child: Text(
                         unitSuffix,
                         style: unitStyle,
+                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),
@@ -5464,6 +5464,7 @@ class _RecordScreenState extends State<RecordScreen>
                                             child: Center(
                                               child: Text(
                                                 label,
+                                                textAlign: TextAlign.center,
                                                 style: TextStyle(
                                                   fontFamily: kUiFont,
                                                   color: cs.onSurface,
