@@ -132,32 +132,39 @@ class _AlbumScreenState extends State<AlbumScreen> {
     super.dispose();
   }
 
-  void _openViewer(File file) {
+  void _openViewer(List<_AlbumPhoto> photos, int initialIndex) {
+    if (photos.isEmpty) return;
     showDialog<void>(
       context: context,
       barrierColor: Colors.black87,
-      builder: (ctx) => GestureDetector(
-        onTap: () => Navigator.of(ctx).pop(),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: InteractiveViewer(
-                maxScale: 4.0,
-                child: Image.file(file, fit: BoxFit.contain),
-              ),
-            ),
-            Positioned(
-              right: 8,
-              top: 8,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () => Navigator.of(ctx).pop(),
-              ),
-            ),
-          ],
-        ),
+      barrierDismissible: true,
+      builder: (ctx) => _AlbumViewerDialog(
+        photos: photos,
+        initialIndex: initialIndex.clamp(0, photos.length - 1),
       ),
     );
+  }
+
+  List<_AlbumPhoto> _flattenPhotos() {
+    final result = <_AlbumPhoto>[];
+    for (final entry in _byDate.entries) {
+      final dateKey = entry.key;
+      for (final file in entry.value) {
+        result.add(_AlbumPhoto(file: file, dateKey: dateKey));
+      }
+    }
+    return result;
+  }
+
+  int _globalIndexFor(String dateKey, int indexWithinDate) {
+    int offset = 0;
+    for (final entry in _byDate.entries) {
+      if (entry.key == dateKey) {
+        return offset + indexWithinDate;
+      }
+      offset += entry.value.length;
+    }
+    return indexWithinDate;
   }
 
   void _confirmDelete(File file, String dateKey, int index) {
@@ -308,6 +315,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
         '${DateFormat('HHmmss_SSS').format(DateTime.now())}${ext.isNotEmpty ? ext : '.jpg'}';
     final savePath = p.join(dir.path, fileName);
     await shot.saveTo(savePath);
+    AlbumSync.instance.notifyPhotoAdded(savePath);
   }
 
   Future<void> _handleAddPressed() async {
@@ -560,7 +568,10 @@ class _AlbumScreenState extends State<AlbumScreen> {
                                               if (_inSelection) {
                                                 _toggleSelect(f);
                                               } else {
-                                                _openViewer(f);
+                                                final photos = _flattenPhotos();
+                                                final globalIndex =
+                                                    _globalIndexFor(dateKey, i);
+                                                _openViewer(photos, globalIndex);
                                               }
                                             },
                                             onLongPress: () {
@@ -677,4 +688,128 @@ class _AlbumScreenState extends State<AlbumScreen> {
           : null,
     );
   }
+}
+
+class _AlbumViewerDialog extends StatefulWidget {
+  final List<_AlbumPhoto> photos;
+  final int initialIndex;
+
+  const _AlbumViewerDialog({
+    required this.photos,
+    required this.initialIndex,
+  });
+
+  @override
+  State<_AlbumViewerDialog> createState() => _AlbumViewerDialogState();
+}
+
+class _AlbumViewerDialogState extends State<_AlbumViewerDialog> {
+  late final PageController _controller =
+      PageController(initialPage: widget.initialIndex);
+  late int _currentIndex = widget.initialIndex;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final photos = widget.photos;
+    return Material(
+      color: Colors.transparent,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Container(
+              color: Colors.black,
+              child: PageView.builder(
+                controller: _controller,
+                itemCount: photos.length,
+                onPageChanged: (index) {
+                  setState(() => _currentIndex = index);
+                },
+                itemBuilder: (_, index) {
+                  final photo = photos[index];
+                  return InteractiveViewer(
+                    maxScale: 4.0,
+                    child: Image.file(
+                      photo.file,
+                      fit: BoxFit.contain,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          Positioned(
+            left: 16,
+            top: 16 + MediaQuery.of(context).padding.top,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.45),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                _formatDateLabel(photos[_currentIndex].dateKey),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 12,
+            top: 12 + MediaQuery.of(context).padding.top,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          Positioned(
+            bottom: 24 + MediaQuery.of(context).padding.bottom,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.45),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  '${_currentIndex + 1} / ${photos.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDateLabel(String dateKey) {
+    final parsed = DateTime.tryParse(dateKey);
+    if (parsed == null) {
+      return dateKey;
+    }
+    return DateFormat('yyyy/MM/dd').format(parsed);
+  }
+}
+
+class _AlbumPhoto {
+  final File file;
+  final String dateKey;
+
+  _AlbumPhoto({required this.file, required this.dateKey});
 }
