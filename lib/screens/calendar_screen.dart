@@ -2605,10 +2605,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           }
         }
 
-        if (len > 0) {
-          strengthWidgets.add(const SizedBox(height: 4));
-        }
-
         for (int i = 0; i < len; i++) {
           final wRaw = m.weights[i].toString().trim();
           final rRaw = m.reps[i].toString().trim();
@@ -2685,6 +2681,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
             ),
           );
+          strengthWidgets.add(const SizedBox(height: 4));
         }
       }
       strengthWidgets.add(const SizedBox(height: 8));
@@ -2996,10 +2993,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           }
         }
 
-        if (len > 0) {
-          sectionLines.add('');
-        }
-
         for (int i = 0; i < len; i++) {
           final wRaw = m.weights[i].toString().trim();
           final rRaw = m.reps[i].toString().trim();
@@ -3050,6 +3043,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         if (m.satisfaction != null) {
           sectionLines.add(
               '  ${l10n.satisfaction}：${_satisfactionLabel(m.satisfaction!, l10n)}');
+          sectionLines.add('');
         }
       }
       sectionLines.add('');
