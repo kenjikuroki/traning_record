@@ -191,32 +191,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return mode == ThemeMode.dark;
   }
 
-  // ヘッダー行（ListTileは使わず高さを厳密制御）
+  // ヘッダー行（ListTile準拠でアイコン/余白を統一）
   Widget _headerRow({
     required IconData icon,
     required String title,
-    required Widget trailing,
+    Widget? trailing,
   }) {
-    return SizedBox(
-      height: _kTileHeight,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(icon),
-          const SizedBox(width: _kIconGap),
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                title,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 15.0),
-              ),
-            ),
-          ),
-          trailing,
-        ],
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      minLeadingWidth: 28,
+      leading: SizedBox(
+        width: 24,
+        child: Icon(
+          icon,
+          size: 24,
+          color: colorScheme.onSurfaceVariant,
+        ),
       ),
+      title: Text(
+        title,
+        style: theme.textTheme.titleMedium?.copyWith(
+          color: colorScheme.onSurface,
+        ),
+      ),
+      trailing: trailing,
     );
   }
 
@@ -661,20 +661,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       hoverColor: Colors.transparent,
                     ),
                     child: ExpansionTile(
-                      leading: const Icon(Icons.lock_outline),
+                      leading: SizedBox(
+                        width: 28,
+                        child: Icon(
+                          Icons.lock_outline,
+                          size: 24,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                       initiallyExpanded: _isPersonalExpanded,
                       onExpansionChanged: (v) =>
                           setState(() => _isPersonalExpanded = v),
                       expandedAlignment: Alignment.centerLeft,
                       tilePadding: const EdgeInsets.symmetric(horizontal: 0),
                       childrenPadding: const EdgeInsets.only(top: 8),
-                      title: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          l10n.personalSettingsTitle,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15.0),
-                        ),
+                      title: Text(
+                        l10n.personalSettingsTitle,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(color: colorScheme.onSurface),
                       ),
                       // ---- 中身 ----
                       children: [
@@ -1031,20 +1037,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       hoverColor: Colors.transparent,
                     ),
                     child: ExpansionTile(
-                      leading: const Icon(Icons.sports_gymnastics_outlined),
+                      leading: SizedBox(
+                        width: 28,
+                        child: Icon(
+                          Icons.sports_gymnastics_outlined,
+                          size: 24,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                       initiallyExpanded: _isBodyPartsExpanded,
                       onExpansionChanged: (v) =>
                           setState(() => _isBodyPartsExpanded = v),
                       expandedAlignment: Alignment.centerLeft,
                       tilePadding: const EdgeInsets.symmetric(horizontal: 0),
                       childrenPadding: EdgeInsets.zero,
-                      title: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          l10n.selectBodyParts,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15.0),
-                        ),
+                      title: Text(
+                        l10n.selectBodyParts,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(color: colorScheme.onSurface),
                       ),
                       children: _bodyPartsOriginal.map((original) {
                         final translated = _translatePart(context, original);
@@ -1093,19 +1105,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       hoverColor: Colors.transparent,
                     ),
                     child: ExpansionTile(
-                      leading: const Icon(Icons.tune_outlined),
+                      leading: SizedBox(
+                        width: 28,
+                        child: Icon(
+                          Icons.tune_outlined,
+                          size: 24,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                       initiallyExpanded: _isDisplayOptionsExpanded,
                       onExpansionChanged: (v) =>
                           setState(() => _isDisplayOptionsExpanded = v),
                       tilePadding: EdgeInsets.zero,
                       childrenPadding: const EdgeInsets.only(bottom: 4.0),
-                      title: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          l10n.recordDisplayOptions,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15.0),
-                        ),
+                      title: Text(
+                        l10n.recordDisplayOptions,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(color: colorScheme.onSurface),
                       ),
                       children: [
                         const SizedBox(height: 4),
@@ -1397,20 +1415,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       hoverColor: Colors.transparent,
                     ),
                     child: ExpansionTile(
-                      leading: const Icon(Icons.wallpaper_outlined),
+                      leading: SizedBox(
+                        width: 28,
+                        child: Icon(
+                          Icons.wallpaper_outlined,
+                          size: 24,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                       initiallyExpanded: _isBgExpanded,
                       onExpansionChanged: (v) =>
                           setState(() => _isBgExpanded = v),
                       expandedAlignment: Alignment.centerLeft,
                       tilePadding: const EdgeInsets.symmetric(horizontal: 0),
                       childrenPadding: EdgeInsets.zero,
-                      title: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          l10n.background,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15.0),
-                        ),
+                      title: Text(
+                        l10n.background,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(color: colorScheme.onSurface),
                       ),
                       children: [
                         const SizedBox(height: 12),
