@@ -355,6 +355,11 @@ class _RecordScreenState extends State<RecordScreen>
   // 体重カードの表示制御（初期は非表示）
   bool _showWeightCard = false;
 
+  static const double _kDefaultWeightKg = 60.0;
+  static const double _kDefaultBodyFatPercent = 20.0;
+  static const double _kDefaultWaistCm = 70.0;
+  static const double _kPoundsPerKg = 2.20462262185;
+
   // メモ・オーバーレイ（後方互換フラグ）
   bool _memoOverlayOpen = false; // 旧：インライン編集モードのフラグ（互換のため残す）
   final FocusNode _memoOverlayFocus = FocusNode();
@@ -1767,6 +1772,95 @@ class _RecordScreenState extends State<RecordScreen>
     return fixed.endsWith('.0') ? fixed.substring(0, fixed.length - 2) : fixed;
   }
 
+  double _roundToSingleDecimal(double value) =>
+      (value * 10).round().toDouble() / 10.0;
+
+  double _preferredWeightInitial() {
+    final previous =
+        _latestRecordMetricBeforeSelected((record) => record.weight);
+    if (previous != null) {
+      return _roundToSingleDecimal(previous);
+    }
+    final personalKg = SettingsManager.personalWeightKg;
+    if (personalKg != null) {
+      final display = SettingsManager.currentUnit == 'kg'
+          ? personalKg
+          : personalKg * _kPoundsPerKg;
+      return _roundToSingleDecimal(display);
+    }
+    final defaultDisplay = SettingsManager.currentUnit == 'kg'
+        ? _kDefaultWeightKg
+        : _kDefaultWeightKg * _kPoundsPerKg;
+    return _roundToSingleDecimal(defaultDisplay);
+  }
+
+  double _preferredBodyFatInitial() {
+    final previous = _latestRecordMetricBeforeSelected(
+            (record) => record.bodyFatPercent) ??
+        _latestPersonalMetricFromSettings('bodyFat');
+    if (previous != null) {
+      return _roundToSingleDecimal(previous);
+    }
+    return _roundToSingleDecimal(_kDefaultBodyFatPercent);
+  }
+
+  double _preferredWaistInitial() {
+    final previousCm = _latestRecordMetricBeforeSelected(
+            (record) => record.waistCm) ??
+        _latestPersonalMetricFromSettings('waist');
+    final double cm = previousCm ?? _kDefaultWaistCm;
+    final double display = SettingsManager.isWaistInch
+        ? cm / 2.54
+        : cm;
+    return _roundToSingleDecimal(display);
+  }
+
+  double? _latestRecordMetricBeforeSelected(
+    double? Function(DailyRecord record) extractor,
+  ) {
+    DateTime? bestDate;
+    double? bestValue;
+    for (final dynamic key in widget.recordsBox.keys) {
+      if (key is! String) continue;
+      final date = DateTime.tryParse(key);
+      if (date == null || !date.isBefore(widget.selectedDate)) continue;
+      final record = widget.recordsBox.get(key);
+      if (record == null) continue;
+      final value = extractor(record);
+      if (value == null) continue;
+      if (bestDate == null || date.isAfter(bestDate)) {
+        bestDate = date;
+        bestValue = value;
+      }
+    }
+    return bestValue;
+  }
+
+  double? _latestPersonalMetricFromSettings(String field) {
+    const prefix = 'personalMetrics-';
+    DateTime? bestDate;
+    double? bestValue;
+    for (final dynamic key in widget.settingsBox.keys) {
+      if (key is! String || !key.startsWith(prefix)) continue;
+      final date = DateTime.tryParse(key.substring(prefix.length));
+      if (date == null || !date.isBefore(widget.selectedDate)) continue;
+      final dynamic raw = widget.settingsBox.get(key);
+      if (raw is! Map) continue;
+      final dynamic value = raw[field];
+      final double? parsed = switch (value) {
+        num v => v.toDouble(),
+        String s => double.tryParse(s),
+        _ => null,
+      };
+      if (parsed == null) continue;
+      if (bestDate == null || date.isAfter(bestDate)) {
+        bestDate = date;
+        bestValue = parsed;
+      }
+    }
+    return bestValue;
+  }
+
   Future<double?> _showPersonalDecimalPicker({
     required String title,
     required int maxInteger,
@@ -1958,11 +2052,12 @@ class _RecordScreenState extends State<RecordScreen>
     final l10n = AppLocalizations.of(context)!;
     final unitLabel = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
     final current = double.tryParse(_weightController.text.trim());
+    final initial = current ?? _preferredWeightInitial();
     final picked = await _showPersonalDecimalPicker(
       title: l10n.bodyWeight,
       maxInteger: 999,
       unitLabel: unitLabel,
-      initialValue: current,
+      initialValue: initial,
     );
     if (picked == null) {
       return;
@@ -1978,11 +2073,12 @@ class _RecordScreenState extends State<RecordScreen>
   Future<void> _openBodyFatPicker() async {
     final l10n = AppLocalizations.of(context)!;
     final current = double.tryParse(_bodyFatController.text.trim());
+    final initial = current ?? _preferredBodyFatInitial();
     final picked = await _showPersonalDecimalPicker(
       title: l10n.bodyFat,
       maxInteger: 99,
       unitLabel: l10n.percentSymbol,
-      initialValue: current,
+      initialValue: initial,
     );
     if (picked == null) {
       return;
@@ -1998,11 +2094,12 @@ class _RecordScreenState extends State<RecordScreen>
     final l10n = AppLocalizations.of(context)!;
     final current = double.tryParse(_waistController.text.trim());
     final unitLabel = SettingsManager.isWaistInch ? l10n.unitIn : l10n.unitCm;
+    final initial = current ?? _preferredWaistInitial();
     final picked = await _showPersonalDecimalPicker(
       title: l10n.waist,
       maxInteger: 999,
       unitLabel: unitLabel,
-      initialValue: current,
+      initialValue: initial,
     );
     if (picked == null) {
       return;
