@@ -13,6 +13,7 @@ import '../l10n/app_localizations.dart';
 import '../widgets/ad_banner.dart';
 import '../settings_manager.dart';
 import '../widgets/centered_constrained.dart';
+import '../services/album_sync.dart';
 
 Future<bool> _ensureAlbumCameraPermission(BuildContext context) async {
   var status = await Permission.camera.status;
@@ -68,10 +69,21 @@ class _AlbumScreenState extends State<AlbumScreen> {
   void initState() {
     super.initState();
     _loadAll(); // アルバムを読み込んで _loading を false にする
+    AlbumSync.instance.addListener(_handleAlbumSync);
   }
 
-  Future<void> _loadAll() async {
-    setState(() => _loading = true);
+  void _handleAlbumSync() {
+    if (!mounted) return;
+    _loadAll(force: true);
+  }
+
+  Future<void> _loadAll({bool force = false}) async {
+    if (!mounted) return;
+    if (force) {
+      setState(() => _loading = true);
+    } else {
+      setState(() => _loading = true);
+    }
 
     final base = await getApplicationDocumentsDirectory();
     final mediaRoot = Directory(p.join(base.path, 'media'));
@@ -112,6 +124,12 @@ class _AlbumScreenState extends State<AlbumScreen> {
         ..addAll(sorted);
       _loading = false;
     });
+  }
+
+  @override
+  void dispose() {
+    AlbumSync.instance.removeListener(_handleAlbumSync);
+    super.dispose();
   }
 
   void _openViewer(File file) {
@@ -306,7 +324,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
         await _saveShotToToday(shot);
       }
       if (mounted) {
-        await _loadAll();
+        await _loadAll(force: true);
       }
     } finally {
       if (mounted) {

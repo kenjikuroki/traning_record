@@ -17,6 +17,7 @@ import '../utils/training_display_utils.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/big_earning_ad.dart';
 import '../widgets/stopwatch_widget.dart';
+import '../services/album_sync.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -4566,6 +4567,7 @@ class _RecordScreenState extends State<RecordScreen>
     final savePath = p.join(dir.path, fileName);
 
     await shot.saveTo(savePath);
+    AlbumSync.instance.notifyPhotoAdded(savePath);
 
     await _loadMediaForSelectedDate();
     await _scrollIntoViewKey(_kPhotoCardsKey, alignment: 0.98);
