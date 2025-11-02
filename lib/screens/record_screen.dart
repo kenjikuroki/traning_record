@@ -124,6 +124,13 @@ class _MealRowControllers {
   }
 }
 
+class LastSet {
+  final num weight;
+  final int reps;
+
+  const LastSet({required this.weight, required this.reps});
+}
+
 const double kUnifiedFieldMinHeight = 36.0;
 
 const String kUiFont = 'NotoSansJP';
@@ -344,6 +351,7 @@ class _RecordScreenState extends State<RecordScreen>
   // Memo（プレビュー用コントローラ）
   bool _showMemo = false;
   final TextEditingController _memoController = TextEditingController();
+  final Map<String, LastSet> _lastSetCache = <String, LastSet>{};
 
   // メモ・オーバーレイ（後方互換フラグ）
   bool _memoOverlayOpen = false; // 旧：インライン編集モードのフラグ（互換のため残す）
