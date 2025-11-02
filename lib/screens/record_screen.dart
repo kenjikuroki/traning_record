@@ -352,6 +352,8 @@ class _RecordScreenState extends State<RecordScreen>
   bool _showMemo = false;
   final TextEditingController _memoController = TextEditingController();
   final Map<String, LastSet> _lastSetCache = <String, LastSet>{};
+  // 体重カードの表示制御（初期は非表示）
+  bool _showWeightCard = false;
 
   // メモ・オーバーレイ（後方互換フラグ）
   bool _memoOverlayOpen = false; // 旧：インライン編集モードのフラグ（互換のため残す）
@@ -2829,9 +2831,11 @@ class _RecordScreenState extends State<RecordScreen>
     }
 
 // 既に値があれば当日パーソナルカードを自動表示
-    _showPersonalCard = _weightController.text.trim().isNotEmpty ||
+    final bool hasPersonalData = _weightController.text.trim().isNotEmpty ||
         _bodyFatController.text.trim().isNotEmpty ||
         _waistController.text.trim().isNotEmpty;
+    _showPersonalCard = hasPersonalData;
+    _showWeightCard = hasPersonalData;
   }
 
   String _getDateKey(DateTime date) =>
@@ -4038,6 +4042,7 @@ class _RecordScreenState extends State<RecordScreen>
   // 追加：＋パーソナル → カード出現（先頭に表示）
   void _handleAddPersonal() async {
     setState(() {
+      _showWeightCard = true;
       _showPersonalCard = true;
       _personalCollapsed = false;
       _closeFabDial();
@@ -4090,6 +4095,7 @@ class _RecordScreenState extends State<RecordScreen>
 
     if (!mounted) return;
     setState(() {
+      _showWeightCard = false;
       _showPersonalCard = false;
       _personalSelected = false;
       _personalCollapsed = true;
@@ -6832,9 +6838,9 @@ class _RecordScreenState extends State<RecordScreen>
 
     const Color kBrandBlue = Color(0xFF2563EB);
 
-    final bool showWeight = _showPersonalCard ||
-        _weightController.text.trim().isNotEmpty ||
-        SettingsManager.personalWeightKg != null;
+    final bool showWeight = _showWeightCard ||
+        _showPersonalCard ||
+        _weightController.text.trim().isNotEmpty;
     final bool showBodyFat =
         (widget.settingsBox.get('manage.bodyFat') as bool?) ?? false;
     final bool showWaist =
