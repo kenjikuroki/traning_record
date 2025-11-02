@@ -2,3 +2,4 @@ NSCameraUsageDescription = "We use the camera to capture your training photos.";
 NSMicrophoneUsageDescription = "Microphone access may be required for certain audio features.";
 NSPhotoLibraryAddUsageDescription = "Allows saving captured training photos to your gallery.";
 NSUserTrackingUsageDescription = "We use your device’s advertising identifier (IDFA) to optimize ads, measure effectiveness, and prevent fraud.";
+"NSUserNotificationsUsageDescription" = "We use notifications to help you keep training. You can change this anytime in Settings.";

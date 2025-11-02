@@ -6,11 +6,12 @@ import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import '../widgets/ad_square.dart';
 import '../widgets/ad_banner.dart';
-import '../l10n/app_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../settings_manager.dart';
 import '../constants/backgrounds.dart';
 import '../widgets/centered_constrained.dart';
+import 'notification_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
@@ -917,6 +918,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                         const SizedBox(height: 4),
                       ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: _kGap),
+
+              // 通知設定（パーソナル設定直後）
+              Card(
+                color: colorScheme.surfaceContainerHighest,
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                margin: _kCardMargin,
+                child: Padding(
+                  padding: _kOuterPad,
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      dividerColor: Colors.transparent,
+                      splashFactory: NoSplash.splashFactory,
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
+                      hoverColor: Colors.transparent,
+                    ),
+                    child: Builder(
+                      builder: (context) {
+                        final s = AppLocalizations.of(context)!;
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          minLeadingWidth: 28,
+                          leading: SizedBox(
+                            width: 24,
+                            child: Icon(
+                              Icons.notifications_outlined,
+                              size: 24,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          title: Text(
+                            s.notiSettingsTitle,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(color: colorScheme.onSurface),
+                          ),
+                          subtitle: Text(
+                            s.notiSettingsSubtitle,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(color: colorScheme.onSurfaceVariant),
+                          ),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const NotificationSettingsScreen(),
+                              ),
+                            );
+                          },
+                        );
+                      },
                     ),
                   ),
                 ),

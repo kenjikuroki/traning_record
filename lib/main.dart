@@ -1,7 +1,7 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
@@ -9,12 +9,12 @@ import 'package:flutter/scheduler.dart' show SchedulerBinding;
 import 'dart:io' show Platform; // ★ 追加
 import 'theme/app_theme.dart';
 
-import 'l10n/app_localizations.dart';
 import 'models/menu_data.dart';
 import 'screens/home_screen.dart';
 import 'settings_manager.dart';
 import 'package:audio_session/audio_session.dart';
 import 'services/age_signals_service.dart';
+import 'services/notification_service.dart';
 
 Future<void> _initAudioSession() async {
   final session = await AudioSession.instance;
@@ -38,6 +38,9 @@ Future<void> main() async {
   await SettingsManager.initialize();
 
   await AgeSignalsService.instance.ensureInitialized();
+
+  await NotificationService.instance.init();
+  await NotificationService.instance.requestPermissionsIfNeeded();
 
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
@@ -89,7 +92,54 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  BuildContext? _localizedContext;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  Future<void> _resetInactiveTimersLocalized(BuildContext context) async {
+    final s = AppLocalizations.of(context)!;
+    await NotificationService.instance.resetInactiveTimersLocalized(
+      time: const TimeOfDay(hour: 19, minute: 0),
+      title3: s.notiInactive3Title,
+      body3: s.notiInactive3Body,
+      title7: s.notiInactive7Title,
+      body7: s.notiInactive7Body,
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final ctx = _localizedContext;
+      if (ctx != null) {
+        _resetInactiveTimersLocalized(ctx);
+      }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final ctx = _localizedContext;
+      if (ctx != null) {
+        _resetInactiveTimersLocalized(ctx);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
@@ -106,16 +156,12 @@ class _MyAppState extends State<MyApp> {
               themeMode: themeMode,
 
               // l10n
-              localizationsDelegates: const [
-                AppLocalizations.delegate,
-                GlobalMaterialLocalizations.delegate,
-                GlobalWidgetsLocalizations.delegate,
-                GlobalCupertinoLocalizations.delegate,
-              ],
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
 
               // 壁紙の即時反映（背景が変わるたびに再ビルド）
               builder: (context, child) {
+                _localizedContext = context;
                 return ValueListenableBuilder<String>(
                   valueListenable: SettingsManager.backgroundAssetNotifier,
                   builder: (context, bg, __) {

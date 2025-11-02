@@ -2,7 +2,7 @@
 import 'dart:ui'; // ← BackdropFilter用
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import '../l10n/app_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../settings_manager.dart';
 import 'calendar_screen.dart';

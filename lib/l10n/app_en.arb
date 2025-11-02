@@ -427,6 +427,25 @@
   "exerciseBodyweight15": "Burpee",
   "bodyweight": "Bodyweight",
   "welcomeThankYou": "Thanks for downloading. Have a great training life!",
-  "hintTapPlus": "Tap the “+” at bottom-right to start logging."
+  "hintTapPlus": "Tap the “+” at bottom-right to start logging.",
+  "notiDailyTitle": "Let’s keep it up today!",
+  "notiDailyBodyA": "Try just one set!",
+  "notiDailyBodyB": "Are you keeping up with training? A small step is enough!",
+  "notiInactive3Title": "Ready when you are",
+  "notiInactive3Body": "It’s been 3 days. Start with just one set.",
+  "notiInactive7Title": "Restart today",
+  "notiInactive7Body": "A week off. Do 10 push-ups or 10 squats—either is fine.",
+  "notiSoftAskTitle": "The trick to consistency is gentle reminders",
+  "notiSoftAskBody": "We’ll send a mini nudge at 19:00 like “just 1 set!”. You can toggle notifications anytime in Settings.",
+  "notiSoftAskLater": "Later",
+  "notiSoftAskEnable": "Enable notifications",
+  "notiSettingsTitle": "Notification settings",
+  "notiSettingsSubtitle": "Daily reminder",
+  "notiSettingsChangeTime": "Change time",
+  "notiSendTest": "Send test notification",
+  "notiStopAll": "Stop all notifications",
+  "mealHeaderNo": "No",
+  "mealHeaderMenu": "Menu",
+  "mealHeaderKcal": "kcal"
 
 }

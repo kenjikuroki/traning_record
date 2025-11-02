@@ -8,7 +8,7 @@ import 'package:hive/hive.dart';
 import 'dart:math';
 import 'dart:async';
 import 'package:intl/intl.dart' hide TextDirection;
-import '../l10n/app_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../models/exercise_catalog.dart';
 import '../models/meal.dart';
 import '../models/menu_data.dart';
@@ -17,6 +17,7 @@ import '../utils/training_display_utils.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/big_earning_ad.dart';
 import '../widgets/stopwatch_widget.dart';
+import '../widgets/notification_soft_ask.dart';
 import '../services/album_sync.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:io';
@@ -707,6 +708,7 @@ class _RecordScreenState extends State<RecordScreen>
       if (!mounted) return;
       setState(() => _showSavedChip = false);
     });
+    NotificationSoftAsk.showIfNeeded(context);
   }
 
   Future<void> _dismissKeyboardSafely(BuildContext ctx) async {

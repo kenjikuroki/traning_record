@@ -41,6 +41,8 @@
 	<string>Microphone access may be required for certain audio features.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Allows saving captured training photos to your gallery.</string>
+	<key>NSUserNotificationUsageDescription</key>
+	<string>トレーニング継続のために通知を送ります。</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>We use your device’s advertising identifier (IDFA) to optimize ads, measure effectiveness, and prevent fraud.</string>
 	<key>SKAdNetworkItems</key>

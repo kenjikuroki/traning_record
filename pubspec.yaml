@@ -16,6 +16,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_local_notifications: ^17.1.0
+  timezone: ^0.9.2
+  flutter_native_timezone: ^2.0.0
+  shared_preferences: ^2.3.2
+  flutter_gen:
+    path: packages/flutter_gen
   just_audio: ^0.9.46
   audio_session: ^0.1.25　
   # UI / グラフ
@@ -34,8 +42,6 @@ dependencies:
   hive_flutter: ^1.1.0
   # i18n
   intl: ^0.20.2
-  flutter_localizations:
-    sdk: flutter
   # パッケージ名変更ツール
   change_app_package_name: ^1.5.0
   # その他
