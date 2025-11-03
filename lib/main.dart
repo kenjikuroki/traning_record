@@ -101,7 +101,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
   }
 
-  Future<void> _resetInactiveTimersLocalized(BuildContext context) async {
+  Future<void> _resetNotificationsLocalized(BuildContext context) async {
     final s = AppLocalizations.of(context)!;
     await NotificationService.instance.resetInactiveTimersLocalized(
       time: const TimeOfDay(hour: 19, minute: 0),
@@ -109,6 +109,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       body3: s.notiInactive3Body,
       title7: s.notiInactive7Title,
       body7: s.notiInactive7Body,
+    );
+    await NotificationService.instance.resetDailyFromPrefs(
+      title: s.notiDailyTitle,
+      randomBody: () {
+        final list = [s.notiDailyBodyA, s.notiDailyBodyB]..shuffle();
+        return list.first;
+      },
     );
   }
 
@@ -119,7 +126,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       if (!mounted) return;
       final ctx = _localizedContext;
       if (ctx != null) {
-        _resetInactiveTimersLocalized(ctx);
+        _resetNotificationsLocalized(ctx);
       }
     });
   }
@@ -129,7 +136,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       final ctx = _localizedContext;
       if (ctx != null) {
-        _resetInactiveTimersLocalized(ctx);
+        _resetNotificationsLocalized(ctx);
       }
     }
   }

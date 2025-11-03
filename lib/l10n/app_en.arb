@@ -429,10 +429,10 @@
   "welcomeThankYou": "Thanks for downloading. Have a great training life!",
   "hintTapPlus": "Tap the “+” at bottom-right to start logging.",
   "notiDailyTitle": "Let’s keep it up today!",
-  "notiDailyBodyA": "Try just one set!",
-  "notiDailyBodyB": "Are you keeping up with training? A small step is enough!",
-  "notiInactive3Title": "Ready when you are",
-  "notiInactive3Body": "It’s been 3 days. Start with just one set.",
+  "notiDailyBodyA": "It's time to train!",
+  "notiDailyBodyB": "Let's start training! Ready?",
+  "notiInactive3Title": "Let's get back to training!",
+  "notiInactive3Body": "Even just one set is fine—give it a try.",
   "notiInactive7Title": "Restart today",
   "notiInactive7Body": "A week off. Do 10 push-ups or 10 squats—either is fine.",
   "notiSoftAskTitle": "The trick to consistency is gentle reminders",
@@ -444,8 +444,17 @@
   "notiSettingsChangeTime": "Change time",
   "notiSendTest": "Send test notification",
   "notiStopAll": "Stop all notifications",
+  "notiSettingsAllSame": "Apply to all",
+  "notiSettingsCopyWeekdays": "Copy to weekdays",
+  "notiSettingsCopyWeekend": "Copy to weekend",
+  "notiSettingsWeeklyLabel": "Every {weekday}",
   "mealHeaderNo": "No",
   "mealHeaderMenu": "Menu",
-  "mealHeaderKcal": "kcal"
+  "mealHeaderKcal": "kcal",
+  "@notiSettingsWeeklyLabel": {
+    "placeholders": {
+      "weekday": {}
+    }
+  }
 
 }

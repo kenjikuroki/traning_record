@@ -426,10 +426,10 @@
   "hintRecordPickExercise": "トレーニングする種目をタップするか、新しいカード種目カードを作成してください。",
   "hintRecordCheckbox": "重量と回数を入力し、チェックボックスにチェックをいれてください",
   "notiDailyTitle": "今日も頑張りましょう！",
-  "notiDailyBodyA": "1セットだけでもやってみよう！",
-  "notiDailyBodyB": "トレーニングは続いていますか？小さな一歩でOK！",
-  "notiInactive3Title": "おかえり準備できてます",
-  "notiInactive3Body": "3日ぶりにどうですか？まずは1セットだけやってみましょう。",
+  "notiDailyBodyA": "トレーニングの時間です！",
+  "notiDailyBodyB": "トレーニングを始めましょう！準備はできた？",
+  "notiInactive3Title": "トレーニングを再開しよう！",
+  "notiInactive3Body": "1セットだけでもやってみましょう。",
   "notiInactive7Title": "今日から再スタート",
   "notiInactive7Body": "1週間空きました。腕立て10回 or スクワット10回、どちらかだけでも再開の合図に。",
   "notiSoftAskTitle": "継続のコツは“やさしいリマインド”",
@@ -441,7 +441,16 @@
   "notiSettingsChangeTime": "時刻を変更",
   "notiSendTest": "テスト通知を送る",
   "notiStopAll": "すべての通知を停止",
+  "notiSettingsAllSame": "すべて同じにする",
+  "notiSettingsCopyWeekdays": "平日にコピー",
+  "notiSettingsCopyWeekend": "土日にコピー",
+  "notiSettingsWeeklyLabel": "毎週{weekday}曜",
   "mealHeaderNo": "No",
   "mealHeaderMenu": "メニュー",
-  "mealHeaderKcal": "kcal"
+  "mealHeaderKcal": "kcal",
+  "@notiSettingsWeeklyLabel": {
+    "placeholders": {
+      "weekday": {}
+    }
+  }
 }
