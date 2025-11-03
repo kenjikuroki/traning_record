@@ -455,6 +455,14 @@
     "placeholders": {
       "weekday": {}
     }
-  }
+  },
+  "notiCopyAllTitle": "Copy to all days",
+  "notiCopyAllMessage": "This will overwrite the time for all days. Continue?",
+  "notiCopyWeekdaysTitle": "Copy to weekdays",
+  "notiCopyWeekdaysMessage": "This will overwrite the time for Mon–Fri. Continue?",
+  "notiCopyWeekendTitle": "Copy to weekend",
+  "notiCopyWeekendMessage": "This will set the same time for Sat & Sun. Continue?",
+  "notiConfirmYes": "Yes",
+  "notiConfirmNo": "No"
 
 }

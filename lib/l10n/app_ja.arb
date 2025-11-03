@@ -441,9 +441,9 @@
   "notiSettingsChangeTime": "時刻を変更",
   "notiSendTest": "テスト通知を送る",
   "notiStopAll": "すべての通知を停止",
-  "notiSettingsAllSame": "すべて同じにする",
-  "notiSettingsCopyWeekdays": "平日にコピー",
-  "notiSettingsCopyWeekend": "土日にコピー",
+  "notiSettingsAllSame": "全曜日\nコピー",
+  "notiSettingsCopyWeekdays": "平日\nコピー",
+  "notiSettingsCopyWeekend": "土日\nコピー",
   "notiSettingsWeeklyLabel": "毎週{weekday}曜",
   "mealHeaderNo": "No",
   "mealHeaderMenu": "メニュー",
@@ -452,5 +452,13 @@
     "placeholders": {
       "weekday": {}
     }
-  }
+  },
+  "notiCopyAllTitle": "全曜日にコピー",
+  "notiCopyAllMessage": "全ての曜日の時刻を上書きします。よろしいですか？",
+  "notiCopyWeekdaysTitle": "平日にコピー",
+  "notiCopyWeekdaysMessage": "月〜金の時刻を上書きします。よろしいですか？",
+  "notiCopyWeekendTitle": "土日にコピー",
+  "notiCopyWeekendMessage": "土日の時刻を揃えます。よろしいですか？",
+  "notiConfirmYes": "はい",
+  "notiConfirmNo": "いいえ"
 }
