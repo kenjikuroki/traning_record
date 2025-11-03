@@ -40,12 +40,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const double _kIconGap = 12.0; // アイコンと文字の距離
   static const EdgeInsets _kOuterPad =
       EdgeInsets.symmetric(horizontal: 16, vertical: 12);
-  static const double _kUnitGroupWidth = 160.0;
-// ↓ 右側カラムの列幅（ラベル/ギャップ/ラジオの幅）を定数化
-  static const double _kUnitLabelWidth = 88.0; // 「重量」「長さ」ラベルの幅
-  static const double _kUnitBetweenGap = 24.0; // ラベルとラジオの間隔
-  static const double _kUnitRightPaneWidth =
-      _kUnitLabelWidth + _kUnitBetweenGap + _kUnitGroupWidth;
+  static const double _kUnitLabelWidth = 88.0; // 「重量」「長さ」ラベルの最大幅
+  static const double _kUnitBetweenGap = 12.0; // ラベルとラジオの最小間隔
 
   // ===== 既存状態 =====
   late bool _showStopwatch; // ストップウォッチ表示
@@ -694,11 +690,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               _radio(l10n.genderMale, 'male', _gender,
-                                  (v) => _setGender(v!)),
+                                  (v) => _setGender(v ?? _gender)),
                               _radio(l10n.genderFemale, 'female', _gender,
-                                  (v) => _setGender(v!)),
+                                  (v) => _setGender(v ?? _gender)),
                               _radio(l10n.genderUnspecified, 'unspecified',
-                                  _gender, (v) => _setGender(v!)),
+                                  _gender, (v) => _setGender(v ?? _gender)),
                             ],
                           ),
                         ),
@@ -1510,11 +1506,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // 1行構成：左に見出し、右に固定幅の2行カラム（重量／長さ）
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 左：見出し（アイコン＋「単位」）
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -1529,18 +1523,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ],
                           ),
-                          const Spacer(),
-                          // 右：固定幅の2行（重量／長さ）→ 縦位置・列幅が完全一致
-                          SizedBox(
-                            width: _kUnitRightPaneWidth,
+                          const SizedBox(width: 12),
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // 行1：重量
                                 Row(
                                   children: [
-                                    SizedBox(
-                                      width: _kUnitLabelWidth,
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                          minWidth: 64, maxWidth: 88),
                                       child: Align(
                                         alignment: Alignment.centerRight,
                                         child: Text(
@@ -1555,44 +1547,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: _kUnitBetweenGap),
-                                    SizedBox(
-                                      width: _kUnitGroupWidth,
-                                      child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Theme(
-                                          data: Theme.of(context).copyWith(
-                                            visualDensity: const VisualDensity(
-                                                horizontal: -2, vertical: -3),
-                                          ),
-                                          child: Wrap(
-                                            spacing: 16,
-                                            runSpacing: 0,
-                                            crossAxisAlignment:
-                                                WrapCrossAlignment.center,
-                                            children: [
-                                              _radio(
-                                                  l10n.kg,
-                                                  'kg',
-                                                  _selectedUnit,
-                                                  (v) => _onUnitChanged(v)),
-                                              _radio(
-                                                  l10n.lbs,
-                                                  'lbs',
-                                                  _selectedUnit,
-                                                  (v) => _onUnitChanged(v)),
-                                            ],
-                                          ),
+                                    Flexible(
+                                      child: Theme(
+                                        data: Theme.of(context).copyWith(
+                                          visualDensity: const VisualDensity(
+                                              horizontal: -2, vertical: -3),
+                                        ),
+                                        child: Wrap(
+                                          spacing: 12,
+                                          runSpacing: 4,
+                                          crossAxisAlignment:
+                                              WrapCrossAlignment.center,
+                                          children: [
+                                            _radio(l10n.kg, 'kg', _selectedUnit,
+                                                _onUnitChanged),
+                                            _radio(l10n.lbs, 'lbs', _selectedUnit,
+                                                _onUnitChanged),
+                                          ],
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 6),
-                                // 行2：長さ（列幅・位置は上行と同じ）
                                 Row(
                                   children: [
-                                    SizedBox(
-                                      width: _kUnitLabelWidth,
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                          minWidth: 64, maxWidth: 88),
                                       child: Align(
                                         alignment: Alignment.centerRight,
                                         child: Text(
@@ -1607,35 +1589,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: _kUnitBetweenGap),
-                                    SizedBox(
-                                      width: _kUnitGroupWidth,
-                                      child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Theme(
-                                          data: Theme.of(context).copyWith(
-                                            visualDensity: const VisualDensity(
-                                                horizontal: -2, vertical: -3),
-                                          ),
-                                          child: Wrap(
-                                            spacing: 16,
-                                            runSpacing: 0,
-                                            crossAxisAlignment:
-                                                WrapCrossAlignment.center,
-                                            children: [
-                                              _radio(
-                                                  l10n.km,
-                                                  'km',
-                                                  _selectedDistanceUnit,
-                                                  (v) => _onDistanceUnitChanged(
-                                                      v)),
-                                              _radio(
-                                                  l10n.mile,
-                                                  'mile',
-                                                  _selectedDistanceUnit,
-                                                  (v) => _onDistanceUnitChanged(
-                                                      v)),
-                                            ],
-                                          ),
+                                    Flexible(
+                                      child: Theme(
+                                        data: Theme.of(context).copyWith(
+                                          visualDensity: const VisualDensity(
+                                              horizontal: -2, vertical: -3),
+                                        ),
+                                        child: Wrap(
+                                          spacing: 12,
+                                          runSpacing: 4,
+                                          crossAxisAlignment:
+                                              WrapCrossAlignment.center,
+                                          children: [
+                                            _radio(
+                                                l10n.km,
+                                                'km',
+                                                _selectedDistanceUnit,
+                                                _onDistanceUnitChanged),
+                                            _radio(
+                                                l10n.mile,
+                                                'mile',
+                                                _selectedDistanceUnit,
+                                                _onDistanceUnitChanged),
+                                          ],
                                         ),
                                       ),
                                     ),
@@ -1681,24 +1657,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // ラジオ（テキスト付き／サイズ統一）
-  Widget _radio(String label, String value, String group,
-      ValueChanged<String?> onChanged) {
+  Widget _radio(
+    String label,
+    String value,
+    String groupValue,
+    ValueChanged<String?> onChanged, [
+    BuildContext? _ignored,
+  ]) {
     final cs = Theme.of(context).colorScheme;
     return InkWell(
       onTap: () => onChanged(value),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Radio<String>(
+          Radio<String?>(
             value: value,
-            groupValue: group,
+            groupValue: groupValue,
             onChanged: onChanged,
             activeColor: cs.primary,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
           ),
-          Text(label,
-              style:
-                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ) ??
+                const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );

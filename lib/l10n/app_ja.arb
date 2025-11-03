@@ -425,6 +425,7 @@
   "hintRecordTapExerciseCard": "こちらをタップしてトレーニングする部位を選択してください。",
   "hintRecordPickExercise": "トレーニングする種目をタップするか、新しいカード種目カードを作成してください。",
   "hintRecordCheckbox": "重量と回数を入力し、チェックボックスにチェックをいれてください",
+  "hintRecordFab": "ここから部位や種目、写真、メモを追加できます。",
   "notiDailyTitle": "今日も頑張りましょう！",
   "notiDailyBodyA": "トレーニングの時間です！",
   "notiDailyBodyB": "トレーニングを始めましょう！準備はできた？",

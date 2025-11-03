@@ -146,45 +146,34 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        transitionBuilder: (child, animation) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        child: IndexedStack(
-          key: ValueKey<int>(_currentIndex),
-          index: _currentIndex,
-          children: [
-            // 0: カレンダー
-            CalendarScreen(
-              key: _calendarKey,
-              recordsBox: widget.recordsBox,
-              lastUsedMenusBox: widget.lastUsedMenusBox,
-              settingsBox: widget.settingsBox,
-              setCountBox: widget.setCountBox,
-              selectedDate: DateTime.now(),
-            ),
-            // 1: アルバム
-            AlbumScreen(
-              key: _albumKey,
-            ),
-            // 2: グラフ（isActive のインデックスも 2 に変更）
-            GraphScreen(
-              recordsBox: widget.recordsBox,
-              lastUsedMenusBox: widget.lastUsedMenusBox,
-              settingsBox: widget.settingsBox,
-              setCountBox: widget.setCountBox,
-              isActive: _currentIndex == 2,
-            ),
-            // 3: 設定
-            SettingsScreen(
-              recordsBox: widget.recordsBox,
-              lastUsedMenusBox: widget.lastUsedMenusBox,
-              settingsBox: widget.settingsBox,
-              setCountBox: widget.setCountBox,
-            ),
-          ],
-        ),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          CalendarScreen(
+            key: _calendarKey,
+            recordsBox: widget.recordsBox,
+            lastUsedMenusBox: widget.lastUsedMenusBox,
+            settingsBox: widget.settingsBox,
+            setCountBox: widget.setCountBox,
+            selectedDate: DateTime.now(),
+          ),
+          AlbumScreen(
+            key: _albumKey,
+          ),
+          GraphScreen(
+            recordsBox: widget.recordsBox,
+            lastUsedMenusBox: widget.lastUsedMenusBox,
+            settingsBox: widget.settingsBox,
+            setCountBox: widget.setCountBox,
+            isActive: _currentIndex == 2,
+          ),
+          SettingsScreen(
+            recordsBox: widget.recordsBox,
+            lastUsedMenusBox: widget.lastUsedMenusBox,
+            settingsBox: widget.settingsBox,
+            setCountBox: widget.setCountBox,
+          ),
+        ],
       ),
       bottomNavigationBar: ColoredBox(
         // ▼ バー“の下”を含めて同色で塗る
