@@ -411,6 +411,7 @@ class _GraphScreenState extends State<GraphScreen> {
     if (!anchorsReady) return;
 
     final l10n = AppLocalizations.of(context)!;
+    _graphCoachDone = true;
     await CoachBubbleController.showSequence(
       context: context,
       anchors: [_kPart, _kChart, _kGoal, _kFav],
@@ -423,7 +424,6 @@ class _GraphScreenState extends State<GraphScreen> {
       semanticsPrefix: l10n.coachBubbleSemantic,
     );
     await widget.settingsBox.put('hint_seen_graph', true);
-    _graphCoachDone = true;
   }
 
   // ====== lifecycle ======
