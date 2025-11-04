@@ -10873,9 +10873,9 @@ class _MenuListState extends State<MenuList> {
     }
 
     // 列幅（SET｜重量｜回数｜RIR｜RM｜失敗｜完了）をスリム化
-    const double _wSet = 36.0; // 36→30→36
+    const double _wSet = 26.0; // 36→30→36→32→26（回列をさらに詰める）
     const double _wWeight = 110.0; // 72→84
-    const double _wReps = 64.0; // 56→64
+    const double _wReps = 44.0; // 56→64→54→48→44（リプレップ列をさらに圧縮）
     const double _wRir = 40.0; // 44→40
     const double _wRm = 64.0; // 56→64
     const double _wFail = 44.0; // 48→44
