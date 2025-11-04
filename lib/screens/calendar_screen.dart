@@ -144,6 +144,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // 写真有無キャッシュ（key = yyyy-MM-dd）
   final Map<String, bool> _photoCache = {};
   final Map<String, Map<String, String>> _localizedExerciseNameCache = {};
+  final Map<String, Map<String, String>> _exerciseNameToOriginalCache = {};
 
   bool _widgetRefreshScheduled = false;
 
@@ -663,6 +664,33 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return _translatePartLabel(l10n, part);
   }
 
+  bool _hasMaxPrOn(DateTime day) {
+    final DateTime normalized = DateTime(day.year, day.month, day.day);
+    final String key = DateFormat('yyyy-MM-dd').format(normalized);
+    final dynamic raw = widget.settingsBox.get('prDays');
+    if (raw is Set) {
+      return raw.whereType<String>().contains(key);
+    }
+    if (raw is List) {
+      return raw.whereType<String>().contains(key);
+    }
+    return false;
+  }
+
+  bool _isPrExerciseOfTheDay(String exerciseId) {
+    final DateTime base = _selectedDay ?? _focusedDay;
+    final DateTime normalized = DateTime(base.year, base.month, base.day);
+    final String key = DateFormat('yyyy-MM-dd').format(normalized);
+    final dynamic raw = widget.settingsBox.get('pr-$key');
+    if (raw is Set) {
+      return raw.whereType<String>().contains(exerciseId);
+    }
+    if (raw is List) {
+      return raw.whereType<String>().contains(exerciseId);
+    }
+    return false;
+  }
+
   String _localizedMenuName(
     AppLocalizations l10n,
     String originalPart,
@@ -681,10 +709,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final localizedDefaults =
           ExerciseCatalog.defaultsFor(localizedPart, l10n: l10n);
 
-      final int pairLength =
-          defaults.length < localizedDefaults.length
-              ? defaults.length
-              : localizedDefaults.length;
+      final int pairLength = defaults.length < localizedDefaults.length
+          ? defaults.length
+          : localizedDefaults.length;
       final newMap = <String, String>{};
       for (int i = 0; i < pairLength; i++) {
         newMap[defaults[i]] = localizedDefaults[i];
@@ -702,6 +729,48 @@ class _CalendarScreenState extends State<CalendarScreen> {
       return trimmed;
     }
     return trimmed;
+  }
+
+  String _resolveOriginalExerciseName(String originalPart, String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return trimmed;
+    }
+
+    final l10n = AppLocalizations.of(context)!;
+    final String cacheKey = '${l10n.localeName}::$originalPart';
+    Map<String, String>? reverse = _exerciseNameToOriginalCache[cacheKey];
+    if (reverse == null) {
+      final defaultsJa = ExerciseCatalog.defaultsFor(originalPart);
+      final localizedPart = _translatePartLabel(l10n, originalPart);
+      final defaultsLocalized =
+          ExerciseCatalog.defaultsFor(localizedPart, l10n: l10n);
+      final int len = defaultsJa.length < defaultsLocalized.length
+          ? defaultsJa.length
+          : defaultsLocalized.length;
+      reverse = <String, String>{};
+      for (int i = 0; i < len; i++) {
+        final String ja = defaultsJa[i].trim();
+        final String loc = defaultsLocalized[i].trim();
+        if (ja.isNotEmpty) {
+          reverse[ja] = ja;
+          reverse[ja.toLowerCase()] = ja;
+        }
+        if (loc.isNotEmpty) {
+          reverse[loc] = ja;
+          reverse[loc.toLowerCase()] = ja;
+        }
+      }
+      _exerciseNameToOriginalCache[cacheKey] = reverse;
+    }
+
+    return reverse![trimmed] ?? reverse[trimmed.toLowerCase()] ?? trimmed;
+  }
+
+  String _canonicalExerciseId(String originalPart, String name) {
+    final String originalName =
+        _resolveOriginalExerciseName(originalPart, name);
+    return '$originalPart::$originalName';
   }
 
   String _failureTag(AppLocalizations l10n) {
@@ -2224,7 +2293,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 todayDecoration: const BoxDecoration(),
                 selectedDecoration: const BoxDecoration(),
                 selectedTextStyle: TextStyle(color: colorScheme.onSurface),
-                markersMaxCount: 0,
+                markersMaxCount: 1,
               ),
               calendarBuilders: CalendarBuilders<Object>(
                 defaultBuilder: (context, day, focusedDay) {
@@ -2279,6 +2348,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     maxChipRows: maxChipRows,
                     compactMode: compactMode,
                   );
+                },
+                singleMarkerBuilder: (context, day, focusedDay) {
+                  if (_hasMaxPrOn(day)) {
+                    final color = Theme.of(context).colorScheme.secondary;
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 2.0),
+                      child: Icon(
+                        Icons.workspace_premium,
+                        size: 12,
+                        color: color,
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
                 },
               ),
               eventLoader: _eventLoader,
@@ -2617,8 +2700,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ? (rm - maxRm!).abs() < 1e-6
               : false;
 
-          final buffer = StringBuffer(
-              '${i + 1}：$weightDisplay X $repsDisplay$repsSuffix');
+          final buffer =
+              StringBuffer('${i + 1}：$weightDisplay X $repsDisplay$repsSuffix');
 
           final List<String> extraParts = [];
           if (showRmColumn && rm != null) {
@@ -2904,8 +2987,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ];
       for (final m in aerobicMenus) {
         if (!_menuHasAnyData(m)) continue;
-        sectionLines.add(
-            _localizedMenuName(l10n, '有酸素運動', m.name));
+        sectionLines.add(_localizedMenuName(l10n, '有酸素運動', m.name));
         final bool hasDistance = _hasPositiveDistanceValue(m.distance);
         final bool hasDuration = _hasPositiveDurationValue(m.duration);
         if (hasDistance) {
@@ -2946,8 +3028,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       for (final m in menuList) {
         if (!_menuHasAnyData(m)) continue;
-        sectionLines.add(
-            _localizedMenuName(l10n, originalPart, m.name));
+        sectionLines.add(_localizedMenuName(l10n, originalPart, m.name));
 
         final int len = (m.weights.length < m.reps.length)
             ? m.weights.length
@@ -3463,12 +3544,36 @@ class _CalendarScreenState extends State<CalendarScreen> {
       for (final m in menuList) {
         if (!_menuHasAnyData(m)) continue;
 
+        final String exerciseId = _canonicalExerciseId(originalPart, m.name);
+        final bool isPr = _isPrExerciseOfTheDay(exerciseId);
+
         summaryChildren.add(
-          _selectableLine(
-            text: _localizedMenuName(l10n, originalPart, m.name),
+          Padding(
             padding: const EdgeInsets.only(bottom: 2.0),
-            style: TextStyle(
-                color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: SelectableText(
+                    _localizedMenuName(l10n, originalPart, m.name),
+                    style: TextStyle(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                if (isPr)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 6.0),
+                    child: Icon(
+                      Icons.workspace_premium,
+                      size: 16,
+                      color: cs.secondary,
+                    ),
+                  ),
+              ],
+            ),
           ),
         );
 
@@ -3532,8 +3637,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ? (rm - maxRm!).abs() < 1e-6
               : false;
 
-          final buffer = StringBuffer(
-              '${i + 1}：$weightDisplay X $repsDisplay$repsSuffix');
+          final buffer =
+              StringBuffer('${i + 1}：$weightDisplay X $repsDisplay$repsSuffix');
 
           final List<String> extraParts = [];
           if (showRmColumn && rm != null) {

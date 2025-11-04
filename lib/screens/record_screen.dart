@@ -652,7 +652,8 @@ class _RecordScreenState extends State<RecordScreen>
     setState(() => _showFirstRecordHint = false);
   }
 
-  Widget _buildFirstRecordHintCard(BuildContext context, AppLocalizations l10n) {
+  Widget _buildFirstRecordHintCard(
+      BuildContext context, AppLocalizations l10n) {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 220),
       switchInCurve: Curves.easeOutCubic,
@@ -892,14 +893,12 @@ class _RecordScreenState extends State<RecordScreen>
           ),
           ...luList
               .where(
-                (m) =>
-                    !recBy.containsKey(
-                      _translateExerciseNameToLocale(originalPart, m.name),
-                    ),
+                (m) => !recBy.containsKey(
+                  _translateExerciseNameToLocale(originalPart, m.name),
+                ),
               )
               .map(
-                (m) =>
-                    _translateExerciseNameToLocale(originalPart, m.name),
+                (m) => _translateExerciseNameToLocale(originalPart, m.name),
               ),
         ];
 
@@ -1086,9 +1085,8 @@ class _RecordScreenState extends State<RecordScreen>
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
-                                  color: Theme.of(sheetCtx)
-                                      .colorScheme
-                                      .onSurface,
+                                  color:
+                                      Theme.of(sheetCtx).colorScheme.onSurface,
                                   decoration: TextDecoration.none,
                                 ),
                               ),
@@ -1112,9 +1110,7 @@ class _RecordScreenState extends State<RecordScreen>
                         Container(
                           height: 0.8,
                           width: double.infinity,
-                          color: Theme.of(sheetCtx)
-                              .colorScheme
-                              .outlineVariant,
+                          color: Theme.of(sheetCtx).colorScheme.outlineVariant,
                         ),
                       ],
                     ),
@@ -1801,9 +1797,9 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   double _preferredBodyFatInitial() {
-    final previous = _latestRecordMetricBeforeSelected(
-            (record) => record.bodyFatPercent) ??
-        _latestPersonalMetricFromSettings('bodyFat');
+    final previous =
+        _latestRecordMetricBeforeSelected((record) => record.bodyFatPercent) ??
+            _latestPersonalMetricFromSettings('bodyFat');
     if (previous != null) {
       return _roundToSingleDecimal(previous);
     }
@@ -1811,13 +1807,11 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   double _preferredWaistInitial() {
-    final previousCm = _latestRecordMetricBeforeSelected(
-            (record) => record.waistCm) ??
-        _latestPersonalMetricFromSettings('waist');
+    final previousCm =
+        _latestRecordMetricBeforeSelected((record) => record.waistCm) ??
+            _latestPersonalMetricFromSettings('waist');
     final double cm = previousCm ?? _kDefaultWaistCm;
-    final double display = SettingsManager.isWaistInch
-        ? cm / 2.54
-        : cm;
+    final double display = SettingsManager.isWaistInch ? cm / 2.54 : cm;
     return _roundToSingleDecimal(display);
   }
 
@@ -1958,7 +1952,8 @@ class _RecordScreenState extends State<RecordScreen>
                                 ),
                                 const Spacer(),
                                 TextButton(
-                                  onPressed: () => Navigator.pop(modalCtx, null),
+                                  onPressed: () =>
+                                      Navigator.pop(modalCtx, null),
                                   child: Text(modalMaterial.cancelButtonLabel),
                                 ),
                                 TextButton(
@@ -2783,10 +2778,9 @@ class _RecordScreenState extends State<RecordScreen>
         ),
         ...luList
             .where(
-              (m) =>
-                  !recBy.containsKey(
-                    _translateExerciseNameToLocale(originalPart, m.name),
-                  ),
+              (m) => !recBy.containsKey(
+                _translateExerciseNameToLocale(originalPart, m.name),
+              ),
             )
             .map(
               (m) => _translateExerciseNameToLocale(originalPart, m.name),
@@ -3344,6 +3338,7 @@ class _RecordScreenState extends State<RecordScreen>
         _extractHistoricalBestBefore(widget.recordsBox, normalizedSavedDate);
 
     bool prTriggered = false;
+    final Set<String> prExerciseIds = <String>{};
     final Map<String, int> existingMaxIndex = {};
     for (int i = 0; i < awardsForDate.length; i++) {
       final entry = awardsForDate[i];
@@ -3379,8 +3374,7 @@ class _RecordScreenState extends State<RecordScreen>
       final int? existingIndex = existingMaxIndex[exerciseId];
       if (existingIndex != null) {
         final existing = awardsForDate[existingIndex];
-        final double? existingNewKg =
-            (existing['newKg'] as num?)?.toDouble();
+        final double? existingNewKg = (existing['newKg'] as num?)?.toDouble();
         if (existingNewKg != null &&
             (newKg - existingNewKg) <= kThreshold + kEpsilon) {
           return;
@@ -3394,10 +3388,24 @@ class _RecordScreenState extends State<RecordScreen>
       }
       awardsUpdated = true;
       prTriggered = true;
+      prExerciseIds.add(exerciseId);
     });
 
     if (awardsUpdated) {
       await settingsBox.put(storageKey, awardsForDate);
+    }
+
+    if (prExerciseIds.isNotEmpty) {
+      final String prKey = 'pr-$awardDateKey';
+      final Set<String> merged = {...prExerciseIds};
+      final dynamic existing = settingsBox.get(prKey);
+      if (existing is Set) {
+        merged.addAll(existing.whereType<String>());
+      } else if (existing is List) {
+        merged.addAll(existing.whereType<String>());
+      }
+      final List<String> sorted = merged.toList()..sort();
+      await settingsBox.put(prKey, sorted);
     }
 
     if (prTriggered) {
@@ -3441,10 +3449,7 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   bool _isMilestoneDay(int dayCount) {
-    if (dayCount == 3 ||
-        dayCount == 10 ||
-        dayCount == 50 ||
-        dayCount == 100) {
+    if (dayCount == 3 || dayCount == 10 || dayCount == 50 || dayCount == 100) {
       return true;
     }
     return dayCount >= 200 && dayCount % 100 == 0;
@@ -3456,8 +3461,7 @@ class _RecordScreenState extends State<RecordScreen>
       for (final menu in menus) {
         final double? bestKg = _maxWeightKgFromMenu(originalPart, menu);
         if (bestKg == null) continue;
-        final String exerciseId =
-            _canonicalExerciseId(originalPart, menu.name);
+        final String exerciseId = _canonicalExerciseId(originalPart, menu.name);
         final double? current = result[exerciseId];
         if (current == null || bestKg > current) {
           result[exerciseId] = bestKg;
@@ -3531,7 +3535,8 @@ class _RecordScreenState extends State<RecordScreen>
     if (value == null) {
       return null;
     }
-    final bool useKg = containsKg || (!containsLb && SettingsManager.currentUnit == 'kg');
+    final bool useKg =
+        containsKg || (!containsLb && SettingsManager.currentUnit == 'kg');
     return useKg ? value : value * 0.45359237;
   }
 
@@ -3599,9 +3604,7 @@ class _RecordScreenState extends State<RecordScreen>
       }
       _exerciseNameToOriginalCache[cacheKey] = reverse;
     }
-    return reverse![trimmed] ??
-        reverse[trimmed.toLowerCase()] ??
-        trimmed;
+    return reverse![trimmed] ?? reverse[trimmed.toLowerCase()] ?? trimmed;
   }
 
   bool _trimTrailingEmptySetsForAllMenus(int baseline) {
@@ -4995,8 +4998,7 @@ class _RecordScreenState extends State<RecordScreen>
                 top: 8,
                 child: _buildCircleCloseButton(
                   onPressed: () => Navigator.of(ctx).pop(),
-                  tooltip: MaterialLocalizations.of(context)
-                      .closeButtonTooltip,
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                   diameter: 40,
                 ),
               ),
@@ -5103,8 +5105,8 @@ class _RecordScreenState extends State<RecordScreen>
         children.add(
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   '${i + 1}.',
@@ -5239,7 +5241,8 @@ class _RecordScreenState extends State<RecordScreen>
                                   behavior: HitTestBehavior.opaque,
                                   onLongPress: () async {
                                     _focusMealCard(index);
-                                    final selected = await _showMealCategoryPicker(
+                                    final selected =
+                                        await _showMealCategoryPicker(
                                       current: card.category,
                                     );
                                     if (selected == null || !mounted) return;
@@ -5384,11 +5387,6 @@ class _RecordScreenState extends State<RecordScreen>
       ),
     );
   }
-
-
-
-
-
 
   Widget _buildMemoCard() {
     if (!_showMemo) return const SizedBox.shrink();
@@ -5719,8 +5717,7 @@ class _RecordScreenState extends State<RecordScreen>
             )..layout();
             unitWidth = max(_unitReserveW, unitPainter.width + 2);
           }
-          final double unitReserve =
-              (unitSuffix != null) ? (unitWidth + 6) : 0;
+          final double unitReserve = (unitSuffix != null) ? (unitWidth + 6) : 0;
           final TextStyle fieldTextStyle = TextStyle(
             fontFamily: kUiFont,
             color: cs.onSurface,
@@ -5937,13 +5934,15 @@ class _RecordScreenState extends State<RecordScreen>
                                               ),
                                             ),
                                           ),
-                                          SizedBox(width: spacingLabelToDivider),
+                                          SizedBox(
+                                              width: spacingLabelToDivider),
                                           Container(
                                             width: 1,
                                             height: 30,
                                             color: gridColor,
                                           ),
-                                          SizedBox(width: spacingDividerToField),
+                                          SizedBox(
+                                              width: spacingDividerToField),
                                           Expanded(child: field),
                                         ],
                                       ),
@@ -6020,11 +6019,11 @@ class _RecordScreenState extends State<RecordScreen>
 
                                   final double bmrDifferenceLeftPadding =
                                       gridHorizontalPadding +
-                                      innerHorizontalPadding +
-                                      labelColumnWidth +
-                                      spacingLabelToDivider +
-                                      1.0 +
-                                      spacingDividerToField;
+                                          innerHorizontalPadding +
+                                          labelColumnWidth +
+                                          spacingLabelToDivider +
+                                          1.0 +
+                                          spacingDividerToField;
 
                                   if (metricRows.isNotEmpty) {
                                     metricRows[0] = Padding(
@@ -6033,7 +6032,8 @@ class _RecordScreenState extends State<RecordScreen>
                                     );
                                   }
 
-                                  Widget metricsSection = const SizedBox.shrink();
+                                  Widget metricsSection =
+                                      const SizedBox.shrink();
                                   if (metricRows.isNotEmpty) {
                                     final Widget gridCore = ClipRRect(
                                       borderRadius: BorderRadius.circular(12),
@@ -6094,7 +6094,8 @@ class _RecordScreenState extends State<RecordScreen>
                                                     color:
                                                         const Color(0xFF2F6AA6),
                                                     borderRadius:
-                                                        BorderRadius.circular(16),
+                                                        BorderRadius.circular(
+                                                            16),
                                                     boxShadow: const [
                                                       BoxShadow(
                                                         color:
@@ -6105,8 +6106,7 @@ class _RecordScreenState extends State<RecordScreen>
                                                     ],
                                                   ),
                                                   child: Text(
-                                                    l10n
-                                                        .weightCardExtraFieldsHint,
+                                                    l10n.weightCardExtraFieldsHint,
                                                     textAlign: TextAlign.center,
                                                     style: const TextStyle(
                                                       color: Colors.white,
@@ -6127,7 +6127,8 @@ class _RecordScreenState extends State<RecordScreen>
                                   }
 
                                   return Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       metricsSection,
                                       if (showBmr)
@@ -6533,9 +6534,8 @@ class _RecordScreenState extends State<RecordScreen>
                                                         row.kcalController,
                                                     decoration:
                                                         mealInputDecoration,
-                                                    keyboardType:
-                                                        TextInputType
-                                                            .numberWithOptions(
+                                                    keyboardType: TextInputType
+                                                        .numberWithOptions(
                                                             decimal: true),
                                                     textAlign: TextAlign.right,
                                                     textAlignVertical:
@@ -7039,12 +7039,13 @@ class _RecordScreenState extends State<RecordScreen>
                                         final Color textColor = hasName
                                             ? overlayHeaderFg
                                             : overlayHeaderFg.withOpacity(0.6);
-                                        final double underlineWidth = hasName ? 2 : 1;
+                                        final double underlineWidth =
+                                            hasName ? 2 : 1;
 
                                         return GestureDetector(
                                           behavior: HitTestBehavior.opaque,
-                                          onTap: () =>
-                                              _showExercisePicker(secIndex, menuIndex),
+                                          onTap: () => _showExercisePicker(
+                                              secIndex, menuIndex),
                                           child: Container(
                                             padding: EdgeInsets.symmetric(
                                               vertical: veryLong
@@ -7055,7 +7056,8 @@ class _RecordScreenState extends State<RecordScreen>
                                               border: Border(
                                                 bottom: BorderSide(
                                                   color: overlayHeaderFg
-                                                      .withOpacity(hasName ? 1 : 0.4),
+                                                      .withOpacity(
+                                                          hasName ? 1 : 0.4),
                                                   width: underlineWidth,
                                                 ),
                                               ),
@@ -7075,7 +7077,8 @@ class _RecordScreenState extends State<RecordScreen>
                                               softWrap: true,
                                               overflow: TextOverflow.visible,
                                               textAlign: TextAlign.left,
-                                              locale: Localizations.localeOf(context),
+                                              locale: Localizations.localeOf(
+                                                  context),
                                             ),
                                           ),
                                         );
@@ -7097,8 +7100,8 @@ class _RecordScreenState extends State<RecordScreen>
                                         ),
                                       ),
                                       child: ExerciseInputTimer(
-                                        key:
-                                            _ensureTimerKey(secIndex, menuIndex),
+                                        key: _ensureTimerKey(
+                                            secIndex, menuIndex),
                                       ),
                                     ),
                                   ),
@@ -7311,10 +7314,10 @@ class _RecordScreenState extends State<RecordScreen>
         _personalOverlayVisible;
     final Widget blurLayer = inputOverlayActive
         ? Positioned.fill(
-      child: _BlurExclusionLayer(
-        exclusionKeys: const [],
-      ),
-    )
+            child: _BlurExclusionLayer(
+              exclusionKeys: const [],
+            ),
+          )
         : const SizedBox.shrink();
 
     // ===== Body (空き領域タップでフォーカス解除) =====
@@ -7427,8 +7430,7 @@ class _RecordScreenState extends State<RecordScreen>
                                                   _showPartPicker(secIndex),
                                               child: Padding(
                                                 padding:
-                                                    const EdgeInsets
-                                                        .symmetric(
+                                                    const EdgeInsets.symmetric(
                                                   vertical: 8,
                                                   horizontal: 20,
                                                 ),
@@ -7437,8 +7439,7 @@ class _RecordScreenState extends State<RecordScreen>
                                                     Expanded(
                                                       child: Text(
                                                         section.selectedPart ??
-                                                            l10n
-                                                                .selectTrainingPart,
+                                                            l10n.selectTrainingPart,
                                                         style: TextStyle(
                                                           fontFamily: kUiFont,
                                                           color: (section
@@ -7472,8 +7473,7 @@ class _RecordScreenState extends State<RecordScreen>
                                         child: _buildCircleCloseButton(
                                           onPressed: () =>
                                               _handleRemoveSection(secIndex),
-                                          tooltip:
-                                              l10n.removePartCardTooltip,
+                                          tooltip: l10n.removePartCardTooltip,
                                         ),
                                       ),
                                     ],
@@ -8261,7 +8261,10 @@ class _RecordScreenState extends State<RecordScreen>
             surfaceTintColor: Colors.transparent,
             backgroundColor: colorScheme.primary,
             foregroundColor: colorScheme.onPrimary,
-            titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle?.copyWith(color: colorScheme.onPrimary),
+            titleTextStyle: Theme.of(context)
+                .appBarTheme
+                .titleTextStyle
+                ?.copyWith(color: colorScheme.onPrimary),
             centerTitle: false,
             titleSpacing: 16,
             toolbarHeight: 56,
@@ -8754,13 +8757,13 @@ class MenuListPreview extends StatelessWidget {
       );
 
       Widget cell(
-          String label, {
-            FontWeight? fw,
-            int maxLines = 1,
-            Color? color,
-            bool rightDivider = false,
-            EdgeInsetsGeometry? padding,
-          }) {
+        String label, {
+        FontWeight? fw,
+        int maxLines = 1,
+        Color? color,
+        bool rightDivider = false,
+        EdgeInsetsGeometry? padding,
+      }) {
         final cs = Theme.of(context).colorScheme;
         final dividerSide = BorderSide(color: cs.outlineVariant, width: 1);
 
@@ -8769,8 +8772,8 @@ class MenuListPreview extends StatelessWidget {
               ? BoxDecoration(border: Border(right: dividerSide))
               : const BoxDecoration(),
           child: Padding(
-            padding:
-                padding ?? const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
+            padding: padding ??
+                const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
             child: Center(
               child: Text(
                 label,
@@ -8786,46 +8789,61 @@ class MenuListPreview extends StatelessWidget {
         );
       }
 
-
-
       Widget buildGrid() {
-        final Color headerDividerColor = Theme.of(context).colorScheme.outlineVariant;
+        final Color headerDividerColor =
+            Theme.of(context).colorScheme.outlineVariant;
         const double headerDividerHeight = 26.0;
 
         final headers = <Widget>[
           cell('SET', fw: FontWeight.w700),
-          Container(width: 1.0, height: headerDividerHeight, color: headerDividerColor),
+          Container(
+              width: 1.0,
+              height: headerDividerHeight,
+              color: headerDividerColor),
 
           cell(
             l10n.weightUnit,
             fw: FontWeight.w700,
-            padding:
-                const EdgeInsets.symmetric(vertical: 6.0, horizontal: 6.0),
+            padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 6.0),
           ),
-          Container(width: 1.0, height: headerDividerHeight, color: headerDividerColor),
+          Container(
+              width: 1.0,
+              height: headerDividerHeight,
+              color: headerDividerColor),
 
           cell(l10n.reps, fw: FontWeight.w700),
 
           if (showRirColumn) ...[
-            Container(width: 1.0, height: headerDividerHeight, color: headerDividerColor),
+            Container(
+                width: 1.0,
+                height: headerDividerHeight,
+                color: headerDividerColor),
             cell(l10n.rirLabel, fw: FontWeight.w700),
           ],
 
           if (showRmColumn) ...[
-            Container(width: 1.0, height: headerDividerHeight, color: headerDividerColor),
+            Container(
+                width: 1.0,
+                height: headerDividerHeight,
+                color: headerDividerColor),
             cell(l10n.rmLabel, fw: FontWeight.w700),
           ],
 
           if (showFailColumn) ...[
-            Container(width: 1.0, height: headerDividerHeight, color: headerDividerColor),
+            Container(
+                width: 1.0,
+                height: headerDividerHeight,
+                color: headerDividerColor),
             cell(l10n.failureLabel, fw: FontWeight.w700, maxLines: 2),
           ],
 
           // ✔ 列を使っている場合のみ、直前に縦線を入れる
-          Container(width: 1.0, height: headerDividerHeight, color: headerDividerColor),
+          Container(
+              width: 1.0,
+              height: headerDividerHeight,
+              color: headerDividerColor),
           cell('✔', fw: FontWeight.w700),
         ];
-
 
         final rows = <TableRow>[
           TableRow(children: headers.map((w) => w).toList()),
@@ -8859,13 +8877,12 @@ class MenuListPreview extends StatelessWidget {
                     const EdgeInsets.symmetric(vertical: 6.0, horizontal: 6.0)),
             cell(repsText.isEmpty ? '-' : repsText, color: valueColor),
             if (showRirColumn)
-            cell(rirText.isEmpty ? '-' : rirText, color: valueColor),
+              cell(rirText.isEmpty ? '-' : rirText, color: valueColor),
             if (showRmColumn)
               cell(rmValue != null ? rmValue.toStringAsFixed(1) : '-',
                   color: valueColor),
             if (showFailColumn)
-              cell(set.failureChecked ? l10n.yes : l10n.no,
-                  color: valueColor),
+              cell(set.failureChecked ? l10n.yes : l10n.no, color: valueColor),
             cell(set.checked ? '✔' : '',
                 color: set.checked ? cs.primary : valueColor),
           ];
@@ -8890,7 +8907,8 @@ class MenuListPreview extends StatelessWidget {
         columnWidthList.add(const FixedColumnWidth(44));
 
         final columnWidths = <int, TableColumnWidth>{
-          for (int i = 0; i < columnWidthList.length; i++) i: columnWidthList[i],
+          for (int i = 0; i < columnWidthList.length; i++)
+            i: columnWidthList[i],
         };
 
         return Padding(
@@ -9542,34 +9560,35 @@ class _CustomExerciseDialogState extends State<_CustomExerciseDialog> {
   }
 }
 
-  TextStyle _buildAerobicLabelStyle(ColorScheme colorScheme) {
-    return TextStyle(
-      fontFamily: kUiFont,
-      color: colorScheme.onSurface,
-      fontSize: 16.0,
-      fontWeight: FontWeight.w700,
-    );
-  }
+TextStyle _buildAerobicLabelStyle(ColorScheme colorScheme) {
+  return TextStyle(
+    fontFamily: kUiFont,
+    color: colorScheme.onSurface,
+    fontSize: 16.0,
+    fontWeight: FontWeight.w700,
+  );
+}
 
-  TextStyle _buildAerobicFieldStyle(ColorScheme colorScheme, bool isSuggestion) {
-    return TextStyle(
-      fontFamily: kUiFont,
-      color: isSuggestion
-          ? colorScheme.onSurfaceVariant.withOpacity(0.5)
-          : colorScheme.onSurface,
-      fontSize: 16.0,
-      fontWeight: FontWeight.w600,
-    );
-  }
+TextStyle _buildAerobicFieldStyle(ColorScheme colorScheme, bool isSuggestion) {
+  return TextStyle(
+    fontFamily: kUiFont,
+    color: isSuggestion
+        ? colorScheme.onSurfaceVariant.withOpacity(0.5)
+        : colorScheme.onSurface,
+    fontSize: 16.0,
+    fontWeight: FontWeight.w600,
+  );
+}
 
-  TextStyle _buildAerobicUnitStyle(ColorScheme colorScheme, {required bool emphasis}) {
-    return TextStyle(
-      fontFamily: kUiFont,
-      color: colorScheme.onSurfaceVariant,
-      fontSize: 12.0,
-      fontWeight: emphasis ? FontWeight.w700 : FontWeight.w600,
-    );
-  }
+TextStyle _buildAerobicUnitStyle(ColorScheme colorScheme,
+    {required bool emphasis}) {
+  return TextStyle(
+    fontFamily: kUiFont,
+    color: colorScheme.onSurfaceVariant,
+    fontSize: 12.0,
+    fontWeight: emphasis ? FontWeight.w700 : FontWeight.w600,
+  );
+}
 
 class _MenuListState extends State<MenuList> {
   // 既存
@@ -11047,13 +11066,13 @@ class _MenuListState extends State<MenuList> {
           ),
         ),
         SizedBox(width: kColGap),
-            bottomCell(
-              _wWeight,
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Focus(
+        bottomCell(
+          _wWeight,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Focus(
                   onFocusChange: notifyFocus,
                   child: ConstrainedBox(
                     constraints:
@@ -11090,26 +11109,26 @@ class _MenuListState extends State<MenuList> {
                     ),
                   ),
                 ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 2.0),
-                    child: Text(
-                      unitLabel,
-                      style: unitStyle.copyWith(fontSize: 13.0),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2.0),
+                child: Text(
+                  unitLabel,
+                  style: unitStyle.copyWith(fontSize: 13.0),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+        ),
         SizedBox(width: kColGap),
         bottomCell(
           _wReps,
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Focus(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Focus(
                   onFocusChange: notifyFocus,
                   child: ConstrainedBox(
                     constraints:
@@ -11146,10 +11165,10 @@ class _MenuListState extends State<MenuList> {
                     ),
                   ),
                 ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
+        ),
       ];
 
       if (showRirColumn && rirController != null) {
@@ -11306,15 +11325,15 @@ class _MenuListState extends State<MenuList> {
             child: IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
-              children: _withVerticalDividers(
-                rowChildren,
-                rowDividerColor,
-                gapWidth: kColGap,
-                lineWidth: 0.8,
+                children: _withVerticalDividers(
+                  rowChildren,
+                  rowDividerColor,
+                  gapWidth: kColGap,
+                  lineWidth: 0.8,
+                ),
               ),
             ),
           ),
-        ),
         ),
       );
     }
@@ -11488,15 +11507,19 @@ class _MenuListState extends State<MenuList> {
                             const double labelDividerSpacing = 4.0;
                             const double dividerContentSpacing = 7.0;
 
-                            final TextStyle labelStyle = _buildAerobicLabelStyle(colorScheme);
-                            final TextStyle baseFieldStyle = _buildAerobicFieldStyle(
+                            final TextStyle labelStyle =
+                                _buildAerobicLabelStyle(colorScheme);
+                            final TextStyle baseFieldStyle =
+                                _buildAerobicFieldStyle(
                               colorScheme,
                               widget.aerobicIsSuggestion,
                             );
                             final TextStyle unitEmphasisStyle =
-                                _buildAerobicUnitStyle(colorScheme, emphasis: true);
-                            final TextStyle unitStyle =
-                                _buildAerobicUnitStyle(colorScheme, emphasis: false);
+                                _buildAerobicUnitStyle(colorScheme,
+                                    emphasis: true);
+                            final TextStyle unitStyle = _buildAerobicUnitStyle(
+                                colorScheme,
+                                emphasis: false);
 
                             const InputDecoration baseInputDecoration =
                                 InputDecoration(
@@ -11518,7 +11541,8 @@ class _MenuListState extends State<MenuList> {
                                 {bool emphasis = false}) {
                               return Transform.translate(
                                 offset: const Offset(0, 6),
-                                child: Text(text, style: _unitStyle(emphasis: emphasis)),
+                                child: Text(text,
+                                    style: _unitStyle(emphasis: emphasis)),
                               );
                             }
 
@@ -11580,8 +11604,9 @@ class _MenuListState extends State<MenuList> {
                                         minHeight: kUnifiedFieldMinHeight),
                                     child: TextField(
                                       controller: controller,
-                                      keyboardType: TextInputType
-                                          .numberWithOptions(decimal: true),
+                                      keyboardType:
+                                          TextInputType.numberWithOptions(
+                                              decimal: true),
                                       inputFormatters: [
                                         FilteringTextInputFormatter.allow(
                                             RegExp(r'[0-9.]')),
