@@ -461,5 +461,22 @@
   "notiCopyWeekendTitle": "土日にコピー",
   "notiCopyWeekendMessage": "土日の時刻を揃えます。よろしいですか？",
   "notiConfirmYes": "はい",
-  "notiConfirmNo": "いいえ"
+  "notiConfirmNo": "いいえ",
+  "awardTitleFirst": "初トレーニング達成！",
+  "awardTitleDays": "継続 {dayCount} 日 達成！",
+  "@awardTitleDays": {
+    "placeholders": {
+      "dayCount": {}
+    }
+  },
+  "awardTitleMax": "新記録達成！",
+  "awardBadgeDay": "Day {dayCount}",
+  "@awardBadgeDay": {
+    "placeholders": {
+      "dayCount": {}
+    }
+  },
+  "awardSaved": "画像をアルバムに保存しました",
+  "awardShare": "シェア",
+  "awardClose": "閉じる"
 }

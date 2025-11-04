@@ -8,6 +8,7 @@ import 'package:hive/hive.dart';
 import 'dart:math';
 import 'dart:async';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../utils/awards_service.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../models/exercise_catalog.dart';
 import '../models/meal.dart';
@@ -315,6 +316,8 @@ class _RecordScreenState extends State<RecordScreen>
 
   // 日本語デフォルト名 → 現在Locale名のキャッシュ
   final Map<String, Map<String, String>> _localizedExerciseNameCache = {};
+  // 現在Locale名 → 日本語デフォルト名のキャッシュ
+  final Map<String, Map<String, String>> _exerciseNameToOriginalCache = {};
 
   final List<MealCardState> _mealCards = [];
   final List<List<_MealRowControllers>> _mealControllers = [];
@@ -3222,6 +3225,23 @@ class _RecordScreenState extends State<RecordScreen>
       didChangeStorage = true;
 
       widget.settingsBox.put('memo-$dateKey', {'body': memoText});
+
+      /* ▼保存後の授与トリガー判定（画像生成は次プロンプトで実装） */
+      /// 1) 通算“記録日数”を再計算（同日複数保存は1日／Asia/Tokyo）
+      ///    awards_service のヘルパで distinct days を算出 → メタ保存:
+      ///    - 初回(1)
+      ///    - 3/10/50/100
+      ///    - 以降は 200, 300, 400, ...（>=200 かつ 100の倍数）
+      ///    - 各カウントは hasAward(type, dayCount) で既授与を抑止
+      ///
+      /// 2) PR判定（new > prev + 0.1kg, 同日同種目は最高のみ, 初回は除外）
+      ///    bestLift を参照し、対象 exerciseId を抽出 →
+      ///    saveAwardMeta(type:'max', exerciseId, newKg, prevKg, diffKg) →
+      ///    markPrDay(selectedDate)（カレンダー王冠用の日付集合を更新）
+      unawaited(_evaluateAwardTriggers(
+        savedRecord: newRecord,
+        savedDate: widget.selectedDate,
+      ));
     } else {
       final had = widget.recordsBox.containsKey(dateKey);
       widget.recordsBox.delete(dateKey);
@@ -3272,6 +3292,316 @@ class _RecordScreenState extends State<RecordScreen>
 // ───────────────────────────────────────────────
 
     return didChangeStorage;
+  }
+
+  Future<void> _evaluateAwardTriggers({
+    required DailyRecord savedRecord,
+    required DateTime savedDate,
+  }) async {
+    final Box<dynamic> settingsBox = widget.settingsBox;
+    final DateTime normalizedSavedDate = _normalizeToTokyoDate(savedDate);
+    final String awardDateKey = _awardDateKey(normalizedSavedDate);
+    final String storageKey = 'awards-$awardDateKey';
+
+    final List<Map<String, dynamic>> awardsForDate =
+        _readAwardsForDate(storageKey);
+    bool awardsUpdated = false;
+
+    final int distinctDays = _distinctRecordDayCount(widget.recordsBox);
+    if (distinctDays > 0) {
+      if (distinctDays == 1 &&
+          !hasAward(
+            settingsBox: settingsBox,
+            type: 'first',
+            dayCount: 1,
+          ) &&
+          !_containsDayAward(awardsForDate, 'first', 1)) {
+        awardsForDate.add({
+          'type': 'first',
+          'dayCount': 1,
+        });
+        awardsUpdated = true;
+      }
+
+      if (_isMilestoneDay(distinctDays) &&
+          !hasAward(
+            settingsBox: settingsBox,
+            type: 'day',
+            dayCount: distinctDays,
+          ) &&
+          !_containsDayAward(awardsForDate, 'day', distinctDays)) {
+        awardsForDate.add({
+          'type': 'day',
+          'dayCount': distinctDays,
+        });
+        awardsUpdated = true;
+      }
+    }
+
+    final Map<String, double> newBestByExercise =
+        _extractBestLiftsForDate(savedRecord);
+    final Map<String, double> previousBestByExercise =
+        _extractHistoricalBestBefore(widget.recordsBox, normalizedSavedDate);
+
+    bool prTriggered = false;
+    final Map<String, int> existingMaxIndex = {};
+    for (int i = 0; i < awardsForDate.length; i++) {
+      final entry = awardsForDate[i];
+      if (entry['type'] == 'max') {
+        final dynamic rawId = entry['exerciseId'];
+        if (rawId is String && rawId.isNotEmpty) {
+          existingMaxIndex[rawId] = i;
+        }
+      }
+    }
+
+    const double kThreshold = 0.1;
+    const double kEpsilon = 1e-9;
+
+    newBestByExercise.forEach((exerciseId, newKg) {
+      final double? prevKg = previousBestByExercise[exerciseId];
+      if (prevKg == null || prevKg <= 0) {
+        return;
+      }
+      final double diff = newKg - prevKg;
+      if (diff <= kThreshold + kEpsilon) {
+        return;
+      }
+
+      final payload = <String, dynamic>{
+        'type': 'max',
+        'exerciseId': exerciseId,
+        'newKg': _roundToSingleDecimal(newKg),
+        'prevKg': _roundToSingleDecimal(prevKg),
+        'diffKg': _roundToSingleDecimal(diff),
+      };
+
+      final int? existingIndex = existingMaxIndex[exerciseId];
+      if (existingIndex != null) {
+        final existing = awardsForDate[existingIndex];
+        final double? existingNewKg =
+            (existing['newKg'] as num?)?.toDouble();
+        if (existingNewKg != null &&
+            (newKg - existingNewKg) <= kThreshold + kEpsilon) {
+          return;
+        }
+        awardsForDate[existingIndex] = {
+          ...existing,
+          ...payload,
+        };
+      } else {
+        awardsForDate.add(payload);
+      }
+      awardsUpdated = true;
+      prTriggered = true;
+    });
+
+    if (awardsUpdated) {
+      await settingsBox.put(storageKey, awardsForDate);
+    }
+
+    if (prTriggered) {
+      await markPrDay(settingsBox: settingsBox, date: savedDate);
+    }
+  }
+
+  List<Map<String, dynamic>> _readAwardsForDate(String storageKey) {
+    final dynamic raw = widget.settingsBox.get(storageKey);
+    if (raw is List) {
+      return raw
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+    if (raw is Map) {
+      return [Map<String, dynamic>.from(raw)];
+    }
+    return <Map<String, dynamic>>[];
+  }
+
+  bool _containsDayAward(
+    List<Map<String, dynamic>> awards,
+    String type,
+    int dayCount,
+  ) {
+    for (final entry in awards) {
+      if (entry['type'] != type) continue;
+      final dynamic rawCount = entry['dayCount'];
+      final int? stored = switch (rawCount) {
+        int v => v,
+        num v => v.toInt(),
+        String s => int.tryParse(s),
+        _ => null,
+      };
+      if (stored == dayCount) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _isMilestoneDay(int dayCount) {
+    if (dayCount == 3 ||
+        dayCount == 10 ||
+        dayCount == 50 ||
+        dayCount == 100) {
+      return true;
+    }
+    return dayCount >= 200 && dayCount % 100 == 0;
+  }
+
+  Map<String, double> _extractBestLiftsForDate(DailyRecord record) {
+    final Map<String, double> result = <String, double>{};
+    record.menus.forEach((originalPart, menus) {
+      for (final menu in menus) {
+        final double? bestKg = _maxWeightKgFromMenu(originalPart, menu);
+        if (bestKg == null) continue;
+        final String exerciseId =
+            _canonicalExerciseId(originalPart, menu.name);
+        final double? current = result[exerciseId];
+        if (current == null || bestKg > current) {
+          result[exerciseId] = bestKg;
+        }
+      }
+    });
+    return result;
+  }
+
+  Map<String, double> _extractHistoricalBestBefore(
+    Box<DailyRecord> recordsBox,
+    DateTime normalizedSavedDate,
+  ) {
+    final Map<String, double> result = <String, double>{};
+    for (final dynamic key in recordsBox.keys) {
+      DailyRecord? record;
+      try {
+        record = recordsBox.get(key);
+      } catch (_) {
+        record = null;
+      }
+      if (record == null || record.date == null) continue;
+      final DateTime normalized = _normalizeToTokyoDate(record.date!);
+      if (!normalized.isBefore(normalizedSavedDate)) {
+        continue;
+      }
+      record.menus.forEach((originalPart, menus) {
+        for (final menu in menus) {
+          final double? bestKg = _maxWeightKgFromMenu(originalPart, menu);
+          if (bestKg == null) continue;
+          final String exerciseId =
+              _canonicalExerciseId(originalPart, menu.name);
+          final double? current = result[exerciseId];
+          if (current == null || bestKg > current) {
+            result[exerciseId] = bestKg;
+          }
+        }
+      });
+    }
+    return result;
+  }
+
+  double? _maxWeightKgFromMenu(String originalPart, MenuData menu) {
+    if (menu.weights.isEmpty) return null;
+    double? best;
+    for (final raw in menu.weights) {
+      final double? parsed = _parseWeightToKg(raw);
+      if (parsed == null || parsed <= 0) {
+        continue;
+      }
+      if (best == null || parsed > best) {
+        best = parsed;
+      }
+    }
+    return best;
+  }
+
+  double? _parseWeightToKg(String raw) {
+    final String lower = raw.toLowerCase();
+    final bool containsLb = lower.contains('lb');
+    final bool containsKg = lower.contains('kg') || lower.contains('㎏');
+    final String sanitized = raw.replaceAll(',', '').trim();
+    if (sanitized.isEmpty) {
+      return null;
+    }
+    final match = RegExp(r'-?\d+(?:\.\d+)?').firstMatch(sanitized);
+    if (match == null) {
+      return null;
+    }
+    final double? value = double.tryParse(match.group(0)!);
+    if (value == null) {
+      return null;
+    }
+    final bool useKg = containsKg || (!containsLb && SettingsManager.currentUnit == 'kg');
+    return useKg ? value : value * 0.45359237;
+  }
+
+  int _distinctRecordDayCount(Box<DailyRecord> recordsBox) {
+    final Set<String> days = <String>{};
+    for (final dynamic key in recordsBox.keys) {
+      DateTime? date;
+      DailyRecord? record;
+      try {
+        record = recordsBox.get(key);
+      } catch (_) {
+        record = null;
+      }
+      date = record?.date;
+      if (date == null && key is String) {
+        date = DateTime.tryParse(key);
+      }
+      if (date == null) continue;
+      final DateTime normalized = _normalizeToTokyoDate(date);
+      days.add(_awardDateKey(normalized));
+    }
+    return days.length;
+  }
+
+  DateTime _normalizeToTokyoDate(DateTime date) {
+    final DateTime utc = date.toUtc();
+    final DateTime jst = utc.add(const Duration(hours: 9));
+    return DateTime(jst.year, jst.month, jst.day);
+  }
+
+  String _awardDateKey(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
+
+  String _canonicalExerciseId(String originalPart, String name) {
+    final String originalName =
+        _resolveOriginalExerciseName(originalPart, name);
+    return '$originalPart::$originalName';
+  }
+
+  String _resolveOriginalExerciseName(String originalPart, String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return trimmed;
+    }
+    final l10n = AppLocalizations.of(context)!;
+    final String cacheKey = '${l10n.localeName}::$originalPart';
+    Map<String, String>? reverse = _exerciseNameToOriginalCache[cacheKey];
+    if (reverse == null) {
+      final defaultsJa = ExerciseCatalog.defaultsFor(originalPart);
+      final localizedPart = _translatePartToLocale(context, originalPart);
+      final defaultsLocalized =
+          ExerciseCatalog.defaultsFor(localizedPart, l10n: l10n);
+      final int len = min(defaultsJa.length, defaultsLocalized.length);
+      reverse = <String, String>{};
+      for (int i = 0; i < len; i++) {
+        final String ja = defaultsJa[i].trim();
+        final String loc = defaultsLocalized[i].trim();
+        if (ja.isNotEmpty) {
+          reverse[ja] = ja;
+          reverse[ja.toLowerCase()] = ja;
+        }
+        if (loc.isNotEmpty) {
+          reverse[loc] = ja;
+          reverse[loc.toLowerCase()] = ja;
+        }
+      }
+      _exerciseNameToOriginalCache[cacheKey] = reverse;
+    }
+    return reverse![trimmed] ??
+        reverse[trimmed.toLowerCase()] ??
+        trimmed;
   }
 
   bool _trimTrailingEmptySetsForAllMenus(int baseline) {

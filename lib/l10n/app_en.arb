@@ -463,6 +463,23 @@
   "notiCopyWeekendTitle": "Copy to weekend",
   "notiCopyWeekendMessage": "This will set the same time for Sat & Sun. Continue?",
   "notiConfirmYes": "Yes",
-  "notiConfirmNo": "No"
+  "notiConfirmNo": "No",
+  "awardTitleFirst": "First training achieved!",
+  "awardTitleDays": "Streak of {dayCount} days completed!",
+  "@awardTitleDays": {
+    "placeholders": {
+      "dayCount": {}
+    }
+  },
+  "awardTitleMax": "New record reached!",
+  "awardBadgeDay": "Day {dayCount}",
+  "@awardBadgeDay": {
+    "placeholders": {
+      "dayCount": {}
+    }
+  },
+  "awardSaved": "Saved to your album",
+  "awardShare": "Share",
+  "awardClose": "Close"
 
 }
