@@ -53,6 +53,7 @@ class AlbumScreen extends StatefulWidget {
 class _AlbumScreenState extends State<AlbumScreen> {
   final Map<String, List<File>> _byDate = {}; // dateKey -> files(新→旧)
   bool _loading = true;
+  bool _showAwardsOnly = false;
 
   final ImagePicker _imagePicker = ImagePicker();
   bool _captureInProgress = false;
@@ -97,8 +98,10 @@ class _AlbumScreenState extends State<AlbumScreen> {
           final name = f.path.toLowerCase();
           return name.endsWith('.jpg') ||
               name.endsWith('.jpeg') ||
-              name.endsWith('.png');
+              name.endsWith('.png') ||
+              name.endsWith('.heic');
         }).toList();
+        /* AWARD画像はファイル名 'award-' プレフィクスで識別する想定（フィルタUIで使用） */
 
         files.sort(
           (a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()),
@@ -145,9 +148,26 @@ class _AlbumScreenState extends State<AlbumScreen> {
     );
   }
 
-  List<_AlbumPhoto> _flattenPhotos() {
+  List<MapEntry<String, List<File>>> _filteredEntries() {
+    final entries = _byDate.entries.toList()
+      ..sort((a, b) => b.key.compareTo(a.key));
+    final result = <MapEntry<String, List<File>>>[];
+    for (final entry in entries) {
+      final files = _showAwardsOnly
+          ? entry.value.where((file) => _isAwardFile(file.path)).toList()
+          : entry.value;
+      if (files.isEmpty) continue;
+      result.add(MapEntry(entry.key, files));
+    }
+    return result;
+  }
+
+  List<_AlbumPhoto> _flattenPhotos([
+    List<MapEntry<String, List<File>>>? entries,
+  ]) {
+    final source = entries ?? _filteredEntries();
     final result = <_AlbumPhoto>[];
-    for (final entry in _byDate.entries) {
+    for (final entry in source) {
       final dateKey = entry.key;
       for (final file in entry.value) {
         result.add(_AlbumPhoto(file: file, dateKey: dateKey));
@@ -156,15 +176,29 @@ class _AlbumScreenState extends State<AlbumScreen> {
     return result;
   }
 
-  int _globalIndexFor(String dateKey, int indexWithinDate) {
-    int offset = 0;
-    for (final entry in _byDate.entries) {
-      if (entry.key == dateKey) {
-        return offset + indexWithinDate;
-      }
-      offset += entry.value.length;
-    }
-    return indexWithinDate;
+  bool _isAwardFile(String path) => path.toLowerCase().contains('/award-');
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onSelected,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          color: selected ? cs.onPrimary : cs.onSurface,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      selected: selected,
+      onSelected: (_) => onSelected(),
+      selectedColor: cs.primary,
+      backgroundColor: cs.surfaceVariant.withOpacity(0.45),
+      pressElevation: 0,
+      showCheckmark: false,
+    );
   }
 
   void _confirmDelete(File file, String dateKey, int index) {
@@ -476,183 +510,247 @@ class _AlbumScreenState extends State<AlbumScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                if (_inSelection)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            l10n.selectedCount(_selectedPaths.length),
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
+                  if (_inSelection)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l10n.selectedCount(_selectedPaths.length),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                            ),
                           ),
-                        ),
-                        TextButton(
-                          onPressed: _clearSelection,
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.white,
+                          TextButton(
+                            onPressed: _clearSelection,
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.white,
+                            ),
+                            child: Text(l10n.clear),
                           ),
-                          child: Text(l10n.clear),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                const AdBanner(screenName: 'album'),
+                  const AdBanner(screenName: 'album'),
                   const SizedBox(height: _kGap),
+                  if (!_loading)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                      child: Wrap(
+                        spacing: 8,
+                        children: [
+                          _buildFilterChip(
+                            label: l10n.albumFilterAll,
+                            selected: !_showAwardsOnly,
+                            onSelected: () {
+                              if (_showAwardsOnly) {
+                                setState(() => _showAwardsOnly = false);
+                              }
+                            },
+                          ),
+                          _buildFilterChip(
+                            label: l10n.albumFilterAwards,
+                            selected: _showAwardsOnly,
+                            onSelected: () {
+                              if (!_showAwardsOnly) {
+                                setState(() => _showAwardsOnly = true);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                   Expanded(
                     child: _loading
                         ? const Center(child: CircularProgressIndicator())
-                        : (_byDate.isEmpty
-                            ? _centerEmptyMessage(context, l10n)
-                            : ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(
-                                    12, 8, 12, 12 + 72),
-                                itemCount: _byDate.length,
-                                itemBuilder: (ctx, index) {
-                                  // builder内で降順に並べ替えて参照
-                                  final entries = _byDate.entries.toList()
-                                    ..sort((a, b) => b.key.compareTo(a.key));
+                        : () {
+                            final filteredEntries = _filteredEntries();
+                            if (filteredEntries.isEmpty) {
+                              return _centerEmptyMessage(context, l10n);
+                            }
+                            final flattenedPhotos =
+                                _flattenPhotos(filteredEntries);
+                            final offsetMap = <String, int>{};
+                            var running = 0;
+                            for (final entry in filteredEntries) {
+                              offsetMap[entry.key] = running;
+                              running += entry.value.length;
+                            }
+                            return ListView.builder(
+                              padding:
+                                  const EdgeInsets.fromLTRB(12, 8, 12, 12 + 72),
+                              itemCount: filteredEntries.length,
+                              itemBuilder: (ctx, index) {
+                                final entry = filteredEntries[index];
+                                final dateKey = entry.key; // "yyyy-MM-dd"
+                                final files = entry.value;
 
-                                  final dateKey =
-                                      entries[index].key; // "yyyy-MM-dd"
-                                  final files = entries[index].value;
+                                final dt =
+                                    DateTime.tryParse('$dateKey 00:00:00');
+                                final label = dt != null
+                                    ? DateFormat('yyyy/MM/dd').format(dt)
+                                    : dateKey;
 
-                                  final dt =
-                                      DateTime.tryParse('$dateKey 00:00:00');
-                                  final label = dt != null
-                                      ? DateFormat('yyyy/MM/dd').format(dt)
-                                      : dateKey;
-
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      // 見出し（日付）
-                                      Container(
-                                        alignment: Alignment.centerLeft,
-                                        padding: const EdgeInsets.fromLTRB(
-                                            2, 8, 2, 6),
-                                        child: Text(
-                                          label,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // 見出し（日付）
+                                    Container(
+                                      alignment: Alignment.centerLeft,
+                                      padding:
+                                          const EdgeInsets.fromLTRB(2, 8, 2, 6),
+                                      child: Text(
+                                        label,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
                                         ),
                                       ),
-                                      // サムネイルグリッド
-                                      GridView.builder(
-                                        shrinkWrap: true,
-                                        physics:
-                                            const NeverScrollableScrollPhysics(),
-                                        gridDelegate:
-                                            const SliverGridDelegateWithFixedCrossAxisCount(
-                                          crossAxisCount: 3,
-                                          mainAxisSpacing: 6,
-                                          crossAxisSpacing: 6,
-                                        ),
-                                        itemCount: files.length,
-                                        itemBuilder: (ctx2, i) {
-                                          final f = files[i];
-                                          final selected =
-                                              _selectedPaths.contains(f.path);
-                                          return GestureDetector(
-                                            onTap: () {
-                                              if (_inSelection) {
-                                                _toggleSelect(f);
-                                              } else {
-                                                final photos = _flattenPhotos();
-                                                final globalIndex =
-                                                    _globalIndexFor(dateKey, i);
-                                                _openViewer(photos, globalIndex);
-                                              }
-                                            },
-                                            onLongPress: () {
-                                              if (_inSelection) {
-                                                _toggleSelect(f);
-                                              } else {
-                                                setState(() {
-                                                  _selectedPaths.add(f.path);
-                                                });
-                                              }
-                                            },
-                                            child: Stack(
-                                              children: [
-                                                // サムネイル
-                                                ClipRRect(
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                  child: Image.file(
-                                                    f,
-                                                    fit: BoxFit.cover,
-                                                    width: double.infinity,
-                                                    height: double.infinity,
+                                    ),
+                                    // サムネイルグリッド
+                                    GridView.builder(
+                                      shrinkWrap: true,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      gridDelegate:
+                                          const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 3,
+                                        mainAxisSpacing: 6,
+                                        crossAxisSpacing: 6,
+                                      ),
+                                      itemCount: files.length,
+                                      itemBuilder: (ctx2, i) {
+                                        final file = files[i];
+                                        final selected =
+                                            _selectedPaths.contains(file.path);
+                                        final isAward = _isAwardFile(file.path);
+                                        final ribbonTop =
+                                            _inSelection ? 34.0 : 6.0;
+                                        return GestureDetector(
+                                          onTap: () {
+                                            if (_inSelection) {
+                                              _toggleSelect(file);
+                                            } else {
+                                              final globalIndex =
+                                                  (offsetMap[dateKey] ?? 0) + i;
+                                              _openViewer(
+                                                flattenedPhotos,
+                                                globalIndex,
+                                              );
+                                            }
+                                          },
+                                          onLongPress: () {
+                                            if (_inSelection) {
+                                              _toggleSelect(file);
+                                            } else {
+                                              setState(() {
+                                                _selectedPaths.add(file.path);
+                                              });
+                                            }
+                                          },
+                                          child: Stack(
+                                            children: [
+                                              // サムネイル
+                                              ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                child: Image.file(
+                                                  file,
+                                                  fit: BoxFit.cover,
+                                                  width: double.infinity,
+                                                  height: double.infinity,
+                                                ),
+                                              ),
+                                              // 選択中オーバーレイ
+                                              if (selected)
+                                                Positioned.fill(
+                                                  child: Container(
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.black26,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              10),
+                                                      border: Border.all(
+                                                        color: Colors.white70,
+                                                        width: 2,
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
-                                                // 選択中オーバーレイ
-                                                if (selected)
-                                                  Positioned.fill(
-                                                    child: Container(
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.black26,
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(10),
-                                                        border: Border.all(
-                                                          color: Colors.white70,
-                                                          width: 2,
-                                                        ),
+                                              if (isAward)
+                                                Positioned(
+                                                  right: 6,
+                                                  top: ribbonTop,
+                                                  child: Container(
+                                                    padding: const EdgeInsets
+                                                        .fromLTRB(6, 2, 6, 2),
+                                                    decoration: BoxDecoration(
+                                                      color:
+                                                          Colors.amber.shade700,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              6),
+                                                    ),
+                                                    child: Text(
+                                                      l10n.albumAwardRibbon,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        fontSize: 10,
                                                       ),
                                                     ),
                                                   ),
-                                                // チェックマーク
-                                                if (_inSelection)
-                                                  Positioned(
-                                                    right: 8,
-                                                    top: 8,
-                                                    child: Container(
-                                                      width: 22,
-                                                      height: 22,
-                                                      decoration: BoxDecoration(
-                                                        shape: BoxShape.circle,
-                                                        color: selected
-                                                            ? Colors
-                                                                .lightGreenAccent
-                                                            : Colors.white24,
-                                                        border: Border.all(
-                                                          color: Colors.white70,
-                                                          width: 1,
-                                                        ),
-                                                      ),
-                                                      child: Icon(
-                                                        selected
-                                                            ? Icons.check
-                                                            : Icons
-                                                                .circle_outlined,
-                                                        size: 16,
-                                                        color: selected
-                                                            ? Colors.black87
-                                                            : Colors.white70,
+                                                ),
+                                              // チェックマーク
+                                              if (_inSelection)
+                                                Positioned(
+                                                  right: 8,
+                                                  top: 8,
+                                                  child: Container(
+                                                    width: 22,
+                                                    height: 22,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: selected
+                                                          ? Colors
+                                                              .lightGreenAccent
+                                                          : Colors.white24,
+                                                      border: Border.all(
+                                                        color: Colors.white70,
+                                                        width: 1,
                                                       ),
                                                     ),
+                                                    child: Icon(
+                                                      selected
+                                                          ? Icons.check
+                                                          : Icons
+                                                              .circle_outlined,
+                                                      size: 16,
+                                                      color: selected
+                                                          ? Colors.black87
+                                                          : Colors.white70,
+                                                    ),
                                                   ),
-                                              ],
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                      const SizedBox(height: 10),
-                                    ],
-                                  );
-                                },
-                              )),
+                                                ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(height: 10),
+                                  ],
+                                );
+                              },
+                            );
+                          }(),
                   )
                 ],
               ),

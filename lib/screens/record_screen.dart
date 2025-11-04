@@ -4808,6 +4808,27 @@ class _RecordScreenState extends State<RecordScreen>
     }
   }
 
+  // 進捗スナップ（写真/アワード）のローカル保存を取り込む共通ハンドラ
+  Future<void> _registerProgressSnap(
+    String imagePath, {
+    bool scrollIntoView = false,
+  }) async {
+    if (imagePath.isEmpty) return;
+    AlbumSync.instance.notifyPhotoAdded(imagePath);
+
+    final String parentDir = p.basename(p.dirname(imagePath));
+    final String currentKey = _getDateKey(widget.selectedDate);
+    if (parentDir != currentKey) {
+      return;
+    }
+
+    await _loadMediaForSelectedDate();
+
+    if (scrollIntoView && mounted) {
+      await _scrollIntoViewKey(_kPhotoCardsKey, alignment: 0.98);
+    }
+  }
+
   // 設定(Box)から身長(cm)を読む
   void _loadHeightFromSettings() {
     final hc = widget.settingsBox.get('personal.heightCm');
@@ -4899,10 +4920,7 @@ class _RecordScreenState extends State<RecordScreen>
     final savePath = p.join(dir.path, fileName);
 
     await shot.saveTo(savePath);
-    AlbumSync.instance.notifyPhotoAdded(savePath);
-
-    await _loadMediaForSelectedDate();
-    await _scrollIntoViewKey(_kPhotoCardsKey, alignment: 0.98);
+    await _registerProgressSnap(savePath, scrollIntoView: true);
   }
 
   Future<void> _startCaptureLoop() async {

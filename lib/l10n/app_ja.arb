@@ -9,6 +9,18 @@
   "settingsScreenTitle": "設定",
   "graphScreenTitle": "グラフ",
   "albumTitle": "アルバム",
+  "albumFilterAll": "すべて",
+  "@albumFilterAll": {
+    "description": "アルバム一覧のフィルタチップ（全件）"
+  },
+  "albumFilterAwards": "アワード",
+  "@albumFilterAwards": {
+    "description": "アルバム一覧のフィルタチップ（アワード画像のみ）"
+  },
+  "albumAwardRibbon": "AWARD",
+  "@albumAwardRibbon": {
+    "description": "アワード画像サムネイルに表示するリボンラベル"
+  },
   "start": "開始",
   "pause": "一時停止",
   "reset": "リセット",

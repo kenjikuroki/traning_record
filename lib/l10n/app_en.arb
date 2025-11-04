@@ -9,6 +9,18 @@
   "settingsScreenTitle": "Settings",
   "graphScreenTitle": "Graph",
   "albumTitle": "Album",
+  "albumFilterAll": "All",
+  "@albumFilterAll": {
+    "description": "Filter chip label to show every photo in the album."
+  },
+  "albumFilterAwards": "Awards",
+  "@albumFilterAwards": {
+    "description": "Filter chip label to show only award images."
+  },
+  "albumAwardRibbon": "AWARD",
+  "@albumAwardRibbon": {
+    "description": "Small ribbon label shown on award images in the album."
+  },
   "start": "Start",
   "pause": "Pause",
   "reset": "Reset",
