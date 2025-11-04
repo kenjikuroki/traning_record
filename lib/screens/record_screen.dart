@@ -77,12 +77,12 @@ extension _RecordScreenL10nExt on AppLocalizations {
       return '完了';
     }
     if (localeName.startsWith('es')) {
-      return 'Completado';
+      return 'Hecho';
     }
     if (localeName.startsWith('id')) {
       return 'Selesai';
     }
-    return 'Complete';
+    return 'Done';
   }
 
   String get failureLabel {
@@ -10925,7 +10925,12 @@ class _MenuListState extends State<MenuList> {
         SizedBox(
           width: _wSet,
           child: Center(
-            child: FittedBox(child: Text(l10n.setLabel, style: headerStyle)),
+            child: FittedBox(
+                child: Text(
+              l10n.setLabel,
+              style: headerStyle,
+              textAlign: TextAlign.center,
+            )),
           ),
         ),
         const SizedBox(width: kColGap),
