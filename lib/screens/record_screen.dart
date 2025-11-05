@@ -8,7 +8,7 @@ import 'package:hive/hive.dart';
 import 'dart:math';
 import 'dart:async';
 import 'package:intl/intl.dart' hide TextDirection;
-import '../utils/awards_service.dart';
+import '../utils/awards_service.dart' as AwardsService;
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../models/exercise_catalog.dart';
 import '../models/meal.dart';
@@ -3266,19 +3266,18 @@ class _RecordScreenState extends State<RecordScreen>
       final totalDays = _calcDistinctTrainingDays();
       if (_isDayMilestone(totalDays)) {
         final type = (totalDays == 1) ? 'first' : 'day';
-        if (!hasAward(
+        if (!AwardsService.hasAward(
           settingsBox: widget.settingsBox,
           type: type,
           dayCount: (totalDays == 1) ? null : totalDays,
         )) {
-          final metadata = <String, dynamic>{
-            'type': type,
-            'dayCount': (totalDays == 1) ? null : totalDays,
-          };
-          unawaited(saveAwardMeta(
+          unawaited(AwardsService.saveAwardMeta(
             settingsBox: widget.settingsBox,
             date: DateTime.now(),
-            metadata: metadata,
+            metadata: <String, dynamic>{
+              'type': type,
+              if (totalDays != 1) 'dayCount': totalDays,
+            },
           ));
         }
       }
@@ -3356,7 +3355,7 @@ class _RecordScreenState extends State<RecordScreen>
     final int distinctDays = _distinctRecordDayCount(widget.recordsBox);
     if (distinctDays > 0) {
       if (distinctDays == 1 &&
-          !hasAward(
+          !AwardsService.hasAward(
             settingsBox: settingsBox,
             type: 'first',
             dayCount: 1,
@@ -3370,7 +3369,7 @@ class _RecordScreenState extends State<RecordScreen>
       }
 
       if (_isMilestoneDay(distinctDays) &&
-          !hasAward(
+          !AwardsService.hasAward(
             settingsBox: settingsBox,
             type: 'day',
             dayCount: distinctDays,
@@ -3461,7 +3460,7 @@ class _RecordScreenState extends State<RecordScreen>
     }
 
     if (prTriggered) {
-      await markPrDay(settingsBox: settingsBox, date: savedDate);
+      await AwardsService.markPrDay(settingsBox: settingsBox, date: savedDate);
     }
 
     // ▼ 簡易プレビュー（暫定）：autoShow が ON ならダイアログを出す
