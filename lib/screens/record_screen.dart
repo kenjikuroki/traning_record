@@ -3473,24 +3473,26 @@ class _RecordScreenState extends State<RecordScreen>
     final bool showPr = prTriggered &&
         ((settingsBox.get('awards.autoShow.pr') ?? true) == true);
 
-    if (showFirst) {
-      _enqueueAwardPreview(
-        type: 'first',
-        dayCount: null,
-        date: normalizedSavedDate,
-      );
-    } else if (showDay) {
-      _enqueueAwardPreview(
-        type: 'day',
-        dayCount: distinctDays,
-        date: normalizedSavedDate,
-      );
-    } else if (showPr) {
-      _enqueueAwardPreview(
-        type: 'pr',
-        dayCount: null,
-        date: normalizedSavedDate,
-      );
+    if (!_isPopping && _isTopRoute()) {
+      if (showFirst) {
+        _enqueueAwardPreview(
+          type: 'first',
+          dayCount: null,
+          date: normalizedSavedDate,
+        );
+      } else if (showDay) {
+        _enqueueAwardPreview(
+          type: 'day',
+          dayCount: distinctDays,
+          date: normalizedSavedDate,
+        );
+      } else if (showPr) {
+        _enqueueAwardPreview(
+          type: 'pr',
+          dayCount: null,
+          date: normalizedSavedDate,
+        );
+      }
     }
   }
 
@@ -8421,15 +8423,23 @@ class _RecordScreenState extends State<RecordScreen>
           : const SizedBox(key: ValueKey('empty')),
     );
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: overlayStyle,
-      child: PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, result) async {
-          if (didPop) return;
-          await _handleExit();
-        },
-        child: Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        _isPopping = true;
+        try {
+          _awardPreviewQueue?.clear();
+        } catch (_) {}
+        return true;
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: overlayStyle,
+        child: PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
+            await _handleExit();
+          },
+          child: Scaffold(
           extendBody: true,
           resizeToAvoidBottomInset: false,
           backgroundColor: SettingsManager.backgroundAssetNotifier.value.isEmpty
@@ -8493,7 +8503,8 @@ class _RecordScreenState extends State<RecordScreen>
           floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         ),
       ),
-    );
+    ),
+  );
   }
 
   Future<void> _scrollIntoComfortZoneAfterKeyboard(
