@@ -3411,6 +3411,30 @@ class _RecordScreenState extends State<RecordScreen>
     if (prTriggered) {
       await markPrDay(settingsBox: settingsBox, date: savedDate);
     }
+
+    // ▼ 簡易プレビュー（暫定）：autoShow が ON ならダイアログを出す
+    final l10n = AppLocalizations.of(context)!;
+    final bool showFirst = (distinctDays == 1) &&
+        ((settingsBox.get('awards.autoShow.first') ?? true) == true);
+    final bool showDay = (distinctDays != 1) &&
+        _isMilestoneDay(distinctDays) &&
+        ((settingsBox.get('awards.autoShow.day') ?? true) == true);
+    final bool showPr = prTriggered &&
+        ((settingsBox.get('awards.autoShow.pr') ?? true) == true);
+
+    if (showFirst || showDay || showPr) {
+      final String subtitle =
+          DateFormat.yMMMd(l10n.localeName).format(normalizedSavedDate);
+      String title;
+      if (showFirst) {
+        title = l10n.awardTitleFirst;
+      } else if (showDay) {
+        title = l10n.awardTitleDays(distinctDays);
+      } else {
+        title = l10n.awardTitleMax;
+      }
+      await _showAwardPreviewSimple(title: title, subtitle: subtitle);
+    }
   }
 
   List<Map<String, dynamic>> _readAwardsForDate(String storageKey) {
@@ -3453,6 +3477,33 @@ class _RecordScreenState extends State<RecordScreen>
       return true;
     }
     return dayCount >= 200 && dayCount % 100 == 0;
+  }
+
+  // ▼ 暫定の簡易プレビュー（本番の賞状Widget/PNG生成に差し替え予定）
+  Future<void> _showAwardPreviewSimple({
+    required String title,
+    required String subtitle,
+  }) async {
+    if (!mounted) return;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx)!;
+        return AlertDialog(
+          backgroundColor: cs.surfaceContainerHighest,
+          title: Text(title, style: theme.textTheme.titleLarge),
+          content: Text(subtitle, style: theme.textTheme.bodyMedium),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(l10n.awardClose),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Map<String, double> _extractBestLiftsForDate(DailyRecord record) {
