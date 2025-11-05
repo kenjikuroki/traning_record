@@ -201,6 +201,36 @@ class _RecordScreenState extends State<RecordScreen>
   // ▼ リワード表示の起動キュー（post-frameで取り出して表示）
   List<Map<String, dynamic>>? _awardPreviewQueue;
 
+  int _calcDistinctTrainingDays() {
+    final df = DateFormat('yyyy-MM-dd');
+    final set = <String>{};
+    for (final k in widget.recordsBox.keys) {
+      if (k is DateTime) {
+        set.add(df.format(k));
+      } else {
+        final s = k.toString();
+        if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(s)) {
+          set.add(s);
+        } else {
+          try {
+            set.add(df.format(DateTime.parse(s)));
+          } catch (_) {}
+        }
+      }
+    }
+    return set.length;
+  }
+
+  bool _isDayMilestone(int days) {
+    if (days == 1) return true; // 初回
+    if (days == 3) return true; // 3回
+    if (days == 10) return true;
+    if (days == 50) return true;
+    if (days == 100) return true;
+    if (days >= 200 && days % 100 == 0) return true; // 200,300,...
+    return false;
+  }
+
   // ▼ いまこの画面が最前面か（遷移中や背面なら false）
   bool _isTopRoute() {
     final route = ModalRoute.of(context);
@@ -3232,18 +3262,28 @@ class _RecordScreenState extends State<RecordScreen>
 
       widget.settingsBox.put('memo-$dateKey', {'body': memoText});
 
-      /* ▼保存後の授与トリガー判定（画像生成は次プロンプトで実装） */
-      /// 1) 通算“記録日数”を再計算（同日複数保存は1日／Asia/Tokyo）
-      ///    awards_service のヘルパで distinct days を算出 → メタ保存:
-      ///    - 初回(1)
-      ///    - 3/10/50/100
-      ///    - 以降は 200, 300, 400, ...（>=200 かつ 100の倍数）
-      ///    - 各カウントは hasAward(type, dayCount) で既授与を抑止
-      ///
-      /// 2) PR判定（new > prev + 0.1kg, 同日同種目は最高のみ, 初回は除外）
-      ///    bestLift を参照し、対象 exerciseId を抽出 →
-      ///    saveAwardMeta(type:'max', exerciseId, newKg, prevKg, diffKg) →
-      ///    markPrDay(selectedDate)（カレンダー王冠用の日付集合を更新）
+      /* ▼授与トリガー判定（メタのみ／表示は次の処理） */
+      final totalDays = _calcDistinctTrainingDays();
+      if (_isDayMilestone(totalDays)) {
+        final type = (totalDays == 1) ? 'first' : 'day';
+        if (!hasAward(
+          settingsBox: widget.settingsBox,
+          type: type,
+          dayCount: (totalDays == 1) ? null : totalDays,
+        )) {
+          final metadata = <String, dynamic>{
+            'type': type,
+            'dayCount': (totalDays == 1) ? null : totalDays,
+          };
+          unawaited(saveAwardMeta(
+            settingsBox: widget.settingsBox,
+            date: DateTime.now(),
+            metadata: metadata,
+          ));
+        }
+      }
+
+      /* ▼PR（MAX）側は既存の new>prev+0.1kg でメタ保存＆markPrDay(...) を継続 */
       unawaited(_evaluateAwardTriggers(
         savedRecord: newRecord,
         savedDate: widget.selectedDate,
