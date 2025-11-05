@@ -72,6 +72,45 @@ extension _RecordScreenL10nExt on AppLocalizations {
 
   String get rirLabel => 'RIR';
 
+  String awardLineToday(String weight, String unit) {
+    if (localeName.startsWith('ja')) {
+      return '今日のベスト: $weight$unit';
+    }
+    if (localeName.startsWith('es')) {
+      return 'Mejor de hoy: $weight $unit';
+    }
+    if (localeName.startsWith('id')) {
+      return 'Terbaik hari ini: $weight $unit';
+    }
+    return "Today's best: $weight $unit";
+  }
+
+  String awardLinePrev(String prev, String unit, String diff, String diffUnit) {
+    if (localeName.startsWith('ja')) {
+      return '前回: $prev$unit (差分 $diff$diffUnit)';
+    }
+    if (localeName.startsWith('es')) {
+      return 'Anterior: $prev $unit (dif. $diff $diffUnit)';
+    }
+    if (localeName.startsWith('id')) {
+      return 'Sebelumnya: $prev $unit (selisih $diff $diffUnit)';
+    }
+    return 'Previous: $prev $unit (diff $diff $diffUnit)';
+  }
+
+  String get awardPraiseShort {
+    if (localeName.startsWith('ja')) {
+      return 'お疲れさま！';
+    }
+    if (localeName.startsWith('es')) {
+      return 'Buen trabajo!';
+    }
+    if (localeName.startsWith('id')) {
+      return 'Kerja bagus!';
+    }
+    return 'Great work!';
+  }
+
   String get completionLabel {
     if (localeName.startsWith('ja')) {
       return '完了';
@@ -3487,10 +3526,24 @@ class _RecordScreenState extends State<RecordScreen>
           date: normalizedSavedDate,
         );
       } else if (showPr) {
+        Map<String, dynamic>? prEntry;
+        if (prExerciseIds.isNotEmpty) {
+          for (final entry in awardsForDate.reversed) {
+            if (entry['type'] != 'max') continue;
+            final dynamic rawId = entry['exerciseId'];
+            if (rawId is! String) continue;
+            if (!prExerciseIds.contains(rawId)) continue;
+            prEntry = entry;
+            break;
+          }
+        }
         _enqueueAwardPreview(
           type: 'pr',
           dayCount: null,
           date: normalizedSavedDate,
+          exerciseId: prEntry?['exerciseId'] as String?,
+          newKg: (prEntry?['newKg'] as num?)?.toDouble(),
+          prevKg: (prEntry?['prevKg'] as num?)?.toDouble(),
         );
       }
     }
@@ -3569,6 +3622,9 @@ class _RecordScreenState extends State<RecordScreen>
     required String type,
     int? dayCount,
     required DateTime date,
+    String? exerciseId,
+    double? newKg,
+    double? prevKg,
   }) {
     if (!mounted || _isPopping || !_isTopRoute()) return;
     setState(() {
@@ -3577,6 +3633,9 @@ class _RecordScreenState extends State<RecordScreen>
         'type': type,
         'dayCount': dayCount,
         'date': date,
+        if (exerciseId != null) 'exerciseId': exerciseId,
+        if (newKg != null) 'newKg': newKg,
+        if (prevKg != null) 'prevKg': prevKg,
       });
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -3616,7 +3675,25 @@ class _RecordScreenState extends State<RecordScreen>
         title = l10n.awardTitleMax;
     }
 
-    final subtitle = DateFormat.yMMMd(l10n.localeName).format(date);
+    String subtitle;
+    if (type == 'pr') {
+      final String? exerciseId = entry['exerciseId'] as String?;
+      final double? newKg = (entry['newKg'] as num?)?.toDouble();
+      final double? prevKg = (entry['prevKg'] as num?)?.toDouble();
+      if (exerciseId != null && newKg != null && prevKg != null) {
+        subtitle = _buildPrAwardBody(
+          exerciseId: exerciseId,
+          newKg: newKg,
+          prevKg: prevKg,
+          date: date,
+        );
+      } else {
+        subtitle = DateFormat.yMMMd(l10n.localeName).format(date);
+      }
+    } else {
+      subtitle = DateFormat.yMMMd(l10n.localeName).format(date);
+    }
+
     await _showAwardPreviewSimple(title: title, subtitle: subtitle);
 
     if (!mounted || _isPopping || !_isTopRoute()) {
@@ -3628,6 +3705,40 @@ class _RecordScreenState extends State<RecordScreen>
         unawaited(_tryShowAwardPreviewModal());
       });
     }
+  }
+
+  String _buildPrAwardBody({
+    required String exerciseId,
+    required double newKg,
+    required double prevKg,
+    required DateTime date,
+  }) {
+    final l10n = AppLocalizations.of(context)!;
+    final bool useKg = SettingsManager.currentUnit == 'kg';
+    final double factor = useKg ? 1.0 : _kPoundsPerKg;
+    final double newVal = newKg * factor;
+    final double prevVal = prevKg * factor;
+    final double diffVal = newVal - prevVal;
+
+    final String resolvedName = _displayExerciseNameFromAwardId(exerciseId);
+    final String exerciseName =
+        resolvedName.trim().isEmpty ? l10n.exercise : resolvedName;
+    final String unit = useKg ? l10n.kg : l10n.lbs;
+    final String weight = newVal.toStringAsFixed(1);
+    final String prev = prevVal.toStringAsFixed(1);
+    final String diff = '${diffVal >= 0 ? '+' : ''}${diffVal.toStringAsFixed(1)}';
+    final String todayLine = l10n.awardLineToday(weight, unit);
+    final String prevLine = l10n.awardLinePrev(prev, unit, diff, unit);
+    final String dateStr = DateFormat.yMd(l10n.localeName).format(date);
+    final String praise = l10n.awardPraiseShort;
+
+    return <String>[
+      exerciseName,
+      todayLine,
+      prevLine,
+      dateStr,
+      praise,
+    ].join('\n');
   }
 
   Map<String, double> _extractBestLiftsForDate(DailyRecord record) {
@@ -3748,6 +3859,16 @@ class _RecordScreenState extends State<RecordScreen>
     final String originalName =
         _resolveOriginalExerciseName(originalPart, name);
     return '$originalPart::$originalName';
+  }
+
+  String _displayExerciseNameFromAwardId(String exerciseId) {
+    final parts = exerciseId.split('::');
+    if (parts.length != 2) {
+      return exerciseId;
+    }
+    final String originalPart = parts[0];
+    final String originalName = parts[1];
+    return _translateExerciseNameToLocale(originalPart, originalName);
   }
 
   String _resolveOriginalExerciseName(String originalPart, String name) {
