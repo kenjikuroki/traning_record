@@ -195,6 +195,18 @@ Widget buildCircularCloseButton(
 
 class _RecordScreenState extends State<RecordScreen>
     with WidgetsBindingObserver, TickerProviderStateMixin {
+  // ▼ 戻る遷移中の再描画発火を抑止するフラグ
+  bool _isPopping = false;
+
+  // ▼ リワード表示の起動キュー（post-frameで取り出して表示）
+  List<Map<String, dynamic>>? _awardPreviewQueue;
+
+  // ▼ いまこの画面が最前面か（遷移中や背面なら false）
+  bool _isTopRoute() {
+    final route = ModalRoute.of(context);
+    return route?.isCurrent ?? true;
+  }
+
 // === Interval Timer Keys (per input card) ===
   final Map<String, GlobalKey<ExerciseInputTimerState>> _intervalTimerKeys = {};
 
@@ -3422,18 +3434,24 @@ class _RecordScreenState extends State<RecordScreen>
     final bool showPr = prTriggered &&
         ((settingsBox.get('awards.autoShow.pr') ?? true) == true);
 
-    if (showFirst || showDay || showPr) {
-      final String subtitle =
-          DateFormat.yMMMd(l10n.localeName).format(normalizedSavedDate);
-      String title;
-      if (showFirst) {
-        title = l10n.awardTitleFirst;
-      } else if (showDay) {
-        title = l10n.awardTitleDays(distinctDays);
-      } else {
-        title = l10n.awardTitleMax;
-      }
-      await _showAwardPreviewSimple(title: title, subtitle: subtitle);
+    if (showFirst) {
+      _enqueueAwardPreview(
+        type: 'first',
+        dayCount: null,
+        date: normalizedSavedDate,
+      );
+    } else if (showDay) {
+      _enqueueAwardPreview(
+        type: 'day',
+        dayCount: distinctDays,
+        date: normalizedSavedDate,
+      );
+    } else if (showPr) {
+      _enqueueAwardPreview(
+        type: 'pr',
+        dayCount: null,
+        date: normalizedSavedDate,
+      );
     }
   }
 
@@ -3484,7 +3502,7 @@ class _RecordScreenState extends State<RecordScreen>
     required String title,
     required String subtitle,
   }) async {
-    if (!mounted) return;
+    if (!mounted || _isPopping || !_isTopRoute()) return;
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     await showDialog<void>(
@@ -3504,6 +3522,71 @@ class _RecordScreenState extends State<RecordScreen>
         );
       },
     );
+  }
+
+  void _enqueueAwardPreview({
+    required String type,
+    int? dayCount,
+    required DateTime date,
+  }) {
+    if (!mounted || _isPopping || !_isTopRoute()) return;
+    setState(() {
+      _awardPreviewQueue ??= <Map<String, dynamic>>[];
+      _awardPreviewQueue!.add({
+        'type': type,
+        'dayCount': dayCount,
+        'date': date,
+      });
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _isPopping || !_isTopRoute()) return;
+      unawaited(_tryShowAwardPreviewModal());
+    });
+  }
+
+  Future<void> _tryShowAwardPreviewModal() async {
+    if (!mounted || _isPopping || !_isTopRoute()) return;
+    final queue = _awardPreviewQueue;
+    if (queue == null || queue.isEmpty) {
+      return;
+    }
+
+    final entry = queue.removeAt(0);
+    final String? type = entry['type'] as String?;
+    final int? dayCount = entry['dayCount'] as int?;
+    final DateTime? date = entry['date'] as DateTime?;
+    if (type == null || date == null) {
+      return;
+    }
+
+    final l10n = AppLocalizations.of(context)!;
+    String title;
+    switch (type) {
+      case 'first':
+        title = l10n.awardTitleFirst;
+        break;
+      case 'day':
+        title = l10n.awardTitleDays(dayCount ?? 0);
+        break;
+      case 'pr':
+        title = l10n.awardTitleMax;
+        break;
+      default:
+        title = l10n.awardTitleMax;
+    }
+
+    final subtitle = DateFormat.yMMMd(l10n.localeName).format(date);
+    await _showAwardPreviewSimple(title: title, subtitle: subtitle);
+
+    if (!mounted || _isPopping || !_isTopRoute()) {
+      return;
+    }
+    if (_awardPreviewQueue != null && _awardPreviewQueue!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _isPopping || !_isTopRoute()) return;
+        unawaited(_tryShowAwardPreviewModal());
+      });
+    }
   }
 
   Map<String, double> _extractBestLiftsForDate(DailyRecord record) {
@@ -5676,28 +5759,38 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   Future<void> _handleExit() async {
+    _isPopping = true;
+    try {
+      _awardPreviewQueue?.clear();
+    } catch (_) {}
     if (_fabOpen) {
       setState(() => _fabOpen = false);
+      _isPopping = false;
       return;
     }
     if (_memoOverlayOpen) {
       _closeMemoOverlayAndSave();
+      _isPopping = false;
       return;
     }
     if (_menuOverlayVisible) {
       await _saveMenuAndClose();
+      _isPopping = false;
       return;
     }
     if (_memoOverlayVisible) {
       await _saveMemoAndClose();
+      _isPopping = false;
       return;
     }
     if (_mealOverlayVisible) {
       await _saveMealOverlayAndClose();
+      _isPopping = false;
       return;
     }
     if (_personalOverlayVisible) {
       await _savePersonalAndClose();
+      _isPopping = false;
       return;
     }
 
@@ -8304,8 +8397,18 @@ class _RecordScreenState extends State<RecordScreen>
               ? null
               : Colors.transparent,
           appBar: AppBar(
-            automaticallyImplyLeading: !inputOverlayActive,
-            leading: inputOverlayActive ? const SizedBox.shrink() : null,
+            automaticallyImplyLeading: false,
+            leading: inputOverlayActive
+                ? const SizedBox.shrink()
+                : BackButton(
+                    onPressed: () {
+                      _isPopping = true;
+                      try {
+                        _awardPreviewQueue?.clear();
+                      } catch (_) {}
+                      Navigator.of(context).maybePop();
+                    },
+                  ),
             leadingWidth: inputOverlayActive ? 0 : null,
             elevation: 0,
             scrolledUnderElevation: 0,
