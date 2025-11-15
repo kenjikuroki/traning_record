@@ -9,7 +9,7 @@ import 'dart:math';
 import 'dart:async';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../utils/awards_service.dart' as AwardsService;
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:ttraining_record/l10n/app_localizations.dart';
 import '../models/exercise_catalog.dart';
 import '../models/meal.dart';
 import '../models/menu_data.dart';

@@ -6,7 +6,7 @@ import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import '../widgets/ad_square.dart';
 import '../widgets/ad_banner.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:ttraining_record/l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../settings_manager.dart';
 import '../constants/backgrounds.dart';

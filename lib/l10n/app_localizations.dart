@@ -64,8 +64,7 @@ import 'app_localizations_ja.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -73,8 +72,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -86,8 +84,7 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
-      <LocalizationsDelegate<dynamic>>[
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
     delegate,
     GlobalMaterialLocalizations.delegate,
     GlobalCupertinoLocalizations.delegate,
@@ -155,6 +152,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Album'**
   String get albumTitle;
+
+  /// Filter chip label to show every photo in the album.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get albumFilterAll;
+
+  /// Filter chip label to show only award images.
+  ///
+  /// In en, this message translates to:
+  /// **'Awards'**
+  String get albumFilterAwards;
+
+  /// Small ribbon label shown on award images in the album.
+  ///
+  /// In en, this message translates to:
+  /// **'AWARD'**
+  String get albumAwardRibbon;
 
   /// No description provided for @start.
   ///
@@ -351,13 +366,13 @@ abstract class AppLocalizations {
   /// No description provided for @setLabel.
   ///
   /// In en, this message translates to:
-  /// **'set'**
+  /// **'Set'**
   String get setLabel;
 
   /// No description provided for @reps.
   ///
   /// In en, this message translates to:
-  /// **'reps'**
+  /// **'Reps'**
   String get reps;
 
   /// No description provided for @distance.
@@ -639,7 +654,7 @@ abstract class AppLocalizations {
   /// No description provided for @weightCardExtraFieldsHint.
   ///
   /// In en, this message translates to:
-  /// **'You can add fields like body fat or waist from Settings.'**
+  /// **'You can add fields like body fat or waist from Settings. Weight units (kg/lbs) can also be changed from Settings.'**
   String get weightCardExtraFieldsHint;
 
   /// No description provided for @bodyWeightTracking.
@@ -1197,7 +1212,7 @@ abstract class AppLocalizations {
   /// No description provided for @hintRecordFirst.
   ///
   /// In en, this message translates to:
-  /// **'Start by recording a workout or your body weight.'**
+  /// **'Let’s start by recording a workout. Tap \"Select Training Part\" to begin.'**
   String get hintRecordFirst;
 
   /// No description provided for @unitChangeHint.
@@ -1511,24 +1526,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'+ Menu'**
   String get addMealItem;
-
-  /// No description provided for @mealHeaderNo.
-  ///
-  /// In en, this message translates to:
-  /// **'No.'**
-  String get mealHeaderNo;
-
-  /// No description provided for @mealHeaderMenu.
-  ///
-  /// In en, this message translates to:
-  /// **'Menu'**
-  String get mealHeaderMenu;
-
-  /// No description provided for @mealHeaderKcal.
-  ///
-  /// In en, this message translates to:
-  /// **'Kcal'**
-  String get mealHeaderKcal;
 
   /// No description provided for @bmrTitle.
   ///
@@ -2607,12 +2604,239 @@ abstract class AppLocalizations {
   /// No description provided for @hintTapPlus.
   ///
   /// In en, this message translates to:
-  /// **'Tap the “+” at bottom-right to start logging.'**
+  /// **'Tap the “+” to start logging.'**
   String get hintTapPlus;
+
+  /// No description provided for @notiDailyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Let’s keep it up today!'**
+  String get notiDailyTitle;
+
+  /// No description provided for @notiDailyBodyA.
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s time to train!'**
+  String get notiDailyBodyA;
+
+  /// No description provided for @notiDailyBodyB.
+  ///
+  /// In en, this message translates to:
+  /// **'Let\'s start training! Ready?'**
+  String get notiDailyBodyB;
+
+  /// No description provided for @notiInactive3Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Let\'s get back to training!'**
+  String get notiInactive3Title;
+
+  /// No description provided for @notiInactive3Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Even just one set is fine—give it a try.'**
+  String get notiInactive3Body;
+
+  /// No description provided for @notiInactive7Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart today'**
+  String get notiInactive7Title;
+
+  /// No description provided for @notiInactive7Body.
+  ///
+  /// In en, this message translates to:
+  /// **'A week off. Do 10 push-ups or 10 squats—either is fine.'**
+  String get notiInactive7Body;
+
+  /// No description provided for @notiSoftAskTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Would you like to set up notifications to keep training consistently?'**
+  String get notiSoftAskTitle;
+
+  /// No description provided for @notiSoftAskBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You can change this anytime.'**
+  String get notiSoftAskBody;
+
+  /// No description provided for @notiSoftAskLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get notiSoftAskLater;
+
+  /// No description provided for @notiSoftAskEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable notifications'**
+  String get notiSoftAskEnable;
+
+  /// No description provided for @notiSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification settings'**
+  String get notiSettingsTitle;
+
+  /// No description provided for @notiSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily reminder'**
+  String get notiSettingsSubtitle;
+
+  /// No description provided for @notiSettingsChangeTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Change time'**
+  String get notiSettingsChangeTime;
+
+  /// No description provided for @notiSendTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Send test notification'**
+  String get notiSendTest;
+
+  /// No description provided for @notiStopAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop all notifications'**
+  String get notiStopAll;
+
+  /// No description provided for @notiSettingsAllSame.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply to all'**
+  String get notiSettingsAllSame;
+
+  /// No description provided for @notiSettingsCopyWeekdays.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy to weekdays'**
+  String get notiSettingsCopyWeekdays;
+
+  /// No description provided for @notiSettingsCopyWeekend.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy to weekend'**
+  String get notiSettingsCopyWeekend;
+
+  /// No description provided for @notiSettingsWeeklyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {weekday}'**
+  String notiSettingsWeeklyLabel(Object weekday);
+
+  /// No description provided for @mealHeaderNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get mealHeaderNo;
+
+  /// No description provided for @mealHeaderMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu'**
+  String get mealHeaderMenu;
+
+  /// No description provided for @mealHeaderKcal.
+  ///
+  /// In en, this message translates to:
+  /// **'kcal'**
+  String get mealHeaderKcal;
+
+  /// No description provided for @notiCopyAllTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy to all days'**
+  String get notiCopyAllTitle;
+
+  /// No description provided for @notiCopyAllMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will overwrite the time for all days. Continue?'**
+  String get notiCopyAllMessage;
+
+  /// No description provided for @notiCopyWeekdaysTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy to weekdays'**
+  String get notiCopyWeekdaysTitle;
+
+  /// No description provided for @notiCopyWeekdaysMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will overwrite the time for Mon–Fri. Continue?'**
+  String get notiCopyWeekdaysMessage;
+
+  /// No description provided for @notiCopyWeekendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy to weekend'**
+  String get notiCopyWeekendTitle;
+
+  /// No description provided for @notiCopyWeekendMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will set the same time for Sat & Sun. Continue?'**
+  String get notiCopyWeekendMessage;
+
+  /// No description provided for @notiConfirmYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get notiConfirmYes;
+
+  /// No description provided for @notiConfirmNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get notiConfirmNo;
+
+  /// No description provided for @awardTitleFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'First training achieved!'**
+  String get awardTitleFirst;
+
+  /// No description provided for @awardTitleDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Streak of {dayCount} days completed!'**
+  String awardTitleDays(Object dayCount);
+
+  /// No description provided for @awardTitleMax.
+  ///
+  /// In en, this message translates to:
+  /// **'New record reached!'**
+  String get awardTitleMax;
+
+  /// No description provided for @awardBadgeDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Day {dayCount}'**
+  String awardBadgeDay(Object dayCount);
+
+  /// No description provided for @awardSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to your album'**
+  String get awardSaved;
+
+  /// No description provided for @awardShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get awardShare;
+
+  /// No description provided for @awardClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get awardClose;
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -2621,29 +2845,27 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en', 'es', 'id', 'ja'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'es', 'id', 'ja'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
+
+
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'en':
-      return AppLocalizationsEn();
-    case 'es':
-      return AppLocalizationsEs();
-    case 'id':
-      return AppLocalizationsId();
-    case 'ja':
-      return AppLocalizationsJa();
+    case 'en': return AppLocalizationsEn();
+    case 'es': return AppLocalizationsEs();
+    case 'id': return AppLocalizationsId();
+    case 'ja': return AppLocalizationsJa();
   }
 
   throw FlutterError(
-      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
-      'an issue with the localizations generation tool. Please file an issue '
-      'on GitHub with a reproducible sample app and the gen-l10n configuration '
-      'that was used.');
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.'
+  );
 }

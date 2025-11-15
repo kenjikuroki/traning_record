@@ -21,13 +21,10 @@ dependencies:
     sdk: flutter
   flutter_local_notifications: ^17.1.0
   timezone: ^0.9.2
-  flutter_native_timezone:
-    path: packages/flutter_native_timezone
+  flutter_native_timezone: ^2.0.0
   shared_preferences: ^2.3.2
-  flutter_gen:
-    path: packages/flutter_gen
   just_audio: ^0.9.46
-  audio_session: ^0.1.25　
+  audio_session: ^0.1.25
   # UI / グラフ
   fl_chart: ^0.68.0
   # 広告

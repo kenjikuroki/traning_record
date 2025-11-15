@@ -9,7 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:ttraining_record/l10n/app_localizations.dart';
 import '../widgets/ad_banner.dart';
 import '../settings_manager.dart';
 import '../widgets/centered_constrained.dart';

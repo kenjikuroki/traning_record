@@ -10,7 +10,7 @@ import 'package:flutter/services.dart' show HapticFeedback, rootBundle;
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_session/audio_session.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:ttraining_record/l10n/app_localizations.dart';
 import 'dart:io' show Platform;
 
 /// モード

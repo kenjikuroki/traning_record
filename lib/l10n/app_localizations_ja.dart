@@ -36,6 +36,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get albumTitle => 'アルバム';
 
   @override
+  String get albumFilterAll => 'すべて';
+
+  @override
+  String get albumFilterAwards => 'アワード';
+
+  @override
+  String get albumAwardRibbon => 'AWARD';
+
+  @override
   String get start => '開始';
 
   @override
@@ -136,10 +145,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get sets => 'セット';
 
   @override
-  String get setLabel => 'SET';
+  String get setLabel => 'Set';
 
   @override
-  String get reps => '回';
+  String get reps => 'Reps';
 
   @override
   String get distance => '距離';
@@ -282,8 +291,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get weightCardTitle => '体重';
 
   @override
-  String get weightCardExtraFieldsHint =>
-      '設定より体脂肪率・ウエストの入力欄などの追加が可能です。単位kg/lbsも設定画面から変更できます。';
+  String get weightCardExtraFieldsHint => '設定より体脂肪率・ウエストの入力欄などの追加が可能です。単位kg/lbsも設定画面から変更できます。';
 
   @override
   String get bodyWeightTracking => '体重管理';
@@ -316,7 +324,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get hintRecordOpenSettings => 'セット数の初期値は設定から変更できます。';
 
   @override
-  String get hintRecordFab => 'Add a part, exercise, photo, or memo from here.';
+  String get hintRecordFab => 'ここから部位や種目、写真、メモを追加できます。';
 
   @override
   String get hintCalendarTapDate => '記録する日付を選択';
@@ -572,9 +580,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get collapseCard => '折りたたむ';
 
   @override
-  String get hintRecordFirst =>
-      'まずはトレーニングや体重を記録しよう。トレーニングを記録する場合は「トレーニング部位を選択」をタップ、体重を入力する場合は右下の＋ボタンをタップしてください。';
-
+  String get hintRecordFirst => 'まずはトレーニングを記録しましょう。「トレーニング部位を選択」をタップしてください。';
 
   @override
   String get unitChangeHint => '単位は設定で変更できます。';
@@ -739,15 +745,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get addMealItem => '＋メニュー';
 
   @override
-  String get mealHeaderNo => 'No.';
-
-  @override
-  String get mealHeaderMenu => 'メニュー';
-
-  @override
-  String get mealHeaderKcal => 'kcal';
-
-  @override
   String get bmrTitle => '基礎代謝：';
 
   @override
@@ -781,8 +778,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get calorieHelpTitle => 'カロリー計算について';
 
   @override
-  String get calorieHelpBody =>
-      '計算式: 消費エネルギー = MET × 体重(kg) × 時間(h)。\n\n種目名から推測したMET値で概算しています。スマートウォッチなどで正確な値が分かる場合は、この項目を手入力で上書きしてください。';
+  String get calorieHelpBody => '計算式: 消費エネルギー = MET × 体重(kg) × 時間(h)。\n\n種目名から推測したMET値で概算しています。スマートウォッチなどで正確な値が分かる場合は、この項目を手入力で上書きしてください。';
 
   @override
   String get dailyCalorieTotal => '総消費カロリー';
@@ -812,19 +808,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get aerobicPickerTitle => '種目を入力・選択';
 
   @override
-  String get aerobicCalorieUnknownHint =>
-      '不明な種目名のためカロリーを算出できませんでした。スマートウォッチなどで取得した値があれば入力してください。';
+  String get aerobicCalorieUnknownHint => '不明な種目名のためカロリーを算出できませんでした。スマートウォッチなどで取得した値があれば入力してください。';
 
   @override
   String get aerobicCalorieInfoTitle => 'カロリー計算について';
 
   @override
-  String get aerobicCalorieInfoBody =>
-      '消費カロリー = MET × 体重(kg) × 運動時間(時間) で概算しています。種目名・距離・時間から運動強度(MET)を推定します。\n\n推定値のため、スマートウォッチ等で取得した値があれば上書きしてください。距離や時間が空欄の場合は推定されません。\n\n暑熱環境や体調によって消費量は変動します。休憩と水分補給も心掛けてください。';
+  String get aerobicCalorieInfoBody => '消費カロリー = MET × 体重(kg) × 運動時間(時間) で概算しています。種目名・距離・時間から運動強度(MET)を推定します。\n\n推定値のため、スマートウォッチ等で取得した値があれば上書きしてください。距離や時間が空欄の場合は推定されません。\n\n暑熱環境や体調によって消費量は変動します。休憩と水分補給も心掛けてください。';
 
   @override
-  String get aerobicCalorieWeightRequired =>
-      'カロリー算出を有効にするにはパーソナル設定で体重を入力してください。';
+  String get aerobicCalorieWeightRequired => 'カロリー算出を有効にするにはパーソナル設定で体重を入力してください。';
 
   @override
   String get add => '追加';
@@ -881,8 +874,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get hintRecordTapExerciseCard => 'こちらをタップしてトレーニングする部位を選択してください。';
 
   @override
-  String get hintRecordPickExercise =>
-      'トレーニングする種目をタップするか、新しいカード種目カードを作成してください。';
+  String get hintRecordPickExercise => 'トレーニングする種目をタップするか、新しいカード種目カードを作成してください。';
 
   @override
   String get hintRecordCheckbox => '重量と回数を入力し、チェックボックスにチェックをいれてください';
@@ -1290,5 +1282,125 @@ class AppLocalizationsJa extends AppLocalizations {
   String get welcomeThankYou => 'ダウンロードいただきありがとうございます。良いトレーニングライフをお過ごしください。';
 
   @override
-  String get hintTapPlus => '記録を始めるには、右下の「＋」をタップしてください。';
+  String get hintTapPlus => '記録を始めるには、「＋」をタップしてください。';
+
+  @override
+  String get notiDailyTitle => '今日も頑張りましょう！';
+
+  @override
+  String get notiDailyBodyA => 'トレーニングの時間です！';
+
+  @override
+  String get notiDailyBodyB => 'トレーニングを始めましょう！準備はできた？';
+
+  @override
+  String get notiInactive3Title => 'トレーニングを再開しよう！';
+
+  @override
+  String get notiInactive3Body => '1セットだけでもやってみましょう。';
+
+  @override
+  String get notiInactive7Title => '今日から再スタート';
+
+  @override
+  String get notiInactive7Body => '1週間空きました。腕立て10回 or スクワット10回、どちらかだけでも再開の合図に。';
+
+  @override
+  String get notiSoftAskTitle => 'トレーニング継続のために通知を設定しますか？';
+
+  @override
+  String get notiSoftAskBody => '設定はいつでも変更できます。';
+
+  @override
+  String get notiSoftAskLater => 'あとで';
+
+  @override
+  String get notiSoftAskEnable => '通知を有効にする';
+
+  @override
+  String get notiSettingsTitle => '通知設定';
+
+  @override
+  String get notiSettingsSubtitle => '毎日のリマインダー';
+
+  @override
+  String get notiSettingsChangeTime => '時刻を変更';
+
+  @override
+  String get notiSendTest => 'テスト通知を送る';
+
+  @override
+  String get notiStopAll => 'すべての通知を停止';
+
+  @override
+  String get notiSettingsAllSame => '全曜日\nコピー';
+
+  @override
+  String get notiSettingsCopyWeekdays => '平日\nコピー';
+
+  @override
+  String get notiSettingsCopyWeekend => '土日\nコピー';
+
+  @override
+  String notiSettingsWeeklyLabel(Object weekday) {
+    return '毎週$weekday曜';
+  }
+
+  @override
+  String get mealHeaderNo => 'No';
+
+  @override
+  String get mealHeaderMenu => 'メニュー';
+
+  @override
+  String get mealHeaderKcal => 'kcal';
+
+  @override
+  String get notiCopyAllTitle => '全曜日にコピー';
+
+  @override
+  String get notiCopyAllMessage => '全ての曜日の時刻を上書きします。よろしいですか？';
+
+  @override
+  String get notiCopyWeekdaysTitle => '平日にコピー';
+
+  @override
+  String get notiCopyWeekdaysMessage => '月〜金の時刻を上書きします。よろしいですか？';
+
+  @override
+  String get notiCopyWeekendTitle => '土日にコピー';
+
+  @override
+  String get notiCopyWeekendMessage => '土日の時刻を揃えます。よろしいですか？';
+
+  @override
+  String get notiConfirmYes => 'はい';
+
+  @override
+  String get notiConfirmNo => 'いいえ';
+
+  @override
+  String get awardTitleFirst => '初トレーニング達成！';
+
+  @override
+  String awardTitleDays(Object dayCount) {
+    return '継続 $dayCount 日 達成！';
+  }
+
+  @override
+  String get awardTitleMax => '新記録達成！';
+
+  @override
+  String awardBadgeDay(Object dayCount) {
+    return 'Day $dayCount';
+  }
+
+  @override
+  String get awardSaved => '画像をアルバムに保存しました';
+
+  @override
+  String get awardShare => 'シェア';
+
+  @override
+  String get awardClose => '閉じる';
 }
