@@ -794,6 +794,45 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return '$originalPart::$originalName';
   }
 
+  double? _previousTotalVolumeForMenu(
+    DateTime baseDay,
+    String originalPart,
+    String menuName,
+  ) {
+    final DateTime normalized =
+        DateTime(baseDay.year, baseDay.month, baseDay.day);
+    final String targetId = _canonicalExerciseId(originalPart, menuName);
+
+    final List<MapEntry<String, DateTime>> candidates = [];
+    for (final dynamic rawKey in widget.recordsBox.keys) {
+      if (rawKey is! String) continue;
+      DateTime? parsed;
+      try {
+        parsed = DateTime.parse(rawKey);
+      } catch (_) {
+        parsed = null;
+      }
+      if (parsed == null || !parsed.isBefore(normalized)) continue;
+      candidates.add(MapEntry(rawKey, parsed));
+    }
+    candidates.sort((a, b) => b.value.compareTo(a.value));
+
+    for (final entry in candidates) {
+      final DailyRecord? rec = widget.recordsBox.get(entry.key);
+      if (rec == null) continue;
+      final List<MenuData>? partMenus = rec.menus[originalPart];
+      if (partMenus == null) continue;
+      for (final menu in partMenus) {
+        final String candidateId =
+            _canonicalExerciseId(originalPart, menu.name);
+        if (candidateId == targetId && menu.totalVolume != null) {
+          return menu.totalVolume;
+        }
+      }
+    }
+    return null;
+  }
+
   String _failureTag(AppLocalizations l10n) {
     final locale = l10n.localeName;
     if (locale.startsWith('ja')) {
@@ -2860,10 +2899,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
           );
         }
         if (m.totalVolume != null) {
+          final double? previousVolume =
+              _previousTotalVolumeForMenu(sel, originalPart, m.name);
+          final double? diffVolume = previousVolume != null
+              ? (m.totalVolume! - previousVolume)
+              : null;
+
           strengthWidgets.add(
             _selectableLine(
               text:
                   '${l10n.totalVolumeLabel}：${formatTotalVolumeValue(l10n, m.totalVolume)}',
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+              style: TextStyle(
+                  color: cs.onSurface,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400),
+            ),
+          );
+          strengthWidgets.add(
+            _selectableLine(
+              text:
+                  '${l10n.totalVolumeDifference}：${formatTotalVolumeValue(l10n, diffVolume, withSign: true)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(
                   color: cs.onSurface,
@@ -3236,8 +3292,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
           sectionLines.add(buffer.toString());
         }
         if (m.totalVolume != null) {
+          final double? previousVolume =
+              _previousTotalVolumeForMenu(sel, originalPart, m.name);
+          final double? diffVolume = previousVolume != null
+              ? (m.totalVolume! - previousVolume)
+              : null;
           sectionLines.add(
               '  ${l10n.totalVolumeLabel}：${formatTotalVolumeValue(l10n, m.totalVolume)}');
+          sectionLines.add(
+              '  ${l10n.totalVolumeDifference}：${formatTotalVolumeValue(l10n, diffVolume, withSign: true)}');
         }
         if (m.satisfaction != null) {
           sectionLines.add(
@@ -3779,10 +3842,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
           );
         }
         if (m.totalVolume != null) {
+          final double? previousVolume =
+              _previousTotalVolumeForMenu(sel, originalPart, m.name);
+          final double? diffVolume = previousVolume != null
+              ? (m.totalVolume! - previousVolume)
+              : null;
           summaryChildren.add(
             _selectableLine(
               text:
                   '${l10n.totalVolumeLabel}：${formatTotalVolumeValue(l10n, m.totalVolume)}',
+              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+              style: TextStyle(
+                  color: cs.onSurface,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400),
+            ),
+          );
+          summaryChildren.add(
+            _selectableLine(
+              text:
+                  '${l10n.totalVolumeDifference}：${formatTotalVolumeValue(l10n, diffVolume, withSign: true)}',
               padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
               style: TextStyle(
                   color: cs.onSurface,
