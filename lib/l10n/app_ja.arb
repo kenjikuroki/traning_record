@@ -54,7 +54,7 @@
   "secondsHint": "秒",
   "sets": "セット",
   "setLabel": "Set",
-  "reps": "Reps",
+  "reps": "回数",
   "distance": "距離",
   "km": "km",
   "m": "m",
@@ -448,7 +448,7 @@
   "notiSoftAskTitle": "トレーニング継続のために通知を設定しますか？",
   "notiSoftAskBody": "設定はいつでも変更できます。",
   "notiSoftAskLater": "あとで",
-  "notiSoftAskEnable": "通知を有効にする",
+  "notiSoftAskEnable": "通知オン",
   "notiSettingsTitle": "通知設定",
   "notiSettingsSubtitle": "毎日のリマインダー",
   "notiSettingsChangeTime": "時刻を変更",
@@ -482,6 +482,11 @@
     }
   },
   "awardTitleMax": "新記録達成！",
+
+  "awardLabelDate": "日付：",
+  "awardLabelExercise": "種目：",
+  "awardLabelPrevious": "前回の記録：",
+  "awardFooterMessage": "その調子でいきましょう！",
   "awardBadgeDay": "Day {dayCount}",
   "@awardBadgeDay": {
     "placeholders": {

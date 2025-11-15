@@ -2670,7 +2670,7 @@ abstract class AppLocalizations {
   /// No description provided for @notiSoftAskEnable.
   ///
   /// In en, this message translates to:
-  /// **'Enable notifications'**
+  /// **'Notify me'**
   String get notiSoftAskEnable;
 
   /// No description provided for @notiSettingsTitle.
@@ -2810,6 +2810,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New record reached!'**
   String get awardTitleMax;
+
+  /// No description provided for @awardLabelDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date:'**
+  String get awardLabelDate;
+
+  /// No description provided for @awardLabelExercise.
+  ///
+  /// In en, this message translates to:
+  /// **'Exercise:'**
+  String get awardLabelExercise;
+
+  /// No description provided for @awardLabelPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous record:'**
+  String get awardLabelPrevious;
+
+  /// No description provided for @awardFooterMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Great job!'**
+  String get awardFooterMessage;
 
   /// No description provided for @awardBadgeDay.
   ///

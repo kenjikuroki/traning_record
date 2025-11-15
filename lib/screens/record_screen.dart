@@ -87,15 +87,15 @@ extension _RecordScreenL10nExt on AppLocalizations {
 
   String awardLinePrev(String prev, String unit, String diff, String diffUnit) {
     if (localeName.startsWith('ja')) {
-      return '前回: $prev$unit (差分 $diff$diffUnit)';
+      return '$prev$unit';
     }
     if (localeName.startsWith('es')) {
-      return 'Anterior: $prev $unit (dif. $diff $diffUnit)';
+      return '$prev $unit';
     }
     if (localeName.startsWith('id')) {
-      return 'Sebelumnya: $prev $unit (selisih $diff $diffUnit)';
+      return '$prev $unit';
     }
-    return 'Previous: $prev $unit (diff $diff $diffUnit)';
+    return '$prev $unit';
   }
 
   String get awardPraiseShort {
@@ -230,6 +230,12 @@ Widget buildCircularCloseButton(
       ),
     ),
   );
+}
+
+enum AwardType {
+  first,
+  streak,
+  max,
 }
 
 class _RecordScreenState extends State<RecordScreen>
@@ -3525,7 +3531,9 @@ class _RecordScreenState extends State<RecordScreen>
           dayCount: distinctDays,
           date: normalizedSavedDate,
         );
-      } else if (showPr) {
+      }
+
+      if (showPr) {
         Map<String, dynamic>? prEntry;
         if (prExerciseIds.isNotEmpty) {
           for (final entry in awardsForDate.reversed) {
@@ -3595,24 +3603,180 @@ class _RecordScreenState extends State<RecordScreen>
   Future<void> _showAwardPreviewSimple({
     required String title,
     required String subtitle,
+    AwardType? awardType,
   }) async {
     if (!mounted || _isPopping || !_isTopRoute()) return;
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+
     await showDialog<void>(
       context: context,
+      barrierDismissible: true,
       builder: (ctx) {
         final l10n = AppLocalizations.of(ctx)!;
-        return AlertDialog(
-          backgroundColor: cs.surfaceContainerHighest,
-          title: Text(title, style: theme.textTheme.titleLarge),
-          content: Text(subtitle, style: theme.textTheme.bodyMedium),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: Text(l10n.awardClose),
+        final primary = cs.primary;
+
+        final effectiveType = awardType ?? (() {
+              if (title == l10n.awardTitleFirst) {
+                return AwardType.first;
+              }
+              final normalizedTitle =
+                  title.replaceAll(RegExp(r'\d+'), '').trim();
+              final normalizedStreak =
+                  l10n.awardTitleDays(0).replaceAll(RegExp(r'\d+'), '').trim();
+              if (normalizedTitle == normalizedStreak) {
+                return AwardType.streak;
+              }
+              return AwardType.max;
+            })();
+
+        final lines = subtitle
+            .split('\n')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        String dateLine = '';
+        String exerciseLine = '';
+        String todayLine = '';
+        String previousLine = '';
+
+        if (effectiveType == AwardType.max) {
+          exerciseLine = lines.isNotEmpty ? lines[0] : '';
+          todayLine = lines.length > 1 ? lines[1] : '';
+          previousLine = lines.length > 2 ? lines[2] : '';
+          dateLine = lines.length > 3 ? lines[3] : '';
+        } else {
+          dateLine = lines.isNotEmpty ? lines[0] : '';
+        }
+
+        final detailTextStyle = theme.textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          fontSize: 17,
+          height: 1.6,
+        );
+
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Center(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(36),
+                gradient: LinearGradient(
+                  colors: [
+                    primary.withOpacity(0.98),
+                    primary.withOpacity(0.75),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.35),
+                    blurRadius: 26,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Container(
+                margin: const EdgeInsets.all(10),
+                padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30),
+                  color: cs.surface,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.emoji_events_outlined,
+                          color: primary,
+                          size: 60,
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          title,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 26,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Divider(
+                      color: Colors.black.withOpacity(0.08),
+                      thickness: 1,
+                    ),
+                    const SizedBox(height: 16),
+
+                    if (dateLine.isNotEmpty)
+                      Text(
+                        '${l10n.awardLabelDate} $dateLine',
+                        style: detailTextStyle,
+                      ),
+                    if (effectiveType == AwardType.max && exerciseLine.isNotEmpty)
+                      Text(
+                        '${l10n.awardLabelExercise} $exerciseLine',
+                        style: detailTextStyle,
+                      ),
+                    if (effectiveType == AwardType.max && todayLine.isNotEmpty)
+                      Text(
+                        todayLine,
+                        style: detailTextStyle,
+                      ),
+                    if (effectiveType == AwardType.max && previousLine.isNotEmpty)
+                      Text(
+                        '${l10n.awardLabelPrevious} $previousLine',
+                        style: detailTextStyle,
+                      ),
+
+                    const SizedBox(height: 16),
+                    Text(
+                      l10n.awardFooterMessage,
+                      style: detailTextStyle,
+                      textAlign: TextAlign.left,
+                    ),
+
+                    const SizedBox(height: 28),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 22,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: Text(
+                            l10n.awardClose,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
+          ),
         );
       },
     );
@@ -3681,12 +3845,17 @@ class _RecordScreenState extends State<RecordScreen>
       final double? newKg = (entry['newKg'] as num?)?.toDouble();
       final double? prevKg = (entry['prevKg'] as num?)?.toDouble();
       if (exerciseId != null && newKg != null && prevKg != null) {
-        subtitle = _buildPrAwardBody(
-          exerciseId: exerciseId,
-          newKg: newKg,
-          prevKg: prevKg,
-          date: date,
-        );
+        final bool isNewExercise = prevKg <= 0;
+        if (isNewExercise) {
+          subtitle = DateFormat.yMMMd(l10n.localeName).format(date);
+        } else {
+          subtitle = _buildPrAwardBody(
+            exerciseId: exerciseId,
+            newKg: newKg,
+            prevKg: prevKg,
+            date: date,
+          );
+        }
       } else {
         subtitle = DateFormat.yMMMd(l10n.localeName).format(date);
       }
@@ -3694,7 +3863,18 @@ class _RecordScreenState extends State<RecordScreen>
       subtitle = DateFormat.yMMMd(l10n.localeName).format(date);
     }
 
-    await _showAwardPreviewSimple(title: title, subtitle: subtitle);
+    final AwardType? typeOverride = switch (type) {
+      'first' => AwardType.first,
+      'day' => AwardType.streak,
+      'pr' => AwardType.max,
+      _ => null,
+    };
+
+    await _showAwardPreviewSimple(
+      title: title,
+      subtitle: subtitle,
+      awardType: typeOverride,
+    );
 
     if (!mounted || _isPopping || !_isTopRoute()) {
       return;
@@ -3730,15 +3910,13 @@ class _RecordScreenState extends State<RecordScreen>
     final String todayLine = l10n.awardLineToday(weight, unit);
     final String prevLine = l10n.awardLinePrev(prev, unit, diff, unit);
     final String dateStr = DateFormat.yMd(l10n.localeName).format(date);
-    final String praise = l10n.awardPraiseShort;
 
     return <String>[
       exerciseName,
       todayLine,
       prevLine,
       dateStr,
-      praise,
-    ].join('\n');
+    ].where((line) => line.isNotEmpty).join('\n');
   }
 
   Map<String, double> _extractBestLiftsForDate(DailyRecord record) {

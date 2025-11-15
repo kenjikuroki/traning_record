@@ -450,7 +450,7 @@
   "notiSoftAskTitle": "Would you like to set up notifications to keep training consistently?",
   "notiSoftAskBody": "You can change this anytime.",
   "notiSoftAskLater": "Later",
-  "notiSoftAskEnable": "Enable notifications",
+  "notiSoftAskEnable": "Notify me",
   "notiSettingsTitle": "Notification settings",
   "notiSettingsSubtitle": "Daily reminder",
   "notiSettingsChangeTime": "Change time",
@@ -484,6 +484,11 @@
     }
   },
   "awardTitleMax": "New record reached!",
+
+  "awardLabelDate": "Date:",
+  "awardLabelExercise": "Exercise:",
+  "awardLabelPrevious": "Previous record:",
+  "awardFooterMessage": "Great job!",
   "awardBadgeDay": "Day {dayCount}",
   "@awardBadgeDay": {
     "placeholders": {

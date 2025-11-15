@@ -1315,7 +1315,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notiSoftAskLater => 'Later';
 
   @override
-  String get notiSoftAskEnable => 'Enable notifications';
+  String get notiSoftAskEnable => 'Notify me';
 
   @override
   String get notiSettingsTitle => 'Notification settings';
@@ -1389,6 +1389,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get awardTitleMax => 'New record reached!';
+
+  @override
+  String get awardLabelDate => 'Date:';
+
+  @override
+  String get awardLabelExercise => 'Exercise:';
+
+  @override
+  String get awardLabelPrevious => 'Previous record:';
+
+  @override
+  String get awardFooterMessage => 'Great job!';
 
   @override
   String awardBadgeDay(Object dayCount) {

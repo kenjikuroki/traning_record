@@ -148,7 +148,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get setLabel => 'Set';
 
   @override
-  String get reps => 'Reps';
+  String get reps => '回数';
 
   @override
   String get distance => '距離';
@@ -1315,7 +1315,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get notiSoftAskLater => 'あとで';
 
   @override
-  String get notiSoftAskEnable => '通知を有効にする';
+  String get notiSoftAskEnable => '通知オン';
 
   @override
   String get notiSettingsTitle => '通知設定';
@@ -1389,6 +1389,18 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get awardTitleMax => '新記録達成！';
+
+  @override
+  String get awardLabelDate => '日付：';
+
+  @override
+  String get awardLabelExercise => '種目：';
+
+  @override
+  String get awardLabelPrevious => '前回の記録：';
+
+  @override
+  String get awardFooterMessage => 'その調子でいきましょう！';
 
   @override
   String awardBadgeDay(Object dayCount) {

@@ -53,7 +53,6 @@ class AlbumScreen extends StatefulWidget {
 class _AlbumScreenState extends State<AlbumScreen> {
   final Map<String, List<File>> _byDate = {}; // dateKey -> files(新→旧)
   bool _loading = true;
-  bool _showAwardsOnly = false;
 
   final ImagePicker _imagePicker = ImagePicker();
   bool _captureInProgress = false;
@@ -153,9 +152,8 @@ class _AlbumScreenState extends State<AlbumScreen> {
       ..sort((a, b) => b.key.compareTo(a.key));
     final result = <MapEntry<String, List<File>>>[];
     for (final entry in entries) {
-      final files = _showAwardsOnly
-          ? entry.value.where((file) => _isAwardFile(file.path)).toList()
-          : entry.value;
+      final files =
+          entry.value.where((file) => !_isAwardFile(file.path)).toList();
       if (files.isEmpty) continue;
       result.add(MapEntry(entry.key, files));
     }
@@ -177,29 +175,6 @@ class _AlbumScreenState extends State<AlbumScreen> {
   }
 
   bool _isAwardFile(String path) => path.toLowerCase().contains('/award-');
-
-  Widget _buildFilterChip({
-    required String label,
-    required bool selected,
-    required VoidCallback onSelected,
-  }) {
-    final cs = Theme.of(context).colorScheme;
-    return ChoiceChip(
-      label: Text(
-        label,
-        style: TextStyle(
-          color: selected ? cs.onPrimary : cs.onSurface,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      selected: selected,
-      onSelected: (_) => onSelected(),
-      selectedColor: cs.primary,
-      backgroundColor: cs.surfaceVariant.withOpacity(0.45),
-      pressElevation: 0,
-      showCheckmark: false,
-    );
-  }
 
   void _confirmDelete(File file, String dateKey, int index) {
     final l10n = AppLocalizations.of(context)!;
@@ -539,33 +514,6 @@ class _AlbumScreenState extends State<AlbumScreen> {
                     ),
                   const AdBanner(screenName: 'album'),
                   const SizedBox(height: _kGap),
-                  if (!_loading)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
-                      child: Wrap(
-                        spacing: 8,
-                        children: [
-                          _buildFilterChip(
-                            label: l10n.albumFilterAll,
-                            selected: !_showAwardsOnly,
-                            onSelected: () {
-                              if (_showAwardsOnly) {
-                                setState(() => _showAwardsOnly = false);
-                              }
-                            },
-                          ),
-                          _buildFilterChip(
-                            label: l10n.albumFilterAwards,
-                            selected: _showAwardsOnly,
-                            onSelected: () {
-                              if (!_showAwardsOnly) {
-                                setState(() => _showAwardsOnly = true);
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
                   Expanded(
                     child: _loading
                         ? const Center(child: CircularProgressIndicator())
