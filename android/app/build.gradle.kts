@@ -76,6 +76,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlin {
         // Kotlin 2.2+ の推奨記法（jvmToolchainの代わり）
@@ -98,4 +99,5 @@ flutter {
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
     implementation("com.google.android.gms:play-services-tasks:18.2.0")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.2")
 }

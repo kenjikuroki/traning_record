@@ -209,6 +209,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final DailyRecord? record = widget.recordsBox.get(_dateKey(day));
     final bool hasMemo = _hasMemoForDate(day);
     final bool hasMeal = _hasMealForRecord(record);
+
+    final Set<String> prParts = <String>{};
+    if (record != null) {
+      final Set<String> prExerciseIds = _prExerciseIdsForDate(day);
+      if (prExerciseIds.isNotEmpty) {
+        record.menus.forEach((part, menuList) {
+          for (final m in menuList) {
+            final String exerciseId = _canonicalExerciseId(part, m.name);
+            if (prExerciseIds.contains(exerciseId)) {
+              prParts.add(part);
+              break;
+            }
+          }
+        });
+      }
+    }
     final bool hasWeight = record?.weight != null;
     final List<String> partsAll =
         (record == null) ? <String>[] : _partsWithDataForDay(record);
@@ -677,18 +693,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return false;
   }
 
-  bool _isPrExerciseOfTheDay(String exerciseId) {
-    final DateTime base = _selectedDay ?? _focusedDay;
-    final DateTime normalized = DateTime(base.year, base.month, base.day);
+  Set<String> _prExerciseIdsForDate(DateTime day) {
+    final DateTime normalized = DateTime(day.year, day.month, day.day);
     final String key = DateFormat('yyyy-MM-dd').format(normalized);
     final dynamic raw = widget.settingsBox.get('pr-$key');
     if (raw is Set) {
-      return raw.whereType<String>().contains(exerciseId);
+      return raw.whereType<String>().toSet();
     }
     if (raw is List) {
-      return raw.whereType<String>().contains(exerciseId);
+      return raw.whereType<String>().toSet();
     }
-    return false;
+    return const <String>{};
+  }
+
+  bool _isPrExerciseOfTheDay(String exerciseId) {
+    final DateTime? base = _selectedDay ?? _focusedDay;
+    if (base == null) return false;
+    return _prExerciseIdsForDate(base).contains(exerciseId);
   }
 
   String _localizedMenuName(
@@ -990,6 +1011,73 @@ class _CalendarScreenState extends State<CalendarScreen> {
           textAlign: TextAlign.left,
           style: style,
         ),
+      ),
+    );
+  }
+
+  Widget _buildStrengthMenuHeaderRow({
+    required BuildContext context,
+    required AppLocalizations l10n,
+    required String originalPart,
+    required String menuName,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2.0),
+      child: SelectableText(
+        _localizedMenuName(l10n, originalPart, menuName),
+        style: TextStyle(
+          color: cs.onSurface,
+          fontWeight: FontWeight.w600,
+          fontSize: 16,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSetDetailLine({
+    required BuildContext context,
+    required String setLabel,
+    required String detailText,
+    required TextStyle style,
+    bool showPrIcon = false,
+    EdgeInsets padding = const EdgeInsets.only(left: 8.0, bottom: 1.0),
+  }) {
+    if (!showPrIcon) {
+      return _selectableLine(
+        text: '$setLabel$detailText',
+        padding: padding,
+        style: style,
+      );
+    }
+
+    final cs = Theme.of(context).colorScheme;
+    final String trimmedDetails = detailText.trimLeft();
+    final String displayDetails =
+        trimmedDetails.isEmpty ? detailText : trimmedDetails;
+
+    return Padding(
+      padding: padding,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SelectableText(
+            '$setLabel ',
+            style: style,
+          ),
+          Icon(
+            Icons.workspace_premium,
+            size: 16,
+            color: cs.secondary,
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: SelectableText(
+              displayDetails,
+              style: style,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1761,6 +1849,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final hasWeight = record?.weight != null;
     final hasMeal = _hasMealForRecord(record);
 
+    final Set<String> prParts = <String>{};
+    if (record != null) {
+      final Set<String> prExerciseIds = _prExerciseIdsForDate(day);
+      if (prExerciseIds.isNotEmpty) {
+        record.menus.forEach((part, menuList) {
+          for (final m in menuList) {
+            final String exerciseId = _canonicalExerciseId(part, m.name);
+            if (prExerciseIds.contains(exerciseId)) {
+              prParts.add(part);
+              break;
+            }
+          }
+        });
+      }
+    }
+
     final bool canShowChips = showEventsForOutOfMonth ||
         day.month == _focusedDay.month ||
         record != null ||
@@ -1796,24 +1900,43 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ThemeData.estimateBrightnessForColor(boxColor) == Brightness.dark
               ? Colors.white
               : Colors.black87;
+      final bool isPrPart = prParts.contains(part);
+      final textWidget = Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: chipFontSize,
+          height: 1.05,
+          color: textOnBox,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+
       return Container(
         padding: EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
         decoration: BoxDecoration(
           color: boxColor,
           borderRadius: BorderRadius.circular(6),
         ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: chipFontSize,
-            height: 1.05,
-            color: textOnBox,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        child: isPrPart
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.workspace_premium,
+                    size: 12,
+                    color: textOnBox,
+                  ),
+                  const SizedBox(width: 4),
+                  textWidget,
+                ],
+              )
+            : Align(
+                alignment: Alignment.center,
+                child: textWidget,
+              ),
       );
     }
 
@@ -2350,17 +2473,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   );
                 },
                 singleMarkerBuilder: (context, day, focusedDay) {
-                  if (_hasMaxPrOn(day)) {
-                    final color = Theme.of(context).colorScheme.secondary;
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 2.0),
-                      child: Icon(
-                        Icons.workspace_premium,
-                        size: 12,
-                        color: color,
-                      ),
-                    );
-                  }
                   return const SizedBox.shrink();
                 },
               ),
@@ -2635,12 +2747,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
       for (final m in menuList) {
         if (!_menuHasAnyData(m)) continue;
 
+        final String exerciseId = _canonicalExerciseId(originalPart, m.name);
+        final bool isPr = _isPrExerciseOfTheDay(exerciseId);
+
         strengthWidgets.add(
-          _selectableLine(
-            text: _localizedMenuName(l10n, originalPart, m.name),
-            padding: const EdgeInsets.only(bottom: 2.0),
-            style: TextStyle(
-                color: cs.onSurface, fontWeight: FontWeight.w600, fontSize: 16),
+          _buildStrengthMenuHeaderRow(
+            context: context,
+            l10n: l10n,
+            originalPart: originalPart,
+            menuName: m.name,
           ),
         );
 
@@ -2701,7 +2816,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               : false;
 
           final buffer =
-              StringBuffer('${i + 1}：$weightDisplay X $repsDisplay$repsSuffix');
+              StringBuffer(' $weightDisplay X $repsDisplay$repsSuffix');
 
           final List<String> extraParts = [];
           if (showRmColumn && rm != null) {
@@ -2729,15 +2844,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
             buffer.write('｜${extraParts.join(' | ')}');
           }
 
+          final bool showPrIconForSet = isPr && i == 0;
           strengthWidgets.add(
-            _selectableLine(
-              text: buffer.toString(),
-              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+            _buildSetDetailLine(
+              context: context,
+              setLabel: '${i + 1}：',
+              detailText: buffer.toString(),
               style: TextStyle(
                 color: cs.onSurface,
                 fontSize: 15,
                 fontWeight: FontWeight.w400,
               ),
+              showPrIcon: showPrIconForSet,
             ),
           );
         }
@@ -3548,32 +3666,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final bool isPr = _isPrExerciseOfTheDay(exerciseId);
 
         summaryChildren.add(
-          Padding(
-            padding: const EdgeInsets.only(bottom: 2.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: SelectableText(
-                    _localizedMenuName(l10n, originalPart, m.name),
-                    style: TextStyle(
-                      color: cs.onSurface,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                if (isPr)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 6.0),
-                    child: Icon(
-                      Icons.workspace_premium,
-                      size: 16,
-                      color: cs.secondary,
-                    ),
-                  ),
-              ],
-            ),
+          _buildStrengthMenuHeaderRow(
+            context: context,
+            l10n: l10n,
+            originalPart: originalPart,
+            menuName: m.name,
           ),
         );
 
@@ -3638,7 +3735,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               : false;
 
           final buffer =
-              StringBuffer('${i + 1}：$weightDisplay X $repsDisplay$repsSuffix');
+              StringBuffer(' $weightDisplay X $repsDisplay$repsSuffix');
 
           final List<String> extraParts = [];
           if (showRmColumn && rm != null) {
@@ -3666,15 +3763,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
             buffer.write('｜${extraParts.join(' | ')}');
           }
 
+          final bool showPrIconForSet = isPr && i == 0;
           summaryChildren.add(
-            _selectableLine(
-              text: buffer.toString(),
-              padding: const EdgeInsets.only(left: 8.0, bottom: 1.0),
+            _buildSetDetailLine(
+              context: context,
+              setLabel: '${i + 1}：',
+              detailText: buffer.toString(),
               style: TextStyle(
                 color: cs.onSurface,
                 fontSize: 15,
                 fontWeight: FontWeight.w400,
               ),
+              showPrIcon: showPrIconForSet,
             ),
           );
         }
