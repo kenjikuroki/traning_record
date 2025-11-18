@@ -232,10 +232,10 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
           AVAudioSessionCategoryOptions.mixWithOthers |
           AVAudioSessionCategoryOptions.duckOthers,
 
-          // Android: 通知/サウンド用の属性でフォーカスは「MayDuck」
+          // Android: メディア音量として扱う（確実に聞こえるように）
           androidAudioAttributes: const AndroidAudioAttributes(
-            contentType: AndroidAudioContentType.sonification,
-            usage: AndroidAudioUsage.assistanceSonification,
+            contentType: AndroidAudioContentType.music,
+            usage: AndroidAudioUsage.media,
           ),
           androidAudioFocusGainType:
           AndroidAudioFocusGainType.gainTransientMayDuck,
@@ -247,9 +247,10 @@ class _StopwatchWidgetState extends State<StopwatchWidget>
       await session.configure(
         const AudioSessionConfiguration(
           avAudioSessionCategory: AVAudioSessionCategory.playback,
+          // Android: こちらもメディア音量側に統一
           androidAudioAttributes: AndroidAudioAttributes(
-            contentType: AndroidAudioContentType.sonification,
-            usage: AndroidAudioUsage.assistanceSonification,
+            contentType: AndroidAudioContentType.music,
+            usage: AndroidAudioUsage.media,
           ),
           androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransient,
           androidWillPauseWhenDucked: false,
