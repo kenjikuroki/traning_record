@@ -256,6 +256,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get customExerciseRemovalHint => '追加済みのカスタム種目を削除します。';
 
   @override
+  String get keepScreenOn => '画面オン';
+
+  @override
+  String get keepScreenOnHint => 'オンにするとアプリを開いている間画面が消灯されなくなります。';
+
+  @override
   String get noCustomExercises => '追加された種目はありません。';
 
   @override

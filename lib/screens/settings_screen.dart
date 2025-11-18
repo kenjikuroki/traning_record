@@ -52,6 +52,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late bool _showRM;
   late bool _showRIR;
   late bool _showFail;
+  late bool _screenOn;
 
   final List<String> _bodyPartsOriginal = const [
     '有酸素運動',
@@ -121,6 +122,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _showRM = SettingsManager.showRM;
     _showRIR = SettingsManager.showRIR;
     _showFail = SettingsManager.showFail;
+    _screenOn = SettingsManager.keepScreenOn;
 
     final Map stored =
         (widget.settingsBox.get('selectedBodyParts') as Map?) ?? {};
@@ -1485,6 +1487,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ],
                     ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: _kGap),
+
+              // 画面オン（アプリ使用中は画面を消灯させない）
+              Card(
+                color: colorScheme.surfaceContainerHighest,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero,
+                ),
+                margin: _kCardMargin,
+                child: Padding(
+                  padding: _kOuterPad,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _headerRow(
+                        icon: Icons.screen_lock_portrait,
+                        title: l10n.keepScreenOn,
+                        trailing: Switch(
+                          value: _screenOn,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          onChanged: (v) {
+                            setState(() => _screenOn = v);
+                            SettingsManager.setKeepScreenOn(v);
+                          },
+                          activeColor: colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        l10n.keepScreenOnHint,
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 13.0,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

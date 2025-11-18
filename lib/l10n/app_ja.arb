@@ -90,6 +90,8 @@
   "open": "開く",
   "removeCustomExercises": "追加した種目の削除",
   "customExerciseRemovalHint": "追加済みのカスタム種目を削除します。",
+  "keepScreenOn": "画面オン",
+  "keepScreenOnHint": "オンにするとアプリを開いている間画面が消灯されなくなります。",
   "noCustomExercises": "追加された種目はありません。",
   "selectExerciseToDelete": "削除する種目を選択",
   "customExerciseRemoved": "{exerciseName}を削除しました。",

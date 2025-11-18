@@ -25,6 +25,7 @@ class SettingsManager {
   static const String _backgroundAssetKey = 'background_asset';
   static const String _showStopwatchTimerKey =
       'show_stopwatch_timer'; // true/false
+  static const String _keepScreenOnKey = 'keep_screen_on';
   static const String _showWeightInputKey =
       'show_weight_input'; // 体重入力の表示ON/OFF（互換）
   static const String _aerobicCalorieKey = 'enable_aerobic_calories';
@@ -70,6 +71,10 @@ class SettingsManager {
   static final ValueNotifier<bool> _showRmNotifier = ValueNotifier<bool>(true);
   static final ValueNotifier<bool> _showRirNotifier = ValueNotifier<bool>(false);
   static final ValueNotifier<bool> _showFailNotifier =
+      ValueNotifier<bool>(false);
+
+  // 画面オン（アプリ使用中は画面を消灯させない）
+  static final ValueNotifier<bool> _keepScreenOnNotifier =
       ValueNotifier<bool>(false);
 
   static final ValueNotifier<bool> _manageBmrNotifier =
@@ -149,6 +154,8 @@ class SettingsManager {
     _showRmNotifier.value = (box.get(_showRmKey) as bool?) ?? true;
     _showRirNotifier.value = (box.get(_showRirKey) as bool?) ?? false;
     _showFailNotifier.value = (box.get(_showFailKey) as bool?) ?? false;
+    _keepScreenOnNotifier.value =
+        (box.get(_keepScreenOnKey) as bool?) ?? false;
 
     // 体重入力の表示
     _showWeightInputNotifier.value =
@@ -246,6 +253,10 @@ class SettingsManager {
 
   static bool get showFail => _showFailNotifier.value;
   static ValueNotifier<bool> get showFailNotifier => _showFailNotifier;
+
+  static bool get keepScreenOn => _keepScreenOnNotifier.value;
+  static ValueNotifier<bool> get keepScreenOnNotifier =>
+      _keepScreenOnNotifier;
 
   /// 体重入力の表示
   static bool get showWeightInput => _showWeightInputNotifier.value;
@@ -366,6 +377,12 @@ class SettingsManager {
     await _ensureBox();
     await _box?.put(_showFailKey, show);
     _showFailNotifier.value = show;
+  }
+
+  static Future<void> setKeepScreenOn(bool keepOn) async {
+    await _ensureBox();
+    await _box?.put(_keepScreenOnKey, keepOn);
+    _keepScreenOnNotifier.value = keepOn;
   }
 
   /// 体重入力の表示設定

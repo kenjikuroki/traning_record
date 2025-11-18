@@ -256,6 +256,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get customExerciseRemovalHint => 'Delete previously added custom exercises.';
 
   @override
+  String get keepScreenOn => 'Keep screen on';
+
+  @override
+  String get keepScreenOnHint =>
+      'If enabled, the screen will stay on while the app is open.';
+
+  @override
   String get noCustomExercises => 'No custom exercises have been added.';
 
   @override

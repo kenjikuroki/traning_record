@@ -585,6 +585,18 @@ abstract class AppLocalizations {
   /// **'Delete previously added custom exercises.'**
   String get customExerciseRemovalHint;
 
+  /// No description provided for @keepScreenOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep screen on'**
+  String get keepScreenOn;
+
+  /// No description provided for @keepScreenOnHint.
+  ///
+  /// In en, this message translates to:
+  /// **'If enabled, the screen will stay on while the app is open.'**
+  String get keepScreenOnHint;
+
   /// No description provided for @noCustomExercises.
   ///
   /// In en, this message translates to:

@@ -7,6 +7,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:flutter/scheduler.dart' show SchedulerBinding;
 import 'dart:io' show Platform; // ★ 追加
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'theme/app_theme.dart';
 
 import 'models/menu_data.dart';
@@ -95,10 +96,25 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   BuildContext? _localizedContext;
 
+  Future<void> _updateWakelock() async {
+    final bool keepOn = SettingsManager.keepScreenOn;
+    if (keepOn) {
+      await WakelockPlus.enable();
+    } else {
+      await WakelockPlus.disable();
+    }
+  }
+
+  void _handleKeepScreenOnChanged() {
+    _updateWakelock();
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _updateWakelock();
+    SettingsManager.keepScreenOnNotifier.addListener(_handleKeepScreenOnChanged);
   }
 
   Future<void> _resetNotificationsLocalized(BuildContext context) async {
@@ -143,6 +159,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    SettingsManager.keepScreenOnNotifier
+        .removeListener(_handleKeepScreenOnChanged);
+    WakelockPlus.disable();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
