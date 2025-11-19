@@ -95,6 +95,11 @@ const Map<int, String> _weekdayEmptyAssets = {
 const Map<String, String> _specialEmptyAssetsByMonthDay = {
   // '01-01': 'assets/calendar_empty/newyear.png',
   // '12-25': 'assets/calendar_empty/xmas.png',
+
+  '01-30': 'assets/calendar/marry0130.png', // 毎年 1/30
+  '06-27': 'assets/calendar/girls0627.png', // 毎年 6/27
+  '04-16': 'assets/calendar/boys0416.png',  // 毎年 4/16
+  '12-25': 'assets/calendar/Xmas1225.png',  // 毎年 12/25
 };
 
 // 固定年月日（yyyy-MM-dd）
