@@ -13,7 +13,7 @@ class SettingsManager {
 
   static Box<dynamic>? _box;
 
-  static bool demoMode = true; // 撮影中は true。本番は false に戻す
+  static bool demoMode = false; // 撮影中は true。本番は false に戻す
   // ===== Keys =====
   static const String _unitKey = 'unit_of_weight'; // 'kg' | 'lbs'
   static const String _lengthUnitKey = 'unit_of_length'; // 'km' | 'mile'

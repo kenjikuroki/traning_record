@@ -9,7 +9,7 @@ flutter_intl:
 
 # バージョン
 
-version: 1.3.11+63
+version: 1.3.12+64
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
