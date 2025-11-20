@@ -135,11 +135,11 @@ class _GraphScreenState extends State<GraphScreen> {
   static const double _kPickerHeight = 48.0;
 
   // X1点あたり幅
-  static const double _kXStridePx = 48.0;
+  static const double _kXStridePx = 24.0;
 
   // Y目盛の“見た目”間隔：固定 24px（初期余白も 24px）
   static const double _kYTickPx = 24.0;
-  static const double _kYAxisWidth = 48.0;
+  static const double _kYAxisWidth = 30.0;
 
   // X軸ラベル領域の高さ（左右で統一）
   static const double _kXAxisReservedPx = 24.0;
@@ -149,8 +149,8 @@ class _GraphScreenState extends State<GraphScreen> {
   static const int _kYPadStepsBottom = 2;
 
   // X の右余白スクロール
-  static const int _kPadTailDays = 7;
-  static const int _kPadTailWeeks = 4;
+  static const int _kPadTailDays = 60;
+  static const int _kPadTailWeeks = 20;
 
   // プロット領域高さ（レイアウト時に更新）
   double _plotHeightPx = 1.0;
@@ -1469,8 +1469,7 @@ class _GraphScreenState extends State<GraphScreen> {
         floorTo(_baseMinY - _kYPadStepsBottom * _yLabelStep, _yLabelStep);
     _baseMaxY = ceilTo(_baseMaxY + _kYPadStepsTop * _yLabelStep, _yLabelStep);
 
-    if (_isAerobicContext() || _isPersonalContext())
-      _baseMinY = max(0, _baseMinY);
+    _baseMinY = max(0, _baseMinY);
   }
 
   // X軸パディング付き配列
@@ -1509,6 +1508,9 @@ class _GraphScreenState extends State<GraphScreen> {
     if ((value - value.round()).abs() > 1e-6) return const SizedBox.shrink();
     final idx = value.round();
     if (idx < 0 || idx >= dates.length) return const SizedBox.shrink();
+
+    // 1つ飛ばしで表示（重なり防止）
+    if (idx % 2 != 0) return const SizedBox.shrink();
 
     final text = (_displayMode == DisplayMode.day)
         ? _formatDayLabel(dates[idx])
@@ -2650,7 +2652,7 @@ class _GraphScreenState extends State<GraphScreen> {
                       elevation: 4,
                       clipBehavior: Clip.antiAlias,
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+                        padding: const EdgeInsets.fromLTRB(2, 8, 8, 6),
                         child: LayoutBuilder(
                           builder: (context, constraints) {
                             final totalW = constraints.maxWidth;
@@ -2662,14 +2664,13 @@ class _GraphScreenState extends State<GraphScreen> {
                             final plotAvailW =
                                 max(60.0, totalW - yAxisPanelW - 4);
                             final points = max(1, _axisDates.length);
-                            final chartW =
-                                max(plotAvailW, points * _kXStridePx);
+                            final chartW = points * _kXStridePx;
 
                             final unitOverlay =
                                 (unitText.isEmpty || _axisDates.isEmpty)
                                     ? const SizedBox.shrink()
                                     : Positioned(
-                                        left: 2,
+                                        left: 4,
                                         top: 6,
                                         child: Text(
                                           unitText,
@@ -2697,9 +2698,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                 (viewMaxY / _yLabelStep).ceil() * _yLabelStep +
                                     _kYPadStepsTop * _yLabelStep;
 
-                            if (_isAerobicContext() || _isPersonalContext()) {
-                              viewMinY = max(0, viewMinY);
-                            }
+                            viewMinY = max(0, viewMinY);
 
                             final tickCount =
                                 ((viewMaxY - viewMinY) / _yLabelStep).round() +
