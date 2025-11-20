@@ -1,6 +1,7 @@
 // lib/screens/calendar_screen.dart
 
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -172,11 +173,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       8.0,
       20.0,
     );
-    final double vertical = _clampDouble(
-      (compact ? 10.0 : 12.0) * chipScale * (0.75 + scaleFactor * 0.25),
-      6.0,
-      14.0,
-    );
+    // 年月バーの上下余白をかなり薄くする
+    const double vertical = 2.0;
     return EdgeInsets.symmetric(horizontal: horizontal, vertical: vertical);
   }
 
@@ -1851,8 +1849,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   // 4情報を想定した基本行高を算出
-  double _baseRowHeight(BuildContext context) {
-    const double topPad = 6.0;
+double _baseRowHeight(BuildContext context) {
+    const double topPad = 2.0;
     final double dayFont =
         Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14.0;
     final double dayLine = dayFont * 1.2;
@@ -1865,7 +1863,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     const double gapPerRow = 2.0;
     final double gaps = gapPerRow * (chipRows + 1);
 
-    const double safety = 6.0;
+    const double safety = 2.0;
     return (topPad + dayLine + chipH * chipRows + gaps + safety).ceilToDouble();
   }
 
@@ -2282,19 +2280,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       return ValueListenableBuilder<Box<DailyRecord>>(
                         valueListenable: widget.recordsBox.listenable(),
                         builder: (context, ____, ___) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              const AdBanner(screenName: 'calendar'),
-                              const SizedBox(height: 12),
-                              Expanded(
-                                child: _buildCalendar(
+                          return SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const AdBanner(screenName: 'calendar'),
+                                const SizedBox(height: 12),
+                                _buildCalendar(
                                   context,
                                   cardKey: _kCalendarCard,
                                 ),
-                              ),
-                              const SizedBox(height: 12),
-                            ],
+                                const SizedBox(height: 12),
+                              ],
+                            ),
                           );
                         },
                       );
@@ -2327,8 +2325,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       elevation: 4,
       child: Padding(
-        // 下の余白を少し詰めて、実画面上の高さを稼ぐ
-        padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+        // 全体の上下余白をさらに圧縮
+        padding: const EdgeInsets.fromLTRB(8, 2, 8, 2),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final double baseRowOriginal = _baseRowHeight(context);
@@ -2344,13 +2342,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 final double scale =
                     _clampDouble((estimate / baseRow), 0.3, 1.8);
                 final double headerStatic = _clampDouble(
-                  (forWidgetCapture ? 32.0 : 44.0) *
+                  (forWidgetCapture ? 32.0 : 22.0) *
                       (0.85 + sizeScale * 0.3) *
                       (scale < 1.0
                           ? (0.8 + scale * 0.2)
                           : (0.95 + (scale - 1.0) * 0.12)),
-                  24.0,
-                  forWidgetCapture ? 40.0 : 50.0,
+                  16.0,
+                  forWidgetCapture ? 40.0 : 28.0,
                 );
                 final double dowHeightGuess = _clampDouble(
                   28.0 * scale * (0.85 + sizeScale * 0.25),
@@ -2378,7 +2376,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             }
             rowHeight = _clampDouble(
               rowHeight,
-              26.0,
+              24.0,
               baseRowOriginal * 1.45,
             );
 
@@ -2391,12 +2389,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             );
             final int maxChipRows =
                 _maxChipRowsFor(chipScale, forWidgetCapture);
-            final double headerFontBase = forWidgetCapture ? 22.0 : 26.0;
-            final double headerFontSize = _clampDouble(
-              headerFontBase * (0.75 + sizeScale * 0.45),
-              forWidgetCapture ? 14.0 : 18.0,
-              headerFontBase,
-            );
+            final double headerFontBase =
+                Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14.0;
+            final double headerFontSize = headerFontBase;
             final double chevronSize =
                 _clampDouble(26.0 * (0.8 + sizeScale * 0.4), 18.0, 28.0);
             final EdgeInsets headerPadding =
@@ -2414,7 +2409,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   _selectedDay != null && _sameDate(day, _selectedDay!),
               startingDayOfWeek: StartingDayOfWeek.monday,
               headerStyle: HeaderStyle(
-                titleCentered: true,
+                // 左寄せにする
+                titleCentered: false,
                 formatButtonVisible: false,
                 decoration: BoxDecoration(
                   color: colorScheme.primary,
@@ -2432,8 +2428,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 titleTextStyle: TextStyle(
                   color: colorScheme.onPrimary,
                   fontWeight: FontWeight.w900,
-                  fontSize: 18.0,
-                  height: 1.25,
+                  fontSize: headerFontSize, // 日付と同じくらい
+                  height: 1.1,
                   letterSpacing: 0.2,
                 ),
                 leftChevronIcon: Icon(
@@ -2446,12 +2442,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   color: colorScheme.onPrimary,
                   size: chevronSize,
                 ),
+                // 年月バーと曜日行の隙間も詰める
                 headerMargin: EdgeInsets.only(
-                  bottom: forWidgetCapture ? 10 : 12,
+                  bottom: forWidgetCapture ? 2 : 4,
                 ),
                 headerPadding: headerPadding,
               ),
-              headerVisible: !forWidgetCapture,
+              headerVisible: false,
               calendarStyle: CalendarStyle(
                 defaultTextStyle: TextStyle(color: colorScheme.onSurface),
                 weekendTextStyle: TextStyle(color: colorScheme.onSurface),
@@ -2566,7 +2563,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           style: TextStyle(
                             color: colorScheme.onSurface,
                             fontWeight: FontWeight.w700,
-                            fontSize: 12.0,
+                            fontSize: headerFontSize,
                             height: 1.2,
                           ),
                         ),
@@ -2587,11 +2584,181 @@ class _CalendarScreenState extends State<CalendarScreen> {
               );
             }
 
-            return table;
+            final localeTag = Localizations.localeOf(context).toLanguageTag();
+            final String headerText =
+                DateFormat.yMMM(localeTag).format(_focusedDay);
+            final double miniHeaderHeight =
+                _clampDouble(headerFontSize * 2.4, 26.0, 40.0);
+
+            final Widget headerContainer = Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: SizedBox(
+                height: miniHeaderHeight,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _pickMonth(context),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          headerText,
+                          overflow: TextOverflow.fade,
+                          softWrap: false,
+                          style: TextStyle(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w800,
+                            fontSize: headerFontSize,
+                            height: 1.1,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        Icon(
+                          Icons.arrow_drop_down,
+                          color: colorScheme.onSurface,
+                          size: headerFontSize + 4,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+
+            final Widget tableWithTightSpacing = Transform.translate(
+              offset: const Offset(0, -8),
+              child: table,
+            );
+            final bool boundedHeight =
+                constraints.hasBoundedHeight && constraints.maxHeight.isFinite;
+            final Widget tableSection = boundedHeight
+                ? Expanded(child: tableWithTightSpacing)
+                : tableWithTightSpacing;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                headerContainer,
+                tableSection,
+              ],
+            );
           },
         ),
       ),
     );
+  }
+
+  Future<void> _pickMonth(BuildContext context) async {
+    final int startYear = 2015;
+    final int endYear = 2100;
+    final int initialYear = _focusedDay.year.clamp(startYear, endYear);
+    final int initialMonth = _focusedDay.month - 1;
+
+    final AppLocalizations l10n = AppLocalizations.of(context)!;
+    final Color sheetColor = Theme.of(context).colorScheme.surface;
+
+    final FixedExtentScrollController yearController =
+        FixedExtentScrollController(initialItem: initialYear - startYear);
+    final FixedExtentScrollController monthController =
+        FixedExtentScrollController(initialItem: initialMonth);
+
+    DateTime? picked = await showModalBottomSheet<DateTime>(
+      context: context,
+      builder: (sheetContext) {
+        int tempYear = initialYear;
+        int tempMonth = initialMonth;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return SafeArea(
+              top: false,
+              child: Container(
+                color: sheetColor,
+                height: 320,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                            child: Text(l10n.cancel),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: () => Navigator.of(sheetContext)
+                                .pop(DateTime(tempYear, tempMonth + 1, 1)),
+                            child: Text(l10n.ok),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: CupertinoPicker(
+                              scrollController: yearController,
+                              itemExtent: 36,
+                              useMagnifier: true,
+                              magnification: 1.1,
+                              onSelectedItemChanged: (index) {
+                                setState(() => tempYear = startYear + index);
+                              },
+                              children: [
+                                for (int year = startYear; year <= endYear; year++)
+                                  Center(child: Text('$year')),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: CupertinoPicker(
+                              scrollController: monthController,
+                              itemExtent: 36,
+                              useMagnifier: true,
+                              magnification: 1.1,
+                              onSelectedItemChanged: (index) {
+                                setState(() => tempMonth = index);
+                              },
+                              children: [
+                                for (int month = 1; month <= 12; month++)
+                                  Center(child: Text(month.toString().padLeft(2, '0'))),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (!mounted || picked == null) {
+      return;
+    }
+    setState(() {
+      _focusedDay = DateTime(picked.year, picked.month, 1);
+    });
+  }
+
+  void _goToPreviousMonth() {
+    setState(() {
+      _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1, 1);
+    });
+  }
+
+  void _goToNextMonth() {
+    setState(() {
+      _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1, 1);
+    });
   }
 
   String _formatResultsDate(BuildContext context, DateTime date) {
