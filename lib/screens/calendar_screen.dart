@@ -1933,7 +1933,8 @@ double _baseRowHeight(BuildContext context) {
       0.6,
       4.0,
     );
-    final double chipBoxHeight = chipFontSize * 1.1 + chipVPad * 2;
+    final double chipLabelFontSize = chipFontSize * 1.08;
+    final double chipBoxHeight = chipLabelFontSize * 1.2 + chipVPad * 2;
 
     Widget _partChip(String part) {
       final label = _translatePartToLocale(context, part);
@@ -1948,16 +1949,25 @@ double _baseRowHeight(BuildContext context) {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         textAlign: TextAlign.center,
+        textHeightBehavior: const TextHeightBehavior(
+          applyHeightToFirstAscent: false,
+          applyHeightToLastDescent: false,
+        ),
         style: TextStyle(
-          fontSize: chipFontSize,
-          height: 1.05,
+          fontSize: chipLabelFontSize,
+          height: 1.0,
           color: textOnBox,
           fontWeight: FontWeight.w600,
         ),
       );
 
       return Container(
-        padding: EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
+        padding: EdgeInsets.fromLTRB(
+          chipHPad,
+          chipVPad * 0.7,
+          chipHPad,
+          chipVPad * 1.3,
+        ),
         decoration: BoxDecoration(
           color: boxColor,
           borderRadius: BorderRadius.circular(6),
@@ -1983,22 +1993,33 @@ double _baseRowHeight(BuildContext context) {
     }
 
     Widget _memoChip() => Container(
-          padding:
-              EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
+          padding: EdgeInsets.fromLTRB(
+            chipHPad,
+            chipVPad * 0.7,
+            chipHPad,
+            chipVPad * 1.3,
+          ),
           decoration: BoxDecoration(
             color: cs.tertiaryContainer,
             borderRadius: BorderRadius.circular(6),
           ),
-          child: Text(
-            AppLocalizations.of(context)!.memo,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: chipFontSize,
-              height: 1.05,
-              color: cs.onTertiaryContainer,
-              fontWeight: FontWeight.w700,
+          child: Align(
+            alignment: Alignment.center,
+            child: Text(
+              AppLocalizations.of(context)!.memo,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              textHeightBehavior: const TextHeightBehavior(
+                applyHeightToFirstAscent: false,
+                applyHeightToLastDescent: false,
+              ),
+              style: TextStyle(
+                fontSize: chipLabelFontSize,
+                height: 1.0,
+                color: cs.onTertiaryContainer,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         );
@@ -2006,21 +2027,33 @@ double _baseRowHeight(BuildContext context) {
     Widget _weightChip() {
       final l10n = AppLocalizations.of(context)!;
       return Container(
-        padding: EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
+        padding: EdgeInsets.fromLTRB(
+          chipHPad,
+          chipVPad * 0.7,
+          chipHPad,
+          chipVPad * 1.3,
+        ),
         decoration: BoxDecoration(
           color: cs.secondaryContainer,
           borderRadius: BorderRadius.circular(6),
         ),
-        child: Text(
-          l10n.bodyWeight,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: chipFontSize,
-            height: 1.05,
-            color: cs.onSecondaryContainer,
-            fontWeight: FontWeight.w700,
+        child: Align(
+          alignment: Alignment.center,
+          child: Text(
+            l10n.bodyWeight,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            textHeightBehavior: const TextHeightBehavior(
+              applyHeightToFirstAscent: false,
+              applyHeightToLastDescent: false,
+            ),
+            style: TextStyle(
+              fontSize: chipLabelFontSize,
+              height: 1.0,
+              color: cs.onSecondaryContainer,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       );
@@ -2029,21 +2062,33 @@ double _baseRowHeight(BuildContext context) {
     Widget _mealChip() {
       final l10n = AppLocalizations.of(context)!;
       return Container(
-        padding: EdgeInsets.symmetric(horizontal: chipHPad, vertical: chipVPad),
+        padding: EdgeInsets.fromLTRB(
+          chipHPad,
+          chipVPad * 0.7,
+          chipHPad,
+          chipVPad * 1.3,
+        ),
         decoration: BoxDecoration(
           color: cs.surfaceVariant,
           borderRadius: BorderRadius.circular(6),
         ),
-        child: Text(
-          l10n.meal,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: chipFontSize,
-            height: 1.05,
-            color: cs.onSurface,
-            fontWeight: FontWeight.w700,
+        child: Align(
+          alignment: Alignment.center,
+          child: Text(
+            l10n.meal,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            textHeightBehavior: const TextHeightBehavior(
+              applyHeightToFirstAscent: false,
+              applyHeightToLastDescent: false,
+            ),
+            style: TextStyle(
+              fontSize: chipLabelFontSize,
+              height: 1.0,
+              color: cs.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       );
@@ -2059,16 +2104,23 @@ double _baseRowHeight(BuildContext context) {
           color: cs.primaryContainer,
           borderRadius: BorderRadius.circular(6),
         ),
-        child: Text(
-          l10n.photos, // ← '写真' / 'Photos' を l10n に統一
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: chipFontSize,
-            height: 1.05,
-            color: cs.onPrimaryContainer,
-            fontWeight: FontWeight.w700,
+        child: Align(
+          alignment: Alignment.center,
+          child: Text(
+            l10n.photos, // ← '写真' / 'Photos' を l10n に統一
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            textHeightBehavior: const TextHeightBehavior(
+              applyHeightToFirstAscent: false,
+              applyHeightToLastDescent: false,
+            ),
+            style: TextStyle(
+              fontSize: chipLabelFontSize,
+              height: 1.0,
+              color: cs.onPrimaryContainer,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       );
@@ -2280,19 +2332,19 @@ double _baseRowHeight(BuildContext context) {
                       return ValueListenableBuilder<Box<DailyRecord>>(
                         valueListenable: widget.recordsBox.listenable(),
                         builder: (context, ____, ___) {
-                          return SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                const AdBanner(screenName: 'calendar'),
-                                const SizedBox(height: 12),
-                                _buildCalendar(
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const AdBanner(screenName: 'calendar'),
+                              const SizedBox(height: 6),
+                              Expanded(
+                                child: _buildCalendar(
                                   context,
                                   cardKey: _kCalendarCard,
                                 ),
-                                const SizedBox(height: 12),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(height: 6),
+                            ],
                           );
                         },
                       );
@@ -2379,6 +2431,11 @@ double _baseRowHeight(BuildContext context) {
               24.0,
               baseRowOriginal * 1.45,
             );
+            rowHeight = _clampDouble(
+              rowHeight - 2.0,
+              23.0,
+              baseRowOriginal * 1.45 - 2.0,
+            );
 
             final double chipScale =
                 _clampDouble(rowHeight / baseRowOriginal, 0.18, 1.4);
@@ -2452,8 +2509,9 @@ double _baseRowHeight(BuildContext context) {
               calendarStyle: CalendarStyle(
                 defaultTextStyle: TextStyle(color: colorScheme.onSurface),
                 weekendTextStyle: TextStyle(color: colorScheme.onSurface),
-                outsideTextStyle:
-                    TextStyle(color: colorScheme.onSurfaceVariant),
+                outsideTextStyle: TextStyle(
+                  color: colorScheme.onSurfaceVariant.withOpacity(0.45),
+                ),
                 todayDecoration: const BoxDecoration(),
                 selectedDecoration: const BoxDecoration(),
                 selectedTextStyle: TextStyle(color: colorScheme.onSurface),
@@ -2478,7 +2536,7 @@ double _baseRowHeight(BuildContext context) {
                   return _buildDayCell(
                     context,
                     day,
-                    textColor: cs.onSurfaceVariant,
+                    textColor: cs.onSurfaceVariant.withOpacity(0.45),
                     selected: false,
                     showEventsForOutOfMonth: true,
                     chipScale: chipScale,
@@ -3694,7 +3752,7 @@ double _baseRowHeight(BuildContext context) {
                 // ↓↓↓ ここが “デカ広告” 領域（動画ネイティブ優先 → バナーMRECに自動フォールバック） ↓↓↓
                 const Divider(height: 1),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                   child: BigEarningAd(
                     // ★本番の広告ユニットIDに差し替えてください
                     androidNativeUnitId:
