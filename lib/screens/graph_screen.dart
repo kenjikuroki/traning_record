@@ -130,9 +130,9 @@ class _GraphScreenState extends State<GraphScreen> {
   static const String _prefPersonalMetricKey = 'graph_personal_metric_key';
 
   // UI寸法
-  static const double _kControlHeight = 40.0;
-  static const double _kControlRadius = 20.0;
-  static const double _kPickerHeight = 48.0;
+  static const double _kControlHeight = 32.0;
+  static const double _kControlRadius = 16.0;
+  static const double _kPickerHeight = 36.0;
 
   // X1点あたり幅
   static const double _kXStridePx = 24.0;
@@ -443,8 +443,41 @@ class _GraphScreenState extends State<GraphScreen> {
     }
   }
 
+  final ScrollController _verticalScrollController1 = ScrollController();
+  final ScrollController _verticalScrollController2 = ScrollController();
+  bool _isSyncing = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _verticalScrollController1.addListener(() {
+      if (_isSyncing) return;
+      _isSyncing = true;
+      if (_verticalScrollController1.hasClients &&
+          _verticalScrollController2.hasClients) {
+        _verticalScrollController2
+            .jumpTo(_verticalScrollController1.position.pixels);
+      }
+      _isSyncing = false;
+    });
+
+    _verticalScrollController2.addListener(() {
+      if (_isSyncing) return;
+      _isSyncing = true;
+      if (_verticalScrollController1.hasClients &&
+          _verticalScrollController2.hasClients) {
+        _verticalScrollController1
+            .jumpTo(_verticalScrollController2.position.pixels);
+      }
+      _isSyncing = false;
+    });
+  }
+
   @override
   void dispose() {
+    _verticalScrollController1.dispose();
+    _verticalScrollController2.dispose();
     _goalController.dispose();
     super.dispose();
   }
@@ -1414,7 +1447,7 @@ class _GraphScreenState extends State<GraphScreen> {
           ? d
           : d.subtract(Duration(days: d.weekday - 1))]!;
       final y = map[d]!;
-      _spots.add(FlSpot(idx.toDouble(), y));
+      _spots.add(FlSpot(idx.toDouble() + 1, y));
       _minY = (_spots.length == 1) ? y : min(_minY, y);
       _maxY = (_spots.length == 1) ? y : max(_maxY, y);
     }
@@ -1506,7 +1539,7 @@ class _GraphScreenState extends State<GraphScreen> {
     final dates = _axisDates;
     if (dates.isEmpty) return const SizedBox.shrink();
     if ((value - value.round()).abs() > 1e-6) return const SizedBox.shrink();
-    final idx = value.round();
+    final idx = value.round() - 1;
     if (idx < 0 || idx >= dates.length) return const SizedBox.shrink();
 
     // 1つ飛ばしで表示（重なり防止）
@@ -2451,7 +2484,9 @@ class _GraphScreenState extends State<GraphScreen> {
         ? ''
         : (_selectedMenu ?? l10n.selectExercise);
 
-    Widget partMenuRow = Row(
+    Widget partMenuRow = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
       children: [
         // 左: 部位
         Expanded(
@@ -2549,6 +2584,7 @@ class _GraphScreenState extends State<GraphScreen> {
           ),
         ),
       ],
+    ),
     );
 
     // AEROBIC トグル
@@ -2622,26 +2658,12 @@ class _GraphScreenState extends State<GraphScreen> {
             onTap: _closeKeyboard,
             child: CenteredConstrained(
               maxWidth: 760,
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(4.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const AdBanner(screenName: 'graph'),
-                  const SizedBox(height: 12.0),
-                  Row(
-                    children: [
-                      Expanded(child: dayWeekToggle),
-                      const SizedBox(width: 8),
-                      Expanded(child: goalButton),
-                      const SizedBox(width: 8),
-                      Expanded(child: favButton),
-                    ],
-                  ),
-                  if (aerobicToggle != null) ...[
-                    const SizedBox(height: 8),
-                    aerobicToggle,
-                  ],
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4.0),
                   Expanded(
                     child: Card(
                       key: _kChart,
@@ -2652,8 +2674,26 @@ class _GraphScreenState extends State<GraphScreen> {
                       elevation: 4,
                       clipBehavior: Clip.antiAlias,
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(2, 8, 8, 6),
-                        child: LayoutBuilder(
+                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Expanded(child: dayWeekToggle),
+                                const SizedBox(width: 8),
+                                Expanded(child: goalButton),
+                                const SizedBox(width: 8),
+                                Expanded(child: favButton),
+                              ],
+                            ),
+                            if (aerobicToggle != null) ...[
+                              const SizedBox(height: 8),
+                              aerobicToggle,
+                            ],
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: LayoutBuilder(
                           builder: (context, constraints) {
                             final totalW = constraints.maxWidth;
                             final totalH = constraints.maxHeight;
@@ -2664,7 +2704,9 @@ class _GraphScreenState extends State<GraphScreen> {
                             final plotAvailW =
                                 max(60.0, totalW - yAxisPanelW - 4);
                             final points = max(1, _axisDates.length);
-                            final chartW = points * _kXStridePx;
+                            final chartW = _axisDates.isEmpty
+                                ? plotAvailW
+                                : points * _kXStridePx;
 
                             final unitOverlay =
                                 (unitText.isEmpty || _axisDates.isEmpty)
@@ -2707,7 +2749,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                 24 + (tickCount - 1) * _kYTickPx + 24;
                             final double chartH = max(totalH, computedChartH);
 
-                            // 左Y軸
+                            // 左Y軸 (タイトルのみ)
                             final yAxisChart = SizedBox(
                               width: yAxisPanelW,
                               height: chartH,
@@ -2730,12 +2772,9 @@ class _GraphScreenState extends State<GraphScreen> {
                                               getTitlesWidget: _leftTitle,
                                             ),
                                           ),
-                                          bottomTitles: AxisTitles(
+                                          bottomTitles: const AxisTitles(
                                             sideTitles: SideTitles(
-                                              showTitles: true,
-                                              reservedSize: _kXAxisReservedPx,
-                                              getTitlesWidget: (v, meta) =>
-                                                  const SizedBox.shrink(),
+                                              showTitles: false,
                                             ),
                                           ),
                                           topTitles: const AxisTitles(
@@ -2762,83 +2801,115 @@ class _GraphScreenState extends State<GraphScreen> {
                                           ),
                                         ),
                                         borderData: FlBorderData(
-                                          show: true,
-                                          border: Border(
-                                            left: BorderSide(
-                                              color: colorScheme.outlineVariant,
+                                          show: false,
+                                        ),
+                                      ),
+                                    ),
+                            );
+
+                            // X軸 (タイトルのみ)
+                            final xAxisChart = SizedBox(
+                              width: chartW,
+                              height: _kXAxisReservedPx,
+                              child: _axisDates.isEmpty
+                                  ? const SizedBox.shrink()
+                                  : LineChart(
+                                      LineChartData(
+                                        minX: 0,
+                                        maxX: points.toDouble(),
+                                        minY: 0,
+                                        maxY: 1,
+                                        clipData: const FlClipData.none(),
+                                        lineBarsData: const [],
+                                        titlesData: FlTitlesData(
+                                          leftTitles: const AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: false,
                                             ),
-                                            bottom: BorderSide(
-                                              color: colorScheme.outlineVariant,
+                                          ),
+                                          bottomTitles: AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              reservedSize: _kXAxisReservedPx,
+                                              interval: 1,
+                                              getTitlesWidget: _bottomTitle,
+                                            ),
+                                          ),
+                                          topTitles: const AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: false,
+                                            ),
+                                          ),
+                                          rightTitles: const AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: false,
                                             ),
                                           ),
                                         ),
+                                        gridData: const FlGridData(show: false),
+                                        borderData: FlBorderData(show: false),
                                       ),
                                     ),
                             );
 
                             // 右側プロット
                             final plotArea = _axisDates.isEmpty
-                                ? Center(
-                                    child: Transform.translate(
-                                      offset: const Offset(0, -16),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          SizedBox.square(
-                                            dimension: min(
-                                              MediaQuery.of(context)
-                                                      .size
-                                                      .height /
-                                                  3,
-                                              240.0,
-                                            ),
-                                            child: ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(24),
-                                              child: Image.asset(
-                                                'assets/graph/hint.png',
-                                                fit: BoxFit.contain,
-                                                errorBuilder: (_, __, ___) =>
-                                                    Icon(
-                                                  Icons.insights,
-                                                  size: 72,
-                                                  color: colorScheme
-                                                      .onSurfaceVariant,
-                                                ),
+                                ? Container(
+                                    height: totalH - 2 - _kXAxisReservedPx,
+                                    alignment: Alignment.center,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox.square(
+                                          dimension: min(
+                                            MediaQuery.of(context).size.height /
+                                                3,
+                                            240.0,
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(24),
+                                            child: Image.asset(
+                                              'assets/graph/hint.png',
+                                              fit: BoxFit.contain,
+                                              errorBuilder: (_, __, ___) =>
+                                                  Icon(
+                                                Icons.insights,
+                                                size: 72,
+                                                color: colorScheme
+                                                    .onSurfaceVariant,
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(height: 12),
-                                          Text(
-                                            l10n.noGraphData,
-                                            textAlign: TextAlign.center,
-                                            maxLines: 2,
-                                            softWrap: true,
-                                            style: TextStyle(
-                                              color:
-                                                  colorScheme.onSurfaceVariant,
-                                              fontSize: 14,
-                                              height: 1.15,
-                                              letterSpacing: 0,
-                                            ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          l10n.noGraphData,
+                                          textAlign: TextAlign.center,
+                                          maxLines: 2,
+                                          softWrap: true,
+                                          style: TextStyle(
+                                            color: colorScheme.onSurfaceVariant,
+                                            fontSize: 14,
+                                            height: 1.15,
+                                            letterSpacing: 0,
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
                                   )
-                                : SizedBox(
-                                    height: chartH,
-                                    child: SingleChildScrollView(
-                                      scrollDirection: Axis.horizontal,
-                                      physics: const BouncingScrollPhysics(),
+                                  : Container(
+                                      height: chartH,
+                                      child: SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        physics: const BouncingScrollPhysics(),
                                       child: SizedBox(
                                         width: chartW,
                                         height: chartH,
                                         child: LineChart(
                                           LineChartData(
                                             minX: 0,
-                                            maxX: (_axisDates.length - 1)
-                                                .toDouble(),
+                                            maxX: points.toDouble(),
                                             minY: viewMinY,
                                             maxY: viewMaxY,
                                             clipData: const FlClipData.all(),
@@ -2859,13 +2930,9 @@ class _GraphScreenState extends State<GraphScreen> {
                                                 sideTitles: SideTitles(
                                                     showTitles: false),
                                               ),
-                                              bottomTitles: AxisTitles(
+                                              bottomTitles: const AxisTitles(
                                                 sideTitles: SideTitles(
-                                                  showTitles: true,
-                                                  interval: 1,
-                                                  reservedSize:
-                                                      _kXAxisReservedPx,
-                                                  getTitlesWidget: _bottomTitle,
+                                                  showTitles: false,
                                                 ),
                                               ),
                                               topTitles: const AxisTitles(
@@ -2900,17 +2967,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                               ),
                                             ),
                                             borderData: FlBorderData(
-                                              show: true,
-                                              border: Border(
-                                                bottom: BorderSide(
-                                                  color: colorScheme
-                                                      .outlineVariant,
-                                                ),
-                                                right: BorderSide(
-                                                  color: colorScheme
-                                                      .outlineVariant,
-                                                ),
-                                              ),
+                                              show: false,
                                             ),
                                             lineTouchData: LineTouchData(
                                               touchTooltipData:
@@ -2977,40 +3034,90 @@ class _GraphScreenState extends State<GraphScreen> {
                                     ),
                                   );
 
-                            // 縦スクロールで同期
-                            return Stack(
-                              children: [
-                                SizedBox(
-                                  width: totalW,
-                                  height: totalH,
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.vertical,
-                                    physics: const BouncingScrollPhysics(),
-                                    child: SizedBox(
-                                      height: chartH,
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          yAxisChart,
-                                          const SizedBox(width: 2),
-                                          Expanded(child: plotArea),
-                                        ],
+                            // 縦スクロールで同期 (Y軸 + プロット&X軸)
+                            return Container(
+                              width: totalW,
+                              height: totalH,
+                              clipBehavior: Clip.antiAlias,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: colorScheme.outlineVariant,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // 左: Y軸 (縦スクロール)
+                                  SizedBox(
+                                    width: yAxisPanelW,
+                                    child: Column(
+                                      children: [
+                                        Expanded(
+                                          child: SingleChildScrollView(
+                                            controller:
+                                                _verticalScrollController1,
+                                            physics:
+                                                const BouncingScrollPhysics(),
+                                            child: yAxisChart,
+                                          ),
+                                        ),
+                                        SizedBox(height: _kXAxisReservedPx),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  // 右: プロット + X軸 (横スクロール)
+                                  Expanded(
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      physics: const BouncingScrollPhysics(),
+                                      child: SizedBox(
+                                        width: chartW,
+                                        height: totalH - 2,
+                                        child: Stack(
+                                          children: [
+                                            // プロット (縦スクロール同期)
+                                            Positioned(
+                                              top: 0,
+                                              left: 0,
+                                              right: 0,
+                                              bottom: _kXAxisReservedPx,
+                                              child: SingleChildScrollView(
+                                                controller:
+                                                    _verticalScrollController2,
+                                                physics:
+                                                    const BouncingScrollPhysics(),
+                                                child: plotArea,
+                                              ),
+                                            ),
+                                            // X軸 (固定)
+                                            Positioned(
+                                              left: 0,
+                                              right: 0,
+                                              bottom: 0,
+                                              height: _kXAxisReservedPx,
+                                              child: xAxisChart,
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                unitOverlay,
-                              ],
+                                ],
+                              ),
                             );
                           },
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      partMenuRow,
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  partMenuRow,
-                ],
+                ),
+              ),
+            ),
+          ],
               ),
             ),
           ),
@@ -3042,21 +3149,28 @@ class FavoritePillButton extends StatelessWidget {
     return SizedBox(
       height: height,
       child: Material(
-        color: cs.surfaceContainerHighest,
-        shape: const StadiumBorder(),
-        elevation: 2,
-        child: InkWell(
-          customBorder: const StadiumBorder(),
-          onTap: onTap,
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              child: Text(
-                text,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: isFavorite ? cs.primary : cs.onSurface,
+        color: Colors.transparent,
+        child: Ink(
+          decoration: BoxDecoration(
+            color: isFavorite ? cs.primary : cs.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isFavorite ? cs.primary : cs.outlineVariant,
+            ),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: onTap,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isFavorite ? cs.onPrimary : cs.onSurface,
+                  ),
                 ),
               ),
             ),
