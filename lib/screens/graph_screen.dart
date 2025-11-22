@@ -3411,10 +3411,14 @@ class FavoritePillButton extends StatelessWidget {
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                child: Icon(
-                  icon,
-                  size: 18,
-                  color: isFavorite ? cs.onPrimary : cs.onSurface,
+                child: Semantics(
+                  label: label,
+                  button: true,
+                  child: Icon(
+                    icon,
+                    size: 18,
+                    color: isFavorite ? cs.onPrimary : cs.onSurface,
+                  ),
                 ),
               ),
             ),
