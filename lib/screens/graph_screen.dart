@@ -214,11 +214,27 @@ class _GraphScreenState extends State<GraphScreen> {
 
   PersonalMetric? _personalMetricFromKey(String? key) {
     if (key == null) return null;
-    switch (key) {
+    final normalized = key.trim();
+    switch (normalized) {
       case 'personal:weight':
       case 'personal:bodyWeight':
+      case 'personal:bodyweight':
         return PersonalMetric.weight;
       case 'personal:bodyFat':
+      case 'personal:bodyfat':
+      case 'personal:bodyFatPercentage':
+      case 'personal:bodyfatpercentage':
+        return PersonalMetric.bodyFat;
+      case 'personal:bmi':
+        return PersonalMetric.bmi;
+      case 'personal:waist':
+        return PersonalMetric.waist;
+    }
+    final lower = normalized.toLowerCase();
+    switch (lower) {
+      case 'personal:weight':
+        return PersonalMetric.weight;
+      case 'personal:bodyfat':
         return PersonalMetric.bodyFat;
       case 'personal:bmi':
         return PersonalMetric.bmi;
@@ -233,13 +249,14 @@ class _GraphScreenState extends State<GraphScreen> {
   }
 
   String _normalizedFavoriteEntry(AppLocalizations l10n, String entry) {
-    if (entry.startsWith('menu:')) return entry;
+    final trimmed = entry.trim();
+    if (trimmed.startsWith('menu:')) return trimmed;
     final metric =
-        _personalMetricFromKey(entry) ?? _metricFromDisplay(l10n, entry);
+        _personalMetricFromKey(trimmed) ?? _metricFromDisplay(l10n, trimmed);
     if (metric != null) {
       return _personalMetricKey(metric);
     }
-    return entry;
+    return trimmed;
   }
 
   String _personalMetricLabel(AppLocalizations l10n) {
@@ -274,19 +291,48 @@ class _GraphScreenState extends State<GraphScreen> {
         return 'ウエスト';
       }
     })();
-    if (label.startsWith('personal:')) {
-      final metric = _personalMetricFromKey(label);
+    final trimmed = label.trim();
+    final lowerLabel = trimmed.toLowerCase();
+    if (trimmed.startsWith('personal:')) {
+      final metric = _personalMetricFromKey(trimmed);
       if (metric != null) return metric;
     }
-    if (label.startsWith('menu:')) {
+    if (trimmed.startsWith('menu:')) {
       return null;
     }
-    if (label == l10n.bodyWeight || label == 'personal:bodyWeight') {
+    final weightSynonyms = <String>{
+      l10n.bodyWeight.toLowerCase(),
+      'body weight',
+      'bodyweight',
+      'weight',
+      'bw',
+      '体重',
+    };
+    if (trimmed == l10n.bodyWeight || trimmed == 'personal:bodyWeight') {
       return PersonalMetric.weight;
     }
-    if (label == l10n.bodyFatPercentage) return PersonalMetric.bodyFat;
-    if (label == 'BMI') return PersonalMetric.bmi;
-    if (label == waistLabel) return PersonalMetric.waist;
+    if (weightSynonyms.contains(lowerLabel)) {
+      return PersonalMetric.weight;
+    }
+    final bodyFatSynonyms = <String>{
+      l10n.bodyFatPercentage.toLowerCase(),
+      'body fat',
+      'bodyfat',
+      'fat',
+      '体脂肪',
+      '体脂肪率',
+    };
+    if (trimmed == l10n.bodyFatPercentage) return PersonalMetric.bodyFat;
+    if (bodyFatSynonyms.contains(lowerLabel)) return PersonalMetric.bodyFat;
+    if (trimmed.toUpperCase() == 'BMI') return PersonalMetric.bmi;
+    final waistSynonyms = <String>{
+      waistLabel.toLowerCase(),
+      'waist',
+      'waistline',
+      'ウエスト',
+    };
+    if (trimmed == waistLabel) return PersonalMetric.waist;
+    if (waistSynonyms.contains(lowerLabel)) return PersonalMetric.waist;
     final fallback = _personalMetricFromKey(_selectedPersonalMetricKey);
     if (fallback != null) return fallback;
     return null;
@@ -484,6 +530,8 @@ class _GraphScreenState extends State<GraphScreen> {
   void _loadSettingsAndParts() {
     final l10n = AppLocalizations.of(context)!;
 
+    _purgeDefaultFavorites(l10n);
+
     final int? savedModeIdx = widget.settingsBox.get(_prefGraphMode) as int?;
     if (savedModeIdx != null &&
         savedModeIdx >= 0 &&
@@ -499,50 +547,6 @@ class _GraphScreenState extends State<GraphScreen> {
     }
 
     PersonalMetric? savedPersonalMetric;
-
-    // ワンタイムマイグレーション: バグで登録された可能性のあるPersonal系お気に入りを削除
-    final bool hasCleared = widget.settingsBox
-            .get('has_cleared_default_personal_favorites', defaultValue: false)
-        as bool;
-    if (!hasCleared) {
-      final dynamic rawFavs = widget.settingsBox.get('favorites');
-      if (rawFavs is List) {
-        final favs = rawFavs.whereType<String>().toList();
-        final targets = [
-          'personal:weight',
-          'personal:bodyFat',
-          'personal:bmi',
-          'personal:waist',
-          'personal:bodyWeight', // 旧キーも念のため
-        ];
-        bool changed = false;
-        for (final t in targets) {
-          if (favs.contains(t)) {
-            favs.remove(t);
-            changed = true;
-          }
-        }
-        // ローカライズされたキーも削除 (例: '体重' など)
-        // ここでは l10n が取れるので念のためチェック
-        final localTargets = [
-          l10n.bodyWeight,
-          l10n.bodyFatPercentage,
-          'BMI',
-          l10n.waist, // 'ウエスト' fallback含む
-        ];
-        for (final t in localTargets) {
-          if (favs.contains(t)) {
-            favs.remove(t);
-            changed = true;
-          }
-        }
-
-        if (changed) {
-          widget.settingsBox.put('favorites', favs);
-        }
-      }
-      widget.settingsBox.put('has_cleared_default_personal_favorites', true);
-    }
     final dynamic rawPersonalKey =
         widget.settingsBox.get(_prefPersonalMetricKey);
     if (rawPersonalKey is String) {
@@ -623,6 +627,89 @@ class _GraphScreenState extends State<GraphScreen> {
     }
   }
 
+  void _purgeDefaultFavorites(AppLocalizations l10n) {
+    final dynamic rawFavs = widget.settingsBox.get('favorites');
+    if (rawFavs is! List) return;
+    final favs = rawFavs.whereType<String>().toList();
+    if (favs.isEmpty) return;
+
+    final List<String> cleaned = [];
+    bool changed = false;
+    for (final entry in favs) {
+      final trimmed = entry.trim();
+      if (trimmed != entry) changed = true;
+      if (_isDefaultFavoriteEntry(trimmed, l10n)) {
+        changed = true;
+        continue;
+      }
+      cleaned.add(trimmed);
+    }
+
+    final unique = cleaned.toSet().toList();
+    if (changed || unique.length != favs.length) {
+      widget.settingsBox.put('favorites', unique);
+    }
+  }
+
+  bool _isDefaultFavoriteEntry(String entry, AppLocalizations l10n) {
+    const defaultKeys = <String>{
+      'personal:weight',
+      'personal:bodyWeight',
+      'personal:bodyFat',
+      'personal:bmi',
+      'personal:waist',
+      'weight',
+      'bodyweight',
+      'bodyfat',
+      'bmi',
+      'waist',
+      'aerobic',
+      'aerobicExercise',
+    };
+
+    final waistLabel = (() {
+      try {
+        return l10n.waist;
+      } catch (_) {
+        return 'ウエスト';
+      }
+    })();
+
+    final defaultLabels = <String>{
+      l10n.bodyWeight,
+      l10n.bodyFatPercentage,
+      'BMI',
+      waistLabel,
+      l10n.aerobicExercise,
+      '有酸素運動',
+    };
+
+    final normalized = _normalizedFavoriteEntry(l10n, entry);
+    if (defaultKeys.contains(normalized)) return true;
+    if (defaultLabels.contains(entry)) return true;
+
+    final lower = entry.toLowerCase();
+    final lowerDefaultKeys =
+        defaultKeys.map((e) => e.toLowerCase()).toSet();
+    if (lowerDefaultKeys.contains(lower)) return true;
+    final lowerDefaultLabels =
+        defaultLabels.map((e) => e.toLowerCase()).toSet();
+    if (lowerDefaultLabels.contains(lower)) return true;
+
+    if (entry.startsWith('menu:')) {
+      final display = entry.substring(5);
+      if (defaultLabels.contains(display)) return true;
+      final normalizedDisplay = _normalizedFavoriteEntry(l10n, display);
+      if (defaultKeys.contains(normalizedDisplay)) return true;
+      final lowerDisplay = display.toLowerCase();
+      if (lowerDefaultKeys.contains(lowerDisplay)) return true;
+      if (lowerDefaultLabels.contains(lowerDisplay)) return true;
+      if (display == '有酸素運動') return true;
+    }
+
+    return false;
+  }
+
   // ====== load menus ======
   void _loadMenusForPart(String translatedPart) {
     final l10n = AppLocalizations.of(context)!;
@@ -646,22 +733,27 @@ class _GraphScreenState extends State<GraphScreen> {
     if (translatedPart == l10n.favorites) {
       final dynamic rawFavorites = widget.settingsBox.get('favorites');
       if (rawFavorites is List) {
-        final l = rawFavorites.whereType<String>().toList();
+        final favList = rawFavorites.whereType<String>().toList();
         final displays = <String>[];
-        final updatedFavorites = <String>[];
-        bool migrated = false;
-        for (final key in l) {
-          final normalized = _normalizedFavoriteEntry(l10n, key);
+        final cleanedFavorites = <String>[];
+        bool changed = false;
+        for (final rawKey in favList) {
+          final trimmed = rawKey.trim();
+          if (_isDefaultFavoriteEntry(trimmed, l10n)) {
+            changed = true;
+            continue;
+          }
+          final normalized = _normalizedFavoriteEntry(l10n, trimmed);
           final display = _displayNameFromFavoriteKey(l10n, normalized);
           displays.add(display);
           _favoriteDisplayToKey[display] = normalized;
-          updatedFavorites.add(normalized);
-          if (normalized != key) migrated = true;
+          cleanedFavorites.add(normalized);
+          if (normalized != trimmed) changed = true;
         }
-        _menusForPart = displays.toSet().toList(); // 重複除去
-        if (migrated) {
-          widget.settingsBox
-              .put('favorites', updatedFavorites.toSet().toList());
+        _menusForPart = displays.toSet().toList();
+        final uniqueFavorites = cleanedFavorites.toSet().toList();
+        if (changed || uniqueFavorites.length != favList.length) {
+          widget.settingsBox.put('favorites', uniqueFavorites);
         }
       }
     } else {
