@@ -127,6 +127,7 @@
   "discardLongPressLabel": "Discard (long press)",
   "dayDisplay": "Day",
   "weekDisplay": "Week",
+  "monthDisplay": "Mth",
   "noGraphData": "Select a body part/exercise or weight to display the graph.",
   "favorited": "{menuName} added to favorites",
   "unfavorited": "{menuName} removed from favorites",

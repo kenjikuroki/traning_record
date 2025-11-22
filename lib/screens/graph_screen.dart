@@ -20,7 +20,7 @@ import '../widgets/centered_constrained.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
-enum DisplayMode { day, week }
+enum DisplayMode { day, week, month }
 
 enum AerobicMetric { distance, time, pace }
 
@@ -151,6 +151,7 @@ class _GraphScreenState extends State<GraphScreen> {
   // X の右余白スクロール
   static const int _kPadTailDays = 60;
   static const int _kPadTailWeeks = 20;
+  static const int _kPadTailMonths = 24;
 
   // プロット領域高さ（レイアウト時に更新）
   double _plotHeightPx = 1.0;
@@ -1137,7 +1138,7 @@ class _GraphScreenState extends State<GraphScreen> {
           if (v != null) map[day] = v;
         } catch (_) {}
       }
-    } else {
+    } else if (_displayMode == DisplayMode.week) {
       // 週集計（体重/ウエストもユーザー単位で）
       final Map<DateTime, List<double>> wk = {};
       for (final r in records) {
@@ -1185,6 +1186,52 @@ class _GraphScreenState extends State<GraphScreen> {
 
       // 週平均
       wk.forEach((k, list) {
+        if (list.isNotEmpty) {
+          map[k] = list.reduce((a, b) => a + b) / list.length;
+        }
+      });
+    } else {
+      final Map<DateTime, List<double>> monthly = {};
+      for (final r in records) {
+        try {
+          final dr = r as dynamic;
+          final day = DateTime(dr.date.year, dr.date.month, dr.date.day);
+          final monthKey = DateTime(day.year, day.month, 1);
+
+          double? v;
+          switch (key) {
+            case 'personal:weight':
+              {
+                final wKg = _safeWeightKg(dr);
+                if (wKg != null) v = _kgToUser(wKg);
+                break;
+              }
+            case 'personal:bodyFat':
+              v = _safeBodyFat(dr);
+              break;
+            case 'personal:bmi':
+              {
+                final wKg = _safeWeightKg(dr);
+                final h =
+                    _heightMetersFromSettings() ?? _heightMetersFromRecord(dr);
+                if (wKg != null && h != null && h > 0) v = wKg / (h * h);
+                break;
+              }
+            case 'personal:waist':
+              {
+                final w = _safeWaist(dr);
+                if (w != null) v = _waistToUser(w);
+                break;
+              }
+            default:
+              break;
+          }
+
+          if (v != null) monthly.putIfAbsent(monthKey, () => []).add(v);
+        } catch (_) {}
+      }
+
+      monthly.forEach((k, list) {
         if (list.isNotEmpty) {
           map[k] = list.reduce((a, b) => a + b) / list.length;
         }
@@ -1267,7 +1314,7 @@ class _GraphScreenState extends State<GraphScreen> {
           } catch (_) {}
         }
       }
-    } else {
+    } else if (_displayMode == DisplayMode.week) {
       final Map<DateTime, double> weeklyMax = {};
       for (final r in records) {
         double maxW = 0;
@@ -1311,6 +1358,48 @@ class _GraphScreenState extends State<GraphScreen> {
         } catch (_) {}
       }
       map.addAll(weeklyMax);
+    } else {
+      final Map<DateTime, double> monthlyMax = {};
+      for (final r in records) {
+        double maxW = 0;
+        try {
+          final dr = r as dynamic;
+          final menusMap = dr.menus;
+          if (menusMap is Map) {
+            for (final entry in menusMap.entries) {
+              final list = entry.value;
+              if (list is List) {
+                final m =
+                    list.firstWhereOrNull((x) => _sameMenuName(x, menuName));
+                if (m == null) continue;
+
+                final wList = (m.weights as List?) ?? const [];
+                final rList = (m.reps as List?) ?? const [];
+                final len = max(wList.length, rList.length);
+
+                for (int i = 0; i < len; i++) {
+                  final wRaw = (i < wList.length) ? wList[i] : null;
+                  final rRaw = (i < rList.length) ? rList[i] : null;
+
+                  final w = (_parseNumber(wRaw) ?? 0).toDouble();
+                  int reps = (_parseNumber(rRaw) ?? 0).round();
+                  if (reps <= 0 && w > 0) reps = 1;
+
+                  if (reps >= 1) maxW = max(maxW, w);
+                }
+              }
+            }
+          }
+
+          if (maxW > 0) {
+            final day = DateTime(dr.date.year, dr.date.month, dr.date.day);
+            final monthKey = DateTime(day.year, day.month, 1);
+            monthlyMax.update(monthKey, (old) => max(old, maxW),
+                ifAbsent: () => maxW);
+          }
+        } catch (_) {}
+      }
+      map.addAll(monthlyMax);
     }
     _buildSeriesFromMap(map);
     setState(() {});
@@ -1376,7 +1465,7 @@ class _GraphScreenState extends State<GraphScreen> {
           }
         } catch (_) {}
       }
-    } else {
+    } else if (_displayMode == DisplayMode.week) {
       final Map<DateTime, List<double>> weeklyList = {};
       for (final r in records) {
         try {
@@ -1427,6 +1516,56 @@ class _GraphScreenState extends State<GraphScreen> {
         }
         map[k] = value;
       });
+    } else {
+      final Map<DateTime, List<double>> monthlyList = {};
+      for (final r in records) {
+        try {
+          final dr = r as dynamic;
+          final list = _findAeroMenuList(dr);
+          if (list == null) continue;
+          final m =
+              list.firstWhereOrNull((x) => (x as dynamic).name == menuName);
+          if (m == null) continue;
+
+          final km = _parseDistanceKm((m as dynamic).distance) ?? 0;
+          final minVal = _parseDurationMin((m as dynamic).duration) ?? 0;
+
+          final day = DateTime(dr.date.year, dr.date.month, dr.date.day);
+          final monthKey = DateTime(day.year, day.month, 1);
+
+          switch (_aeroMetric) {
+            case AerobicMetric.distance:
+              monthlyList.putIfAbsent(monthKey, () => []).add(_kmToUser(km));
+              break;
+            case AerobicMetric.time:
+              monthlyList.putIfAbsent(monthKey, () => []).add(minVal);
+              break;
+            case AerobicMetric.pace:
+              if (km > 0 && minVal > 0) {
+                final paceMinPerKm = minVal / km;
+                monthlyList
+                    .putIfAbsent(monthKey, () => [])
+                    .add(_minPerKmToUser(paceMinPerKm));
+              }
+              break;
+          }
+        } catch (_) {}
+      }
+
+      monthlyList.forEach((k, list) {
+        if (list.isEmpty) return;
+        double value;
+        switch (_aeroMetric) {
+          case AerobicMetric.distance:
+          case AerobicMetric.time:
+            value = list.reduce((a, b) => a + b);
+            break;
+          case AerobicMetric.pace:
+            value = list.reduce((a, b) => a + b) / list.length;
+            break;
+        }
+        map[k] = value;
+      });
     }
 
     _buildSeriesFromMap(map);
@@ -1462,19 +1601,32 @@ class _GraphScreenState extends State<GraphScreen> {
 
     // full x
     final List<DateTime> full = [];
-    DateTime cursor = sortedDates.first;
+    final DateTime first = sortedDates.first;
     final DateTime last = sortedDates.last;
+    late DateTime cursor;
 
     if (_displayMode == DisplayMode.day) {
+      cursor = first;
       while (!cursor.isAfter(last)) {
         full.add(cursor);
         cursor = cursor.add(const Duration(days: 1));
       }
-    } else {
+    } else if (_displayMode == DisplayMode.week) {
+      cursor = first;
       while (!cursor.isAfter(last)) {
         final wkStart = cursor.subtract(Duration(days: cursor.weekday - 1));
-        if (full.isEmpty || full.last != wkStart) full.add(wkStart);
+        if (full.isEmpty || full.last != wkStart) {
+          full.add(wkStart);
+        }
         cursor = cursor.add(const Duration(days: 7));
+      }
+    } else {
+      final DateTime firstMonth = DateTime(first.year, first.month, 1);
+      final DateTime lastMonth = DateTime(last.year, last.month, 1);
+      cursor = firstMonth;
+      while (!cursor.isAfter(lastMonth)) {
+        full.add(cursor);
+        cursor = DateTime(cursor.year, cursor.month + 1, 1);
       }
     }
 
@@ -1485,9 +1637,15 @@ class _GraphScreenState extends State<GraphScreen> {
     }
 
     for (final d in sortedDates) {
-      final idx = indexByDate[_displayMode == DisplayMode.day
-          ? d
-          : d.subtract(Duration(days: d.weekday - 1))]!;
+      late final DateTime key;
+      if (_displayMode == DisplayMode.day) {
+        key = d;
+      } else if (_displayMode == DisplayMode.week) {
+        key = d.subtract(Duration(days: d.weekday - 1));
+      } else {
+        key = DateTime(d.year, d.month, 1);
+      }
+      final idx = indexByDate[key]!;
       final y = map[d]!;
       _spots.add(FlSpot(idx.toDouble() + 1, y));
       _minY = (_spots.length == 1) ? y : min(_minY, y);
@@ -1551,11 +1709,23 @@ class _GraphScreenState extends State<GraphScreen> {
   List<DateTime> get _axisDates {
     if (_xDates.isEmpty) return [];
     final List<DateTime> list = List<DateTime>.from(_xDates);
-    final pad =
-        (_displayMode == DisplayMode.day) ? _kPadTailDays : _kPadTailWeeks;
+    final int pad;
+    if (_displayMode == DisplayMode.day) {
+      pad = _kPadTailDays;
+    } else if (_displayMode == DisplayMode.week) {
+      pad = _kPadTailWeeks;
+    } else {
+      pad = _kPadTailMonths;
+    }
     DateTime last = list.last;
     for (int i = 1; i <= pad; i++) {
-      last = last.add(Duration(days: _displayMode == DisplayMode.day ? 1 : 7));
+      if (_displayMode == DisplayMode.day) {
+        last = last.add(const Duration(days: 1));
+      } else if (_displayMode == DisplayMode.week) {
+        last = last.add(const Duration(days: 7));
+      } else {
+        last = DateTime(last.year, last.month + 1, last.day);
+      }
       list.add(last);
     }
     return list;
@@ -1577,6 +1747,11 @@ class _GraphScreenState extends State<GraphScreen> {
     return '${DateFormat('M/d', locale).format(d)}${_weekSuffix()}';
   }
 
+  String _formatMonthLabel(DateTime d) {
+    final locale = Localizations.localeOf(context).toString();
+    return DateFormat('yyyy/M', locale).format(d);
+  }
+
   Widget _bottomTitle(double value, TitleMeta meta) {
     final dates = _axisDates;
     if (dates.isEmpty) return const SizedBox.shrink();
@@ -1587,9 +1762,14 @@ class _GraphScreenState extends State<GraphScreen> {
     // 1つ飛ばしで表示（重なり防止）
     if (idx % 2 != 0) return const SizedBox.shrink();
 
-    final text = (_displayMode == DisplayMode.day)
-        ? _formatDayLabel(dates[idx])
-        : _formatWeekLabel(dates[idx]);
+    late final String text;
+    if (_displayMode == DisplayMode.day) {
+      text = _formatDayLabel(dates[idx]);
+    } else if (_displayMode == DisplayMode.week) {
+      text = _formatWeekLabel(dates[idx]);
+    } else {
+      text = _formatMonthLabel(dates[idx]);
+    }
 
     return SideTitleWidget(
       axisSide: meta.axisSide,
@@ -2430,10 +2610,17 @@ class _GraphScreenState extends State<GraphScreen> {
             isSelected: [
               _displayMode == DisplayMode.day,
               _displayMode == DisplayMode.week,
+              _displayMode == DisplayMode.month,
             ],
             onPressed: (index) {
               setState(() {
-                _displayMode = index == 0 ? DisplayMode.day : DisplayMode.week;
+                if (index == 0) {
+                  _displayMode = DisplayMode.day;
+                } else if (index == 1) {
+                  _displayMode = DisplayMode.week;
+                } else {
+                  _displayMode = DisplayMode.month;
+                }
                 _saveGraphPrefs();
                 _refreshDataForSelection();
               });
@@ -2447,12 +2634,16 @@ class _GraphScreenState extends State<GraphScreen> {
             selectedBorderColor: colorScheme.primary,
             children: <Widget>[
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                padding: const EdgeInsets.symmetric(horizontal: 18.0),
                 child: Text(l10n.dayDisplay),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                padding: const EdgeInsets.symmetric(horizontal: 18.0),
                 child: Text(l10n.weekDisplay),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                child: Text(l10n.monthDisplay),
               ),
             ],
           ),
@@ -2722,11 +2913,11 @@ class _GraphScreenState extends State<GraphScreen> {
                             const SizedBox(height: 4),
                             Row(
                               children: [
-                                Expanded(child: dayWeekToggle),
+                                dayWeekToggle,
                                 const SizedBox(width: 8),
                                 Expanded(child: goalButton),
                                 const SizedBox(width: 8),
-                                Expanded(child: favButton),
+                                favButton,
                               ],
                             ),
                             if (aerobicToggle != null) ...[
@@ -3154,6 +3345,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                               height: _kXAxisReservedPx,
                                               child: xAxisChart,
                                             ),
+                                            unitOverlay,
                                           ],
                                         ),
                                       ),
@@ -3199,7 +3391,7 @@ class FavoritePillButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final text = isFavorite ? '$label★' : '$label✩';
+    final icon = isFavorite ? Icons.star : Icons.star_border;
 
     return SizedBox(
       height: height,
@@ -3218,14 +3410,11 @@ class FavoritePillButton extends StatelessWidget {
             onTap: onTap,
             child: Center(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                child: Text(
-                  text,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: isFavorite ? cs.onPrimary : cs.onSurface,
-                  ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: isFavorite ? cs.onPrimary : cs.onSurface,
                 ),
               ),
             ),

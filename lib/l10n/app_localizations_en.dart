@@ -259,8 +259,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keepScreenOn => 'Keep screen on';
 
   @override
-  String get keepScreenOnHint =>
-      'If enabled, the screen will stay on while the app is open.';
+  String get keepScreenOnHint => 'If enabled, the screen will stay on while the app is open.';
 
   @override
   String get noCustomExercises => 'No custom exercises have been added.';
@@ -353,6 +352,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get weekDisplay => 'Week';
+
+  @override
+  String get monthDisplay => 'Mth';
 
   @override
   String get noGraphData => 'Select a body part/exercise or weight to display the graph.';

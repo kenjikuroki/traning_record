@@ -124,6 +124,7 @@
   "discardLongPressLabel": "破棄（長押し）",
   "dayDisplay": "日",
   "weekDisplay": "週",
+  "monthDisplay": "月",
   "noGraphData": "部位・種目や体重を選択するとグラフが表示されます。",
   "favorited": "{menuName}をお気に入りに登録しました",
   "unfavorited": "{menuName}のお気に入りを解除しました",

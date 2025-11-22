@@ -777,6 +777,12 @@ abstract class AppLocalizations {
   /// **'Week'**
   String get weekDisplay;
 
+  /// No description provided for @monthDisplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Mth'**
+  String get monthDisplay;
+
   /// No description provided for @noGraphData.
   ///
   /// In en, this message translates to:
