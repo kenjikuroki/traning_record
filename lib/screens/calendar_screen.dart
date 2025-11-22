@@ -286,7 +286,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
     }
 
-    if (hasWeight) {
+    final bool needsWeightPlaceholder = chips.isEmpty && hasWeight;
+    if (needsWeightPlaceholder) {
       chips.add(
         CalendarWidgetChipData(
           label: l10n.bodyWeight,
@@ -1961,7 +1962,7 @@ double _baseRowHeight(BuildContext context) {
         ),
       );
 
-      return Container(
+      final chip = Container(
         padding: EdgeInsets.fromLTRB(
           chipHPad,
           chipVPad * 0.7,
@@ -1972,23 +1973,38 @@ double _baseRowHeight(BuildContext context) {
           color: boxColor,
           borderRadius: BorderRadius.circular(6),
         ),
-        child: isPrPart
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.workspace_premium,
-                    size: 12,
-                    color: textOnBox,
-                  ),
-                  const SizedBox(width: 4),
-                  textWidget,
-                ],
-              )
-            : Align(
-                alignment: Alignment.center,
-                child: textWidget,
+        child: Align(
+          alignment: Alignment.center,
+          child: textWidget,
+        ),
+      );
+
+      if (!isPrPart) return chip;
+
+      const double badgeSize = 14;
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          chip,
+          Positioned(
+            right: -3,
+            top: -4,
+            child: Container(
+              width: badgeSize,
+              height: badgeSize,
+              decoration: BoxDecoration(
+                color: textOnBox,
+                borderRadius: BorderRadius.circular(badgeSize / 2),
+                border: Border.all(color: boxColor, width: 1),
               ),
+              child: Icon(
+                Icons.workspace_premium,
+                size: 9,
+                color: boxColor,
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -2026,6 +2042,7 @@ double _baseRowHeight(BuildContext context) {
 
     Widget _weightChip() {
       final l10n = AppLocalizations.of(context)!;
+      // 体重を記録した日を示すタグ。
       return Container(
         padding: EdgeInsets.fromLTRB(
           chipHPad,
@@ -2126,6 +2143,8 @@ double _baseRowHeight(BuildContext context) {
       );
     }
 
+    // [CalendarScreen._buildDayCell @ lib/screens/calendar_screen.dart]
+    // 日付セル直下に表示する実績タグ (Arm / Chest / Memo 等) を構築するリスト。
     final chips = <Widget>[];
     if (canShowChips) {
       chips.addAll(strengthParts.map(_partChip));
@@ -2231,6 +2250,9 @@ double _baseRowHeight(BuildContext context) {
                 children.add(SizedBox(height: bottomPad));
               }
 
+              // [CalendarScreen._buildDayCell @ lib/screens/calendar_screen.dart]
+              // 日付ラベル + displayChips (Arm / Chest / Memo / _weightChip など) を
+              // Column で縦方向に積んで描画しているレイアウト本体。
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.max,
