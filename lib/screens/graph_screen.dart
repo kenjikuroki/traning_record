@@ -238,9 +238,7 @@ class _GraphScreenState extends State<GraphScreen> {
     if (metric != null) {
       return _personalMetricKey(metric);
     }
-    final fallbackMetric =
-        _personalMetricFromKey(_selectedPersonalMetricKey) ?? _personalMetric;
-    return _personalMetricKey(fallbackMetric);
+    return entry;
   }
 
   String _personalMetricLabel(AppLocalizations l10n) {
@@ -500,6 +498,50 @@ class _GraphScreenState extends State<GraphScreen> {
     }
 
     PersonalMetric? savedPersonalMetric;
+
+    // ワンタイムマイグレーション: バグで登録された可能性のあるPersonal系お気に入りを削除
+    final bool hasCleared = widget.settingsBox
+            .get('has_cleared_default_personal_favorites', defaultValue: false)
+        as bool;
+    if (!hasCleared) {
+      final dynamic rawFavs = widget.settingsBox.get('favorites');
+      if (rawFavs is List) {
+        final favs = rawFavs.whereType<String>().toList();
+        final targets = [
+          'personal:weight',
+          'personal:bodyFat',
+          'personal:bmi',
+          'personal:waist',
+          'personal:bodyWeight', // 旧キーも念のため
+        ];
+        bool changed = false;
+        for (final t in targets) {
+          if (favs.contains(t)) {
+            favs.remove(t);
+            changed = true;
+          }
+        }
+        // ローカライズされたキーも削除 (例: '体重' など)
+        // ここでは l10n が取れるので念のためチェック
+        final localTargets = [
+          l10n.bodyWeight,
+          l10n.bodyFatPercentage,
+          'BMI',
+          l10n.waist, // 'ウエスト' fallback含む
+        ];
+        for (final t in localTargets) {
+          if (favs.contains(t)) {
+            favs.remove(t);
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          widget.settingsBox.put('favorites', favs);
+        }
+      }
+      widget.settingsBox.put('has_cleared_default_personal_favorites', true);
+    }
     final dynamic rawPersonalKey =
         widget.settingsBox.get(_prefPersonalMetricKey);
     if (rawPersonalKey is String) {
@@ -2913,6 +2955,29 @@ class _GraphScreenState extends State<GraphScreen> {
                                             minY: viewMinY,
                                             maxY: viewMaxY,
                                             clipData: const FlClipData.all(),
+                                            extraLinesData: ExtraLinesData(
+                                              horizontalLines: <HorizontalLine>[
+                                                HorizontalLine(
+                                                  y: 0,
+                                                  color: colorScheme.outlineVariant,
+                                                  strokeWidth: 0.5,
+                                                ),
+                                                if (_goalValue != null)
+                                                  HorizontalLine(
+                                                    y: _goalValue!,
+                                                    color: colorScheme.tertiary,
+                                                    strokeWidth: 2,
+                                                    dashArray: [6, 4],
+                                                  ),
+                                              ],
+                                              verticalLines: [
+                                                VerticalLine(
+                                                  x: 0,
+                                                  color: colorScheme.outlineVariant,
+                                                  strokeWidth: 0.5,
+                                                ),
+                                              ],
+                                            ),
                                             lineBarsData: [
                                               LineChartBarData(
                                                 spots: _spots,
@@ -3017,17 +3082,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                                 },
                                               ),
                                             ),
-                                            extraLinesData: ExtraLinesData(
-                                              horizontalLines: <HorizontalLine>[
-                                                if (_goalValue != null)
-                                                  HorizontalLine(
-                                                    y: _goalValue!,
-                                                    color: colorScheme.tertiary,
-                                                    strokeWidth: 2,
-                                                    dashArray: [6, 4],
-                                                  ),
-                                              ],
-                                            ),
+
                                           ),
                                         ),
                                       ),
