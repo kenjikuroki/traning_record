@@ -123,6 +123,12 @@ abstract class AppLocalizations {
   /// **'favorites'**
   String get favorites;
 
+  /// No description provided for @favoritesNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites (New)'**
+  String get favoritesNew;
+
   /// No description provided for @recordScreenTitle.
   ///
   /// In en, this message translates to:

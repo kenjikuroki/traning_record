@@ -4,6 +4,7 @@
   "calendar": "calendar",
   "graph": "graph",
   "favorites": "favorites",
+  "favoritesNew": "Favorites (New)",
   "recordScreenTitle": "Record",
   "calendarScreenTitle": "Calendar",
   "settingsScreenTitle": "Settings",

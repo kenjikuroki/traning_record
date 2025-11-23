@@ -21,6 +21,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get favorites => 'お気に入り';
 
   @override
+  String get favoritesNew => 'お気に入り（新）';
+
+  @override
   String get recordScreenTitle => '記録';
 
   @override

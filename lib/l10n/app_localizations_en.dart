@@ -21,6 +21,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get favorites => 'favorites';
 
   @override
+  String get favoritesNew => 'Favorites (New)';
+
+  @override
   String get recordScreenTitle => 'Record';
 
   @override

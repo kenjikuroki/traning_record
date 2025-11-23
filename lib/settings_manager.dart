@@ -37,6 +37,8 @@ class SettingsManager {
   static const String _showRmKey = 'show_rm';
   static const String _showRirKey = 'show_rir';
   static const String _showFailKey = 'show_fail';
+  static const String favoritesKey = 'graph_favorites_v2';
+  static const String favoritesKeyV3 = 'graph_favorites_v3';
 
   // ===== Notifiers =====
   // 重さ
