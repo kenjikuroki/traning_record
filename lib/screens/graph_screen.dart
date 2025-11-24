@@ -719,8 +719,9 @@ class _GraphScreenState extends State<GraphScreen> {
     _partLabelToOriginal[personalLabel] = 'パーソナル';
 
     // Add new favorites
-    _filteredBodyParts.add('お気に入り');
-    _partLabelToOriginal['お気に入り'] = _kFavoritesNew;
+    final favoritesLabel = l10n.favorites;
+    _filteredBodyParts.add(favoritesLabel);
+    _partLabelToOriginal[favoritesLabel] = _kFavoritesNew;
 
     for (final original in baseOriginalParts) {
       final label = _translatePartToLocale(context, original);
@@ -2945,12 +2946,12 @@ class _GraphScreenState extends State<GraphScreen> {
       ),
     );
 
-    // お気に入り(お気に入りタブでは無効化)
     final bool isFavoritesTab =
         _selectedPartOriginal == _kFavoritesOriginal ||
         _selectedPartOriginal == _kFavoritesNew;
+    final bool isPersonalTab = _selectedPartOriginal == 'パーソナル';
     final bool favEnabled =
-        !isFavoritesTab && !(_noMenus && !_isPersonalContext());
+        !isFavoritesTab && !isPersonalTab && !(_noMenus && !_isPersonalContext());
 
     Widget favButton = Opacity(
       opacity: favEnabled ? 1.0 : 0.4,
@@ -3180,7 +3181,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(child: goalButton),
                                   const SizedBox(width: 8),
-                                  SizedBox(width: 60, child: favButton),
+                                  SizedBox(width: 48, child: favButton),
                                 ],
                               ),
                               if (aerobicToggle != null) ...[
