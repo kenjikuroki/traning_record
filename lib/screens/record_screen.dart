@@ -6639,6 +6639,21 @@ class _RecordScreenState extends State<RecordScreen>
                             ),
                           ),
                         ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                          child: const BigEarningAd(
+                            androidNativeUnitId:
+                                'ca-app-pub-3331079517737737/9518673738',
+                            iosNativeUnitId:
+                                'ca-app-pub-3331079517737737/3349399943',
+                            androidBannerUnitId:
+                                'ca-app-pub-3331079517737737/9588577724',
+                            iosBannerUnitId:
+                                'ca-app-pub-3331079517737737/6962414382',
+                            factoryId: 'large_media',
+                            height: 260,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -6718,7 +6733,7 @@ class _RecordScreenState extends State<RecordScreen>
           left: 12,
           right: 12,
           top: topOffset,
-          bottom: safeBottom + 12,
+          bottom: 0,
           child: AnimatedSlide(
             duration: _overlaySlideDuration,
             curve: _overlayInCurve,
@@ -6886,7 +6901,7 @@ class _RecordScreenState extends State<RecordScreen>
                                       keyboardDismissBehavior:
                                           ScrollViewKeyboardDismissBehavior
                                               .onDrag,
-                                      itemCount: controllers.length + 2,
+                                      itemCount: controllers.length + 3,
                                       itemBuilder: (_, index) {
                                         if (index == controllers.length) {
                                           return Align(
@@ -6932,6 +6947,38 @@ class _RecordScreenState extends State<RecordScreen>
                                           );
                                         }
                                         if (index == controllers.length + 1) {
+                                          return Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              20,
+                                              8,
+                                              20,
+                                              8,
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  '${l10n.mealSubtotal}: ${_formatKcalDisplay(card.subtotalKcal)} ${l10n.kcalUnit}',
+                                                  style: TextStyle(
+                                                    color: cs.onSurface,
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  '${l10n.mealTotalToday}: ${_formatKcalDisplay(_totalMealKcal)} ${l10n.kcalUnit}',
+                                                  style: TextStyle(
+                                                    color: cs.onSurfaceVariant,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        }
+                                        if (index == controllers.length + 2) {
                                           return SizedBox(
                                             height: bottomSpacerHeight,
                                           );
@@ -7130,36 +7177,6 @@ class _RecordScreenState extends State<RecordScreen>
                             ),
                             const Divider(height: 1),
                             Padding(
-                              padding: EdgeInsets.fromLTRB(
-                                20,
-                                8,
-                                20,
-                                16 + safeBottom,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${l10n.mealSubtotal}: ${_formatKcalDisplay(card.subtotalKcal)} ${l10n.kcalUnit}',
-                                    style: TextStyle(
-                                      color: cs.onSurface,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${l10n.mealTotalToday}: ${_formatKcalDisplay(_totalMealKcal)} ${l10n.kcalUnit}',
-                                    style: TextStyle(
-                                      color: cs.onSurfaceVariant,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Divider(height: 1),
-                            Padding(
                               padding:
                                   const EdgeInsets.fromLTRB(16, 12, 16, 12),
                               child: const BigEarningAd(
@@ -7220,7 +7237,7 @@ class _RecordScreenState extends State<RecordScreen>
           left: 12,
           right: 12,
           top: topOffset,
-          bottom: safeBottom + 12,
+          bottom: 0,
           child: AnimatedSlide(
             duration: _overlaySlideDuration,
             curve: _overlayInCurve,
@@ -7313,66 +7330,83 @@ class _RecordScreenState extends State<RecordScreen>
                                 padding:
                                     const EdgeInsets.fromLTRB(16, 12, 16, 12),
                                 child: Scrollbar(
-                                  child: ListView(
-                                    padding: EdgeInsets.zero,
+                                  child: CustomScrollView(
                                     keyboardDismissBehavior:
                                         ScrollViewKeyboardDismissBehavior
                                             .onDrag,
-                                    children: [
-                                      TextField(
-                                        focusNode: _memoOverlayFocus,
-                                        controller: _memoController,
-                                        textAlignVertical:
-                                            TextAlignVertical.top,
-                                        keyboardType: TextInputType.multiline,
-                                        textInputAction:
-                                            TextInputAction.newline,
-                                        maxLength: 400,
-                                        inputFormatters: [
-                                          LengthLimitingTextInputFormatter(400)
-                                        ],
-                                        minLines: 6,
-                                        maxLines: null,
-                                        style: TextStyle(color: cs.onSurface),
-                                        decoration: InputDecoration(
-                                          isDense: true,
-                                          hintText: l10n.memoBodyPlaceholder,
-                                          hintStyle: TextStyle(
-                                            color: cs.onSurfaceVariant
-                                                .withOpacity(0.6),
+                                    slivers: [
+                                      SliverToBoxAdapter(
+                                        child: TextField(
+                                          focusNode: _memoOverlayFocus,
+                                          controller: _memoController,
+                                          textAlignVertical:
+                                              TextAlignVertical.top,
+                                          keyboardType:
+                                              TextInputType.multiline,
+                                          textInputAction:
+                                              TextInputAction.newline,
+                                          maxLength: 400,
+                                          inputFormatters: [
+                                            LengthLimitingTextInputFormatter(
+                                                400)
+                                          ],
+                                          minLines: 6,
+                                          maxLines: null,
+                                          style:
+                                              TextStyle(color: cs.onSurface),
+                                          decoration: InputDecoration(
+                                            isDense: true,
+                                            hintText:
+                                                l10n.memoBodyPlaceholder,
+                                            hintStyle: TextStyle(
+                                              color: cs.onSurfaceVariant
+                                                  .withOpacity(0.6),
+                                            ),
+                                            border: InputBorder.none,
+                                            counterStyle: TextStyle(
+                                              color: cs.onSurfaceVariant,
+                                              fontSize: 11,
+                                            ),
+                                            contentPadding:
+                                                const EdgeInsets.fromLTRB(
+                                                    2, 8, 2, 12),
                                           ),
-                                          border: InputBorder.none,
-                                          counterStyle: TextStyle(
-                                            color: cs.onSurfaceVariant,
-                                            fontSize: 11,
-                                          ),
-                                          contentPadding:
-                                              const EdgeInsets.fromLTRB(
-                                                  2, 8, 2, 12),
-                                        ),
-                                        onChanged: (_) {
-                                          if (_fabOpen) {
-                                            setState(() => _fabOpen = false);
-                                          }
-                                        },
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.fromLTRB(
-                                            16, 12, 16, 12),
-                                        child: const BigEarningAd(
-                                          androidNativeUnitId:
-                                              'ca-app-pub-3331079517737737/9518673738',
-                                          iosNativeUnitId:
-                                              'ca-app-pub-3331079517737737/3349399943',
-                                          androidBannerUnitId:
-                                              'ca-app-pub-3331079517737737/9588577724',
-                                          iosBannerUnitId:
-                                              'ca-app-pub-3331079517737737/6962414382',
-                                          factoryId: 'large_media',
-                                          height: 260,
+                                          onChanged: (_) {
+                                            if (_fabOpen) {
+                                              setState(() => _fabOpen = false);
+                                            }
+                                          },
                                         ),
                                       ),
-                                      SizedBox(height: bottomSpacerHeight),
+                                      SliverFillRemaining(
+                                        hasScrollBody: false,
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: [
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                      16, 12, 16, 12),
+                                              child: const BigEarningAd(
+                                                androidNativeUnitId:
+                                                    'ca-app-pub-3331079517737737/9518673738',
+                                                iosNativeUnitId:
+                                                    'ca-app-pub-3331079517737737/3349399943',
+                                                androidBannerUnitId:
+                                                    'ca-app-pub-3331079517737737/9588577724',
+                                                iosBannerUnitId:
+                                                    'ca-app-pub-3331079517737737/6962414382',
+                                                factoryId: 'large_media',
+                                                height: 260,
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              height: bottomSpacerHeight,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
