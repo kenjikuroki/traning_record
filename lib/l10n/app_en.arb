@@ -109,6 +109,7 @@
   "setCount": "Set Count",
   "defaultSets": "Default Sets",
   "bodyWeight": "BW",
+  "trainingLocation": "Training location",
   "weightCardTitle": "Weight",
   "weightCardExtraFieldsHint": "You can add fields like body fat or waist from Settings. Weight units (kg/lbs) can also be changed from Settings.",
   "bodyWeightTracking": "Body Weight Tracking",

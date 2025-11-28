@@ -30,6 +30,7 @@ class SettingsManager {
       'show_weight_input'; // 体重入力の表示ON/OFF（互換）
   static const String _aerobicCalorieKey = 'enable_aerobic_calories';
   static const String _personalWeightKey = 'personal.weightKg';
+  static const String _trainingLocationKey = 'personal.trainingLocation';
   static const String _showTotalVolumeKey = 'show_total_volume';
   static const String _showSatisfactionKey = 'show_satisfaction';
   static const String _showIntervalTimerKey = 'show_interval_timer';
@@ -92,6 +93,9 @@ class SettingsManager {
   // パーソナル体重（kg）
   static final ValueNotifier<double?> _personalWeightNotifier =
       ValueNotifier<double?>(null);
+
+  static final ValueNotifier<String?> _trainingLocationNotifier =
+      ValueNotifier<String?>(null);
 
   // ===== Initialize =====
   static Future<void> init() async {
@@ -177,6 +181,14 @@ class SettingsManager {
       weightKg = double.tryParse(storedWeight);
     }
     _personalWeightNotifier.value = weightKg;
+
+    final storedTrainingLocation = box.get(_trainingLocationKey);
+    if (storedTrainingLocation is String &&
+        storedTrainingLocation.trim().isNotEmpty) {
+      _trainingLocationNotifier.value = storedTrainingLocation.trim();
+    } else {
+      _trainingLocationNotifier.value = null;
+    }
   }
 
   // ===== Getters / Notifiers =====
@@ -277,6 +289,10 @@ class SettingsManager {
   static double? get personalWeightKg => _personalWeightNotifier.value;
   static ValueNotifier<double?> get personalWeightNotifier =>
       _personalWeightNotifier;
+
+  static String? get trainingLocation => _trainingLocationNotifier.value;
+  static ValueNotifier<String?> get trainingLocationNotifier =>
+      _trainingLocationNotifier;
 
   // 互換（旧API名）
   static bool get showStopwatch => showStopwatchTimer;
@@ -414,6 +430,18 @@ class SettingsManager {
       await _box?.put(_personalWeightKey, kg);
     }
     _personalWeightNotifier.value = kg;
+  }
+
+  static Future<void> setTrainingLocation(String? location) async {
+    await _ensureBox();
+    final trimmed = location?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      await _box?.delete(_trainingLocationKey);
+      _trainingLocationNotifier.value = null;
+      return;
+    }
+    await _box?.put(_trainingLocationKey, trimmed);
+    _trainingLocationNotifier.value = trimmed;
   }
 
   // 互換（旧API名）

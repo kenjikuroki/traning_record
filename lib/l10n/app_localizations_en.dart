@@ -300,6 +300,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bodyWeight => 'BW';
 
   @override
+  String get trainingLocation => 'Training location';
+
+  @override
   String get weightCardTitle => 'Weight';
 
   @override

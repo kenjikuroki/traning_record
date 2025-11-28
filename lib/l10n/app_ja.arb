@@ -107,6 +107,7 @@
   "setCount": "セット数",
   "defaultSets": "初期セット数",
   "bodyWeight": "体重",
+  "trainingLocation": "トレーニング場所",
   "weightCardTitle": "体重",
   "weightCardExtraFieldsHint": "設定より体脂肪率・ウエストの入力欄などの追加が可能です。単位kg/lbsも設定画面から変更できます。",
   "bodyWeightTracking": "体重管理",

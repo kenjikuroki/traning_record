@@ -97,6 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _heightInCtrl = TextEditingController();
   double? _personalWeightKg;
   final TextEditingController _personalWeightCtrl = TextEditingController();
+  final TextEditingController _trainingLocationCtrl = TextEditingController();
   final TextEditingController _birthDateCtrl = TextEditingController();
 
   // 管理トグル（既定OFF）
@@ -166,6 +167,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _personalWeightKg = double.tryParse(pw);
     }
     _syncWeightControllerFromKg();
+
+    // トレーニング場所
+    final loc = widget.settingsBox.get('personal.trainingLocation');
+    if (loc is String) {
+      _trainingLocationCtrl.text = loc;
+    } else {
+      _trainingLocationCtrl.text = '';
+    }
 
     _manageBodyFat =
         (widget.settingsBox.get('manage.bodyFat') as bool?) ?? false;
@@ -422,6 +431,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     SettingsManager.setPersonalWeightKg(kg);
   }
 
+  void _onTrainingLocationChanged(String text) {
+    final trimmed = text.trim();
+    widget.settingsBox.put('personal.trainingLocation', trimmed);
+    SettingsManager.setTrainingLocation(trimmed.isEmpty ? null : trimmed);
+  }
+
   void _showWeightRequiredSnack() {
     final l10n = AppLocalizations.of(context)!;
     ScaffoldMessenger.of(context)
@@ -615,6 +630,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _heightFtCtrl.dispose();
     _heightInCtrl.dispose();
     _personalWeightCtrl.dispose();
+    _trainingLocationCtrl.dispose();
     _birthDateCtrl.dispose();
     super.dispose();
   }
@@ -844,6 +860,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     horizontal: 10, vertical: 8),
                               ),
                               onChanged: _onPersonalWeightChanged,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        _rowItem(
+                          context,
+                          label: l10n.trainingLocation,
+                          expandControl: false,
+                          control: SizedBox(
+                            width: 220,
+                            child: TextField(
+                              controller: _trainingLocationCtrl,
+                              decoration: InputDecoration(
+                                hintText: l10n.notSet,
+                                border: const OutlineInputBorder(),
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 8),
+                              ),
+                              onChanged: _onTrainingLocationChanged,
                             ),
                           ),
                         ),

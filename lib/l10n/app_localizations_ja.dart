@@ -300,6 +300,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get bodyWeight => '体重';
 
   @override
+  String get trainingLocation => 'トレーニング場所';
+
+  @override
   String get weightCardTitle => '体重';
 
   @override

@@ -669,6 +669,12 @@ abstract class AppLocalizations {
   /// **'BW'**
   String get bodyWeight;
 
+  /// No description provided for @trainingLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Training location'**
+  String get trainingLocation;
+
   /// No description provided for @weightCardTitle.
   ///
   /// In en, this message translates to:
