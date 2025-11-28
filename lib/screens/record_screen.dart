@@ -3062,6 +3062,8 @@ class _RecordScreenState extends State<RecordScreen>
   bool _saveAllSectionsData({bool showHint = true}) {
     final dateKey = _getDateKey(widget.selectedDate);
     final Map<String, List<MenuData>> allMenusForRecord = {};
+    final Map<String, List<MenuData>> lastUsedByPart = {};
+    final Set<String> touchedParts = <String>{};
     // 追加：満足度保存用（部位→{種目名: 値}）
     String? lastModifiedPart;
     bool hasAnyRecordData = false;
@@ -3076,6 +3078,7 @@ class _RecordScreenState extends State<RecordScreen>
       final section = _sections[sec];
       if (section.selectedPart == null) continue;
       final originalPart = _getOriginalPartName(context, section.selectedPart!);
+      touchedParts.add(originalPart);
       final isAerobic = section.selectedPart == l10n.aerobicExercise;
 
       final listForLastUsed = <MenuData>[];
@@ -3233,12 +3236,25 @@ class _RecordScreenState extends State<RecordScreen>
       }
 
       if (listForLastUsed.isNotEmpty) {
-        widget.lastUsedMenusBox.put(originalPart, listForLastUsed);
+        final mergedLastUsed =
+            lastUsedByPart.putIfAbsent(originalPart, () => <MenuData>[]);
+        mergedLastUsed.addAll(listForLastUsed);
       } else {
-        widget.lastUsedMenusBox.delete(originalPart);
+        lastUsedByPart.putIfAbsent(originalPart, () => <MenuData>[]);
       }
       if (listForRecord.isNotEmpty) {
-        allMenusForRecord[originalPart] = listForRecord;
+        final mergedRecord =
+            allMenusForRecord.putIfAbsent(originalPart, () => <MenuData>[]);
+        mergedRecord.addAll(listForRecord);
+      }
+    }
+
+    for (final part in touchedParts) {
+      final mergedLastUsed = lastUsedByPart[part];
+      if (mergedLastUsed != null && mergedLastUsed.isNotEmpty) {
+        widget.lastUsedMenusBox.put(part, mergedLastUsed);
+      } else {
+        widget.lastUsedMenusBox.delete(part);
       }
     }
 

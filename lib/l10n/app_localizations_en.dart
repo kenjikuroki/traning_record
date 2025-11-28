@@ -154,6 +154,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reps => 'Reps';
 
   @override
+  String get repsShort => 'Reps';
+
+  @override
   String get distance => 'distance';
 
   @override

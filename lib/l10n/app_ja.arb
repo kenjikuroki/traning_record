@@ -56,6 +56,7 @@
   "sets": "セット",
   "setLabel": "Set",
   "reps": "回数",
+  "repsShort": "回",
   "distance": "距離",
   "km": "km",
   "m": "m",

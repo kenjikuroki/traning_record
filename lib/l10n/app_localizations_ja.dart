@@ -154,6 +154,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get reps => '回数';
 
   @override
+  String get repsShort => '回';
+
+  @override
   String get distance => '距離';
 
   @override

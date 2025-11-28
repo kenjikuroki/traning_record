@@ -3057,9 +3057,9 @@ double _baseRowHeight(BuildContext context) {
         final bool showRmColumn = SettingsManager.showRM;
         final bool showRirColumn = SettingsManager.showRIR;
         final bool showFailColumn = SettingsManager.showFail;
-        final bool needsSpaceBeforeReps = l10n.reps.length > 1;
+        final bool needsSpaceBeforeReps = l10n.repsShort.length > 1;
         final String repsSuffix =
-            needsSpaceBeforeReps ? ' ${l10n.reps}' : l10n.reps;
+            needsSpaceBeforeReps ? ' ${l10n.repsShort}' : l10n.repsShort;
         List<String>? rirValues;
         List<bool>? failureStates;
         try {
@@ -3463,9 +3463,9 @@ double _baseRowHeight(BuildContext context) {
         final bool showRmColumn = SettingsManager.showRM;
         final bool showRirColumn = SettingsManager.showRIR;
         final bool showFailColumn = SettingsManager.showFail;
-        final bool needsSpaceBeforeReps = l10n.reps.length > 1;
+        final bool needsSpaceBeforeReps = l10n.repsShort.length > 1;
         final String repsSuffix =
-            needsSpaceBeforeReps ? ' ${l10n.reps}' : l10n.reps;
+            needsSpaceBeforeReps ? ' ${l10n.repsShort}' : l10n.repsShort;
         List<String>? rirValues;
         List<bool>? failureStates;
         try {
@@ -3996,9 +3996,9 @@ double _baseRowHeight(BuildContext context) {
         final bool showRmColumn = SettingsManager.showRM;
         final bool showRirColumn = SettingsManager.showRIR;
         final bool showFailColumn = SettingsManager.showFail;
-        final bool needsSpaceBeforeReps = l10n.reps.length > 1;
+        final bool needsSpaceBeforeReps = l10n.repsShort.length > 1;
         final String repsSuffix =
-            needsSpaceBeforeReps ? ' ${l10n.reps}' : l10n.reps;
+            needsSpaceBeforeReps ? ' ${l10n.repsShort}' : l10n.repsShort;
         List<String>? rirValues;
         List<bool>? failureStates;
         try {
