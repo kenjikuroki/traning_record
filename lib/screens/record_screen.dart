@@ -5184,10 +5184,57 @@ class _RecordScreenState extends State<RecordScreen>
       return;
     }
 
-    final description = _buildCalendarDescription(l10n);
+    String? calendarId = SettingsManager.selectedCalendarId;
+    if (calendarId == null || calendarId.isEmpty) {
+      final selection =
+          await CalendarExportService.selectCalendarAndStore(context: context);
+      switch (selection.status) {
+        case CalendarExportStatus.success:
+          calendarId = selection.calendar?.id;
+          break;
+        case CalendarExportStatus.permissionDenied:
+          showAppSnack(context, l10n.calendarExportPermissionRequired);
+          return;
+        case CalendarExportStatus.noWritableCalendar:
+          showAppSnack(context, l10n.calendarExportNoWritableCalendar);
+          return;
+        case CalendarExportStatus.error:
+          showAppSnack(context, l10n.calendarExportError);
+          return;
+        case CalendarExportStatus.cancelled:
+          return;
+      }
 
-    final result = await CalendarExportService.exportTraining(
+      if (calendarId == null || calendarId.isEmpty) {
+        return;
+      }
+    }
+
+    final description = _buildCalendarDescription(l10n);
+    final currentEventId = section.calendarEventId;
+
+    if (currentEventId != null) {
+      final deleteResult = await CalendarExportService.deleteEvent(
+        eventId: currentEventId,
+      );
+      switch (deleteResult.status) {
+        case CalendarExportStatus.success:
+          break;
+        case CalendarExportStatus.permissionDenied:
+          showAppSnack(context, l10n.calendarExportPermissionRequired);
+          return;
+        case CalendarExportStatus.noWritableCalendar:
+        case CalendarExportStatus.cancelled:
+          return;
+        case CalendarExportStatus.error:
+          showAppSnack(context, l10n.calendarExportError);
+          return;
+      }
+    }
+
+    final createResult = await CalendarExportService.createEventInCalendar(
       context: context,
+      calendarId: calendarId,
       date: widget.selectedDate,
       startTime: _trainingStartTime!,
       endTime: _trainingEndTime!,
@@ -5195,8 +5242,9 @@ class _RecordScreenState extends State<RecordScreen>
       description: description,
     );
 
-    switch (result.status) {
+    switch (createResult.status) {
       case CalendarExportStatus.success:
+        setState(() => section.calendarEventId = createResult.eventId);
         showAppSnack(context, l10n.calendarExportSuccess);
         break;
       case CalendarExportStatus.permissionDenied:
@@ -8180,7 +8228,7 @@ class _RecordScreenState extends State<RecordScreen>
                                       ),
                                       const SizedBox(width: 8),
                                       IconButton(
-                                        tooltip: l10n.calendar,
+                                        tooltip: l10n.calendarShareTooltip,
                                         onPressed: () =>
                                             _handleCalendarShare(secIndex),
                                         icon: const Icon(
@@ -9225,6 +9273,7 @@ class SectionData {
   // 追加：メニューごとの満足度（2=良い,1=普通,0=悪い,null=未選択）
   List<int?> satisfactionList;
   List<double?> previousVolumeList; // 追加：前回総ボリューム
+  String? calendarEventId;
 
   List<TextEditingController> aerobicDistanceCtrls;
   List<TextEditingController> aerobicDurationCtrls;
@@ -9251,6 +9300,7 @@ class SectionData {
     List<bool>? aerobicCalorieSuggestFlags,
     List<bool>? aerobicCalorieHintVisible,
     List<bool>? aerobicCalorieHintShown,
+    this.calendarEventId,
   })  : menuCollapsedStates = menuCollapsedStates ?? <bool>[],
         satisfactionList = satisfactionList ?? <int?>[],
         previousVolumeList = previousVolumeList ?? <double?>[],
@@ -9297,6 +9347,7 @@ class SectionData {
       aerobicCalorieSuggestFlags: [],
       aerobicCalorieHintVisible: [],
       aerobicCalorieHintShown: [],
+      calendarEventId: null,
     );
   }
 

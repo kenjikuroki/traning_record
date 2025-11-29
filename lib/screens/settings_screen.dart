@@ -11,6 +11,7 @@ import '../models/menu_data.dart';
 import '../settings_manager.dart';
 import '../constants/backgrounds.dart';
 import '../widgets/centered_constrained.dart';
+import '../services/calendar_export.dart';
 import 'notification_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -233,6 +234,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showSettingsSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+  }
+
+  Future<bool> _selectCalendarAndSave() async {
+    final l10n = AppLocalizations.of(context)!;
+    final result =
+        await CalendarExportService.selectCalendarAndStore(context: context);
+    switch (result.status) {
+      case CalendarExportStatus.success:
+        final calendar = result.calendar;
+        if (calendar != null) {
+          setState(() => _selectedCalendarName = calendar.name);
+        }
+        return true;
+      case CalendarExportStatus.permissionDenied:
+        _showSettingsSnack(l10n.calendarExportPermissionRequired);
+        return false;
+      case CalendarExportStatus.noWritableCalendar:
+        _showSettingsSnack(l10n.calendarExportNoWritableCalendar);
+        return false;
+      case CalendarExportStatus.error:
+        _showSettingsSnack(l10n.calendarExportError);
+        return false;
+      case CalendarExportStatus.cancelled:
+        return false;
+    }
+  }
+
   // 小見出し（左詰め・他とトーン合わせ）
   Widget _label(BuildContext context, String text) {
     final cs = Theme.of(context).colorScheme;
@@ -289,9 +324,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _onTapCalendarSetting() async {
-    // TODO: device_calendar_plus を使ってカレンダー一覧を表示し、
-    // 選ばれたカレンダーの id/name を SettingsManager.setSelectedCalendar で保存する。
-    // 保存後は setState(() => _selectedCalendarName = 選択された名前); で反映。
+    await _selectCalendarAndSave();
   }
 
   Future<void> _onAppColorThemeChanged(int nextIndex) async {
