@@ -280,6 +280,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calendarSettingHint => 'Training records will be added to the calendar selected here.';
 
   @override
+  String calendarEventTitle(Object part) {
+    return '$part training';
+  }
+
+  @override
   String get noCustomExercises => 'No custom exercises have been added.';
 
   @override

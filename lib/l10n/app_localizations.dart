@@ -633,6 +633,12 @@ abstract class AppLocalizations {
   /// **'Training records will be added to the calendar selected here.'**
   String get calendarSettingHint;
 
+  /// Calendar event title
+  ///
+  /// In en, this message translates to:
+  /// **'{part} training'**
+  String calendarEventTitle(Object part);
+
   /// No description provided for @noCustomExercises.
   ///
   /// In en, this message translates to:

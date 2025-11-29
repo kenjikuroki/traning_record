@@ -280,6 +280,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get calendarSettingHint => 'ここで選択したカレンダーにトレーニング実績を登録します。';
 
   @override
+  String calendarEventTitle(Object part) {
+    return '$partトレーニング';
+  }
+
+  @override
   String get noCustomExercises => '追加された種目はありません。';
 
   @override

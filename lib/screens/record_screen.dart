@@ -427,7 +427,7 @@ class _RecordScreenState extends State<RecordScreen>
   // 基礎代謝入力用
   final TextEditingController _bmrController = TextEditingController();
 
-  // トレーニング時間（1日の開始／終了）
+  // トレーニング時間（1日の開始／終了・セクションごとの初期値）
   TimeOfDay? _trainingStartTime;
   TimeOfDay? _trainingEndTime;
 
@@ -5071,20 +5071,48 @@ class _RecordScreenState extends State<RecordScreen>
     await SettingsManager.setPersonalWeightKg(null);
   }
 
-  String _formatTrainingTimeValue(BuildContext context) {
+  String _formatTrainingTimeValue(
+      BuildContext context, TimeOfDay? start, TimeOfDay? end) {
     final l10n = AppLocalizations.of(context)!;
-    if (_trainingStartTime == null || _trainingEndTime == null) {
+    if (start == null || end == null) {
       return l10n.notSet;
     }
     final material = MaterialLocalizations.of(context);
-    final startStr = material.formatTimeOfDay(_trainingStartTime!);
-    final endStr = material.formatTimeOfDay(_trainingEndTime!);
+    final startStr = material.formatTimeOfDay(start);
+    final endStr = material.formatTimeOfDay(end);
     return '$startStr - $endStr';
   }
 
-  Future<void> _selectTrainingTimeRange() async {
+  int _timeOfDayToMinutes(TimeOfDay time) => time.hour * 60 + time.minute;
+
+  void _refreshGlobalTrainingTimes() {
+    TimeOfDay? minStart;
+    TimeOfDay? maxEnd;
+    for (final section in _sections) {
+      final start = section.trainingStartTime;
+      final end = section.trainingEndTime;
+      if (start != null) {
+        if (minStart == null ||
+            _timeOfDayToMinutes(start) < _timeOfDayToMinutes(minStart)) {
+          minStart = start;
+        }
+      }
+      if (end != null) {
+        if (maxEnd == null ||
+            _timeOfDayToMinutes(end) > _timeOfDayToMinutes(maxEnd)) {
+          maxEnd = end;
+        }
+      }
+    }
+    _trainingStartTime = minStart;
+    _trainingEndTime = maxEnd;
+  }
+
+  Future<void> _selectTrainingTimeRange(int secIndex) async {
+    if (secIndex < 0 || secIndex >= _sections.length) return;
+    final section = _sections[secIndex];
     final now = TimeOfDay.fromDateTime(DateTime.now());
-    final initialStart = _trainingStartTime ?? now;
+    final initialStart = section.trainingStartTime ?? _trainingStartTime ?? now;
 
     final pickedStart = await showTimePicker(
       context: context,
@@ -5092,41 +5120,34 @@ class _RecordScreenState extends State<RecordScreen>
     );
     if (pickedStart == null) return;
 
-    final initialEnd = _trainingEndTime ?? pickedStart;
+    final initialEnd = section.trainingEndTime ?? _trainingEndTime ?? pickedStart;
     final pickedEnd = await showTimePicker(
       context: context,
       initialTime: initialEnd,
     );
     if (pickedEnd == null) {
       setState(() {
-        _trainingStartTime = pickedStart;
+        section.trainingStartTime = pickedStart;
+        _refreshGlobalTrainingTimes();
       });
       return;
     }
 
     setState(() {
-      _trainingStartTime = pickedStart;
-      _trainingEndTime = pickedEnd;
+      section.trainingStartTime = pickedStart;
+      section.trainingEndTime = pickedEnd;
+      _refreshGlobalTrainingTimes();
     });
   }
 
   String _buildCalendarDescription(AppLocalizations l10n) {
     final buffer = StringBuffer();
 
-    buffer.writeln(DateFormat('yyyy-MM-dd').format(widget.selectedDate));
-
-    if (_trainingStartTime != null && _trainingEndTime != null) {
-      final material = MaterialLocalizations.of(context);
-      final startStr = material.formatTimeOfDay(_trainingStartTime!);
-      final endStr = material.formatTimeOfDay(_trainingEndTime!);
-      buffer.writeln('${l10n.trainingTime}: $startStr - $endStr');
-    }
-
     for (final section in _sections) {
       final part = section.selectedPart;
       if (part == null || part.trim().isEmpty) continue;
 
-      buffer.writeln('[$part]');
+      buffer.writeln(l10n.calendarEventTitle(part));
 
       for (var menuIndex = 0;
           menuIndex < section.menuControllers.length;
@@ -5161,7 +5182,9 @@ class _RecordScreenState extends State<RecordScreen>
 
     final memo = _memoController.text.trim();
     if (memo.isNotEmpty) {
-      buffer.writeln();
+      if (buffer.toString().isNotEmpty) {
+        buffer.writeln();
+      }
       buffer.writeln(memo);
     }
 
@@ -5171,16 +5194,19 @@ class _RecordScreenState extends State<RecordScreen>
   Future<void> _handleCalendarShare(int secIndex) async {
     final l10n = AppLocalizations.of(context)!;
 
-    if (_trainingStartTime == null || _trainingEndTime == null) {
-      showAppSnack(context, l10n.calendarExportNeedTime);
-      return;
-    }
-
     if (secIndex < 0 || secIndex >= _sections.length) return;
     final section = _sections[secIndex];
     final part = section.selectedPart;
     if (part == null || part.trim().isEmpty) {
       showAppSnack(context, l10n.selectTrainingPart);
+      return;
+    }
+
+    final sectionStart = section.trainingStartTime;
+    final sectionEnd = section.trainingEndTime;
+
+    if (sectionStart == null || sectionEnd == null) {
+      showAppSnack(context, l10n.calendarExportNeedTime);
       return;
     }
 
@@ -5212,6 +5238,7 @@ class _RecordScreenState extends State<RecordScreen>
 
     final description = _buildCalendarDescription(l10n);
     final currentEventId = section.calendarEventId;
+    final eventTitle = l10n.calendarEventTitle(part);
 
     if (currentEventId != null) {
       final deleteResult = await CalendarExportService.deleteEvent(
@@ -5236,9 +5263,9 @@ class _RecordScreenState extends State<RecordScreen>
       context: context,
       calendarId: calendarId,
       date: widget.selectedDate,
-      startTime: _trainingStartTime!,
-      endTime: _trainingEndTime!,
-      partLabel: part,
+      startTime: sectionStart,
+      endTime: sectionEnd,
+      eventTitle: eventTitle,
       description: description,
     );
 
@@ -8167,7 +8194,8 @@ class _RecordScreenState extends State<RecordScreen>
                                       Expanded(
                                         child: GestureDetector(
                                           behavior: HitTestBehavior.opaque,
-                                          onTap: _selectTrainingTimeRange,
+                                          onTap: () =>
+                                              _selectTrainingTimeRange(secIndex),
                                           child: Container(
                                             constraints: const BoxConstraints(
                                                 minHeight:
@@ -8210,7 +8238,10 @@ class _RecordScreenState extends State<RecordScreen>
                                                   const SizedBox(width: 12),
                                                   Text(
                                                     _formatTrainingTimeValue(
-                                                        context),
+                                                      context,
+                                                      section.trainingStartTime,
+                                                      section.trainingEndTime,
+                                                    ),
                                                     style: TextStyle(
                                                       fontFamily: kUiFont,
                                                       color: colorScheme
@@ -9274,6 +9305,8 @@ class SectionData {
   List<int?> satisfactionList;
   List<double?> previousVolumeList; // 追加：前回総ボリューム
   String? calendarEventId;
+  TimeOfDay? trainingStartTime;
+  TimeOfDay? trainingEndTime;
 
   List<TextEditingController> aerobicDistanceCtrls;
   List<TextEditingController> aerobicDurationCtrls;
@@ -9301,6 +9334,8 @@ class SectionData {
     List<bool>? aerobicCalorieHintVisible,
     List<bool>? aerobicCalorieHintShown,
     this.calendarEventId,
+    this.trainingStartTime,
+    this.trainingEndTime,
   })  : menuCollapsedStates = menuCollapsedStates ?? <bool>[],
         satisfactionList = satisfactionList ?? <int?>[],
         previousVolumeList = previousVolumeList ?? <double?>[],
@@ -9348,6 +9383,8 @@ class SectionData {
       aerobicCalorieHintVisible: [],
       aerobicCalorieHintShown: [],
       calendarEventId: null,
+      trainingStartTime: null,
+      trainingEndTime: null,
     );
   }
 
