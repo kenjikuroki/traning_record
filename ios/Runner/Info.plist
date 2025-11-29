@@ -41,6 +41,17 @@
 	<string>Microphone access may be required for certain audio features.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Allows saving captured training photos to your gallery.</string>
+
+	<!-- カレンダーアクセスの利用理由（device_calendar_plus 推奨設定） -->
+	<!-- iOS 10–16 向け（従来キー） -->
+	<key>NSCalendarsUsageDescription</key>
+	<string>トレーニングの記録をカレンダーに登録するために使用します。</string>
+	<!-- iOS 17+ 向け（フルアクセス） -->
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>トレーニングの予定をカレンダーに保存・管理するために使用します。</string>
+	<!-- iOS 17+ 向け（書き込み専用） -->
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>トレーニングの予定をカレンダーに追加するために使用します。</string>
 	<key>NSUserNotificationUsageDescription</key>
 	<string>トレーニング継続のために通知を送ります。</string>
 	<key>NSUserTrackingUsageDescription</key>

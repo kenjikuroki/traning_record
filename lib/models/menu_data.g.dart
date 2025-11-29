@@ -165,13 +165,15 @@ class DailyRecordAdapter extends TypeAdapter<DailyRecord> {
           ?.map((e) => (e as Map).cast<String, dynamic>())
           .toList(),
       bmr: fields[7] as double?,
+      trainingStart: fields[8] as DateTime?,
+      trainingEnd: fields[9] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, DailyRecord obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.date)
       ..writeByte(1)
@@ -187,7 +189,11 @@ class DailyRecordAdapter extends TypeAdapter<DailyRecord> {
       ..writeByte(6)
       ..write(obj.meals)
       ..writeByte(7)
-      ..write(obj.bmr);
+      ..write(obj.bmr)
+      ..writeByte(8)
+      ..write(obj.trainingStart)
+      ..writeByte(9)
+      ..write(obj.trainingEnd);
   }
 
   @override

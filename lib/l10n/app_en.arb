@@ -110,6 +110,42 @@
   "defaultSets": "Default Sets",
   "bodyWeight": "BW",
   "trainingLocation": "Training location",
+  "trainingTime": "Training time",
+  "@trainingTime": {
+    "description": "Record screen: label for training time"
+  },
+  "calendarShareTooltip": "Share to calendar",
+  "@calendarShareTooltip": {
+    "description": "Record screen: tooltip for calendar share button"
+  },
+  "calendarExportSuccess": "Added to your calendar.",
+  "@calendarExportSuccess": {
+    "description": "Calendar export: success message"
+  },
+  "calendarExportError": "Could not add to calendar.",
+  "@calendarExportError": {
+    "description": "Calendar export: generic error message"
+  },
+  "calendarExportPermissionRequired": "Please allow calendar access.",
+  "@calendarExportPermissionRequired": {
+    "description": "Calendar export: permission required message"
+  },
+  "calendarExportNeedTime": "Please set your training time.",
+  "@calendarExportNeedTime": {
+    "description": "Calendar export: training time not set"
+  },
+  "calendarExportNoWritableCalendar": "No writable calendar was found.",
+  "@calendarExportNoWritableCalendar": {
+    "description": "Calendar export: no writable calendar available"
+  },
+  "calendarSelectTitle": "Select calendar",
+  "@calendarSelectTitle": {
+    "description": "Title for calendar selection bottom sheet"
+  },
+  "calendarPrimaryLabel": "Primary calendar",
+  "@calendarPrimaryLabel": {
+    "description": "Label for primary calendar"
+  },
   "weightCardTitle": "Weight",
   "weightCardExtraFieldsHint": "You can add fields like body fat or waist from Settings. Weight units (kg/lbs) can also be changed from Settings.",
   "bodyWeightTracking": "Body Weight Tracking",

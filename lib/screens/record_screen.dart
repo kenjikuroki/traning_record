@@ -20,6 +20,7 @@ import '../widgets/big_earning_ad.dart';
 import '../widgets/stopwatch_widget.dart';
 import '../widgets/notification_soft_ask.dart';
 import '../services/album_sync.dart';
+import '../services/calendar_export.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -425,6 +426,10 @@ class _RecordScreenState extends State<RecordScreen>
 
   // 基礎代謝入力用
   final TextEditingController _bmrController = TextEditingController();
+
+  // トレーニング時間（1日の開始／終了）
+  TimeOfDay? _trainingStartTime;
+  TimeOfDay? _trainingEndTime;
 
   // パーソナルカード表示フラグ（1枚だけ）
   bool _showPersonalCard = false;
@@ -2747,6 +2752,18 @@ class _RecordScreenState extends State<RecordScreen>
       _waistController.text = record!.waistCm!.toString();
     }
 
+    // トレーニング時間の復元
+    if (record?.trainingStart != null) {
+      _trainingStartTime = TimeOfDay.fromDateTime(record!.trainingStart!);
+    } else {
+      _trainingStartTime = null;
+    }
+    if (record?.trainingEnd != null) {
+      _trainingEndTime = TimeOfDay.fromDateTime(record!.trainingEnd!);
+    } else {
+      _trainingEndTime = null;
+    }
+
     // （レガシーデータ用）settingsBox からの復元は残す
     final pm = widget.settingsBox.get('personalMetrics-$dateKey');
 
@@ -3298,6 +3315,27 @@ class _RecordScreenState extends State<RecordScreen>
       }
     }
 
+    DateTime? trainingStart;
+    DateTime? trainingEnd;
+    if (_trainingStartTime != null) {
+      trainingStart = DateTime(
+        widget.selectedDate.year,
+        widget.selectedDate.month,
+        widget.selectedDate.day,
+        _trainingStartTime!.hour,
+        _trainingStartTime!.minute,
+      );
+    }
+    if (_trainingEndTime != null) {
+      trainingEnd = DateTime(
+        widget.selectedDate.year,
+        widget.selectedDate.month,
+        widget.selectedDate.day,
+        _trainingEndTime!.hour,
+        _trainingEndTime!.minute,
+      );
+    }
+
     bool didChangeStorage = false;
     if (hasAnyRecordData || bodyFatVal != null || waistVal != null) {
       final newRecord = DailyRecord(
@@ -3311,6 +3349,8 @@ class _RecordScreenState extends State<RecordScreen>
         // 追加
         meals: mealsPayload.isEmpty ? null : mealsPayload,
         bmr: bmrManual,
+        trainingStart: trainingStart,
+        trainingEnd: trainingEnd,
       );
 
       try {
@@ -5029,6 +5069,148 @@ class _RecordScreenState extends State<RecordScreen>
       _bmrController.clear();
     });
     await SettingsManager.setPersonalWeightKg(null);
+  }
+
+  String _formatTrainingTimeValue(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    if (_trainingStartTime == null || _trainingEndTime == null) {
+      return l10n.notSet;
+    }
+    final material = MaterialLocalizations.of(context);
+    final startStr = material.formatTimeOfDay(_trainingStartTime!);
+    final endStr = material.formatTimeOfDay(_trainingEndTime!);
+    return '$startStr - $endStr';
+  }
+
+  Future<void> _selectTrainingTimeRange() async {
+    final now = TimeOfDay.fromDateTime(DateTime.now());
+    final initialStart = _trainingStartTime ?? now;
+
+    final pickedStart = await showTimePicker(
+      context: context,
+      initialTime: initialStart,
+    );
+    if (pickedStart == null) return;
+
+    final initialEnd = _trainingEndTime ?? pickedStart;
+    final pickedEnd = await showTimePicker(
+      context: context,
+      initialTime: initialEnd,
+    );
+    if (pickedEnd == null) {
+      setState(() {
+        _trainingStartTime = pickedStart;
+      });
+      return;
+    }
+
+    setState(() {
+      _trainingStartTime = pickedStart;
+      _trainingEndTime = pickedEnd;
+    });
+  }
+
+  String _buildCalendarDescription(AppLocalizations l10n) {
+    final buffer = StringBuffer();
+
+    buffer.writeln(DateFormat('yyyy-MM-dd').format(widget.selectedDate));
+
+    if (_trainingStartTime != null && _trainingEndTime != null) {
+      final material = MaterialLocalizations.of(context);
+      final startStr = material.formatTimeOfDay(_trainingStartTime!);
+      final endStr = material.formatTimeOfDay(_trainingEndTime!);
+      buffer.writeln('${l10n.trainingTime}: $startStr - $endStr');
+    }
+
+    for (final section in _sections) {
+      final part = section.selectedPart;
+      if (part == null || part.trim().isEmpty) continue;
+
+      buffer.writeln('[$part]');
+
+      for (var menuIndex = 0;
+          menuIndex < section.menuControllers.length;
+          menuIndex++) {
+        final name = section.menuControllers[menuIndex].text.trim();
+        if (name.isEmpty) continue;
+
+        final sets = section.setInputDataList[menuIndex];
+        final unit =
+            SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
+
+        final setTexts = <String>[];
+        for (final s in sets) {
+          final w = s.weightController.text.trim();
+          final r = s.repController.text.trim();
+          if (w.isEmpty && r.isEmpty) continue;
+          setTexts.add(
+            formatStrengthSetDisplay(
+              l10n: l10n,
+              weight: w,
+              unit: unit,
+              reps: r,
+            ),
+          );
+        }
+
+        if (setTexts.isNotEmpty) {
+          buffer.writeln(' - $name: ${setTexts.join(', ')}');
+        }
+      }
+    }
+
+    final memo = _memoController.text.trim();
+    if (memo.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln(memo);
+    }
+
+    return buffer.toString().trim();
+  }
+
+  Future<void> _handleCalendarShare(int secIndex) async {
+    final l10n = AppLocalizations.of(context)!;
+
+    if (_trainingStartTime == null || _trainingEndTime == null) {
+      showAppSnack(context, l10n.calendarExportNeedTime);
+      return;
+    }
+
+    if (secIndex < 0 || secIndex >= _sections.length) return;
+    final section = _sections[secIndex];
+    final part = section.selectedPart;
+    if (part == null || part.trim().isEmpty) {
+      showAppSnack(context, l10n.selectTrainingPart);
+      return;
+    }
+
+    final description = _buildCalendarDescription(l10n);
+
+    final result = await CalendarExportService.exportTraining(
+      context: context,
+      date: widget.selectedDate,
+      startTime: _trainingStartTime!,
+      endTime: _trainingEndTime!,
+      partLabel: part,
+      description: description,
+    );
+
+    switch (result.status) {
+      case CalendarExportStatus.success:
+        showAppSnack(context, l10n.calendarExportSuccess);
+        break;
+      case CalendarExportStatus.permissionDenied:
+        showAppSnack(context, l10n.calendarExportPermissionRequired);
+        break;
+      case CalendarExportStatus.noWritableCalendar:
+        showAppSnack(context, l10n.calendarExportNoWritableCalendar);
+        break;
+      case CalendarExportStatus.cancelled:
+        break;
+      case CalendarExportStatus.error:
+        showAppSnack(context, l10n.calendarExportError);
+        break;
+    }
   }
 
   void _handleAddExercise() {
@@ -7932,6 +8114,81 @@ class _RecordScreenState extends State<RecordScreen>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTap: _selectTrainingTimeRange,
+                                          child: Container(
+                                            constraints: const BoxConstraints(
+                                                minHeight:
+                                                    kUnifiedFieldMinHeight),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  colorScheme.surfaceContainer,
+                                              borderRadius:
+                                                  BorderRadius.circular(22.0),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withOpacity(0.04),
+                                                  blurRadius: 3.0,
+                                                  offset: const Offset(0, 1),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                vertical: 8,
+                                                horizontal: 20,
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      l10n.trainingTime,
+                                                      style: TextStyle(
+                                                        fontFamily: kUiFont,
+                                                        color: colorScheme
+                                                            .onSurfaceVariant,
+                                                        fontSize: 14.0,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Text(
+                                                    _formatTrainingTimeValue(
+                                                        context),
+                                                    style: TextStyle(
+                                                      fontFamily: kUiFont,
+                                                      color: colorScheme
+                                                          .onSurface,
+                                                      fontSize: 14.0,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      IconButton(
+                                        tooltip: l10n.calendar,
+                                        onPressed: () =>
+                                            _handleCalendarShare(secIndex),
+                                        icon: const Icon(
+                                            Icons.calendar_today_outlined),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
                                   Row(
                                     children: [
                                       Expanded(

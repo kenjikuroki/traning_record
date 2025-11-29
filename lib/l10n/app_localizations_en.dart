@@ -303,6 +303,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get trainingLocation => 'Training location';
 
   @override
+  String get trainingTime => 'Training time';
+
+  @override
+  String get calendarShareTooltip => 'Share to calendar';
+
+  @override
+  String get calendarExportSuccess => 'Added to your calendar.';
+
+  @override
+  String get calendarExportError => 'Could not add to calendar.';
+
+  @override
+  String get calendarExportPermissionRequired => 'Please allow calendar access.';
+
+  @override
+  String get calendarExportNeedTime => 'Please set your training time.';
+
+  @override
+  String get calendarExportNoWritableCalendar => 'No writable calendar was found.';
+
+  @override
+  String get calendarSelectTitle => 'Select calendar';
+
+  @override
+  String get calendarPrimaryLabel => 'Primary calendar';
+
+  @override
   String get weightCardTitle => 'Weight';
 
   @override

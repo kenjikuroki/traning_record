@@ -96,6 +96,13 @@ class DailyRecord extends HiveObject {
   @HiveField(7)
   final double? bmr;
 
+  // ▼ 追加：トレーニング時間（1日の開始・終了）
+  @HiveField(8)
+  final DateTime? trainingStart;
+
+  @HiveField(9)
+  final DateTime? trainingEnd;
+
   DailyRecord({
     required this.date,
     required this.menus,
@@ -105,5 +112,7 @@ class DailyRecord extends HiveObject {
     this.waistCm,
     this.meals,
     this.bmr,
+    this.trainingStart,
+    this.trainingEnd,
   });
 }

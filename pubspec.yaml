@@ -30,6 +30,8 @@ dependencies:
   # 広告
   google_mobile_ads: ^6.0.0
   app_tracking_transparency: ^2.0.4
+  # カレンダー連携
+  device_calendar_plus: ^0.3.1
   image_picker: ^1.0.7
   path_provider: ^2.1.3
   # UI コンポーネント

@@ -675,6 +675,60 @@ abstract class AppLocalizations {
   /// **'Training location'**
   String get trainingLocation;
 
+  /// Record screen: label for training time
+  ///
+  /// In en, this message translates to:
+  /// **'Training time'**
+  String get trainingTime;
+
+  /// Record screen: tooltip for calendar share button
+  ///
+  /// In en, this message translates to:
+  /// **'Share to calendar'**
+  String get calendarShareTooltip;
+
+  /// Calendar export: success message
+  ///
+  /// In en, this message translates to:
+  /// **'Added to your calendar.'**
+  String get calendarExportSuccess;
+
+  /// Calendar export: generic error message
+  ///
+  /// In en, this message translates to:
+  /// **'Could not add to calendar.'**
+  String get calendarExportError;
+
+  /// Calendar export: permission required message
+  ///
+  /// In en, this message translates to:
+  /// **'Please allow calendar access.'**
+  String get calendarExportPermissionRequired;
+
+  /// Calendar export: training time not set
+  ///
+  /// In en, this message translates to:
+  /// **'Please set your training time.'**
+  String get calendarExportNeedTime;
+
+  /// Calendar export: no writable calendar available
+  ///
+  /// In en, this message translates to:
+  /// **'No writable calendar was found.'**
+  String get calendarExportNoWritableCalendar;
+
+  /// Title for calendar selection bottom sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Select calendar'**
+  String get calendarSelectTitle;
+
+  /// Label for primary calendar
+  ///
+  /// In en, this message translates to:
+  /// **'Primary calendar'**
+  String get calendarPrimaryLabel;
+
   /// No description provided for @weightCardTitle.
   ///
   /// In en, this message translates to:

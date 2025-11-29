@@ -303,6 +303,33 @@ class AppLocalizationsJa extends AppLocalizations {
   String get trainingLocation => 'トレーニング場所';
 
   @override
+  String get trainingTime => 'トレーニング時間';
+
+  @override
+  String get calendarShareTooltip => 'カレンダーに共有';
+
+  @override
+  String get calendarExportSuccess => 'カレンダーに登録しました。';
+
+  @override
+  String get calendarExportError => 'カレンダーに登録できませんでした。';
+
+  @override
+  String get calendarExportPermissionRequired => 'カレンダーへのアクセスを許可してください。';
+
+  @override
+  String get calendarExportNeedTime => 'トレーニング時間を設定してください。';
+
+  @override
+  String get calendarExportNoWritableCalendar => '書き込み可能なカレンダーが見つかりませんでした。';
+
+  @override
+  String get calendarSelectTitle => 'カレンダーを選択';
+
+  @override
+  String get calendarPrimaryLabel => 'メインカレンダー';
+
+  @override
   String get weightCardTitle => '体重';
 
   @override

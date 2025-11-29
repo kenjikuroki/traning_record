@@ -108,6 +108,42 @@
   "defaultSets": "初期セット数",
   "bodyWeight": "体重",
   "trainingLocation": "トレーニング場所",
+  "trainingTime": "トレーニング時間",
+  "@trainingTime": {
+    "description": "記録画面：トレーニング時間のラベル"
+  },
+  "calendarShareTooltip": "カレンダーに共有",
+  "@calendarShareTooltip": {
+    "description": "記録画面：カレンダー共有ボタンのツールチップ"
+  },
+  "calendarExportSuccess": "カレンダーに登録しました。",
+  "@calendarExportSuccess": {
+    "description": "カレンダー連携：成功メッセージ"
+  },
+  "calendarExportError": "カレンダーに登録できませんでした。",
+  "@calendarExportError": {
+    "description": "カレンダー連携：一般的なエラーメッセージ"
+  },
+  "calendarExportPermissionRequired": "カレンダーへのアクセスを許可してください。",
+  "@calendarExportPermissionRequired": {
+    "description": "カレンダー連携：権限不足のメッセージ"
+  },
+  "calendarExportNeedTime": "トレーニング時間を設定してください。",
+  "@calendarExportNeedTime": {
+    "description": "カレンダー連携：時間未設定時のメッセージ"
+  },
+  "calendarExportNoWritableCalendar": "書き込み可能なカレンダーが見つかりませんでした。",
+  "@calendarExportNoWritableCalendar": {
+    "description": "カレンダー連携：書き込み可能カレンダー無し"
+  },
+  "calendarSelectTitle": "カレンダーを選択",
+  "@calendarSelectTitle": {
+    "description": "カレンダー選択ボトムシートのタイトル"
+  },
+  "calendarPrimaryLabel": "メインカレンダー",
+  "@calendarPrimaryLabel": {
+    "description": "プライマリカレンダーのラベル"
+  },
   "weightCardTitle": "体重",
   "weightCardExtraFieldsHint": "設定より体脂肪率・ウエストの入力欄などの追加が可能です。単位kg/lbsも設定画面から変更できます。",
   "bodyWeightTracking": "体重管理",
