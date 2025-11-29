@@ -609,6 +609,30 @@ abstract class AppLocalizations {
   /// **'If enabled, the screen will stay on while the app is open.'**
   String get keepScreenOnHint;
 
+  /// No description provided for @calendarSettingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar integration'**
+  String get calendarSettingTitle;
+
+  /// No description provided for @calendarSettingCurrentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar to use'**
+  String get calendarSettingCurrentLabel;
+
+  /// No description provided for @calendarSettingNotSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get calendarSettingNotSelected;
+
+  /// No description provided for @calendarSettingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Training records will be added to the calendar selected here.'**
+  String get calendarSettingHint;
+
   /// No description provided for @noCustomExercises.
   ///
   /// In en, this message translates to:

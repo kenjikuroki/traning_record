@@ -268,6 +268,18 @@ class AppLocalizationsJa extends AppLocalizations {
   String get keepScreenOnHint => 'オンにするとアプリを開いている間画面が消灯されなくなります。';
 
   @override
+  String get calendarSettingTitle => 'カレンダー連携';
+
+  @override
+  String get calendarSettingCurrentLabel => '使用するカレンダー';
+
+  @override
+  String get calendarSettingNotSelected => '未設定';
+
+  @override
+  String get calendarSettingHint => 'ここで選択したカレンダーにトレーニング実績を登録します。';
+
+  @override
   String get noCustomExercises => '追加された種目はありません。';
 
   @override

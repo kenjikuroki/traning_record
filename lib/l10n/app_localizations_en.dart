@@ -268,6 +268,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keepScreenOnHint => 'If enabled, the screen will stay on while the app is open.';
 
   @override
+  String get calendarSettingTitle => 'Calendar integration';
+
+  @override
+  String get calendarSettingCurrentLabel => 'Calendar to use';
+
+  @override
+  String get calendarSettingNotSelected => 'Not set';
+
+  @override
+  String get calendarSettingHint => 'Training records will be added to the calendar selected here.';
+
+  @override
   String get noCustomExercises => 'No custom exercises have been added.';
 
   @override

@@ -54,6 +54,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late bool _showFail;
   late bool _screenOn;
 
+  // カレンダー設定（設定画面表示用）
+  String? _selectedCalendarName;
+
   final List<String> _bodyPartsOriginal = const [
     '有酸素運動',
     '腕',
@@ -124,6 +127,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _showRIR = SettingsManager.showRIR;
     _showFail = SettingsManager.showFail;
     _screenOn = SettingsManager.keepScreenOn;
+
+    // カレンダー設定（SettingsManager から現在値を読み込む）
+    _selectedCalendarName = SettingsManager.selectedCalendarName;
 
     final Map stored =
         (widget.settingsBox.get('selectedBodyParts') as Map?) ?? {};
@@ -280,6 +286,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (m == null) return;
     setState(() => _themeMode = m);
     SettingsManager.setThemeMode(m);
+  }
+
+  Future<void> _onTapCalendarSetting() async {
+    // TODO: device_calendar_plus を使ってカレンダー一覧を表示し、
+    // 選ばれたカレンダーの id/name を SettingsManager.setSelectedCalendar で保存する。
+    // 保存後は setState(() => _selectedCalendarName = 選択された名前); で反映。
   }
 
   Future<void> _onAppColorThemeChanged(int nextIndex) async {
@@ -958,6 +970,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
 
                         const SizedBox(height: 4),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: _kGap),
+
+              // カレンダー連携（使用するカレンダーを選択）
+              Card(
+                color: colorScheme.surfaceContainerHighest,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero,
+                ),
+                margin: _kCardMargin,
+                child: InkWell(
+                  borderRadius: BorderRadius.zero,
+                  onTap: _onTapCalendarSetting,
+                  child: Padding(
+                    padding: _kOuterPad,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _headerRow(
+                          icon: Icons.calendar_today_outlined,
+                          title: l10n.calendarSettingTitle,
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Text(
+                              l10n.calendarSettingCurrentLabel,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            const Spacer(),
+                            Flexible(
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  _selectedCalendarName ??
+                                      l10n.calendarSettingNotSelected,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.calendarSettingHint,
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 13.0,
+                          ),
+                        ),
                       ],
                     ),
                   ),
