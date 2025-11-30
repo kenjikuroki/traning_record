@@ -174,6 +174,15 @@ class LastSet {
   const LastSet({required this.weight, required this.reps});
 }
 
+enum RecordInitialFocus {
+  strength,
+  meal,
+  cardio,
+  weight,
+  memo,
+  schedule,
+}
+
 const double kUnifiedFieldMinHeight = 36.0;
 
 const String kUiFont = 'NotoSansJP';
@@ -184,6 +193,7 @@ class RecordScreen extends StatefulWidget {
   final Box<dynamic> lastUsedMenusBox;
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
+  final RecordInitialFocus? initialFocus;
 
   const RecordScreen({
     super.key,
@@ -192,6 +202,7 @@ class RecordScreen extends StatefulWidget {
     required this.lastUsedMenusBox,
     required this.settingsBox,
     required this.setCountBox,
+    this.initialFocus,
   });
 
   @override
@@ -334,6 +345,12 @@ class _RecordScreenState extends State<RecordScreen>
 
   final GlobalKey _kPhotoCardsKey = GlobalKey();
   final GlobalKey _kMemoCardKey = GlobalKey();
+  final GlobalKey _kMealSectionKey = GlobalKey();
+  final GlobalKey _kWeightCardKey = GlobalKey();
+
+  RecordInitialFocus? _pendingInitialFocus;
+  bool _initialFocusReady = false;
+  bool _initialFocusApplied = false;
 
   static const int _kDailyPhotoCap = 24;
 
@@ -525,9 +542,137 @@ class _RecordScreenState extends State<RecordScreen>
     setState(() {});
   }
 
+  bool _applyInitialFocus(RecordInitialFocus focus) {
+    switch (focus) {
+      case RecordInitialFocus.strength:
+        return _focusStrengthSection();
+      case RecordInitialFocus.meal:
+        return _focusMealArea();
+      case RecordInitialFocus.cardio:
+        return _focusCardioSection();
+      case RecordInitialFocus.weight:
+        return _focusWeightCardArea();
+      case RecordInitialFocus.memo:
+        return _focusMemoArea();
+      case RecordInitialFocus.schedule:
+        // TODO: 予定カード（今後追加予定）へスクロールする
+        return true;
+    }
+  }
+
+  bool _focusStrengthSection() {
+    if (_sections.isEmpty) {
+      _addTargetSection();
+    }
+    final targetIndex = _findStrengthSectionIndex();
+    if (targetIndex == null) return false;
+    _touchCard(targetIndex, 0);
+    unawaited(_scrollSectionCardIntoView(targetIndex));
+    return true;
+  }
+
+  bool _focusCardioSection() {
+    var idx = _findCardioSectionIndex();
+    final l10n = AppLocalizations.of(context);
+    if (idx == null) {
+      final prevLength = _sections.length;
+      _addTargetSection();
+      if (l10n == null) return false;
+      final newIndex = prevLength < _sections.length ? prevLength : null;
+      if (newIndex == null) return false;
+      _applySelectedPart(newIndex, l10n.aerobicExercise);
+      idx = newIndex;
+    }
+    if (idx == null) return false;
+    _touchCard(idx, 0);
+    unawaited(_scrollSectionCardIntoView(idx));
+    return true;
+  }
+
+  int? _findStrengthSectionIndex() {
+    if (_sections.isEmpty) return null;
+    final l10n = AppLocalizations.of(context);
+    final aerobicLabel = l10n?.aerobicExercise;
+    for (int i = 0; i < _sections.length; i++) {
+      final part = _sections[i].selectedPart;
+      if (aerobicLabel == null || part != aerobicLabel) {
+        return i;
+      }
+    }
+    return 0;
+  }
+
+  int? _findCardioSectionIndex() {
+    if (_sections.isEmpty) return null;
+    final l10n = AppLocalizations.of(context);
+    final aerobicLabel = l10n?.aerobicExercise;
+    if (aerobicLabel == null) return null;
+    for (int i = 0; i < _sections.length; i++) {
+      if (_sections[i].selectedPart == aerobicLabel) {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  bool _focusMealArea() {
+    if (_mealCards.isEmpty) {
+      setState(() {
+        final idx = _addMealCard(MealCategory.morning);
+        _currentMealIndex = idx;
+        _currentSectionIndex = null;
+        _currentMenuIndex = null;
+        _personalSelected = false;
+      });
+    } else {
+      setState(() {
+        _currentMealIndex = 0;
+        _currentSectionIndex = null;
+        _currentMenuIndex = null;
+        _personalSelected = false;
+      });
+    }
+    final mealIndex = _currentMealIndex ?? 0;
+    _scrollToKeyWhenReady(_kMealSectionKey, alignment: 0.12);
+    unawaited(_showMealOverlay(mealIndex));
+    return true;
+  }
+
+  bool _focusWeightCardArea() {
+    setState(() {
+      if (!_showWeightCard) {
+        _showWeightCard = true;
+      }
+      _showPersonalCard = true;
+      _personalCollapsed = false;
+      _personalSelected = true;
+      _currentSectionIndex = null;
+      _currentMenuIndex = null;
+      _currentMealIndex = null;
+    });
+    _scrollToKeyWhenReady(_kWeightCardKey, alignment: 0.08);
+    unawaited(_openPersonalOverlaySmooth());
+    return true;
+  }
+
+  bool _focusMemoArea() {
+    setState(() {
+      _showMemo = true;
+      _currentMealIndex = null;
+      _currentSectionIndex = null;
+      _currentMenuIndex = null;
+      _personalSelected = false;
+    });
+    _scrollToKeyWhenReady(_kMemoCardKey, alignment: 0.18);
+    unawaited(_openMemoOverlaySmooth());
+    return true;
+  }
+
   @override
   void initState() {
     super.initState();
+
+    _pendingInitialFocus = widget.initialFocus;
 
     _weightOverlayHintSeen =
         (widget.settingsBox.get('hint_seen_weight_card') as bool?) ?? false;
@@ -636,6 +781,18 @@ class _RecordScreenState extends State<RecordScreen>
     if (!_initialized) {
       _initialized = true;
       _loadSettingsAndParts();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant RecordScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialFocus != oldWidget.initialFocus) {
+      _pendingInitialFocus = widget.initialFocus;
+      _initialFocusApplied = false;
+      if (_initialFocusReady) {
+        _schedulePendingInitialFocus();
+      }
     }
   }
 
@@ -873,6 +1030,40 @@ class _RecordScreenState extends State<RecordScreen>
         alignment: _pendingScrollAlignment,
       );
     });
+  }
+
+  void _scrollToKeyWhenReady(GlobalKey key, {double alignment = 0.22}) {
+    if (key.currentContext != null) {
+      _scrollIntoViewKey(key, alignment: alignment);
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (key.currentContext != null) {
+        _scrollIntoViewKey(key, alignment: alignment);
+      }
+    });
+  }
+
+  void _schedulePendingInitialFocus() {
+    if (_pendingInitialFocus == null || _initialFocusApplied || !_initialFocusReady) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _pendingInitialFocus == null || _initialFocusApplied || !_initialFocusReady) {
+        return;
+      }
+      final handled = _applyInitialFocus(_pendingInitialFocus!);
+      if (handled) {
+        _initialFocusApplied = true;
+        _pendingInitialFocus = null;
+      }
+    });
+  }
+
+  void _markInitialFocusReady() {
+    _initialFocusReady = true;
+    _schedulePendingInitialFocus();
   }
 
   Future<void> _scrollToBottom() async {
@@ -2377,10 +2568,18 @@ class _RecordScreenState extends State<RecordScreen>
           subtotal = double.tryParse(subtotalRaw) ?? 0;
         }
 
+        final hourRaw = map['hour'];
+        final minuteRaw = map['minute'];
+        int? parsedHour = (hourRaw is num) ? hourRaw.toInt() : null;
+        int? parsedMinute = (minuteRaw is num) ? minuteRaw.toInt() : null;
+        parsedHour ??= _defaultMealHour(category);
+        parsedMinute ??= 0;
         final card = MealCardState(
           category: category,
           items: items,
           subtotalKcal: subtotal,
+          hour: parsedHour,
+          minute: parsedMinute,
         );
         _mealCards.add(card);
         _mealControllers.add(controllers);
@@ -2397,7 +2596,9 @@ class _RecordScreenState extends State<RecordScreen>
     }
   }
 
-  int _addMealCard(MealCategory category) {
+  int _addMealCard(MealCategory category, {int? hour, int? minute}) {
+    final assignedHour = hour ?? _defaultMealHour(category);
+    final assignedMinute = minute ?? 0;
     final items = List<MealItem>.generate(3, (_) => MealItem());
     final controllers = List<_MealRowControllers>.generate(
         3, (_) => _createMealRowControllers());
@@ -2405,12 +2606,27 @@ class _RecordScreenState extends State<RecordScreen>
       category: category,
       items: items,
       subtotalKcal: 0,
+      hour: assignedHour,
+      minute: assignedMinute,
     );
     _mealCards.add(card);
     _mealControllers.add(controllers);
     _mealCollapsed.add(true);
     _recalculateMealTotals();
     return _mealCards.length - 1;
+  }
+
+  int _defaultMealHour(MealCategory category) {
+    switch (category) {
+      case MealCategory.morning:
+        return 8;
+      case MealCategory.noon:
+        return 12;
+      case MealCategory.evening:
+        return 19;
+      case MealCategory.snack:
+        return 21;
+    }
   }
 
   void _addMealItemRow(int cardIndex) {
@@ -2620,6 +2836,8 @@ class _RecordScreenState extends State<RecordScreen>
             }
         ],
         'subtotal': card.subtotalKcal,
+        'hour': card.hour,
+        'minute': card.minute,
       });
     }
     return result;
@@ -2728,6 +2946,7 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   void _loadInitialSections() {
+    _initialFocusReady = false;
     final dateKey = _getDateKey(widget.selectedDate);
     final record = widget.recordsBox.get(dateKey);
 
@@ -2831,6 +3050,7 @@ class _RecordScreenState extends State<RecordScreen>
       _currentSectionIndex = 0;
       _currentMenuIndex = null;
       setState(() {});
+      _markInitialFocusReady();
       return;
     }
 
@@ -3611,6 +3831,8 @@ class _RecordScreenState extends State<RecordScreen>
         );
       }
     }
+
+    _markInitialFocusReady();
   }
 
   List<Map<String, dynamic>> _readAwardsForDate(String storageKey) {
@@ -8236,6 +8458,7 @@ class _RecordScreenState extends State<RecordScreen>
                   itemBuilder: (context, index) {
                     if (showWeight && index == 0) {
                       return Padding(
+                        key: _kWeightCardKey,
                         padding: const EdgeInsets.symmetric(
                           vertical: 3.0,
                         ),
@@ -8844,6 +9067,7 @@ class _RecordScreenState extends State<RecordScreen>
                       if (bodyIdx == mealStart) {
                         final l10n = AppLocalizations.of(context)!;
                         return Padding(
+                          key: _kMealSectionKey,
                           padding: EdgeInsets.zero,
                           child: Card(
                             color: colorScheme.surfaceContainerHighest,

@@ -23,6 +23,7 @@ import 'record_screen.dart';
 import 'graph_screen.dart';
 import 'settings_screen.dart';
 import '../routes/slide_up_route.dart';
+import 'daily_timeline_screen.dart';
 import '../widgets/centered_constrained.dart';
 import '../widgets/big_earning_ad.dart';
 import '../widgets/calendar_widget_view.dart';
@@ -2269,8 +2270,8 @@ double _baseRowHeight(BuildContext context) {
   Future<void> _openRecordSheet(DateTime day) async {
     await Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => RecordScreen(
-          selectedDate: day,
+        pageBuilder: (_, __, ___) => DailyTimelineScreen(
+          date: day,
           recordsBox: widget.recordsBox,
           lastUsedMenusBox: widget.lastUsedMenusBox,
           settingsBox: widget.settingsBox,
@@ -2599,25 +2600,32 @@ double _baseRowHeight(BuildContext context) {
               ),
               eventLoader: _eventLoader,
               onDaySelected: (selectedDay, focusedDay) async {
-                if (_selectedDay != null &&
-                    _sameDate(selectedDay, _selectedDay!)) {
-                  final DateTime sel = DateTime(
-                      selectedDay.year, selectedDay.month, selectedDay.day);
-                  final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
-                  final List<Widget> summaryChildren =
-                      _buildSummaryChildrenForDate(context, sel, rec);
-                  final List<String> summaryLines =
-                      _buildSummaryLinesForDate(context, sel, rec);
-                  await _showResultsDialog(
-                      context, summaryChildren, summaryLines, sel);
-                  return;
-                }
+                final DateTime sel = DateTime(
+                    selectedDay.year, selectedDay.month, selectedDay.day);
 
                 setState(() {
-                  _selectedDay = DateTime(
-                      selectedDay.year, selectedDay.month, selectedDay.day);
+                  _selectedDay = sel;
                   _focusedDay = focusedDay;
                 });
+
+                await _openRecordSheet(sel);
+              },
+              onDayLongPressed: (selectedDay, focusedDay) async {
+                final DateTime sel = DateTime(
+                    selectedDay.year, selectedDay.month, selectedDay.day);
+
+                setState(() {
+                  _selectedDay = sel;
+                  _focusedDay = focusedDay;
+                });
+
+                final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
+                final List<Widget> summaryChildren =
+                    _buildSummaryChildrenForDate(context, sel, rec);
+                final List<String> summaryLines =
+                    _buildSummaryLinesForDate(context, sel, rec);
+                await _showResultsDialog(
+                    context, summaryChildren, summaryLines, sel);
               },
               onPageChanged: (focusedDay) {
                 setState(() => _focusedDay = focusedDay);
