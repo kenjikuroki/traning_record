@@ -194,6 +194,7 @@ class RecordScreen extends StatefulWidget {
   final Box<dynamic> settingsBox;
   final Box<int> setCountBox;
   final RecordInitialFocus? initialFocus;
+  final String? initialStrengthPart;
 
   const RecordScreen({
     super.key,
@@ -203,6 +204,7 @@ class RecordScreen extends StatefulWidget {
     required this.settingsBox,
     required this.setCountBox,
     this.initialFocus,
+    this.initialStrengthPart,
   });
 
   @override
@@ -403,6 +405,8 @@ class _RecordScreenState extends State<RecordScreen>
   List<String> _filteredBodyParts = [];
   List<String> _allBodyParts = [];
   List<SectionData> _sections = [];
+  late final bool _cardioOnlyView;
+  String? _strengthOnlyPart;
   int _currentSetCount = 3;
 
   int? _currentSectionIndex;
@@ -418,6 +422,7 @@ class _RecordScreenState extends State<RecordScreen>
   bool _calcAerobicCalories = SettingsManager.enableAerobicCalories;
 
   Map<String, List<String>> _customExercises = {};
+  String? _pendingStrengthPart;
 
   // 日本語デフォルト名 → 現在Locale名のキャッシュ
   final Map<String, Map<String, String>> _localizedExerciseNameCache = {};
@@ -672,7 +677,10 @@ class _RecordScreenState extends State<RecordScreen>
   void initState() {
     super.initState();
 
+    _cardioOnlyView = widget.initialFocus == RecordInitialFocus.cardio;
+    _strengthOnlyPart = widget.initialStrengthPart;
     _pendingInitialFocus = widget.initialFocus;
+    _pendingStrengthPart = widget.initialStrengthPart;
 
     _weightOverlayHintSeen =
         (widget.settingsBox.get('hint_seen_weight_card') as bool?) ?? false;
@@ -792,6 +800,14 @@ class _RecordScreenState extends State<RecordScreen>
       _initialFocusApplied = false;
       if (_initialFocusReady) {
         _schedulePendingInitialFocus();
+      }
+    }
+    if (widget.initialStrengthPart != oldWidget.initialStrengthPart) {
+      _pendingStrengthPart = widget.initialStrengthPart;
+      _strengthOnlyPart = widget.initialStrengthPart;
+      if (_initialFocusReady) {
+        _applyPendingStrengthPart();
+        _ensureStrengthOnlySection();
       }
     }
   }
@@ -1064,6 +1080,45 @@ class _RecordScreenState extends State<RecordScreen>
   void _markInitialFocusReady() {
     _initialFocusReady = true;
     _schedulePendingInitialFocus();
+    _applyPendingStrengthPart();
+  }
+
+  void _applyPendingStrengthPart() {
+    final part = _pendingStrengthPart;
+    if (part == null || part.isEmpty) return;
+    _pendingStrengthPart = null;
+    _focusSpecificStrengthPart(part);
+  }
+
+  void _focusSpecificStrengthPart(String part) {
+    _strengthOnlyPart ??= part;
+    _ensureStrengthOnlySection();
+    int targetIndex = -1;
+    for (int i = 0; i < _sections.length; i++) {
+      if (_sections[i].selectedPart == part) {
+        targetIndex = i;
+        break;
+      }
+    }
+    if (targetIndex != -1) {
+      _touchCard(targetIndex, 0);
+      unawaited(_scrollSectionCardIntoView(targetIndex));
+      return;
+    }
+    if (_strengthOnlyPart == part) {
+      // section will be populated asynchronously by _ensureStrengthOnlySection
+      return;
+    }
+    final newIndex = _sections.length;
+    _addTargetSection();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_sections.length > newIndex) {
+        _applySelectedPart(newIndex, part);
+        _touchCard(newIndex, 0);
+        unawaited(_scrollSectionCardIntoView(newIndex));
+      }
+    });
   }
 
   Future<void> _scrollToBottom() async {
@@ -1140,8 +1195,20 @@ class _RecordScreenState extends State<RecordScreen>
 
   void _applySelectedPart(int secIndex, String? value) {
     final section = _sections[secIndex];
+    String? assignedValue = value;
+    final forcedStrength = _strengthOnlyPart;
+    if (_cardioOnlyView) {
+      final l10n = AppLocalizations.of(context)!;
+      if (assignedValue != null && assignedValue != l10n.aerobicExercise) {
+        assignedValue = l10n.aerobicExercise;
+      }
+    } else if (forcedStrength != null) {
+      if (assignedValue == null || assignedValue != forcedStrength) {
+        assignedValue = forcedStrength;
+      }
+    }
     setState(() {
-      section.selectedPart = value;
+      section.selectedPart = assignedValue;
       section.menuKeys.clear();
       section.nameFieldKeys.clear();
       _clearSectionControllersAndMaps(section);
@@ -3050,6 +3117,8 @@ class _RecordScreenState extends State<RecordScreen>
       _currentSectionIndex = 0;
       _currentMenuIndex = null;
       setState(() {});
+      _ensureCardioOnlySections();
+      _ensureStrengthOnlySection();
       _markInitialFocusReady();
       return;
     }
@@ -3832,7 +3901,73 @@ class _RecordScreenState extends State<RecordScreen>
       }
     }
 
+    _ensureCardioOnlySections();
+    _ensureStrengthOnlySection();
     _markInitialFocusReady();
+  }
+
+  void _ensureCardioOnlySections() {
+    if (!_cardioOnlyView) return;
+    final l10n = AppLocalizations.of(context)!;
+    final aerobicLabel = l10n.aerobicExercise;
+    final kept = <SectionData>[];
+    for (final section in _sections) {
+      if (section.selectedPart == aerobicLabel) {
+        kept.add(section);
+      } else {
+        section.dispose();
+      }
+    }
+    if (kept.isEmpty) {
+      final section = SectionData.createEmpty(
+        _currentSetCount,
+        shouldPopulateDefaults: true,
+      );
+      section.selectedPart = aerobicLabel;
+      kept.add(section);
+    }
+    _sections = kept;
+    _currentSectionIndex = _sections.isEmpty ? null : 0;
+    _currentMenuIndex = (_sections.isNotEmpty &&
+            _sections.first.menuControllers.isNotEmpty)
+        ? 0
+        : null;
+  }
+
+  void _ensureStrengthOnlySection() {
+    final part = _strengthOnlyPart;
+    if (part == null || part.isEmpty) return;
+    final kept = <SectionData>[];
+    for (final section in _sections) {
+      if (section.selectedPart == part) {
+        kept.add(section);
+      } else {
+        section.dispose();
+      }
+    }
+    if (kept.isEmpty) {
+      kept.add(
+        SectionData.createEmpty(
+          _currentSetCount,
+          shouldPopulateDefaults: false,
+        ),
+      );
+      _sections = kept;
+      _pendingStrengthPart = part;
+      _currentSectionIndex = 0;
+      _currentMenuIndex = 0;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _applySelectedPart(0, part);
+      });
+      return;
+    }
+    _sections = kept;
+    _currentSectionIndex = _sections.isEmpty ? null : 0;
+    _currentMenuIndex = (_sections.isNotEmpty &&
+            _sections.first.menuControllers.isNotEmpty)
+        ? 0
+        : null;
   }
 
   List<Map<String, dynamic>> _readAwardsForDate(String storageKey) {
@@ -4869,17 +5004,25 @@ class _RecordScreenState extends State<RecordScreen>
       return;
     }
 
+    final assignedPart = _cardioOnlyView
+        ? l10n.aerobicExercise
+        : _strengthOnlyPart;
+    int newIndex = -1;
     setState(() {
       final newSection = SectionData.createEmpty(_currentSetCount,
           shouldPopulateDefaults: true);
       _sections.add(newSection);
       _currentSectionIndex = _sections.length - 1;
       _currentMenuIndex = 0;
+      newIndex = _sections.length - 1;
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       await _scrollToBottom();
+      if (assignedPart != null && newIndex >= 0) {
+        _applySelectedPart(newIndex, assignedPart);
+      }
     });
   }
 
@@ -8491,84 +8634,6 @@ class _RecordScreenState extends State<RecordScreen>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: GestureDetector(
-                                          behavior: HitTestBehavior.opaque,
-                                          onTap: () =>
-                                              _selectTrainingTimeRange(secIndex),
-                                          child: Container(
-                                            constraints: const BoxConstraints(
-                                                minHeight:
-                                                    kUnifiedFieldMinHeight),
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  colorScheme.surfaceContainer,
-                                              borderRadius:
-                                                  BorderRadius.circular(22.0),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black
-                                                      .withOpacity(0.04),
-                                                  blurRadius: 3.0,
-                                                  offset: const Offset(0, 1),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                vertical: 8,
-                                                horizontal: 20,
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      l10n.trainingTime,
-                                                      style: TextStyle(
-                                                        fontFamily: kUiFont,
-                                                        color: colorScheme
-                                                            .onSurfaceVariant,
-                                                        fontSize: 14.0,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 12),
-                                                  Text(
-                                                    _formatTrainingTimeValue(
-                                                      context,
-                                                      section.trainingStartTime,
-                                                      section.trainingEndTime,
-                                                    ),
-                                                    style: TextStyle(
-                                                      fontFamily: kUiFont,
-                                                      color: colorScheme
-                                                          .onSurface,
-                                                      fontSize: 14.0,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      IconButton(
-                                        tooltip: l10n.calendarShareTooltip,
-                                        onPressed: () =>
-                                            _handleCalendarShare(secIndex),
-                                        icon: const Icon(
-                                            Icons.calendar_today_outlined),
-                                      ),
-                                    ],
-                                  ),
                                   const SizedBox(height: 12),
                                   Row(
                                     children: [
