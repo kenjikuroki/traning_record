@@ -196,7 +196,7 @@ class RecordScreen extends StatefulWidget {
   final RecordInitialFocus? initialFocus;
   final String? initialStrengthPart;
 
-  const RecordScreen({
+  RecordScreen({
     super.key,
     required this.selectedDate,
     required this.recordsBox,
@@ -959,15 +959,15 @@ class _RecordScreenState extends State<RecordScreen>
     );
   }
 
-  String _formatAppBarDate(BuildContext context) {
-    final locale = Localizations.localeOf(context);
-    final date = widget.selectedDate;
-    if (locale.languageCode == 'ja') {
-      final base = DateFormat('yyyy/MM/dd', locale.toString()).format(date);
-      final weekday = DateFormat.E(locale.toString()).format(date);
-      return '$base（$weekday）';
+  String _resolveSectionTitle() {
+    final part = _strengthOnlyPart;
+    if (part != null && part.isNotEmpty) {
+      return part;
     }
-    return DateFormat.yMMMMEEEEd(locale.toString()).format(date);
+    if (_cardioOnlyView) {
+      return AppLocalizations.of(context)?.aerobicExercise ?? '';
+    }
+    return DateFormat('yyyy/MM/dd').format(widget.selectedDate);
   }
 
   void _showSavedChipFor(Duration duration) {
@@ -8635,86 +8635,7 @@ class _RecordScreenState extends State<RecordScreen>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const SizedBox(height: 12),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Container(
-                                          constraints: const BoxConstraints(
-                                              minHeight:
-                                                  kUnifiedFieldMinHeight),
-                                          decoration: BoxDecoration(
-                                            color: colorScheme.surfaceContainer,
-                                            borderRadius:
-                                                BorderRadius.circular(22.0),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black
-                                                    .withOpacity(0.04),
-                                                blurRadius: 3.0,
-                                                offset: const Offset(0, 1),
-                                              ),
-                                            ],
-                                          ),
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 4, vertical: 2),
-                                            child: GestureDetector(
-                                              key: secIndex == 0
-                                                  ? _kRecordPart
-                                                  : null,
-                                              behavior: HitTestBehavior.opaque,
-                                              onTap: () =>
-                                                  _showPartPicker(secIndex),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  vertical: 8,
-                                                  horizontal: 20,
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: Text(
-                                                        section.selectedPart ??
-                                                            l10n.selectTrainingPart,
-                                                        style: TextStyle(
-                                                          fontFamily: kUiFont,
-                                                          color: (section
-                                                                      .selectedPart ==
-                                                                  null)
-                                                              ? colorScheme
-                                                                  .onSurfaceVariant
-                                                              : colorScheme
-                                                                  .onSurface,
-                                                          fontSize: 15.0,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                        ),
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                    ),
-                                                    // const Icon(
-                                                    //   Icons.expand_more,
-                                                    //   size: 22,
-                                                    // ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.only(left: 6),
-                                        child: _buildCircleCloseButton(
-                                          onPressed: () =>
-                                              _handleRemoveSection(secIndex),
-                                          tooltip: l10n.removePartCardTooltip,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                  const SizedBox(height: 8),
                                   const SizedBox(height: 4.0),
                                   if (section.selectedPart != null)
                                     Column(
@@ -9524,7 +9445,7 @@ class _RecordScreenState extends State<RecordScreen>
             centerTitle: false,
             titleSpacing: 16,
             toolbarHeight: 56,
-            title: Text(DateFormat('yyyy/MM/dd').format(widget.selectedDate)),
+            title: Text(_resolveSectionTitle()),
           ),
           body: Stack(
             children: [
