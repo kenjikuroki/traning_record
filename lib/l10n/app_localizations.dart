@@ -636,7 +636,7 @@ abstract class AppLocalizations {
   /// Calendar event title
   ///
   /// In en, this message translates to:
-  /// **'{part} training'**
+  /// **'{part}'**
   String calendarEventTitle(Object part);
 
   /// No description provided for @noCustomExercises.

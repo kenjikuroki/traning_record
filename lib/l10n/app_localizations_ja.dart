@@ -281,7 +281,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String calendarEventTitle(Object part) {
-    return '$partトレーニング';
+    return '$part';
   }
 
   @override

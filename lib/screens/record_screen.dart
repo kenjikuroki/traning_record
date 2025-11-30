@@ -5083,6 +5083,85 @@ class _RecordScreenState extends State<RecordScreen>
     return '$startStr - $endStr';
   }
 
+  String _calendarEventTitleForPart(String part) {
+    final l10n = AppLocalizations.of(context)!;
+    final label = _calendarEventPartLabel(l10n, part);
+    return l10n.calendarEventTitle(label);
+  }
+
+  String _calendarEventPartLabel(AppLocalizations l10n, String part) {
+    final locale = l10n.localeName.toLowerCase();
+    if (locale.startsWith('ja')) {
+      final map = {
+        l10n.arm: '腕トレ',
+        l10n.chest: '胸トレ',
+        l10n.back: '背中トレ',
+        l10n.shoulder: '肩トレ',
+        l10n.leg: '足トレ',
+        l10n.abs: '腹筋トレ',
+        l10n.fullBody: '全身トレ',
+        l10n.bodyWeightTraining: '自重トレ',
+        l10n.other1: '${l10n.other1}トレ',
+        l10n.other2: '${l10n.other2}トレ',
+        l10n.other3: '${l10n.other3}トレ',
+      };
+      if (part == l10n.aerobicExercise) {
+        return '有酸素運動';
+      }
+      return map[part] ?? '${part}トレ';
+    }
+
+    if (locale.startsWith('es')) {
+      final map = {
+        l10n.arm: 'Entreno de brazos',
+        l10n.chest: 'Entreno de pecho',
+        l10n.back: 'Entreno de espalda',
+        l10n.shoulder: 'Entreno de hombros',
+        l10n.leg: 'Entreno de piernas',
+        l10n.abs: 'Entreno de abdominales',
+        l10n.fullBody: 'Entreno de cuerpo completo',
+        l10n.bodyWeightTraining: 'Entreno con peso corporal',
+      };
+      if (part == l10n.aerobicExercise) {
+        return 'Entreno de cardio';
+      }
+      return map[part] ?? 'Entreno de $part';
+    }
+
+    if (locale.startsWith('id')) {
+      final map = {
+        l10n.arm: 'Latihan lengan',
+        l10n.chest: 'Latihan dada',
+        l10n.back: 'Latihan punggung',
+        l10n.shoulder: 'Latihan bahu',
+        l10n.leg: 'Latihan kaki',
+        l10n.abs: 'Latihan perut',
+        l10n.fullBody: 'Latihan seluruh tubuh',
+        l10n.bodyWeightTraining: 'Latihan berat badan',
+      };
+      if (part == l10n.aerobicExercise) {
+        return 'Latihan kardio';
+      }
+      return map[part] ?? 'Latihan $part';
+    }
+
+    // Default (English and others)
+    final map = {
+      l10n.arm: 'Arm workout',
+      l10n.chest: 'Chest workout',
+      l10n.back: 'Back workout',
+      l10n.shoulder: 'Shoulder workout',
+      l10n.leg: 'Leg workout',
+      l10n.abs: 'Abs workout',
+      l10n.fullBody: 'Full-body workout',
+      l10n.bodyWeightTraining: 'Bodyweight workout',
+    };
+    if (part == l10n.aerobicExercise) {
+      return 'Cardio session';
+    }
+    return map[part] ?? '$part workout';
+  }
+
   int _timeOfDayToMinutes(TimeOfDay time) => time.hour * 60 + time.minute;
 
   void _refreshGlobalTrainingTimes() {
@@ -5147,7 +5226,7 @@ class _RecordScreenState extends State<RecordScreen>
       final part = section.selectedPart;
       if (part == null || part.trim().isEmpty) continue;
 
-      buffer.writeln(l10n.calendarEventTitle(part));
+      buffer.writeln(_calendarEventTitleForPart(part));
 
       for (var menuIndex = 0;
           menuIndex < section.menuControllers.length;
@@ -5238,7 +5317,7 @@ class _RecordScreenState extends State<RecordScreen>
 
     final description = _buildCalendarDescription(l10n);
     final currentEventId = section.calendarEventId;
-    final eventTitle = l10n.calendarEventTitle(part);
+    final eventTitle = _calendarEventTitleForPart(part);
 
     if (currentEventId != null) {
       final deleteResult = await CalendarExportService.deleteEvent(

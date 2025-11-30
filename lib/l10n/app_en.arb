@@ -98,7 +98,7 @@
   "calendarSettingCurrentLabel": "Calendar to use",
   "calendarSettingNotSelected": "Not set",
   "calendarSettingHint": "Training records will be added to the calendar selected here.",
-  "calendarEventTitle": "{part} training",
+  "calendarEventTitle": "{part}",
   "@calendarEventTitle": {
     "description": "Calendar event title",
     "placeholders": {

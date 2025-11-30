@@ -98,7 +98,7 @@
   "calendarSettingCurrentLabel": "使用するカレンダー",
   "calendarSettingNotSelected": "未設定",
   "calendarSettingHint": "ここで選択したカレンダーにトレーニング実績を登録します。",
-  "calendarEventTitle": "{part}トレーニング",
+  "calendarEventTitle": "{part}",
   "@calendarEventTitle": {
     "description": "カレンダーイベントのタイトル",
     "placeholders": {
