@@ -323,6 +323,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get trainingTime => 'トレーニング時間';
 
   @override
+  String get startTime => '開始時刻';
+
+  @override
+  String get endTime => '終了時刻';
+
+  @override
   String get calendarShareTooltip => 'カレンダーに共有';
 
   @override

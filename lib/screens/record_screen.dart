@@ -195,6 +195,7 @@ class RecordScreen extends StatefulWidget {
   final Box<int> setCountBox;
   final RecordInitialFocus? initialFocus;
   final String? initialStrengthPart;
+  final DateTime? initialBaseTime;
 
   RecordScreen({
     super.key,
@@ -205,6 +206,7 @@ class RecordScreen extends StatefulWidget {
     required this.setCountBox,
     this.initialFocus,
     this.initialStrengthPart,
+    this.initialBaseTime,
   });
 
   @override
@@ -259,6 +261,9 @@ class _RecordScreenState extends State<RecordScreen>
 
   // ▼ リワード表示の起動キュー（post-frameで取り出して表示）
   List<Map<String, dynamic>>? _awardPreviewQueue;
+
+  // ▼ タイムラインから渡されたベース時間
+  DateTime? _selectedBaseTime;
 
   int _calcDistinctTrainingDays() {
     final df = DateFormat('yyyy-MM-dd');
@@ -406,8 +411,10 @@ class _RecordScreenState extends State<RecordScreen>
   List<String> _allBodyParts = [];
   List<SectionData> _sections = [];
   late final bool _cardioOnlyView;
+  late final bool _weightOnlyView;
   String? _strengthOnlyPart;
   int _currentSetCount = 3;
+  bool _returnToTimelineAfterWeightSave = false;
 
   int? _currentSectionIndex;
   int? _currentMenuIndex;
@@ -677,7 +684,10 @@ class _RecordScreenState extends State<RecordScreen>
   void initState() {
     super.initState();
 
+    _selectedBaseTime = widget.initialBaseTime;
+
     _cardioOnlyView = widget.initialFocus == RecordInitialFocus.cardio;
+    _weightOnlyView = widget.initialFocus == RecordInitialFocus.weight;
     _strengthOnlyPart = widget.initialStrengthPart;
     _pendingInitialFocus = widget.initialFocus;
     _pendingStrengthPart = widget.initialStrengthPart;
@@ -1884,7 +1894,8 @@ class _RecordScreenState extends State<RecordScreen>
     return trimmed;
   }
 
-  Future<void> _showExercisePicker(int secIndex, int menuIndex) async {
+  Future<void> _showExercisePicker(int secIndex, int menuIndex,
+      {BuildContext? hostContext}) async {
     if (secIndex < 0 || secIndex >= _sections.length) {
       return;
     }
@@ -1892,14 +1903,15 @@ class _RecordScreenState extends State<RecordScreen>
     if (menuIndex < 0 || menuIndex >= section.menuControllers.length) {
       return;
     }
-    final l10n = AppLocalizations.of(context)!;
-    final material = MaterialLocalizations.of(context);
+    final ctx = hostContext ?? context;
+    final l10n = AppLocalizations.of(ctx)!;
+    final material = MaterialLocalizations.of(ctx);
     final partLabel = section.selectedPart;
     if (partLabel == null) {
-      showAppSnack(context, l10n.selectTrainingPart);
+      showAppSnack(ctx, l10n.selectTrainingPart);
       return;
     }
-    final originalPart = _getOriginalPartName(context, partLabel);
+    final originalPart = _getOriginalPartName(ctx, partLabel);
     final controller = section.menuControllers[menuIndex];
     List<String> pickerOptions = _exerciseOptionsForPart(
       originalPart,
@@ -1914,18 +1926,18 @@ class _RecordScreenState extends State<RecordScreen>
       }
     }
 
-    FocusScope.of(context).unfocus();
+    FocusScope.of(ctx).unfocus();
     final result = await showModalBottomSheet<String>(
-      context: context,
+      context: ctx,
       useRootNavigator: false,
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      backgroundColor: Theme.of(ctx).colorScheme.surfaceContainerHighest,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       isScrollControlled: true,
       builder: (sheetCtx) {
         return InheritedTheme.captureAll(
-          context,
+          ctx,
           StatefulBuilder(
             builder: (stateCtx, setSheetState) {
               final cs = Theme.of(stateCtx).colorScheme;
@@ -3946,13 +3958,17 @@ class _RecordScreenState extends State<RecordScreen>
       }
     }
     if (kept.isEmpty) {
-      kept.add(
-        SectionData.createEmpty(
-          _currentSetCount,
-          shouldPopulateDefaults: false,
-        ),
-      );
-      _sections = kept;
+    final newSection = SectionData.createEmpty(
+      _currentSetCount,
+      shouldPopulateDefaults: false,
+    );
+    if (_selectedBaseTime != null) {
+      newSection.trainingStartTime = TimeOfDay.fromDateTime(_selectedBaseTime!);
+      newSection.trainingEndTime = TimeOfDay.fromDateTime(
+          _selectedBaseTime!.add(const Duration(minutes: 30)));
+    }
+    kept.add(newSection);
+    _sections = kept;
       _pendingStrengthPart = part;
       _currentSectionIndex = 0;
       _currentMenuIndex = 0;
@@ -5875,59 +5891,22 @@ class _RecordScreenState extends State<RecordScreen>
   // === ここから 種目・フローティングエディタ ===
 
   Future<void> _openMenuOverlaySmooth(int secIndex, int menuIndex) async {
-    if (_menuOverlayVisible || _menuOverlayOpening) return;
-    _menuOverlayOpening = true;
+    if (secIndex < 0 || secIndex >= _sections.length) return;
+    final section = _sections[secIndex];
+    if (menuIndex < 0 || menuIndex >= section.menuControllers.length) return;
 
-    _menuSecIndex = secIndex;
-    _menuMenuIndex = menuIndex;
-
-    _menuOverlayFocus.requestFocus();
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _MenuDetailPage(
+          parentState: this,
+          sectionIndex: secIndex,
+          menuIndex: menuIndex,
+        ),
+      ),
+    );
 
     if (!mounted) return;
-    setState(() {
-      _menuOverlayVisible = true;
-      _menuOverlayOpening = false;
-      _fabOpen = false;
-      _menuSlideIn = false;
-    });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        // One-time overlay hint sequence
-        final box = widget.settingsBox;
-        final seenOverlay =
-            box.get('hint_seen_record_overlay') as bool? ?? false;
-        if (!mounted || seenOverlay) return;
-        // wait a short while for elements to layout
-        await Future<void>.delayed(const Duration(milliseconds: 150));
-        final l10n = AppLocalizations.of(context)!;
-        final secIndex2 = _menuSecIndex;
-        final menuIndex2 = _menuMenuIndex;
-        if (secIndex2 == null || menuIndex2 == null) return;
-        if (secIndex2 < 0 || secIndex2 >= _sections.length) return;
-        final section2 = _sections[secIndex2];
-        if (menuIndex2 < 0 || menuIndex2 >= section2.nameFieldKeys.length)
-          return;
-
-        final anchors = <GlobalKey>[
-          section2.nameFieldKeys[menuIndex2],
-          // 近い位置に吹き出しを出すため、チェックボックスの代替としてカード全体のキーを使う
-          if (menuIndex2 < section2.menuKeys.length)
-            section2.menuKeys[menuIndex2],
-          _kMenuSaveButton,
-        ];
-        final messages = <String>[
-          l10n.hintRecordPickExercise,
-          l10n.hintRecordCheckbox,
-          l10n.hintRecordSave,
-        ];
-
-        // (hint removed)
-        await box.put('hint_seen_record_overlay', true);
-      });
-      if (!mounted) return;
-      setState(() => _menuSlideIn = true);
-    });
+    setState(() {});
   }
 
   Future<void> _saveMenuAndClose() async {
@@ -8500,6 +8479,162 @@ class _RecordScreenState extends State<RecordScreen>
     );
   }
 
+  Widget _buildTimeSelectionRow(int secIndex) {
+    final section = _sections[secIndex];
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final start = section.trainingStartTime;
+    final end = section.trainingEndTime;
+
+    String formatTime(TimeOfDay? t) {
+      if (t == null) return '--:--';
+      final now = DateTime.now();
+      final dt = DateTime(now.year, now.month, now.day, t.hour, t.minute);
+      return DateFormat('HH:mm').format(dt);
+    }
+
+    Widget buildTimeButton(String label, TimeOfDay? time, VoidCallback onTap) {
+      return Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: cs.outline.withOpacity(0.2),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      formatTime(time),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    Icon(
+                      Icons.access_time_rounded,
+                      size: 16,
+                      color: cs.primary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Row(
+        children: [
+          buildTimeButton(l10n.startTime, start, () async {
+            final picked = await _pickTimeCupertino(
+              initialTime: start ?? TimeOfDay.now(),
+            );
+            if (picked != null) {
+              setState(() {
+                section.trainingStartTime = picked;
+              });
+            }
+          }),
+          const SizedBox(width: 12),
+          buildTimeButton(l10n.endTime, end, () async {
+            final picked = await _pickTimeCupertino(
+              initialTime: end ??
+                  (start != null
+                      ? start.replacing(hour: start.hour + 1)
+                      : TimeOfDay.now()),
+            );
+            if (picked != null) {
+              setState(() {
+                section.trainingEndTime = picked;
+              });
+            }
+          }),
+        ],
+      ),
+    );
+  }
+
+  Future<TimeOfDay?> _pickTimeCupertino({required TimeOfDay initialTime}) async {
+    final now = DateTime.now();
+    DateTime initialDateTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      initialTime.hour,
+      initialTime.minute,
+    );
+
+    DateTime? pickedDateTime;
+
+    await showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 250,
+          color: Theme.of(context).scaffoldBackgroundColor,
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  CupertinoButton(
+                    child: Text(AppLocalizations.of(context)!.cancel),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  CupertinoButton(
+                    child: Text(AppLocalizations.of(context)!.save),
+                    onPressed: () {
+                      pickedDateTime ??= initialDateTime;
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              ),
+              Expanded(
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.time,
+                  initialDateTime: initialDateTime,
+                  use24hFormat: true,
+                  onDateTimeChanged: (DateTime newDateTime) {
+                    pickedDateTime = newDateTime;
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (pickedDateTime != null) {
+      return TimeOfDay.fromDateTime(pickedDateTime!);
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -8556,13 +8691,15 @@ class _RecordScreenState extends State<RecordScreen>
         : const SizedBox.shrink();
 
     // ===== Body (空き領域タップでフォーカス解除) =====
-    final body = GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-        child: Column(
-          children: [
+    final body = _weightOnlyView
+        ? SafeArea(child: _buildPersonalEditorOverlay())
+        : GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+              child: Column(
+                children: [
             KeyedSubtree(
               key: _kAdArea,
               child: const AdBanner(screenName: 'record'),
@@ -8591,7 +8728,6 @@ class _RecordScreenState extends State<RecordScreen>
                   primary: false,
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
-                  // ← ドラッグで閉じる
                   physics: const AlwaysScrollableScrollPhysics(),
                   itemCount: (showWeight ? 1 : 0) +
                       _sections.length +
@@ -8637,6 +8773,7 @@ class _RecordScreenState extends State<RecordScreen>
                                   const SizedBox(height: 12),
                                   const SizedBox(height: 8),
                                   const SizedBox(height: 4.0),
+                                  _buildTimeSelectionRow(secIndex),
                                   if (section.selectedPart != null)
                                     Column(
                                       children: [
@@ -8931,22 +9068,30 @@ class _RecordScreenState extends State<RecordScreen>
                                                 padding:
                                                     const EdgeInsets.symmetric(
                                                         vertical: 3.0),
-                                                child: Card(
-                                                  color: colorScheme.surface,
-                                                  shape: RoundedRectangleBorder(
+                                                child: AnimatedContainer(
+                                                  duration: const Duration(
+                                                      milliseconds: 180),
+                                                  curve: Curves.easeOutCubic,
+                                                  decoration: BoxDecoration(
+                                                    color: colorScheme.surface,
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                             12.0),
-                                                    side: BorderSide(
+                                                    border: Border.all(
                                                       color: borderColor,
                                                       width:
                                                           isSelected ? 1.5 : 0,
                                                     ),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: glowColor,
+                                                        blurRadius:
+                                                            isSelected ? 12 : 4,
+                                                        offset: Offset(
+                                                            0, isSelected ? 4 : 2),
+                                                      ),
+                                                    ],
                                                   ),
-                                                  elevation:
-                                                      isSelected ? 3.0 : 0.0,
-                                                  shadowColor: glowColor,
-                                                  margin: EdgeInsets.zero,
                                                   child: Row(
                                                     crossAxisAlignment:
                                                         CrossAxisAlignment
@@ -9002,20 +9147,13 @@ class _RecordScreenState extends State<RecordScreen>
                                                                   false;
                                                               return;
                                                             }
-                                                            final alreadySelected =
-                                                                isSelected;
                                                             _touchCard(secIndex,
                                                                 menuIndex);
-                                                            final shouldOpen =
-                                                                alreadySelected &&
-                                                                    !_suppressNextMenuOverlay;
                                                             _suppressNextMenuOverlay =
                                                                 false;
-                                                            if (shouldOpen) {
-                                                              _openMenuOverlaySmooth(
-                                                                  secIndex,
-                                                                  menuIndex);
-                                                            }
+                                                            _openMenuOverlaySmooth(
+                                                                secIndex,
+                                                                menuIndex);
                                                           },
                                                           child: Padding(
                                                             padding:
@@ -9846,6 +9984,346 @@ class _ExcludeRectsClipper extends CustomClipper<Path> {
       if (rects[i] != oldClipper.rects[i]) return true;
     }
     return false;
+  }
+}
+
+class _MenuDetailPage extends StatefulWidget {
+  final _RecordScreenState parentState;
+  final int sectionIndex;
+  final int menuIndex;
+
+  const _MenuDetailPage({
+    required this.parentState,
+    required this.sectionIndex,
+    required this.menuIndex,
+  });
+
+  @override
+  State<_MenuDetailPage> createState() => _MenuDetailPageState();
+}
+
+class _MenuDetailPageState extends State<_MenuDetailPage> {
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  SectionData? get _section {
+    if (widget.sectionIndex < 0 ||
+        widget.sectionIndex >= widget.parentState._sections.length) {
+      return null;
+    }
+    return widget.parentState._sections[widget.sectionIndex];
+  }
+
+  Future<void> _handleSave() async {
+    FocusScope.of(context).unfocus();
+    final didSave = widget.parentState._saveAllSectionsData();
+    if (didSave) {
+      widget.parentState
+          ._showSavedChipFor(const Duration(milliseconds: 900));
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
+  void _mutate(VoidCallback fn) {
+    widget.parentState.setState(fn);
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final section = _section;
+    if (section == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: const SizedBox.shrink(),
+      );
+    }
+    final menuIndex = widget.menuIndex;
+    if (menuIndex < 0 || menuIndex >= section.menuControllers.length) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: const SizedBox.shrink(),
+      );
+    }
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final bool isAerobic = section.selectedPart == l10n.aerobicExercise;
+    final overlayHeaderBg = cs.primary;
+    final overlayHeaderFg = cs.onPrimary;
+    final controller = section.menuControllers[menuIndex];
+    final bool canAddSetButton = !isAerobic &&
+        section.setInputDataList[menuIndex].length < 10;
+
+    final ButtonStyle overlayButtonStyle = TextButton.styleFrom(
+      backgroundColor: overlayHeaderFg.withOpacity(0.16),
+      foregroundColor: overlayHeaderFg,
+      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+      overlayColor: overlayHeaderFg.withOpacity(0.12),
+    );
+
+    Future<void> handleRemoveMenu() async {
+      Navigator.of(context).pop();
+      widget.parentState._removeMenuItem(widget.sectionIndex, menuIndex);
+    }
+
+    Widget buildNameArea() {
+      final String rawName = controller.text.trim();
+      final bool hasName = rawName.isNotEmpty;
+      final int length = rawName.length;
+      final bool veryLong = length > 28;
+      final bool longName = !veryLong && length > 18;
+      final double fontSize = veryLong ? 15.0 : (longName ? 17.0 : 20.0);
+      const int maxLines = 4;
+      final double lineHeight = veryLong ? 1.2 : (longName ? 1.16 : 1.1);
+      final Color textColor = hasName
+          ? overlayHeaderFg
+          : overlayHeaderFg.withOpacity(0.6);
+      final double underlineWidth = hasName ? 2 : 1;
+
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => widget.parentState._showExercisePicker(
+          widget.sectionIndex,
+          menuIndex,
+          hostContext: context,
+        ),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            vertical: veryLong ? 6 : (longName ? 5 : 4),
+          ),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: overlayHeaderFg.withOpacity(hasName ? 1 : 0.4),
+                width: underlineWidth,
+              ),
+            ),
+          ),
+          child: Text(
+            hasName ? rawName : l10n.addExercisePlaceholder,
+            style: TextStyle(
+              fontFamily: kUiFont,
+              color: textColor,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w700,
+              height: lineHeight,
+            ),
+            maxLines: maxLines,
+            softWrap: true,
+            overflow: TextOverflow.visible,
+            textAlign: TextAlign.left,
+            locale: Localizations.localeOf(context),
+          ),
+        ),
+      );
+    }
+
+    return WillPopScope(
+      onWillPop: () async {
+        await _handleSave();
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: BackButton(onPressed: _handleSave),
+          title: Text(section.selectedPart ?? l10n.selectExercise),
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: overlayHeaderBg,
+                    borderRadius: BorderRadius.circular(14.0),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14.0,
+                    vertical: 10.0,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: KeyedSubtree(
+                          key: section.nameFieldKeys[menuIndex],
+                          child: buildNameArea(),
+                        ),
+                      ),
+                      if (!isAerobic && SettingsManager.showIntervalTimer) ...[
+                        const SizedBox(width: 4),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          widthFactor: 1,
+                          child: Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: cs.copyWith(
+                                primary: overlayHeaderFg,
+                                onPrimary: overlayHeaderBg,
+                              ),
+                            ),
+                            child: ExerciseInputTimer(
+                              key: widget.parentState._ensureTimerKey(
+                                widget.sectionIndex,
+                                menuIndex,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      TextButton.icon(
+                        key: widget.parentState._kMenuSaveButton,
+                        onPressed: _handleSave,
+                        icon: Icon(
+                          Icons.check_rounded,
+                          color: overlayHeaderFg,
+                        ),
+                        label: Text(
+                          l10n.save,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: overlayButtonStyle,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                  child: Scrollbar(
+                    child: SingleChildScrollView(
+                      child: Focus(
+                        focusNode: _focusNode,
+                        child: MenuList(
+                          showNameField: false,
+                          nameFieldKey: section.nameFieldKeys[menuIndex],
+                          menuController: controller,
+                          removeMenuCallback: handleRemoveMenu,
+                          setInputDataList:
+                              section.setInputDataList[menuIndex],
+                          isAerobic: isAerobic,
+                          distanceController: (menuIndex <
+                                  section.aerobicDistanceCtrls.length)
+                              ? section.aerobicDistanceCtrls[menuIndex]
+                              : TextEditingController(),
+                          durationController: (menuIndex <
+                                  section.aerobicDurationCtrls.length)
+                              ? section.aerobicDurationCtrls[menuIndex]
+                              : TextEditingController(),
+                          aerobicIsSuggestion: (menuIndex <
+                                  section.aerobicSuggestFlags.length)
+                              ? section.aerobicSuggestFlags[menuIndex]
+                              : true,
+                          calorieController: (menuIndex <
+                                  section.aerobicCaloriesCtrls.length)
+                              ? section.aerobicCaloriesCtrls[menuIndex]
+                              : null,
+                          showCalorieField:
+                              widget.parentState._shouldShowCalorieField(
+                            section,
+                            menuIndex,
+                          ),
+                          calorieIsSuggestion: (menuIndex <
+                                  section.aerobicCalorieSuggestFlags.length)
+                              ? section.aerobicCalorieSuggestFlags[menuIndex]
+                              : true,
+                          showAerobicFailureHint: false,
+                          onConfirmAerobic: () {
+                            _mutate(() {
+                              if (menuIndex <
+                                  section.aerobicSuggestFlags.length) {
+                                section.aerobicSuggestFlags[menuIndex] = false;
+                              }
+                            });
+                          },
+                          onAerobicFieldChanged: () => _mutate(() =>
+                              widget.parentState._onAerobicFieldChanged(
+                                widget.sectionIndex,
+                                menuIndex,
+                              )),
+                          onCalorieChanged: (value) => _mutate(() =>
+                              widget.parentState._onCaloriesChanged(
+                                widget.sectionIndex,
+                                menuIndex,
+                                value,
+                              )),
+                          onAerobicFailureHintTap: () => _mutate(() =>
+                              widget.parentState._dismissAerobicFailureHint(
+                                widget.sectionIndex,
+                                menuIndex,
+                              )),
+                          onAnyFieldFocused: () {},
+                          onMenuNameTap: () => widget.parentState
+                              ._showExercisePicker(
+                                  widget.sectionIndex, menuIndex,
+                                  hostContext: context),
+                          onNameChanged: (prevEmpty, nowEmpty) {
+                            if (section.selectedPart == l10n.aerobicExercise) {
+                              _mutate(() =>
+                                  widget.parentState._onAerobicFieldChanged(
+                                    widget.sectionIndex,
+                                    menuIndex,
+                                  ));
+                            }
+                          },
+                          satisfaction: (menuIndex <
+                                  section.satisfactionList.length)
+                              ? section.satisfactionList[menuIndex]
+                              : null,
+                          onSatisfactionChanged: (v) {
+                            _mutate(() {
+                              if (menuIndex <
+                                  section.satisfactionList.length) {
+                                section.satisfactionList[menuIndex] = v;
+                              }
+                            });
+                          },
+                          previousTotalVolume: (menuIndex <
+                                  section.previousVolumeList.length)
+                              ? section.previousVolumeList[menuIndex]
+                              : null,
+                          enabledForInput: true,
+                          isCollapsed: (menuIndex <
+                                  section.menuCollapsedStates.length)
+                              ? section.menuCollapsedStates[menuIndex]
+                              : true,
+                          onToggleCollapse: () => _mutate(() =>
+                              widget.parentState._toggleMenuCollapse(
+                                widget.sectionIndex,
+                                menuIndex,
+                              )),
+                          forceExpanded: true,
+                          timerKey: widget.parentState
+                              ._ensureTimerKey(widget.sectionIndex, menuIndex),
+                          onAddSet: () => _mutate(() =>
+                              widget.parentState._addOneSetAt(
+                                widget.sectionIndex,
+                                menuIndex,
+                              )),
+                          canAddSet: canAddSetButton,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

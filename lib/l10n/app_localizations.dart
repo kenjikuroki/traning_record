@@ -711,6 +711,18 @@ abstract class AppLocalizations {
   /// **'Training time'**
   String get trainingTime;
 
+  /// Record screen: training start time label
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get startTime;
+
+  /// Record screen: training end time label
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get endTime;
+
   /// Record screen: tooltip for calendar share button
   ///
   /// In en, this message translates to:

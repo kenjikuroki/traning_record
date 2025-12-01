@@ -123,6 +123,14 @@
   "@trainingTime": {
     "description": "記録画面：トレーニング時間のラベル"
   },
+  "startTime": "開始時刻",
+  "@startTime": {
+    "description": "記録画面：開始時刻のラベル"
+  },
+  "endTime": "終了時刻",
+  "@endTime": {
+    "description": "記録画面：終了時刻のラベル"
+  },
   "calendarShareTooltip": "カレンダーに共有",
   "@calendarShareTooltip": {
     "description": "記録画面：カレンダー共有ボタンのツールチップ"

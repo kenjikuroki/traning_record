@@ -125,6 +125,14 @@
   "@trainingTime": {
     "description": "Record screen: label for training time"
   },
+  "startTime": "Start time",
+  "@startTime": {
+    "description": "Record screen: training start time label"
+  },
+  "endTime": "End time",
+  "@endTime": {
+    "description": "Record screen: training end time label"
+  },
   "calendarShareTooltip": "Share to calendar",
   "@calendarShareTooltip": {
     "description": "Record screen: tooltip for calendar share button"
