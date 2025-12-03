@@ -350,6 +350,11 @@ class _RecordScreenState extends State<RecordScreen>
   int? _menuSecIndex;
   int? _menuMenuIndex;
 
+  // 有酸素のインラインカード表示用（タイムライン直下）
+  bool _showInlineCardioCard = false;
+  // どの時間スロットで開いたか（必要なら後で使うために確保しておく）
+  TimeOfDay? _inlineCardioBaseTime;
+
   final GlobalKey _kPhotoCardsKey = GlobalKey();
   final GlobalKey _kMemoCardKey = GlobalKey();
   final GlobalKey _kMealSectionKey = GlobalKey();
@@ -9478,6 +9483,7 @@ class _RecordScreenState extends State<RecordScreen>
               !_personalOverlayVisible)
           ? IgnorePointer(
               ignoring: !_fabOpen,
+              // Category selection buttons (FAB Dial)
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
