@@ -1,0 +1,512 @@
+Resolving dependencies...
+Downloading packages...
+  _fe_analyzer_shared 67.0.0 (93.0.0 available)
+  analyzer 6.4.1 (10.0.0 available)
+  audio_session 0.1.25 (0.2.2 available)
+  build 2.4.1 (4.0.3 available)
+  build_config 1.1.2 (1.2.0 available)
+  build_daemon 4.0.4 (4.1.1 available)
+  build_resolvers 2.4.2 (3.0.4 available)
+  build_runner 2.4.13 (2.10.4 available)
+  build_runner_core 7.3.2 (9.3.2 available)
+  built_value 8.11.1 (8.12.1 available)
+  camera 0.11.2 (0.11.3 available)
+  camera_android_camerax 0.6.21 (0.6.26+2 available)
+  camera_avfoundation 0.9.21+2 (0.9.22+8 available)
+  camera_platform_interface 2.10.0 (2.12.0 available)
+  camera_web 0.3.5 (0.3.5+3 available)
+  characters 1.4.0 (1.4.1 available)
+  code_builder 4.10.1 (4.11.1 available)
+  cross_file 0.3.4+2 (0.3.5+1 available)
+  crypto 3.0.6 (3.0.7 available)
+  dart_style 2.3.6 (3.1.3 available)
+  equatable 2.0.7 (2.0.8 available)
+  ffi 2.1.4 (2.1.5 available)
+  file_selector_linux 0.9.3+2 (0.9.4 available)
+  file_selector_macos 0.9.4+4 (0.9.5 available)
+  file_selector_platform_interface 2.6.2 (2.7.0 available)
+  file_selector_windows 0.9.3+4 (0.9.3+5 available)
+  fl_chart 0.68.0 (1.1.1 available)
+  flutter_local_notifications 17.2.4 (19.5.0 available)
+  flutter_local_notifications_linux 4.0.1 (6.0.0 available)
+  flutter_local_notifications_platform_interface 7.2.0 (9.1.0 available)
+  flutter_plugin_android_lifecycle 2.0.30 (2.0.33 available)
+  google_fonts 6.3.1 (7.0.0 available)
+  google_mobile_ads 6.0.0 (7.0.0 available)
+  home_widget 0.8.0 (0.9.0 available)
+  http 1.5.0 (1.6.0 available)
+  image 4.5.4 (4.7.2 available)
+  image_picker 1.2.0 (1.2.1 available)
+  image_picker_android 0.8.13+1 (0.8.13+10 available)
+  image_picker_for_web 3.1.0 (3.1.1 available)
+  image_picker_ios 0.8.13 (0.8.13+3 available)
+  image_picker_macos 0.2.2 (0.2.2+1 available)
+  image_picker_platform_interface 2.11.0 (2.11.1 available)
+  just_audio 0.9.46 (0.10.5 available)
+  leak_tracker 11.0.1 (11.0.2 available)
+  matcher 0.12.17 (0.12.18 available)
+  material_color_utilities 0.11.1 (0.13.0 available)
+  meta 1.16.0 (1.17.0 available)
+  mime 1.0.6 (2.0.0 available)
+  path_provider_android 2.2.17 (2.2.22 available)
+  path_provider_foundation 2.4.2 (2.5.1 available)
+  permission_handler 11.4.0 (12.0.1 available)
+  permission_handler_android 12.1.0 (13.0.1 available)
+  pool 1.5.1 (1.5.2 available)
+  share_plus 7.2.2 (12.0.1 available)
+  share_plus_platform_interface 3.4.0 (6.1.0 available)
+  shared_preferences 2.5.3 (2.5.4 available)
+  shared_preferences_android 2.4.15 (2.4.18 available)
+  shared_preferences_foundation 2.5.5 (2.5.6 available)
+  shelf_web_socket 2.0.1 (3.0.0 available)
+  source_gen 1.5.0 (4.1.1 available)
+  source_helper 1.3.5 (1.3.9 available)
+  test_api 0.7.6 (0.7.9 available)
+  timezone 0.9.4 (0.11.0 available)
+  url_launcher_linux 3.2.1 (3.2.2 available)
+  url_launcher_windows 3.1.4 (3.1.5 available)
+  uuid 4.5.1 (4.5.2 available)
+  watcher 1.1.2 (1.2.1 available)
+  webview_flutter 4.13.0 (4.13.1 available)
+  webview_flutter_android 4.10.0 (4.10.11 available)
+  webview_flutter_wkwebview 3.23.0 (3.23.5 available)
+  win32 5.14.0 (5.15.0 available)
+Got dependencies!
+71 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Analyzing traning_record...                                     
+
+warning • This default clause is covered by the previous cases • lib/energy/energy_calculator.dart:139:7 • unreachable_switch_default
+   info • 'dialogBackgroundColor' is deprecated and shouldn't be used. Use DialogThemeData.backgroundColor instead. This feature was deprecated after v3.27.0-0.1.pre • lib/main.dart:209:27 • deprecated_member_use
+   info • The imported package 'path' isn't a dependency of the importing package • lib/screens/album_screen.dart:7:8 • depend_on_referenced_packages
+   info • Don't use 'BuildContext's across async gaps • lib/screens/album_screen.dart:25:38 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/album_screen.dart:26:25 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/album_screen.dart:27:44 • use_build_context_synchronously
+warning • The declaration '_confirmDelete' isn't referenced • lib/screens/album_screen.dart:179:8 • unused_element
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/album_screen.dart:364:33 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/album_screen.dart:366:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/album_screen.dart:417:38 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/album_screen.dart:425:37 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/album_screen.dart:477:54 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/album_screen.dart:713:37 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/album_screen.dart:798:37 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/album_screen.dart:828:39 • deprecated_member_use
+   info • The import of 'package:flutter/rendering.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/cupertino.dart' • lib/screens/calendar_screen.dart:7:8 • unnecessary_import
+warning • Unused import: 'graph_screen.dart' • lib/screens/calendar_screen.dart:23:8 • unused_import
+warning • Unused import: 'settings_screen.dart' • lib/screens/calendar_screen.dart:24:8 • unused_import
+warning • Unused import: '../routes/slide_up_route.dart' • lib/screens/calendar_screen.dart:25:8 • unused_import
+warning • The declaration '_fmtWaistRange' isn't referenced • lib/screens/calendar_screen.dart:37:8 • unused_element
+warning • The declaration '_dayRecordLabel' isn't referenced • lib/screens/calendar_screen.dart:67:8 • unused_element
+warning • The declaration '_calendarResolveEmptyAsset' isn't referenced • lib/screens/calendar_screen.dart:128:16 • unused_element
+   info • 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre • lib/screens/calendar_screen.dart:284:40 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/calendar_screen.dart:513:30 • deprecated_member_use
+warning • The declaration '_isPastDate' isn't referenced • lib/screens/calendar_screen.dart:551:8 • unused_element
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/calendar_screen.dart:590:42 • deprecated_member_use
+warning • The declaration '_hasMaxPrOn' isn't referenced • lib/screens/calendar_screen.dart:688:8 • unused_element
+   info • Type could be non-nullable • lib/screens/calendar_screen.dart:715:21 • unnecessary_nullable_for_final_variable_declarations
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:749:29 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:793:19 • unnecessary_non_null_assertion
+warning • The value of the local variable 'theme' isn't used • lib/screens/calendar_screen.dart:856:11 • unused_local_variable
+   info • The local variable '_hintBlue' starts with an underscore • lib/screens/calendar_screen.dart:860:17 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_hintFg' starts with an underscore • lib/screens/calendar_screen.dart:861:17 • no_leading_underscores_for_local_identifiers
+warning • The value of the local variable 'closed' isn't used • lib/screens/calendar_screen.dart:864:10 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/calendar_screen.dart:919:49 • deprecated_member_use
+   info • Unnecessary braces in a string interpolation • lib/screens/calendar_screen.dart:965:28 • unnecessary_brace_in_string_interps
+   info • Unnecessary braces in a string interpolation • lib/screens/calendar_screen.dart:966:28 • unnecessary_brace_in_string_interps
+   info • Unnecessary braces in a string interpolation • lib/screens/calendar_screen.dart:967:15 • unnecessary_brace_in_string_interps
+   info • Unnecessary braces in a string interpolation • lib/screens/calendar_screen.dart:967:24 • unnecessary_brace_in_string_interps
+   info • Unnecessary braces in a string interpolation • lib/screens/calendar_screen.dart:972:28 • unnecessary_brace_in_string_interps
+   info • Unnecessary braces in a string interpolation • lib/screens/calendar_screen.dart:973:27 • unnecessary_brace_in_string_interps
+   info • Unnecessary braces in a string interpolation • lib/screens/calendar_screen.dart:974:15 • unnecessary_brace_in_string_interps
+   info • Unnecessary braces in a string interpolation • lib/screens/calendar_screen.dart:974:30 • unnecessary_brace_in_string_interps
+   info • Unnecessary braces in a string interpolation • lib/screens/calendar_screen.dart:1009:28 • unnecessary_brace_in_string_interps
+   info • Unnecessary braces in a string interpolation • lib/screens/calendar_screen.dart:1012:21 • unnecessary_brace_in_string_interps
+   info • Unnecessary braces in a string interpolation • lib/screens/calendar_screen.dart:1015:21 • unnecessary_brace_in_string_interps
+warning • The declaration '_formatDuration' isn't referenced • lib/screens/calendar_screen.dart:1130:10 • unused_element
+warning • The declaration '_fmtWaistLocal' isn't referenced • lib/screens/calendar_screen.dart:1139:10 • unused_element
+warning • The declaration '_getUserHeightCm' isn't referenced • lib/screens/calendar_screen.dart:1169:11 • unused_element
+warning • The declaration '_getUserGender' isn't referenced • lib/screens/calendar_screen.dart:1184:11 • unused_element
+   info • Statements in an if should be enclosed in a block • lib/screens/calendar_screen.dart:1190:9 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/screens/calendar_screen.dart:1199:30 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/screens/calendar_screen.dart:1203:30 • curly_braces_in_flow_control_structures
+warning • The declaration '_getOptionalDouble' isn't referenced • lib/screens/calendar_screen.dart:1214:11 • unused_element
+warning • The declaration '_bmiRangeText' isn't referenced • lib/screens/calendar_screen.dart:1237:10 • unused_element
+warning • The declaration '_bodyFatRangeText' isn't referenced • lib/screens/calendar_screen.dart:1239:10 • unused_element
+warning • The declaration '_waistStdText' isn't referenced • lib/screens/calendar_screen.dart:1242:10 • unused_element
+warning • The declaration '_genderFromSettings' isn't referenced • lib/screens/calendar_screen.dart:1365:11 • unused_element
+warning • The declaration '_kmToDisplay' isn't referenced • lib/screens/calendar_screen.dart:1378:10 • unused_element
+warning • The declaration '_distanceUnitLabel' isn't referenced • lib/screens/calendar_screen.dart:1381:10 • unused_element
+warning • The declaration '_standardsForGender' isn't referenced • lib/screens/calendar_screen.dart:1384:24 • unused_element
+warning • The declaration '_getDoubleFromSettings' isn't referenced • lib/screens/calendar_screen.dart:1415:11 • unused_element
+warning • The declaration '_scanSettingsBySuffix' isn't referenced • lib/screens/calendar_screen.dart:1437:11 • unused_element
+warning • Unnecessary cast • lib/screens/calendar_screen.dart:1451:30 • unnecessary_cast
+warning • The declaration '_scanRecordMaps' isn't referenced • lib/screens/calendar_screen.dart:1465:11 • unused_element
+warning • Unnecessary type check; the result is always 'false' • lib/screens/calendar_screen.dart:1534:11 • unnecessary_type_check
+warning • Unnecessary type check; the result is always 'false' • lib/screens/calendar_screen.dart:1565:11 • unnecessary_type_check
+warning • Unnecessary type check; the result is always 'false' • lib/screens/calendar_screen.dart:1586:11 • unnecessary_type_check
+   info • The local variable '_partChip' starts with an underscore • lib/screens/calendar_screen.dart:1941:12 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_memoChip' starts with an underscore • lib/screens/calendar_screen.dart:2012:12 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_weightChip' starts with an underscore • lib/screens/calendar_screen.dart:2044:12 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_mealChip' starts with an underscore • lib/screens/calendar_screen.dart:2080:12 • no_leading_underscores_for_local_identifiers
+   info • 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre • lib/screens/calendar_screen.dart:2090:21 • deprecated_member_use
+   info • The local variable '_photoChip' starts with an underscore • lib/screens/calendar_screen.dart:2115:12 • no_leading_underscores_for_local_identifiers
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/calendar_screen.dart:2173:31 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/calendar_screen.dart:2173:62 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/calendar_screen.dart:2178:40 • deprecated_member_use
+warning • The declaration '_toZenkakuDigits' isn't referenced • lib/screens/calendar_screen.dart:2319:10 • unused_element
+warning • The value of the local variable 'colorScheme' isn't used • lib/screens/calendar_screen.dart:2331:11 • unused_local_variable
+   info • The local variable '_settings' starts with an underscore • lib/screens/calendar_screen.dart:2354:40 • no_leading_underscores_for_local_identifiers
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/calendar_screen.dart:2503:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/calendar_screen.dart:2536:55 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/calendar_screen.dart:2562:52 • deprecated_member_use
+warning • The declaration '_goToPreviousMonth' isn't referenced • lib/screens/calendar_screen.dart:2852:8 • unused_element
+warning • The declaration '_goToNextMonth' isn't referenced • lib/screens/calendar_screen.dart:2858:8 • unused_element
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:2903:31 • unnecessary_non_null_assertion
+   info • The local variable '_menuHasAnyData' starts with an underscore • lib/screens/calendar_screen.dart:2939:10 • no_leading_underscores_for_local_identifiers
+warning • Unnecessary cast • lib/screens/calendar_screen.dart:2956:10 • unnecessary_cast
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:3110:46 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:3126:28 • unnecessary_non_null_assertion
+   info • Unnecessary braces in a string interpolation • lib/screens/calendar_screen.dart:3135:33 • unnecessary_brace_in_string_interps
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:3284:49 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:3293:57 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:3302:33 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:3310:44 • unnecessary_non_null_assertion
+   info • The local variable '_menuHasAnyData' starts with an underscore • lib/screens/calendar_screen.dart:3410:10 • no_leading_underscores_for_local_identifiers
+warning • Unnecessary cast • lib/screens/calendar_screen.dart:3426:10 • unnecessary_cast
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:3516:46 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:3532:28 • unnecessary_non_null_assertion
+   info • Unnecessary braces in a string interpolation • lib/screens/calendar_screen.dart:3541:33 • unnecessary_brace_in_string_interps
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:3622:48 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:3625:65 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:3628:41 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:3632:44 • unnecessary_non_null_assertion
+   info • The addition of multiple elements could be inlined • lib/screens/calendar_screen.dart:3643:9 • prefer_spread_collections
+  error • The getter 'editRecord' isn't defined for the type 'AppLocalizations' • lib/screens/calendar_screen.dart:3856:42 • undefined_getter
+  error • The getter 'addRecord' isn't defined for the type 'AppLocalizations' • lib/screens/calendar_screen.dart:3856:60 • undefined_getter
+warning • The declaration '_buildResultsArea' isn't referenced • lib/screens/calendar_screen.dart:3888:10 • unused_element
+warning • The left operand can't be null, so the right operand is never executed • lib/screens/calendar_screen.dart:3891:57 • dead_null_aware_expression
+   info • The local variable '_menuHasAnyData' starts with an underscore • lib/screens/calendar_screen.dart:3913:10 • no_leading_underscores_for_local_identifiers
+warning • Unnecessary cast • lib/screens/calendar_screen.dart:3930:10 • unnecessary_cast
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:4081:46 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:4101:28 • unnecessary_non_null_assertion
+   info • Unnecessary braces in a string interpolation • lib/screens/calendar_screen.dart:4110:33 • unnecessary_brace_in_string_interps
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:4222:49 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:4231:57 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/calendar_screen.dart:4240:33 • unnecessary_non_null_assertion
+warning • Unnecessary type check; the result is always 'true' • lib/screens/daily_timeline_screen.dart:197:13 • unnecessary_type_check
+   info • The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' • lib/screens/graph_screen.dart:2:8 • unnecessary_import
+warning • Unused import: 'calendar_screen.dart' • lib/screens/graph_screen.dart:14:8 • unused_import
+warning • Unused import: 'record_screen.dart' • lib/screens/graph_screen.dart:15:8 • unused_import
+warning • Unused import: 'settings_screen.dart' • lib/screens/graph_screen.dart:16:8 • unused_import
+warning • The value of the field '_plotHeightPx' isn't used • lib/screens/graph_screen.dart:167:10 • unused_field
+warning • The declaration '_normalizedFavoriteEntry' isn't referenced • lib/screens/graph_screen.dart:301:10 • unused_element
+warning • The declaration '_displayNameFromFavoriteKey' isn't referenced • lib/screens/graph_screen.dart:436:10 • unused_element
+   info • Statements in an if should be enclosed in a block • lib/screens/graph_screen.dart:445:7 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/screens/graph_screen.dart:1258:7 • curly_braces_in_flow_control_structures
+warning • The declaration '_genderFromSettings' isn't referenced • lib/screens/graph_screen.dart:1295:11 • unused_element
+warning • The value of the local variable 'heightM' isn't used • lib/screens/graph_screen.dart:1363:11 • unused_local_variable
+warning • The value of the local variable 'allPartsOriginal' isn't used • lib/screens/graph_screen.dart:1529:24 • unused_local_variable
+   info • The local variable '_findAeroMenuList' starts with an underscore • lib/screens/graph_screen.dart:1682:20 • no_leading_underscores_for_local_identifiers
+warning • Unnecessary cast • lib/screens/graph_screen.dart:1694:22 • unnecessary_cast
+warning • The declaration '_checkIfFavorite' isn't referenced • lib/screens/graph_screen.dart:2140:8 • unused_element
+warning • The declaration '_applyGoalFromText' isn't referenced • lib/screens/graph_screen.dart:2265:8 • unused_element
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/graph_screen.dart:2404:59 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/graph_screen.dart:2406:60 • unnecessary_non_null_assertion
+   info • The local variable '_noMenus' starts with an underscore • lib/screens/graph_screen.dart:2841:16 • no_leading_underscores_for_local_identifiers
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/graph_screen.dart:2921:59 • deprecated_member_use
+warning • The value of the local variable 'partDisplay' isn't used • lib/screens/graph_screen.dart:2974:11 • unused_local_variable
+warning • The value of the local variable 'menuDisplay' isn't used • lib/screens/graph_screen.dart:2975:11 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/graph_screen.dart:2995:65 • deprecated_member_use
+   info • Use a 'SizedBox' to add whitespace to a layout • lib/screens/graph_screen.dart:3420:43 • sized_box_for_whitespace
+   info • Unnecessary braces in a string interpolation • lib/screens/graph_screen.dart:3592:70 • unnecessary_brace_in_string_interps
+   info • The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' • lib/screens/home_screen.dart:2:8 • unnecessary_import
+warning • Unused import: '../settings_manager.dart' • lib/screens/home_screen.dart:7:8 • unused_import
+   info • 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre • lib/screens/home_screen.dart:48:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/home_screen.dart:50:38 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/home_screen.dart:51:38 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/home_screen.dart:54:40 • deprecated_member_use
+warning • The value of the local variable 'navBgColor' isn't used • lib/screens/home_screen.dart:124:17 • unused_local_variable
+warning • The value of the local variable 'bottomBarColors' isn't used • lib/screens/home_screen.dart:130:23 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/home_screen.dart:134:26 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/home_screen.dart:135:26 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/home_screen.dart:136:26 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/home_screen.dart:140:26 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/home_screen.dart:141:26 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/home_screen.dart:142:26 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/home_screen.dart:187:45 • deprecated_member_use
+warning • Unnecessary type check; the result is always 'false' • lib/screens/meal_edit_screen.dart:60:13 • unnecessary_type_check
+   info • The local variable '_contentOpacity' starts with an underscore • lib/screens/notification_settings_screen.dart:70:18 • no_leading_underscores_for_local_identifiers
+   info • The prefix 'AwardsService' isn't a lower_case_with_underscores identifier • lib/screens/record_screen.dart:11:42 • library_prefixes
+   info • The imported package 'path' isn't a dependency of the importing package • lib/screens/record_screen.dart:28:8 • depend_on_referenced_packages
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:38:38 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:40:7 • use_build_context_synchronously
+warning • The declaration 'awardPraiseShort' isn't referenced • lib/screens/record_screen.dart:102:14 • unused_element
+warning • The declaration 'failureTag' isn't referenced • lib/screens/record_screen.dart:141:14 • unused_element
+warning • The declaration '_emptyStateAssetFor' isn't referenced • lib/screens/record_screen.dart:212:8 • unused_element
+   info • Constructors in '@immutable' classes should be declared as 'const' • lib/screens/record_screen.dart:235:3 • prefer_const_constructors_in_immutables
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:265:25 • deprecated_member_use
+   info • Unnecessary braces in a string interpolation • lib/screens/record_screen.dart:344:29 • unnecessary_brace_in_string_interps
+warning • The value of the field '_bmiNudgeRight' isn't used • lib/screens/record_screen.dart:351:23 • unused_field
+warning • The value of the field '_bmiUnitReserve' isn't used • lib/screens/record_screen.dart:352:23 • unused_field
+warning • The value of the field '_overlayOutCurve' isn't used • lib/screens/record_screen.dart:357:22 • unused_field
+warning • The declaration '_fabBg' isn't referenced • lib/screens/record_screen.dart:359:9 • unused_element
+warning • The declaration '_fabFg' isn't referenced • lib/screens/record_screen.dart:363:9 • unused_element
+   info • The private field _menuOverlayOpening could be 'final' • lib/screens/record_screen.dart:382:8 • prefer_final_fields
+warning • The value of the field '_menuOverlayOpening' isn't used • lib/screens/record_screen.dart:382:8 • unused_field
+   info • The private field _showInlineCardioCard could be 'final' • lib/screens/record_screen.dart:389:8 • prefer_final_fields
+warning • The value of the field '_showInlineCardioCard' isn't used • lib/screens/record_screen.dart:389:8 • unused_field
+warning • The value of the field '_inlineCardioBaseTime' isn't used • lib/screens/record_screen.dart:391:14 • unused_field
+   info • The private field _weightFocused could be 'final' • lib/screens/record_screen.dart:407:8 • prefer_final_fields
+warning • The declaration '_underlineDec' isn't referenced • lib/screens/record_screen.dart:409:19 • unused_element
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:418:38 • deprecated_member_use
+warning • The value of the field '_firstBuildDone' isn't used • lib/screens/record_screen.dart:448:8 • unused_field
+   info • The private field _returnToTimelineAfterWeightSave could be 'final' • lib/screens/record_screen.dart:457:8 • prefer_final_fields
+warning • The value of the field '_returnToTimelineAfterWeightSave' isn't used • lib/screens/record_screen.dart:457:8 • unused_field
+warning • The value of the field '_personalCollapsed' isn't used • lib/screens/record_screen.dart:505:8 • unused_field
+warning • The value of the field '_personalSelected' isn't used • lib/screens/record_screen.dart:506:8 • unused_field
+warning • The value of the field '_suppressNextMenuOverlay' isn't used • lib/screens/record_screen.dart:507:8 • unused_field
+warning • The value of the field '_lastSetCache' isn't used • lib/screens/record_screen.dart:520:30 • unused_field
+warning • The operand can't be 'null', so the condition is always 'false' • lib/screens/record_screen.dart:638:13 • unnecessary_null_comparison
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/screens/record_screen.dart:1039:23 • use_build_context_synchronously
+warning • Unnecessary type check; the result is always 'true' • lib/screens/record_screen.dart:1048:9 • unnecessary_type_check
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/screens/record_screen.dart:1094:9 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:1194:32 • use_build_context_synchronously
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/record_screen.dart:1195:37 • unnecessary_non_null_assertion
+warning • The declaration '_focusMenuNameField' isn't referenced • lib/screens/record_screen.dart:1206:8 • unused_element
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/record_screen.dart:1235:35 • unnecessary_non_null_assertion
+warning • The declaration '_showPartPicker' isn't referenced • lib/screens/record_screen.dart:1431:16 • unused_element
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:1471:30 • deprecated_member_use
+   info • Unnecessary constructor invocation • lib/screens/record_screen.dart:1754:21 • prefer_collection_literals
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:1932:20 • use_build_context_synchronously
+warning • The value of the local variable 'material' isn't used • lib/screens/record_screen.dart:1949:11 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:2068:54 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:2335:59 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:2407:63 • deprecated_member_use
+warning • Unnecessary type check; the result is always 'false' • lib/screens/record_screen.dart:2655:13 • unnecessary_type_check
+warning • The declaration '_toggleMealCollapse' isn't referenced • lib/screens/record_screen.dart:2797:8 • unused_element
+warning • The value of the local variable 'l10n' isn't used • lib/screens/record_screen.dart:3894:11 • unused_local_variable
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:3894:38 • use_build_context_synchronously
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:4122:29 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:4123:29 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:4130:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:4168:43 • deprecated_member_use
+warning • The operand can't be 'null', so the condition is always 'false' • lib/screens/record_screen.dart:4404:41 • unnecessary_null_comparison
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/record_screen.dart:4405:68 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/record_screen.dart:4535:19 • unnecessary_non_null_assertion
+warning • Unnecessary cast • lib/screens/record_screen.dart:4560:13 • unnecessary_cast
+warning • The declaration '_handleRemoveSection' isn't referenced • lib/screens/record_screen.dart:5070:16 • unused_element
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:5109:34 • use_build_context_synchronously
+   info • The local variable '_clampIndex' starts with an underscore • lib/screens/record_screen.dart:5157:9 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_mapIndex' starts with an underscore • lib/screens/record_screen.dart:5189:9 • no_leading_underscores_for_local_identifiers
+   info • Statements in an if should be enclosed in a block • lib/screens/record_screen.dart:5242:9 • curly_braces_in_flow_control_structures
+warning • The declaration '_handleAddSet' isn't referenced • lib/screens/record_screen.dart:5382:8 • unused_element
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:5453:34 • use_build_context_synchronously
+warning • The declaration '_formatTrainingTimeValue' isn't referenced • lib/screens/record_screen.dart:5480:10 • unused_element
+   info • Unnecessary braces in a string interpolation • lib/screens/record_screen.dart:5517:28 • unnecessary_brace_in_string_interps
+warning • The declaration '_selectTrainingTimeRange' isn't referenced • lib/screens/record_screen.dart:5596:16 • unused_element
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:5610:7 • use_build_context_synchronously
+warning • The declaration '_handleCalendarShare' isn't referenced • lib/screens/record_screen.dart:5679:16 • unused_element
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:5707:24 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:5710:24 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:5713:24 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:5736:24 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:5742:24 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:5748:7 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:5760:22 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:5763:22 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:5766:22 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:5771:22 • use_build_context_synchronously
+warning • The declaration '_openMemoOverlayInline' isn't referenced • lib/screens/record_screen.dart:5885:8 • unused_element
+   info • The local variable '_maybeShowFabHintAfterSave' starts with an underscore • lib/screens/record_screen.dart:5951:18 • no_leading_underscores_for_local_identifiers
+warning • The value of the local variable 'l10n' isn't used • lib/screens/record_screen.dart:5963:13 • unused_local_variable
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:6129:42 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:6130:22 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:6148:38 • use_build_context_synchronously
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:6265:26 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:6266:26 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:6267:24 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:6544:61 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:6549:47 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:6639:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:6802:55 • deprecated_member_use
+warning • The value of the local variable 'media' isn't used • lib/screens/record_screen.dart:6877:11 • unused_local_variable
+warning • The value of the local variable 'headerLabelStyle' isn't used • lib/screens/record_screen.dart:6893:21 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:7005:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:7037:47 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:7072:63 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:7079:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:7110:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:7413:47 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:7414:51 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:7449:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:7478:47 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:7520:54 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:7529:54 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:7642:56 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:7658:56 • deprecated_member_use
+warning • The value of the local variable 'isFirstMealRow' isn't used • lib/screens/record_screen.dart:7837:52 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:7953:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:7982:47 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:8025:54 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:8034:54 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:8084:52 • deprecated_member_use
+   info • Statements in an if should be enclosed in a block • lib/screens/record_screen.dart:8169:7 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/screens/record_screen.dart:8172:7 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/screens/record_screen.dart:8174:7 • curly_braces_in_flow_control_structures
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:8180:40 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:8184:37 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:8203:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:8225:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:8280:63 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:8298:56 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:8545:39 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:8857:58 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:8859:58 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:8861:54 • deprecated_member_use
+warning • Dead code • lib/screens/record_screen.dart:8946:52 • dead_code
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:9245:54 • deprecated_member_use
+   info • The 'child' argument should be last in widget constructor invocations • lib/screens/record_screen.dart:9369:7 • sort_child_properties_last
+warning • The declaration 'canAddSet' isn't referenced • lib/screens/record_screen.dart:9380:10 • unused_element
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:9418:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:9459:56 • deprecated_member_use
+   info • The local variable '_stagger' starts with an underscore • lib/screens/record_screen.dart:9476:12 • no_leading_underscores_for_local_identifiers
+warning • The value of the local variable 'savedPillArea' isn't used • lib/screens/record_screen.dart:9546:11 • unused_local_variable
+   info • 'WillPopScope' is deprecated and shouldn't be used. Use PopScope instead. The Android predictive back feature will not work with WillPopScope. This feature was deprecated after v3.12.0-1.0.pre • lib/screens/record_screen.dart:9564:12 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/screens/record_screen.dart:9686:22 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/screens/record_screen.dart:9701:9 • use_build_context_synchronously
+   info • Statements in an if should be enclosed in a block • lib/screens/record_screen.dart:9719:44 • curly_braces_in_flow_control_structures
+warning • A value for optional parameter 'sigma' isn't ever given • lib/screens/record_screen.dart:9918:10 • unused_element_parameter
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:9977:37 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:10090:40 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:10094:37 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:10113:29 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:10130:40 • deprecated_member_use
+   info • 'WillPopScope' is deprecated and shouldn't be used. Use PopScope instead. The Android predictive back feature will not work with WillPopScope. This feature was deprecated after v3.12.0-1.0.pre • lib/screens/record_screen.dart:10154:12 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:10401:34 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:10551:37 • deprecated_member_use
+warning • The declaration 'buildCollapsedVolumeRow' isn't referenced • lib/screens/record_screen.dart:10892:12 • unused_element
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:10900:38 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:10909:56 • deprecated_member_use
+warning • The declaration 'buildCollapsedSatisfactionRow' isn't referenced • lib/screens/record_screen.dart:10940:12 • unused_element
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:11025:49 • deprecated_member_use
+warning • The value of the local variable 'toggleTooltip' isn't used • lib/screens/record_screen.dart:11064:18 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:11267:40 • deprecated_member_use
+warning • The declaration '_onLengthUnitChangedLocal' isn't referenced • lib/screens/record_screen.dart:11333:8 • unused_element
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:11535:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:11606:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:11699:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:11836:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:11968:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12039:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12124:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12195:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12222:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12300:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12306:45 • deprecated_member_use
+warning • The declaration '_rirBgColor' isn't referenced • lib/screens/record_screen.dart:12491:9 • unused_element
+   info • 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre • lib/screens/record_screen.dart:12493:30 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12493:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12494:42 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12495:42 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12496:44 • deprecated_member_use
+   info • 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre • lib/screens/record_screen.dart:12497:15 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12497:30 • deprecated_member_use
+   info • The local variable '_headerBgColor' starts with an underscore • lib/screens/record_screen.dart:12516:17 • no_leading_underscores_for_local_identifiers
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12538:55 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12539:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12553:51 • deprecated_member_use
+   info • The local variable '_wSet' starts with an underscore • lib/screens/record_screen.dart:12567:18 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_wWeight' starts with an underscore • lib/screens/record_screen.dart:12568:18 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_wReps' starts with an underscore • lib/screens/record_screen.dart:12569:18 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_wRir' starts with an underscore • lib/screens/record_screen.dart:12570:18 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_wRm' starts with an underscore • lib/screens/record_screen.dart:12571:18 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_wFail' starts with an underscore • lib/screens/record_screen.dart:12572:18 • no_leading_underscores_for_local_identifiers
+   info • The local variable '_wDone' starts with an underscore • lib/screens/record_screen.dart:12573:18 • no_leading_underscores_for_local_identifiers
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/record_screen.dart:12602:40 • unnecessary_non_null_assertion
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/record_screen.dart:12750:22 • unnecessary_non_null_assertion
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12790:62 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:12846:62 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:13013:50 • deprecated_member_use
+warning • The value of the local variable 'isAerobic' isn't used • lib/screens/record_screen.dart:13100:16 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:13148:61 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:13153:63 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:13199:53 • deprecated_member_use
+   info • The local variable '_unitStyle' starts with an underscore • lib/screens/record_screen.dart:13233:39 • no_leading_underscores_for_local_identifiers
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:13314:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:13520:46 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:13533:46 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps • lib/screens/record_screen.dart:13587:20 • use_build_context_synchronously
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:13604:38 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:13615:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/record_screen.dart:13619:45 • deprecated_member_use
+   info • The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/cupertino.dart' • lib/screens/settings_screen.dart:2:8 • unnecessary_import
+warning • The value of the field '_kTileHeight' isn't used • lib/screens/settings_screen.dart:39:23 • unused_field
+warning • The value of the field '_kUnitLabelWidth' isn't used • lib/screens/settings_screen.dart:43:23 • unused_field
+warning • The value of the field '_themeMode' isn't used • lib/screens/settings_screen.dart:76:13 • unused_field
+warning • The declaration '_label' isn't referenced • lib/screens/settings_screen.dart:222:10 • unused_element
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/settings_screen.dart:519:48 • deprecated_member_use
+warning • The value of the local variable 'dateFmt' isn't used • lib/screens/settings_screen.dart:626:11 • unused_local_variable
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/screens/settings_screen.dart:917:33 • deprecated_member_use
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/screens/settings_screen.dart:1009:23 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/settings_screen.dart:1269:60 • deprecated_member_use
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/screens/settings_screen.dart:1316:23 • deprecated_member_use
+   info • 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre • lib/screens/settings_screen.dart:1356:27 • deprecated_member_use
+   info • 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre • lib/screens/settings_screen.dart:1357:27 • deprecated_member_use
+   info • 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre • lib/screens/settings_screen.dart:1364:27 • deprecated_member_use
+   info • 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre • lib/screens/settings_screen.dart:1365:27 • deprecated_member_use
+   info • 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre • lib/screens/settings_screen.dart:1372:27 • deprecated_member_use
+   info • 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre • lib/screens/settings_screen.dart:1373:27 • deprecated_member_use
+   info • 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre • lib/screens/settings_screen.dart:1380:27 • deprecated_member_use
+   info • 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre • lib/screens/settings_screen.dart:1381:27 • deprecated_member_use
+   info • 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre • lib/screens/settings_screen.dart:1388:27 • deprecated_member_use
+   info • 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre • lib/screens/settings_screen.dart:1389:27 • deprecated_member_use
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/screens/settings_screen.dart:1518:27 • deprecated_member_use
+   info • The local variable '_ignored' starts with an underscore • lib/screens/settings_screen.dart:1707:19 • no_leading_underscores_for_local_identifiers
+warning • A value for optional parameter '_ignored' isn't ever given • lib/screens/settings_screen.dart:1707:19 • unused_element_parameter
+   info • 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre • lib/screens/settings_screen.dart:1717:13 • deprecated_member_use
+   info • 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre • lib/screens/settings_screen.dart:1718:13 • deprecated_member_use
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/screens/settings_screen.dart:1784:13 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps • lib/services/calendar_export.dart:143:9 • use_build_context_synchronously
+warning • Unnecessary type check; the result is always 'false' • lib/services/timeline_mapper.dart:39:13 • unnecessary_type_check
+   info • 'background' is deprecated and shouldn't be used. Use surface instead. This feature was deprecated after v3.18.0-0.1.pre • lib/theme/app_theme.dart:110:5 • deprecated_member_use
+   info • 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre • lib/theme/app_theme.dart:122:5 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/theme/app_theme.dart:187:33 • deprecated_member_use
+   info • 'background' is deprecated and shouldn't be used. Use surface instead. This feature was deprecated after v3.18.0-0.1.pre • lib/theme/app_theme.dart:212:5 • deprecated_member_use
+   info • 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre • lib/theme/app_theme.dart:223:5 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/theme/app_theme.dart:256:46 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/theme/app_theme.dart:265:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/theme/app_theme.dart:269:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/theme/app_theme.dart:285:32 • deprecated_member_use
+   info • 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre • lib/widgets/ad_banner.dart:222:30 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/ad_banner.dart:222:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/ad_banner.dart:223:40 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/ad_banner.dart:247:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/ad_banner.dart:249:43 • deprecated_member_use
+   info • 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre • lib/widgets/ad_square.dart:241:30 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/ad_square.dart:241:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/ad_square.dart:242:40 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/ad_square.dart:254:61 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/ad_square.dart:270:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/ad_square.dart:272:43 • deprecated_member_use
+warning • Unused import: '../settings_manager.dart' • lib/widgets/background_selector.dart:4:8 • unused_import
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/calendar_widget_view.dart:78:33 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/calendar_widget_view.dart:241:35 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps • lib/widgets/notification_soft_ask.dart:23:52 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/widgets/notification_soft_ask.dart:26:7 • use_build_context_synchronously
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/notification_soft_ask.dart:35:31 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps • lib/widgets/notification_soft_ask.dart:97:40 • use_build_context_synchronously
+   info • The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/cupertino.dart' • lib/widgets/stopwatch_widget.dart:4:8 • unnecessary_import
+warning • Unused import: 'dart:io' • lib/widgets/stopwatch_widget.dart:14:8 • unused_import
+warning • The declaration '_ensureActiveIfMixed' isn't referenced • lib/widgets/stopwatch_widget.dart:262:16 • unused_element
+warning • The declaration '_rampVolume' isn't referenced • lib/widgets/stopwatch_widget.dart:311:16 • unused_element
+   info • Unnecessary braces in a string interpolation • lib/widgets/stopwatch_widget.dart:876:36 • unnecessary_brace_in_string_interps
+warning • A value for optional parameter 'key' isn't ever given • lib/widgets/stopwatch_widget.dart:898:11 • unused_element_parameter
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/stopwatch_widget.dart:934:35 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/stopwatch_widget.dart:1133:38 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/stopwatch_widget.dart:1134:38 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/stopwatch_widget.dart:1135:38 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/stopwatch_widget.dart:1148:38 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/swipe_down_to_pop.dart:55:41 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/widgets/swipe_down_to_pop.dart:56:28 • use_build_context_synchronously
+
+432 issues found. (ran in 2.0s)

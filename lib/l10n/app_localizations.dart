@@ -381,12 +381,6 @@ abstract class AppLocalizations {
   /// **'Reps'**
   String get reps;
 
-  /// No description provided for @repsShort.
-  ///
-  /// In en, this message translates to:
-  /// **'Reps'**
-  String get repsShort;
-
   /// No description provided for @distance.
   ///
   /// In en, this message translates to:
@@ -609,6 +603,36 @@ abstract class AppLocalizations {
   /// **'If enabled, the screen will stay on while the app is open.'**
   String get keepScreenOnHint;
 
+  /// No description provided for @calendarSettingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar integration'**
+  String get calendarSettingTitle;
+
+  /// No description provided for @calendarSettingCurrentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar to use'**
+  String get calendarSettingCurrentLabel;
+
+  /// No description provided for @calendarSettingNotSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get calendarSettingNotSelected;
+
+  /// No description provided for @calendarSettingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Training records will be added to the calendar selected here.'**
+  String get calendarSettingHint;
+
+  /// Calendar event title
+  ///
+  /// In en, this message translates to:
+  /// **'{part}'**
+  String calendarEventTitle(Object part);
+
   /// No description provided for @noCustomExercises.
   ///
   /// In en, this message translates to:
@@ -668,6 +692,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'BW'**
   String get bodyWeight;
+
+  /// No description provided for @trainingLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Training location'**
+  String get trainingLocation;
+
+  /// Record screen: label for training time
+  ///
+  /// In en, this message translates to:
+  /// **'Training time'**
+  String get trainingTime;
+
+  /// Record screen: training start time label
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get startTime;
+
+  /// Record screen: training end time label
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get endTime;
+
+  /// Record screen: tooltip for calendar share button
+  ///
+  /// In en, this message translates to:
+  /// **'Share to calendar'**
+  String get calendarShareTooltip;
+
+  /// Calendar export: success message
+  ///
+  /// In en, this message translates to:
+  /// **'Added to your calendar.'**
+  String get calendarExportSuccess;
+
+  /// Calendar export: generic error message
+  ///
+  /// In en, this message translates to:
+  /// **'Could not add to calendar.'**
+  String get calendarExportError;
+
+  /// Calendar export: permission required message
+  ///
+  /// In en, this message translates to:
+  /// **'Please allow calendar access.'**
+  String get calendarExportPermissionRequired;
+
+  /// Calendar export: training time not set
+  ///
+  /// In en, this message translates to:
+  /// **'Please set your training time.'**
+  String get calendarExportNeedTime;
+
+  /// Calendar export: no writable calendar available
+  ///
+  /// In en, this message translates to:
+  /// **'No writable calendar was found.'**
+  String get calendarExportNoWritableCalendar;
+
+  /// Title for calendar selection bottom sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Select calendar'**
+  String get calendarSelectTitle;
+
+  /// Label for primary calendar
+  ///
+  /// In en, this message translates to:
+  /// **'Primary calendar'**
+  String get calendarPrimaryLabel;
 
   /// No description provided for @weightCardTitle.
   ///
@@ -1118,6 +1214,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copied results to clipboard'**
   String get resultsCopied;
+
+  /// No description provided for @calendarLockedResultsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Records from over 10 days ago are hidden until you watch an ad.'**
+  String get calendarLockedResultsMessage;
+
+  /// No description provided for @calendarLockedResultsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'View results'**
+  String get calendarLockedResultsButton;
 
   /// No description provided for @deleteSelectedConfirmTitle.
   ///
@@ -2840,6 +2948,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New record reached!'**
   String get awardTitleMax;
+
+  /// No description provided for @timelineStrengthFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Strength'**
+  String get timelineStrengthFallback;
 
   /// No description provided for @awardLabelDate.
   ///

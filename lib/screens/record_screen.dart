@@ -20,12 +20,14 @@ import '../widgets/big_earning_ad.dart';
 import '../widgets/stopwatch_widget.dart';
 import '../widgets/notification_soft_ask.dart';
 import '../services/album_sync.dart';
+import '../services/age_signals_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 Future<bool> _ensureCameraPermission(BuildContext context) async {
   var status = await Permission.camera.status;
@@ -474,6 +476,195 @@ class _RecordScreenState extends State<RecordScreen>
   GlobalKey? _pendingScrollKey;
   double _pendingScrollAlignment = 0.22;
 
+  InterstitialAd? _exitInterstitialAd;
+  bool _loadingExitInterstitial = false;
+  InterstitialAd? _photoInterstitialAd;
+  bool _loadingPhotoInterstitial = false;
+  Completer<InterstitialAd?>? _photoInterstitialCompleter;
+  int _photoCaptureSinceAd = 0;
+
+  void _loadExitInterstitial() {
+    if (!mounted || SettingsManager.demoMode) return;
+    if (_exitInterstitialAd != null || _loadingExitInterstitial) return;
+    _loadingExitInterstitial = true;
+    final adUnitId = _resolveExitInterstitialUnitId();
+    InterstitialAd.load(
+      adUnitId: adUnitId,
+      request: AgeSignalsService.instance.buildAdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          if (!mounted) {
+            ad.dispose();
+            return;
+          }
+          _loadingExitInterstitial = false;
+          _exitInterstitialAd = ad;
+        },
+        onAdFailedToLoad: (error) {
+          _loadingExitInterstitial = false;
+          _exitInterstitialAd?.dispose();
+          _exitInterstitialAd = null;
+        },
+      ),
+    );
+  }
+
+  void _disposeExitInterstitial() {
+    _exitInterstitialAd?.dispose();
+    _exitInterstitialAd = null;
+  }
+
+  Future<InterstitialAd?> _preparePhotoInterstitial() async {
+    if (SettingsManager.demoMode) return null;
+    if (_photoInterstitialAd != null) return _photoInterstitialAd;
+    if (_photoInterstitialCompleter != null) {
+      return _photoInterstitialCompleter!.future;
+    }
+    _loadingPhotoInterstitial = true;
+    final completer = Completer<InterstitialAd?>();
+    _photoInterstitialCompleter = completer;
+    await AgeSignalsService.instance.ensureInitialized();
+    InterstitialAd.load(
+      adUnitId: _resolvePhotoInterstitialUnitId(),
+      request: AgeSignalsService.instance.buildAdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          if (!mounted) {
+            ad.dispose();
+            if (!completer.isCompleted) completer.complete(null);
+            _photoInterstitialCompleter = null;
+            _loadingPhotoInterstitial = false;
+            return;
+          }
+          _photoInterstitialAd = ad;
+          _loadingPhotoInterstitial = false;
+          if (!completer.isCompleted) completer.complete(ad);
+          _photoInterstitialCompleter = null;
+        },
+        onAdFailedToLoad: (error) {
+          _photoInterstitialAd?.dispose();
+          _photoInterstitialAd = null;
+          _loadingPhotoInterstitial = false;
+          if (!completer.isCompleted) completer.complete(null);
+          _photoInterstitialCompleter = null;
+        },
+      ),
+    );
+    return completer.future;
+  }
+
+  void _disposePhotoInterstitial() {
+    _photoInterstitialAd?.dispose();
+    _photoInterstitialAd = null;
+  }
+
+  Future<void> _playPhotoInterstitial() async {
+    final ad = await _preparePhotoInterstitial();
+    if (ad == null) return;
+    _photoInterstitialAd = null;
+    final completer = Completer<void>();
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        ad.dispose();
+        if (!completer.isCompleted) completer.complete();
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        ad.dispose();
+        if (!completer.isCompleted) completer.complete();
+      },
+    );
+    try {
+      ad.show();
+      await completer.future;
+    } catch (_) {
+      ad.dispose();
+      if (!completer.isCompleted) completer.complete();
+    } finally {
+      if (mounted) {
+        _preparePhotoInterstitial();
+      }
+    }
+  }
+
+  Future<void> _handlePhotoCaptureAdProgress() async {
+    if (SettingsManager.demoMode) return;
+    _photoCaptureSinceAd++;
+    if (_photoCaptureSinceAd >= 5) {
+      _photoCaptureSinceAd = 0;
+      await _playPhotoInterstitial();
+    } else {
+      await _preparePhotoInterstitial();
+    }
+  }
+
+  Future<void> _maybeShowExitInterstitial() async {
+    if (SettingsManager.demoMode) {
+      _disposeExitInterstitial();
+      return;
+    }
+    final ad = _exitInterstitialAd;
+    _exitInterstitialAd = null;
+    if (ad == null) {
+      _loadExitInterstitial();
+      return;
+    }
+    final completer = Completer<void>();
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        ad.dispose();
+        if (!completer.isCompleted) completer.complete();
+        if (mounted) {
+          _loadExitInterstitial();
+        }
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        ad.dispose();
+        if (!completer.isCompleted) completer.complete();
+        if (mounted) {
+          _loadExitInterstitial();
+        }
+      },
+    );
+    try {
+      ad.show();
+      await completer.future;
+    } catch (_) {
+      ad.dispose();
+      if (!completer.isCompleted) completer.complete();
+      if (mounted) {
+        _loadExitInterstitial();
+      }
+    }
+  }
+
+  String _resolveExitInterstitialUnitId() {
+    if (kDebugMode) {
+      return Platform.isAndroid
+          ? 'ca-app-pub-3940256099942544/1033173712'
+          : 'ca-app-pub-3940256099942544/4411468910';
+    }
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-3331079517737737/6644663263';
+    } else if (Platform.isIOS) {
+      return 'ca-app-pub-3331079517737737/4615914659';
+    }
+    return 'ca-app-pub-3940256099942544/1033173712';
+  }
+
+  String _resolvePhotoInterstitialUnitId() {
+    if (kDebugMode) {
+      return Platform.isAndroid
+          ? 'ca-app-pub-3940256099942544/1033173712'
+          : 'ca-app-pub-3940256099942544/4411468910';
+    }
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-3331079517737737/6644663263';
+    } else if (Platform.isIOS) {
+      return 'ca-app-pub-3331079517737737/4615914659';
+    }
+    return 'ca-app-pub-3940256099942544/1033173712';
+  }
+
   // 体型カードの下あたり、クラス内メソッドとして追加
   void _applyWaistDisplayUnitFromCm() {
     final raw = _waistController.text.trim();
@@ -622,6 +813,13 @@ class _RecordScreenState extends State<RecordScreen>
         }
       });
     }
+
+    _loadExitInterstitial();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _preparePhotoInterstitial();
+      }
+    });
   }
 
   @override
@@ -684,6 +882,9 @@ class _RecordScreenState extends State<RecordScreen>
     SettingsManager.personalWeightNotifier
         .removeListener(_onPersonalWeightSettingChanged);
     SettingsManager.manageBmrNotifier.removeListener(_onBmrToggleChanged);
+
+    _disposeExitInterstitial();
+    _disposePhotoInterstitial();
 
     super.dispose();
   }
@@ -5414,6 +5615,7 @@ class _RecordScreenState extends State<RecordScreen>
 
     await shot.saveTo(savePath);
     await _registerProgressSnap(savePath, scrollIntoView: true);
+    await _handlePhotoCaptureAdProgress();
   }
 
   Future<void> _startCaptureLoop() async {
@@ -6162,6 +6364,8 @@ class _RecordScreenState extends State<RecordScreen>
     }
 
     if (!mounted) return;
+    await _maybeShowExitInterstitial();
+    if (!mounted) return;
     Navigator.of(context).pop();
   }
 
@@ -6655,21 +6859,7 @@ class _RecordScreenState extends State<RecordScreen>
                             ),
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                          child: const BigEarningAd(
-                            androidNativeUnitId:
-                                'ca-app-pub-3331079517737737/9518673738',
-                            iosNativeUnitId:
-                                'ca-app-pub-3331079517737737/3349399943',
-                            androidBannerUnitId:
-                                'ca-app-pub-3331079517737737/9588577724',
-                            iosBannerUnitId:
-                                'ca-app-pub-3331079517737737/6962414382',
-                            factoryId: 'large_media',
-                            height: 260,
-                          ),
-                        ),
+
                       ],
                     ),
                   ),
@@ -7191,23 +7381,7 @@ class _RecordScreenState extends State<RecordScreen>
                                 ),
                               ),
                             ),
-                            const Divider(height: 1),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                              child: const BigEarningAd(
-                                androidNativeUnitId:
-                                    'ca-app-pub-3331079517737737/9518673738',
-                                iosNativeUnitId:
-                                    'ca-app-pub-3331079517737737/3349399943',
-                                androidBannerUnitId:
-                                    'ca-app-pub-3331079517737737/9588577724',
-                                iosBannerUnitId:
-                                    'ca-app-pub-3331079517737737/6962414382',
-                                factoryId: 'large_media',
-                                height: 260,
-                              ),
-                            ),
+
                           ],
                         ),
                       ),
@@ -7400,23 +7574,7 @@ class _RecordScreenState extends State<RecordScreen>
                                           mainAxisAlignment:
                                               MainAxisAlignment.end,
                                           children: [
-                                            Padding(
-                                              padding:
-                                                  const EdgeInsets.fromLTRB(
-                                                      16, 12, 16, 12),
-                                              child: const BigEarningAd(
-                                                androidNativeUnitId:
-                                                    'ca-app-pub-3331079517737737/9518673738',
-                                                iosNativeUnitId:
-                                                    'ca-app-pub-3331079517737737/3349399943',
-                                                androidBannerUnitId:
-                                                    'ca-app-pub-3331079517737737/9588577724',
-                                                iosBannerUnitId:
-                                                    'ca-app-pub-3331079517737737/6962414382',
-                                                factoryId: 'large_media',
-                                                height: 260,
-                                              ),
-                                            ),
+
                                             SizedBox(
                                               height: bottomSpacerHeight,
                                             ),
@@ -7772,21 +7930,7 @@ class _RecordScreenState extends State<RecordScreen>
                             ),
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                          child: const BigEarningAd(
-                            androidNativeUnitId:
-                                'ca-app-pub-3331079517737737/9518673738',
-                            iosNativeUnitId:
-                                'ca-app-pub-3331079517737737/3349399943',
-                            androidBannerUnitId:
-                                'ca-app-pub-3331079517737737/9588577724',
-                            iosBannerUnitId:
-                                'ca-app-pub-3331079517737737/6962414382',
-                            factoryId: 'large_media',
-                            height: 260,
-                          ),
-                        ),
+
                       ],
                     ),
                   ),
@@ -12372,7 +12516,7 @@ class _MenuListState extends State<MenuList> {
                                   alignment: Alignment.centerRight,
                                   child: Padding(
                                     padding:
-                                        const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                                        const EdgeInsets.fromLTRB(0, 12, 24, 8),
                                     child: TextButton(
                                       onPressed: widget.canAddSet
                                           ? () => widget.onAddSet!.call()

@@ -56,7 +56,6 @@
   "sets": "sets",
   "setLabel": "Set",
   "reps": "Reps",
-  "repsShort": "Reps",
   "distance": "distance",
   "km": "km",
   "m": "m",
@@ -94,6 +93,17 @@
   "customExerciseRemovalHint": "Delete previously added custom exercises.",
   "keepScreenOn": "Keep screen on",
   "keepScreenOnHint": "If enabled, the screen will stay on while the app is open.",
+  "calendarSettingTitle": "Calendar integration",
+  "calendarSettingCurrentLabel": "Calendar to use",
+  "calendarSettingNotSelected": "Not set",
+  "calendarSettingHint": "Training records will be added to the calendar selected here.",
+  "calendarEventTitle": "{part}",
+  "@calendarEventTitle": {
+    "description": "Calendar event title",
+    "placeholders": {
+      "part": {}
+    }
+  },
   "noCustomExercises": "No custom exercises have been added.",
   "selectExerciseToDelete": "Select exercise to delete",
   "customExerciseRemoved": "Removed {exerciseName}.",
@@ -109,6 +119,51 @@
   "setCount": "Set Count",
   "defaultSets": "Default Sets",
   "bodyWeight": "BW",
+  "trainingLocation": "Training location",
+  "trainingTime": "Training time",
+  "@trainingTime": {
+    "description": "Record screen: label for training time"
+  },
+  "startTime": "Start time",
+  "@startTime": {
+    "description": "Record screen: training start time label"
+  },
+  "endTime": "End time",
+  "@endTime": {
+    "description": "Record screen: training end time label"
+  },
+  "calendarShareTooltip": "Share to calendar",
+  "@calendarShareTooltip": {
+    "description": "Record screen: tooltip for calendar share button"
+  },
+  "calendarExportSuccess": "Added to your calendar.",
+  "@calendarExportSuccess": {
+    "description": "Calendar export: success message"
+  },
+  "calendarExportError": "Could not add to calendar.",
+  "@calendarExportError": {
+    "description": "Calendar export: generic error message"
+  },
+  "calendarExportPermissionRequired": "Please allow calendar access.",
+  "@calendarExportPermissionRequired": {
+    "description": "Calendar export: permission required message"
+  },
+  "calendarExportNeedTime": "Please set your training time.",
+  "@calendarExportNeedTime": {
+    "description": "Calendar export: training time not set"
+  },
+  "calendarExportNoWritableCalendar": "No writable calendar was found.",
+  "@calendarExportNoWritableCalendar": {
+    "description": "Calendar export: no writable calendar available"
+  },
+  "calendarSelectTitle": "Select calendar",
+  "@calendarSelectTitle": {
+    "description": "Title for calendar selection bottom sheet"
+  },
+  "calendarPrimaryLabel": "Primary calendar",
+  "@calendarPrimaryLabel": {
+    "description": "Label for primary calendar"
+  },
   "weightCardTitle": "Weight",
   "weightCardExtraFieldsHint": "You can add fields like body fat or waist from Settings. Weight units (kg/lbs) can also be changed from Settings.",
   "bodyWeightTracking": "Body Weight Tracking",
@@ -184,6 +239,8 @@
   "results": "Records for {date}",
   "resultsCopy": "Copy",
   "resultsCopied": "Copied results to clipboard",
+  "calendarLockedResultsMessage": "Records from over 10 days ago are hidden until you watch an ad.",
+  "calendarLockedResultsButton": "View results",
   "deleteSelectedConfirmTitle": "Delete {count} item(s)?",
   "albumEmptyMessage": "Save your selfies in the album to track your training progress.",
   "close": "Close",
@@ -489,6 +546,7 @@
     }
   },
   "awardTitleMax": "New record reached!",
+  "timelineStrengthFallback": "Strength",
 
   "awardLabelDate": "Date:",
   "awardLabelExercise": "Exercise:",

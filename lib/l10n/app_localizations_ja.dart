@@ -154,9 +154,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get reps => '回数';
 
   @override
-  String get repsShort => '回';
-
-  @override
   String get distance => '距離';
 
   @override
@@ -268,6 +265,23 @@ class AppLocalizationsJa extends AppLocalizations {
   String get keepScreenOnHint => 'オンにするとアプリを開いている間画面が消灯されなくなります。';
 
   @override
+  String get calendarSettingTitle => 'カレンダー連携';
+
+  @override
+  String get calendarSettingCurrentLabel => '使用するカレンダー';
+
+  @override
+  String get calendarSettingNotSelected => '未設定';
+
+  @override
+  String get calendarSettingHint => 'ここで選択したカレンダーにトレーニング実績を登録します。';
+
+  @override
+  String calendarEventTitle(Object part) {
+    return '$part';
+  }
+
+  @override
   String get noCustomExercises => '追加された種目はありません。';
 
   @override
@@ -298,6 +312,42 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get bodyWeight => '体重';
+
+  @override
+  String get trainingLocation => 'トレーニング場所';
+
+  @override
+  String get trainingTime => 'トレーニング時間';
+
+  @override
+  String get startTime => '開始時刻';
+
+  @override
+  String get endTime => '終了時刻';
+
+  @override
+  String get calendarShareTooltip => 'カレンダーに共有';
+
+  @override
+  String get calendarExportSuccess => 'カレンダーに登録しました。';
+
+  @override
+  String get calendarExportError => 'カレンダーに登録できませんでした。';
+
+  @override
+  String get calendarExportPermissionRequired => 'カレンダーへのアクセスを許可してください。';
+
+  @override
+  String get calendarExportNeedTime => 'トレーニング時間を設定してください。';
+
+  @override
+  String get calendarExportNoWritableCalendar => '書き込み可能なカレンダーが見つかりませんでした。';
+
+  @override
+  String get calendarSelectTitle => 'カレンダーを選択';
+
+  @override
+  String get calendarPrimaryLabel => 'メインカレンダー';
 
   @override
   String get weightCardTitle => '体重';
@@ -531,6 +581,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get resultsCopied => '実績をコピーしました';
+
+  @override
+  String get calendarLockedResultsMessage => '10日以上前の実績は広告視聴後に表示されます。';
+
+  @override
+  String get calendarLockedResultsButton => '実績を見る';
 
   @override
   String deleteSelectedConfirmTitle(Object count) {
@@ -1404,6 +1460,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get awardTitleMax => '新記録達成！';
+
+  @override
+  String get timelineStrengthFallback => '筋トレ';
 
   @override
   String get awardLabelDate => '日付：';

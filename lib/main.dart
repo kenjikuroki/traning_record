@@ -16,6 +16,7 @@ import 'settings_manager.dart';
 import 'package:audio_session/audio_session.dart';
 import 'services/age_signals_service.dart';
 import 'services/notification_service.dart';
+import 'utils/banner_ad_manager.dart';
 
 Future<void> _initAudioSession() async {
   final session = await AudioSession.instance;
@@ -72,6 +73,8 @@ Future<void> main() async {
       // iOS以外はそのまま初期化
       await MobileAds.instance.initialize();
     }
+    // カレンダー広告の先行ロード
+    BannerAdManager.instance.preloadCalendarAd();
   });
 }
 

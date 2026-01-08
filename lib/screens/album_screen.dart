@@ -512,8 +512,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
                         ],
                       ),
                     ),
-                  const AdBanner(screenName: 'album'),
-                  const SizedBox(height: _kGap),
+
                   Expanded(
                     child: _loading
                         ? const Center(child: CircularProgressIndicator())

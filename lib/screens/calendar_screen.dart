@@ -1,6 +1,8 @@
 // lib/screens/calendar_screen.dart
 
+import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +15,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../models/menu_data.dart';
 import '../models/meal.dart';
 import '../models/exercise_catalog.dart';
@@ -23,9 +26,11 @@ import 'record_screen.dart';
 import 'graph_screen.dart';
 import 'settings_screen.dart';
 import '../routes/slide_up_route.dart';
+
 import '../widgets/centered_constrained.dart';
 import '../widgets/big_earning_ad.dart';
 import '../widgets/calendar_widget_view.dart';
+import '../services/age_signals_service.dart';
 
 String _fmtWaist(double cm, AppLocalizations l10n) {
   final v = SettingsManager.waistCmToDisplay(cm).toStringAsFixed(1);
@@ -140,6 +145,8 @@ Future<String> _calendarResolveEmptyAsset(DateTime d) async {
   }
 }
 
+const String _kResultsUnlockExpiryKey = 'calendar_results_unlock_until';
+
 class _CalendarScreenState extends State<CalendarScreen> {
   // 空データ用画像の実体解決（存在チェックしてフォールバック）
 
@@ -155,6 +162,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _widgetRefreshScheduled = false;
 
   bool get _shouldUpdateHomeWidget => false;
+
+  DateTime? _resultsUnlockExpiry;
+  InterstitialAd? _resultsInterstitialAd;
+  bool _loadingResultsInterstitial = false;
+  bool _unlockingResults = false;
+  Completer<InterstitialAd?>? _resultsInterstitialCompleter;
 
   double _clampDouble(double value, double min, double max) {
     if (value < min) {
@@ -512,6 +525,286 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return (c ?? cs.primary).withOpacity(0.9);
   }
 
+  void _loadResultsUnlockExpiry() {
+    final raw = widget.settingsBox.get(_kResultsUnlockExpiryKey);
+    DateTime? parsed;
+    if (raw is int) {
+      parsed = DateTime.fromMillisecondsSinceEpoch(raw, isUtc: false);
+    } else if (raw is String) {
+      parsed = DateTime.tryParse(raw);
+    }
+    if (parsed != null && DateTime.now().isBefore(parsed)) {
+      _resultsUnlockExpiry = parsed;
+    } else {
+      _resultsUnlockExpiry = null;
+    }
+  }
+
+  Future<void> _persistResultsUnlockExpiry() async {
+    final expiry = _resultsUnlockExpiry;
+    if (expiry == null) {
+      await widget.settingsBox.delete(_kResultsUnlockExpiryKey);
+    } else {
+      await widget.settingsBox.put(
+        _kResultsUnlockExpiryKey,
+        expiry.millisecondsSinceEpoch,
+      );
+    }
+  }
+
+  bool _isUnlockPeriodActive() {
+    final expiry = _resultsUnlockExpiry;
+    if (expiry == null) return false;
+    return DateTime.now().isBefore(expiry);
+  }
+
+  bool _requiresResultsUnlock(DateTime day, bool hasRecord) {
+    if (!hasRecord) return false;
+    if (_isUnlockPeriodActive()) return false;
+    final DateTime today = DateTime.now();
+    final DateTime normalizedDay = DateTime(day.year, day.month, day.day);
+    final DateTime normalizedToday =
+        DateTime(today.year, today.month, today.day);
+    final int diff = normalizedToday.difference(normalizedDay).inDays;
+    if (diff < 10) {
+      return false;
+    }
+    return true;
+  }
+
+  Future<InterstitialAd?> _prepareResultsInterstitial() async {
+    if (SettingsManager.demoMode) {
+      return null;
+    }
+    if (_resultsInterstitialAd != null) {
+      return _resultsInterstitialAd;
+    }
+    if (_resultsInterstitialCompleter != null) {
+      return _resultsInterstitialCompleter!.future;
+    }
+    _loadingResultsInterstitial = true;
+    final completer = Completer<InterstitialAd?>();
+    _resultsInterstitialCompleter = completer;
+    InterstitialAd.load(
+      adUnitId: _resolveResultsInterstitialUnitId(),
+      request: AgeSignalsService.instance.buildAdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          if (!mounted) {
+            ad.dispose();
+            if (!completer.isCompleted) completer.complete(null);
+            _resultsInterstitialCompleter = null;
+            _loadingResultsInterstitial = false;
+            return;
+          }
+          _resultsInterstitialAd = ad;
+          _loadingResultsInterstitial = false;
+          if (!completer.isCompleted) {
+            completer.complete(ad);
+          }
+          _resultsInterstitialCompleter = null;
+        },
+        onAdFailedToLoad: (error) {
+          _resultsInterstitialAd?.dispose();
+          _resultsInterstitialAd = null;
+          _loadingResultsInterstitial = false;
+          if (!completer.isCompleted) {
+            completer.complete(null);
+          }
+          _resultsInterstitialCompleter = null;
+        },
+      ),
+    );
+    return completer.future;
+  }
+
+  void _disposeResultsInterstitial() {
+    _resultsInterstitialAd?.dispose();
+    _resultsInterstitialAd = null;
+  }
+
+  Future<bool> _playResultsInterstitial() async {
+    final ad = await _prepareResultsInterstitial();
+    if (ad == null) {
+      return false;
+    }
+    _resultsInterstitialAd = null;
+    final completer = Completer<void>();
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        ad.dispose();
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        ad.dispose();
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
+      },
+    );
+    try {
+      ad.show();
+      await completer.future;
+    } catch (_) {
+      ad.dispose();
+      if (!completer.isCompleted) {
+        completer.complete();
+      }
+      return false;
+    } finally {
+      if (mounted) {
+        _prepareResultsInterstitial();
+      }
+    }
+    return true;
+  }
+
+  Future<void> _extendResultsUnlockPeriod() async {
+    final newExpiry = DateTime.now().add(const Duration(hours: 24));
+    setState(() {
+      _resultsUnlockExpiry = newExpiry;
+    });
+    await _persistResultsUnlockExpiry();
+  }
+
+  Future<void> _unlockResultsWithAd(
+    DateTime day, {
+    VoidCallback? onStateChange,
+  }) async {
+    if (!_requiresResultsUnlock(day, true)) {
+      onStateChange?.call();
+      return;
+    }
+    if (_unlockingResults) {
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _unlockingResults = true;
+    });
+    onStateChange?.call();
+    try {
+      final played = await _playResultsInterstitial();
+      if (!played) {
+        return;
+      }
+      if (!mounted) return;
+      await _extendResultsUnlockPeriod();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _unlockingResults = false;
+        });
+      } else {
+        _unlockingResults = false;
+      }
+      onStateChange?.call();
+    }
+  }
+
+  String _resolveResultsInterstitialUnitId() {
+    if (kDebugMode) {
+      return Platform.isAndroid
+          ? 'ca-app-pub-3940256099942544/1033173712'
+          : 'ca-app-pub-3940256099942544/4411468910';
+    }
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-3331079517737737/6644663263';
+    }
+    if (Platform.isIOS) {
+      return 'ca-app-pub-3331079517737737/4615914659';
+    }
+    return 'ca-app-pub-3940256099942544/1033173712';
+  }
+
+  Widget _buildResultsLockOverlay(
+    BuildContext context,
+    bool unlocking,
+    VoidCallback? onPressed,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+        child: Container(
+          color: cs.surface.withOpacity(0.08),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Center(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withOpacity(0.56),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 320),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.lock_outline,
+                        color: cs.onSurfaceVariant,
+                        size: 30,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        l10n.calendarLockedResultsMessage,
+                        style: TextStyle(
+                          color: cs.onSurface,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      FilledButton(
+                        onPressed: unlocking ? null : onPressed,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (unlocking) ...[
+                              SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    cs.onPrimary,
+                                  ),
+                                ),
+                              ),
+                            ] else ...[
+                              const Icon(Icons.play_circle_fill_rounded, size: 20),
+                            ],
+                            const SizedBox(width: 10),
+                            Text(l10n.calendarLockedResultsButton),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -523,6 +816,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       widget.selectedDate.month,
       widget.selectedDate.day,
     );
+
+    _loadResultsUnlockExpiry();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await AgeSignalsService.instance.ensureInitialized();
+      if (mounted) {
+        await _prepareResultsInterstitial();
+      }
+    });
 
     // 初回のみ：中央ウェルカムカード（2ステップ）
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -544,6 +845,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     SettingsManager.showRmNotifier.removeListener(_onDisplayToggleChanged);
     SettingsManager.showRirNotifier.removeListener(_onDisplayToggleChanged);
     SettingsManager.showFailNotifier.removeListener(_onDisplayToggleChanged);
+    _disposeResultsInterstitial();
     super.dispose();
   }
 
@@ -2598,11 +2900,12 @@ double _baseRowHeight(BuildContext context) {
                 },
               ),
               eventLoader: _eventLoader,
-              onDaySelected: (selectedDay, focusedDay) async {
-                if (_selectedDay != null &&
-                    _sameDate(selectedDay, _selectedDay!)) {
-                  final DateTime sel = DateTime(
-                      selectedDay.year, selectedDay.month, selectedDay.day);
+                onDaySelected: (selectedDay, focusedDay) async {
+                final DateTime sel = DateTime(
+                    selectedDay.year, selectedDay.month, selectedDay.day);
+
+                // もし既に選択中の日付を再度タップしたら、実績画面（ダイアログ）を表示
+                if (isSameDay(_selectedDay, sel)) {
                   final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
                   final List<Widget> summaryChildren =
                       _buildSummaryChildrenForDate(context, sel, rec);
@@ -2614,10 +2917,28 @@ double _baseRowHeight(BuildContext context) {
                 }
 
                 setState(() {
-                  _selectedDay = DateTime(
-                      selectedDay.year, selectedDay.month, selectedDay.day);
+                  _selectedDay = sel;
                   _focusedDay = focusedDay;
                 });
+
+                // シングルタップ時は日付選択のみ（移動しない）
+              },
+              onDayLongPressed: (selectedDay, focusedDay) async {
+                final DateTime sel = DateTime(
+                    selectedDay.year, selectedDay.month, selectedDay.day);
+
+                setState(() {
+                  _selectedDay = sel;
+                  _focusedDay = focusedDay;
+                });
+
+                final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
+                final List<Widget> summaryChildren =
+                    _buildSummaryChildrenForDate(context, sel, rec);
+                final List<String> summaryLines =
+                    _buildSummaryLinesForDate(context, sel, rec);
+                await _showResultsDialog(
+                    context, summaryChildren, summaryLines, sel);
               },
               onPageChanged: (focusedDay) {
                 setState(() => _focusedDay = focusedDay);
@@ -3057,9 +3378,9 @@ double _baseRowHeight(BuildContext context) {
         final bool showRmColumn = SettingsManager.showRM;
         final bool showRirColumn = SettingsManager.showRIR;
         final bool showFailColumn = SettingsManager.showFail;
-        final bool needsSpaceBeforeReps = l10n.repsShort.length > 1;
+        final bool needsSpaceBeforeReps = l10n.reps.length > 1;
         final String repsSuffix =
-            needsSpaceBeforeReps ? ' ${l10n.repsShort}' : l10n.repsShort;
+            needsSpaceBeforeReps ? ' ${l10n.reps}' : l10n.reps;
         List<String>? rirValues;
         List<bool>? failureStates;
         try {
@@ -3463,9 +3784,9 @@ double _baseRowHeight(BuildContext context) {
         final bool showRmColumn = SettingsManager.showRM;
         final bool showRirColumn = SettingsManager.showRIR;
         final bool showFailColumn = SettingsManager.showFail;
-        final bool needsSpaceBeforeReps = l10n.repsShort.length > 1;
+        final bool needsSpaceBeforeReps = l10n.reps.length > 1;
         final String repsSuffix =
-            needsSpaceBeforeReps ? ' ${l10n.repsShort}' : l10n.repsShort;
+            needsSpaceBeforeReps ? ' ${l10n.reps}' : l10n.reps;
         List<String>? rirValues;
         List<bool>? failureStates;
         try {
@@ -3670,162 +3991,173 @@ double _baseRowHeight(BuildContext context) {
       ),
       builder: (ctx) {
         final double maxHeight = MediaQuery.of(ctx).size.height * 0.90;
-        return SafeArea(
-          top: false,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: maxHeight),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // ヘッダー
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          l10n.results(_formatResultsDate(ctx, sel)),
-                          style: TextStyle(
-                            color: cs.onSurface,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            final bool locked = _requiresResultsUnlock(sel, hasRecord);
+            return SafeArea(
+              top: false,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: maxHeight),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l10n.results(_formatResultsDate(ctx, sel)),
+                              style: TextStyle(
+                                color: cs.onSurface,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                              ),
+                            ),
                           ),
-                        ),
+                          if (hasRecord &&
+                              summaryLines.isNotEmpty &&
+                              !locked)
+                            IconButton(
+                              icon: const Icon(Icons.copy_rounded),
+                              tooltip: l10n.resultsCopy,
+                              onPressed: () async {
+                                await Clipboard.setData(
+                                  ClipboardData(text: summaryLines.join('\n')),
+                                );
+                                if (!ctx.mounted) return;
+                                ScaffoldMessenger.of(ctx)
+                                  ..hideCurrentSnackBar()
+                                  ..showSnackBar(
+                                    SnackBar(
+                                      content: Text(l10n.resultsCopied),
+                                      duration:
+                                          const Duration(milliseconds: 1600),
+                                    ),
+                                  );
+                              },
+                            ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.of(ctx).pop(),
+                          ),
+                        ],
                       ),
-                      if (hasRecord && summaryLines.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.copy_rounded),
-                          tooltip: l10n.resultsCopy,
-                          onPressed: () async {
-                            await Clipboard.setData(
-                              ClipboardData(text: summaryLines.join('\n')),
-                            );
-                            if (!ctx.mounted) return;
-                            ScaffoldMessenger.of(ctx)
-                              ..hideCurrentSnackBar()
-                              ..showSnackBar(
-                                SnackBar(
-                                  content: Text(l10n.resultsCopied),
-                                  duration: const Duration(milliseconds: 1600),
-                                ),
-                              );
-                          },
-                        ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.of(ctx).pop(),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-
-                // 実績本文（スクロール領域）
-                // 実績本文（スクロール領域）
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: body.isEmpty
-                          ? [
-                              Center(
-                                child: Column(
-                                  children: [
-                                    SizedBox.square(
-                                      dimension:
-                                          MediaQuery.of(context).size.height /
-                                              3, // 正方形：画面高の約1/3
-                                      child: ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(24), // 角丸
-                                        child: Image.asset(
-                                          _emptyStateAssetFor(sel),
-                                          fit: BoxFit.contain, // 画像は切り抜かず収める
-                                          errorBuilder: (_, __, ___) =>
-                                              Image.asset(
-                                            'assets/illustrations/empty/calendar/mon.png',
-                                            fit: BoxFit.contain,
-                                            errorBuilder: (_, __, ___) => Icon(
-                                              Icons.event_busy,
-                                              size: 72,
-                                              color: cs.onSurfaceVariant,
+                    ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: body.isEmpty
+                                  ? [
+                                      Center(
+                                        child: Column(
+                                          children: [
+                                            const SizedBox(height: 40),
+                                            SizedBox.square(
+                                              dimension:
+                                                  MediaQuery.of(context)
+                                                          .size
+                                                          .height /
+                                                      3,
+                                              child: ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(24),
+                                                child: Image.asset(
+                                                  _emptyStateAssetFor(sel),
+                                                  fit: BoxFit.contain,
+                                                  errorBuilder: (_, __, ___) =>
+                                                      Image.asset(
+                                                    'assets/illustrations/empty/calendar/mon.png',
+                                                    fit: BoxFit.contain,
+                                                    errorBuilder:
+                                                        (_, __, ___) => Icon(
+                                                      Icons.event_busy,
+                                                      size: 72,
+                                                      color:
+                                                          cs.onSurfaceVariant,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
                                             ),
-                                          ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              l10n.noRecords,
+                                              style: TextStyle(
+                                                  color:
+                                                      cs.onSurfaceVariant,
+                                                  fontSize: 14),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      l10n.noRecords,
-                                      style: TextStyle(
-                                          color: cs.onSurfaceVariant,
-                                          fontSize: 14),
-                                    ),
-                                  ],
-                                ),
+                                    ]
+                                  : body,
+                            ),
+                          ),
+                          if (locked)
+                            Positioned.fill(
+                              child: _buildResultsLockOverlay(
+                                ctx,
+                                _unlockingResults,
+                                () async {
+                                  setModalState(() {});
+                                  await _unlockResultsWithAd(
+                                    sel,
+                                    onStateChange: () {
+                                      if (mounted) {
+                                        setModalState(() {});
+                                      }
+                                    },
+                                  );
+                                },
                               ),
-                            ]
-                          : body,
-                    ),
-                  ),
-                ),
-
-                // ↓↓↓ ここが “デカ広告” 領域（動画ネイティブ優先 → バナーMRECに自動フォールバック） ↓↓↓
-                const Divider(height: 1),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-                  child: BigEarningAd(
-                    // ★本番の広告ユニットIDに差し替えてください
-                    androidNativeUnitId:
-                        'ca-app-pub-3331079517737737/8075628963',
-                    iosNativeUnitId: 'ca-app-pub-3331079517737737/2163497749',
-                    androidBannerUnitId:
-                        'ca-app-pub-3331079517737737/6135915237',
-                    iosBannerUnitId: 'ca-app-pub-3331079517737737/9252979261',
-                    height: 260,
-                    // NativeAd Factory ID（後述のプラットフォーム登録で使うID）
-                    factoryId: 'large_media',
-                  ),
-                ),
-                // ↑↑↑ 広告ここまで ↑↑↑
-
-                const Divider(height: 1),
-
-                // フッター（編集/追加）
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Builder(
-                          builder: (buttonCtx) {
-                            final colorScheme = Theme.of(buttonCtx).colorScheme;
-                            return ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: colorScheme.primary,
-                                foregroundColor: colorScheme.onPrimary,
-                              ),
-                              icon: const Icon(Icons.edit),
-                              label: Text(
-                                hasRecord
-                                    ? l10n.editThisDay
-                                    : l10n.addOnThisDay,
-                              ),
-                              onPressed: () async {
-                                Navigator.of(ctx).pop();
-                                await _openRecordSheet(sel);
-                              },
-                            );
-                          },
-                        ),
+                            ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    const Divider(height: 1),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Builder(
+                              builder: (buttonCtx) {
+                                final colorScheme =
+                                    Theme.of(buttonCtx).colorScheme;
+                                return ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: colorScheme.primary,
+                                    foregroundColor: colorScheme.onPrimary,
+                                  ),
+                                  icon: const Icon(Icons.edit),
+                                  label: Text(
+                                    hasRecord
+                                        ? l10n.editThisDay
+                                        : l10n.addOnThisDay,
+                                  ),
+                                  onPressed: () async {
+                                    Navigator.of(ctx).pop();
+                                    await _openRecordSheet(sel);
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -3996,9 +4328,9 @@ double _baseRowHeight(BuildContext context) {
         final bool showRmColumn = SettingsManager.showRM;
         final bool showRirColumn = SettingsManager.showRIR;
         final bool showFailColumn = SettingsManager.showFail;
-        final bool needsSpaceBeforeReps = l10n.repsShort.length > 1;
+        final bool needsSpaceBeforeReps = l10n.reps.length > 1;
         final String repsSuffix =
-            needsSpaceBeforeReps ? ' ${l10n.repsShort}' : l10n.repsShort;
+            needsSpaceBeforeReps ? ' ${l10n.reps}' : l10n.reps;
         List<String>? rirValues;
         List<bool>? failureStates;
         try {

@@ -154,9 +154,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reps => 'Reps';
 
   @override
-  String get repsShort => 'Reps';
-
-  @override
   String get distance => 'distance';
 
   @override
@@ -268,6 +265,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keepScreenOnHint => 'If enabled, the screen will stay on while the app is open.';
 
   @override
+  String get calendarSettingTitle => 'Calendar integration';
+
+  @override
+  String get calendarSettingCurrentLabel => 'Calendar to use';
+
+  @override
+  String get calendarSettingNotSelected => 'Not set';
+
+  @override
+  String get calendarSettingHint => 'Training records will be added to the calendar selected here.';
+
+  @override
+  String calendarEventTitle(Object part) {
+    return '$part';
+  }
+
+  @override
   String get noCustomExercises => 'No custom exercises have been added.';
 
   @override
@@ -298,6 +312,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bodyWeight => 'BW';
+
+  @override
+  String get trainingLocation => 'Training location';
+
+  @override
+  String get trainingTime => 'Training time';
+
+  @override
+  String get startTime => 'Start time';
+
+  @override
+  String get endTime => 'End time';
+
+  @override
+  String get calendarShareTooltip => 'Share to calendar';
+
+  @override
+  String get calendarExportSuccess => 'Added to your calendar.';
+
+  @override
+  String get calendarExportError => 'Could not add to calendar.';
+
+  @override
+  String get calendarExportPermissionRequired => 'Please allow calendar access.';
+
+  @override
+  String get calendarExportNeedTime => 'Please set your training time.';
+
+  @override
+  String get calendarExportNoWritableCalendar => 'No writable calendar was found.';
+
+  @override
+  String get calendarSelectTitle => 'Select calendar';
+
+  @override
+  String get calendarPrimaryLabel => 'Primary calendar';
 
   @override
   String get weightCardTitle => 'Weight';
@@ -531,6 +581,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resultsCopied => 'Copied results to clipboard';
+
+  @override
+  String get calendarLockedResultsMessage => 'Records from over 10 days ago are hidden until you watch an ad.';
+
+  @override
+  String get calendarLockedResultsButton => 'View results';
 
   @override
   String deleteSelectedConfirmTitle(Object count) {
@@ -1404,6 +1460,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get awardTitleMax => 'New record reached!';
+
+  @override
+  String get timelineStrengthFallback => 'Strength';
 
   @override
   String get awardLabelDate => 'Date:';

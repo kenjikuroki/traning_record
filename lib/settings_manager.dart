@@ -26,10 +26,15 @@ class SettingsManager {
   static const String _showStopwatchTimerKey =
       'show_stopwatch_timer'; // true/false
   static const String _keepScreenOnKey = 'keep_screen_on';
+
+  // カレンダー連携（アプリ全体で使用するカレンダー）
+  static const String _calendarIdKey = 'calendar.id';
+  static const String _calendarNameKey = 'calendar.name';
   static const String _showWeightInputKey =
       'show_weight_input'; // 体重入力の表示ON/OFF（互換）
   static const String _aerobicCalorieKey = 'enable_aerobic_calories';
   static const String _personalWeightKey = 'personal.weightKg';
+  static const String _trainingLocationKey = 'personal.trainingLocation';
   static const String _showTotalVolumeKey = 'show_total_volume';
   static const String _showSatisfactionKey = 'show_satisfaction';
   static const String _showIntervalTimerKey = 'show_interval_timer';
@@ -93,6 +98,15 @@ class SettingsManager {
   static final ValueNotifier<double?> _personalWeightNotifier =
       ValueNotifier<double?>(null);
 
+  // カレンダー連携（アプリ全体で使用するカレンダー）
+  static final ValueNotifier<String?> _selectedCalendarIdNotifier =
+      ValueNotifier<String?>(null);
+  static final ValueNotifier<String?> _selectedCalendarNameNotifier =
+      ValueNotifier<String?>(null);
+
+  static final ValueNotifier<String?> _trainingLocationNotifier =
+      ValueNotifier<String?>(null);
+
   // ===== Initialize =====
   static Future<void> init() async {
     if (!Hive.isBoxOpen(_boxName)) {
@@ -144,6 +158,10 @@ class SettingsManager {
     _backgroundAssetNotifier.value =
         (box.get(_backgroundAssetKey, defaultValue: '') as String?) ?? '';
 
+    // カレンダー連携（アプリ全体で使用するカレンダー）
+    _selectedCalendarIdNotifier.value = box.get(_calendarIdKey) as String?;
+    _selectedCalendarNameNotifier.value = box.get(_calendarNameKey) as String?;
+
     // ストップウォッチ/タイマー
     _showStopwatchTimerNotifier.value =
         (box.get(_showStopwatchTimerKey) as bool?) ?? true;
@@ -177,6 +195,14 @@ class SettingsManager {
       weightKg = double.tryParse(storedWeight);
     }
     _personalWeightNotifier.value = weightKg;
+
+    final storedTrainingLocation = box.get(_trainingLocationKey);
+    if (storedTrainingLocation is String &&
+        storedTrainingLocation.trim().isNotEmpty) {
+      _trainingLocationNotifier.value = storedTrainingLocation.trim();
+    } else {
+      _trainingLocationNotifier.value = null;
+    }
   }
 
   // ===== Getters / Notifiers =====
@@ -230,6 +256,17 @@ class SettingsManager {
   static ValueNotifier<String> get backgroundAssetNotifier =>
       _backgroundAssetNotifier;
 
+  /// カレンダー連携（アプリ全体で使用するカレンダー）
+  static String? get selectedCalendarId =>
+      _selectedCalendarIdNotifier.value;
+  static ValueNotifier<String?> get selectedCalendarIdNotifier =>
+      _selectedCalendarIdNotifier;
+
+  static String? get selectedCalendarName =>
+      _selectedCalendarNameNotifier.value;
+  static ValueNotifier<String?> get selectedCalendarNameNotifier =>
+      _selectedCalendarNameNotifier;
+
   /// ストップウォッチ/タイマー表示
   static bool get showStopwatchTimer => _showStopwatchTimerNotifier.value;
   static ValueNotifier<bool> get showStopwatchTimerNotifier =>
@@ -277,6 +314,10 @@ class SettingsManager {
   static double? get personalWeightKg => _personalWeightNotifier.value;
   static ValueNotifier<double?> get personalWeightNotifier =>
       _personalWeightNotifier;
+
+  static String? get trainingLocation => _trainingLocationNotifier.value;
+  static ValueNotifier<String?> get trainingLocationNotifier =>
+      _trainingLocationNotifier;
 
   // 互換（旧API名）
   static bool get showStopwatch => showStopwatchTimer;
@@ -406,6 +447,25 @@ class SettingsManager {
     _manageBmrNotifier.value = value;
   }
 
+  /// カレンダー連携（選択したカレンダーを保存／クリア）
+  static Future<void> setSelectedCalendar({
+    required String? id,
+    required String? name,
+  }) async {
+    await _ensureBox();
+    if (id == null || name == null) {
+      await _box?.delete(_calendarIdKey);
+      await _box?.delete(_calendarNameKey);
+      _selectedCalendarIdNotifier.value = null;
+      _selectedCalendarNameNotifier.value = null;
+    } else {
+      await _box?.put(_calendarIdKey, id);
+      await _box?.put(_calendarNameKey, name);
+      _selectedCalendarIdNotifier.value = id;
+      _selectedCalendarNameNotifier.value = name;
+    }
+  }
+
   static Future<void> setPersonalWeightKg(double? kg) async {
     await _ensureBox();
     if (kg == null) {
@@ -414,6 +474,18 @@ class SettingsManager {
       await _box?.put(_personalWeightKey, kg);
     }
     _personalWeightNotifier.value = kg;
+  }
+
+  static Future<void> setTrainingLocation(String? location) async {
+    await _ensureBox();
+    final trimmed = location?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      await _box?.delete(_trainingLocationKey);
+      _trainingLocationNotifier.value = null;
+      return;
+    }
+    await _box?.put(_trainingLocationKey, trimmed);
+    _trainingLocationNotifier.value = trimmed;
   }
 
   // 互換（旧API名）

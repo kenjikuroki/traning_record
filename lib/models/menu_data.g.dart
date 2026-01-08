@@ -2,30 +2,6 @@
 
 part of 'menu_data.dart';
 
-List<bool>? _readBoolList(dynamic value) {
-  if (value is Iterable && value is! String) {
-    return value.map((e) => e == true).toList();
-  }
-  return null;
-}
-
-double? _readTotalVolume(dynamic value) {
-  if (value is num) {
-    return value.toDouble();
-  }
-  if (value is String) {
-    return double.tryParse(value);
-  }
-  return null;
-}
-
-List<String>? _readStringList(dynamic value) {
-  if (value is Iterable && value is! String) {
-    return value.map((e) => e?.toString() ?? '').toList();
-  }
-  return null;
-}
-
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
@@ -35,72 +11,23 @@ class MenuDataAdapter extends TypeAdapter<MenuData> {
   final int typeId = 0;
 
   @override
-  @override
   MenuData read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-
-    String? calories;
-    int? sat;
-    List<bool>? checked;
-    double? totalVolume;
-    List<String>? rirValues;
-    List<bool>? failureFlags;
-
-    if (fields.containsKey(5)) {
-      final dynamic v5 = fields[5];
-      if (v5 is String) {
-        calories = v5;
-        final dynamic v6 = fields[6];
-        sat = (v6 is int) ? v6 : null;
-        checked = _readBoolList(fields[7]);
-        totalVolume = _readTotalVolume(fields[8]);
-      } else if (v5 is int) {
-        sat = v5;
-        final dynamic v6 = fields[6];
-        if (v6 is String) {
-          calories = v6;
-          checked = _readBoolList(fields[7]);
-          totalVolume = _readTotalVolume(fields[8]);
-        } else {
-          calories = v6 as String?; // 中間期のデータでは null
-          checked = _readBoolList(v6);
-          totalVolume = _readTotalVolume(fields[7]);
-        }
-      } else {
-        calories = v5 as String?;
-        sat = (fields[6] is int) ? fields[6] as int : null;
-        checked = _readBoolList(fields[7]);
-        totalVolume = _readTotalVolume(fields[8]);
-      }
-    } else {
-      calories = fields[6] as String?;
-      sat = (fields[7] is int) ? fields[7] as int : null;
-      checked = _readBoolList(fields[8]);
-      totalVolume = _readTotalVolume(fields[9]);
-    }
-
-    if (fields.containsKey(9)) {
-      rirValues = _readStringList(fields[9]);
-    }
-    if (fields.containsKey(10)) {
-      failureFlags = _readBoolList(fields[10]);
-    }
-
     return MenuData(
       name: fields[0] as String,
       weights: (fields[1] as List).cast<String>(),
       reps: (fields[2] as List).cast<String>(),
       distance: fields[3] as String?,
       duration: fields[4] as String?,
-      calories: calories,
-      satisfaction: sat,
-      checkedStates: checked,
-      totalVolume: totalVolume,
-      rirValues: rirValues,
-      failureFlags: failureFlags,
+      calories: fields[5] as String?,
+      satisfaction: fields[6] as int?,
+      checkedStates: (fields[7] as List?)?.cast<bool>(),
+      totalVolume: fields[8] as double?,
+      rirValues: (fields[9] as List?)?.cast<String>(),
+      failureFlags: (fields[10] as List?)?.cast<bool>(),
     );
   }
 
@@ -159,19 +86,21 @@ class DailyRecordAdapter extends TypeAdapter<DailyRecord> {
           MapEntry(k as String, (v as List).cast<MenuData>())),
       lastModifiedPart: fields[2] as String?,
       weight: fields[3] as double?,
-      bodyFatPercent: fields[4] as double?, // 追加
-      waistCm: fields[5] as double?,        // 追加
+      bodyFatPercent: fields[4] as double?,
+      waistCm: fields[5] as double?,
       meals: (fields[6] as List?)
-          ?.map((e) => (e as Map).cast<String, dynamic>())
-          .toList(),
+          ?.map((dynamic e) => (e as Map).cast<String, dynamic>())
+          ?.toList(),
       bmr: fields[7] as double?,
+      trainingStart: fields[8] as DateTime?,
+      trainingEnd: fields[9] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, DailyRecord obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.date)
       ..writeByte(1)
@@ -180,14 +109,18 @@ class DailyRecordAdapter extends TypeAdapter<DailyRecord> {
       ..write(obj.lastModifiedPart)
       ..writeByte(3)
       ..write(obj.weight)
-      ..writeByte(4) // 追加
+      ..writeByte(4)
       ..write(obj.bodyFatPercent)
-      ..writeByte(5) // 追加
+      ..writeByte(5)
       ..write(obj.waistCm)
       ..writeByte(6)
       ..write(obj.meals)
       ..writeByte(7)
-      ..write(obj.bmr);
+      ..write(obj.bmr)
+      ..writeByte(8)
+      ..write(obj.trainingStart)
+      ..writeByte(9)
+      ..write(obj.trainingEnd);
   }
 
   @override

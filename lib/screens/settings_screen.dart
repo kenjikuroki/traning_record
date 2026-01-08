@@ -634,8 +634,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
             children: [
-              const AdBanner(screenName: 'settings_top'),
-              const SizedBox(height: 6),
+
 
               // ─────────────────────────────────
               // グループ①：パーソナル設定（最上段／下辺だけ直角）
@@ -1280,17 +1279,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // 以下はその他設定
               // ─────────────────────────────────
 
-              const SizedBox(height: _kGapAd),
-              SizedBox(
-                height: 100,
-                child: Center(
-                  child: AdSquare(
-                    adSize: AdBoxSize.largeBanner,
-                    screenName: 'settings',
-                  ),
-                ),
-              ),
-              const SizedBox(height: _kGapAd),
+
 
               // ダークモード（ブロック先頭：上だけ角丸）
               Card(

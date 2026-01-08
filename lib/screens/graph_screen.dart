@@ -3159,8 +3159,7 @@ class _GraphScreenState extends State<GraphScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const AdBanner(screenName: 'graph'),
-                    const SizedBox(height: 4.0),
+
                     Expanded(
                       child: Card(
                         key: _kChart,

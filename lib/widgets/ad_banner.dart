@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../services/age_signals_service.dart';
 import '../settings_manager.dart';
+import '../utils/banner_ad_manager.dart';
 
 class AdBanner extends StatefulWidget {
   final String screenName;
@@ -55,6 +56,21 @@ class _AdBannerState extends State<AdBanner> with SingleTickerProviderStateMixin
       size = null;
     }
     if (!mounted) return;
+
+    // ★ カレンダー画面なら先行ロード済みキャッシュを確認
+    if (widget.screenName == 'calendar') {
+      final cached = BannerAdManager.instance.calendarBannerAd;
+      if (cached != null) {
+        setState(() {
+          _isAdLoaded = true;
+          _bannerAd = cached;
+          _anchoredSize = cached.size as AnchoredAdaptiveBannerAdSize?; // サイズを流用
+          _loading = false;
+          _placeholderCtrl.stop();
+        });
+        return; // 新規ロードはしない
+      }
+    }
 
     setState(() {
       _anchoredSize = size;
@@ -156,7 +172,10 @@ class _AdBannerState extends State<AdBanner> with SingleTickerProviderStateMixin
 
   @override
   void dispose() {
-    _bannerAd?.dispose();
+    // カレンダー用キャッシュなら dispose しない (Managerが保持し続ける)
+    if (widget.screenName != 'calendar') {
+      _bannerAd?.dispose();
+    }
     _placeholderCtrl.dispose();
     super.dispose();
   }
