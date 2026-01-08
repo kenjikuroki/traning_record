@@ -381,12 +381,6 @@ abstract class AppLocalizations {
   /// **'Reps'**
   String get reps;
 
-  /// No description provided for @repsShort.
-  ///
-  /// In en, this message translates to:
-  /// **'Reps'**
-  String get repsShort;
-
   /// No description provided for @distance.
   ///
   /// In en, this message translates to:
