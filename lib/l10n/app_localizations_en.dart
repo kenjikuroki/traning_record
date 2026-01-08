@@ -1459,6 +1459,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get awardTitleMax => 'New record reached!';
 
   @override
+  String get timelineStrengthFallback => 'Strength';
+
+  @override
   String get awardLabelDate => 'Date:';
 
   @override

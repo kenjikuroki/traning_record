@@ -2943,6 +2943,12 @@ abstract class AppLocalizations {
   /// **'New record reached!'**
   String get awardTitleMax;
 
+  /// No description provided for @timelineStrengthFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Strength'**
+  String get timelineStrengthFallback;
+
   /// No description provided for @awardLabelDate.
   ///
   /// In en, this message translates to:

@@ -545,6 +545,7 @@
     }
   },
   "awardTitleMax": "New record reached!",
+  "timelineStrengthFallback": "Strength",
 
   "awardLabelDate": "Date:",
   "awardLabelExercise": "Exercise:",

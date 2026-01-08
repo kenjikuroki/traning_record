@@ -29,6 +29,7 @@ dependencies:
   fl_chart: ^0.68.0
   # 広告
   google_mobile_ads: ^6.0.0
+  in_app_review: ^2.0.9
   app_tracking_transparency: ^2.0.4
   # カレンダー連携
   device_calendar_plus: ^0.3.1

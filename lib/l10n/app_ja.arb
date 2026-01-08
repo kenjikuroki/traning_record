@@ -543,6 +543,7 @@
     }
   },
   "awardTitleMax": "新記録達成！",
+  "timelineStrengthFallback": "筋トレ",
 
   "awardLabelDate": "日付：",
   "awardLabelExercise": "種目：",
