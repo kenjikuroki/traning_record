@@ -33,6 +33,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-3331079517737737~7860563083</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>カレンダーの日付を選択・確認するために使用します。</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
