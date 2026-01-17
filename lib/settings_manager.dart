@@ -44,6 +44,7 @@ class SettingsManager {
   static const String _showFailKey = 'show_fail';
   static const String favoritesKey = 'graph_favorites_v2';
   static const String favoritesKeyV3 = 'graph_favorites_v3';
+  static const String _lastInterstitialTimestampKey = 'last_interstitial_timestamp';
 
   // ===== Notifiers =====
   // 重さ
@@ -491,4 +492,18 @@ class SettingsManager {
   // 互換（旧API名）
   static Future<void> setShowStopwatch(bool show) =>
       setShowStopwatchTimer(show);
+
+  // ===== Interstitial Ad Cooldown =====
+  static bool shouldShowInterstitial() {
+    final int? lastTs = _box?.get(_lastInterstitialTimestampKey) as int?;
+    if (lastTs == null) return true;
+    final diff = DateTime.now().millisecondsSinceEpoch - lastTs;
+    // 30分 = 30 * 60 * 1000 = 1800000 ms
+    return diff > 1800000;
+  }
+
+  static Future<void> markInterstitialShown() async {
+    await _ensureBox();
+    await _box?.put(_lastInterstitialTimestampKey, DateTime.now().millisecondsSinceEpoch);
+  }
 }

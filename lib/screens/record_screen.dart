@@ -561,6 +561,12 @@ class _RecordScreenState extends State<RecordScreen>
   Future<void> _playPhotoInterstitial() async {
     final ad = await _preparePhotoInterstitial();
     if (ad == null) return;
+
+    // 30分以内の表示制限チェック
+    if (!SettingsManager.shouldShowInterstitial()) {
+      return;
+    }
+
     _photoInterstitialAd = null;
     final completer = Completer<void>();
     ad.fullScreenContentCallback = FullScreenContentCallback(
@@ -575,6 +581,7 @@ class _RecordScreenState extends State<RecordScreen>
     );
     try {
       ad.show();
+      await SettingsManager.markInterstitialShown(); // 表示時刻を記録
       await completer.future;
     } catch (_) {
       ad.dispose();
@@ -608,6 +615,13 @@ class _RecordScreenState extends State<RecordScreen>
       _loadExitInterstitial();
       return;
     }
+
+    if (!SettingsManager.shouldShowInterstitial()) {
+      ad.dispose();
+      _loadExitInterstitial();
+      return;
+    }
+
     final completer = Completer<void>();
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
@@ -627,6 +641,7 @@ class _RecordScreenState extends State<RecordScreen>
     );
     try {
       ad.show();
+      await SettingsManager.markInterstitialShown();
       await completer.future;
     } catch (_) {
       ad.dispose();
@@ -3615,6 +3630,9 @@ class _RecordScreenState extends State<RecordScreen>
     bool awardsUpdated = false;
 
     final int distinctDays = _distinctRecordDayCount(widget.recordsBox);
+    bool triggeredFirst = false;
+    bool triggeredDay = false;
+
     if (distinctDays > 0) {
       if (distinctDays == 1 &&
           !AwardsService.hasAward(
@@ -3628,6 +3646,7 @@ class _RecordScreenState extends State<RecordScreen>
           'dayCount': 1,
         });
         awardsUpdated = true;
+        triggeredFirst = true;
       }
 
       if (_isMilestoneDay(distinctDays) &&
@@ -3642,6 +3661,7 @@ class _RecordScreenState extends State<RecordScreen>
           'dayCount': distinctDays,
         });
         awardsUpdated = true;
+        triggeredDay = true;
       }
     }
 
@@ -3727,10 +3747,9 @@ class _RecordScreenState extends State<RecordScreen>
 
     // ▼ 簡易プレビュー（暫定）：autoShow が ON ならダイアログを出す
     final l10n = AppLocalizations.of(context)!;
-    final bool showFirst = (distinctDays == 1) &&
+    final bool showFirst = triggeredFirst &&
         ((settingsBox.get('awards.autoShow.first') ?? true) == true);
-    final bool showDay = (distinctDays != 1) &&
-        _isMilestoneDay(distinctDays) &&
+    final bool showDay = triggeredDay &&
         ((settingsBox.get('awards.autoShow.day') ?? true) == true);
     final bool showPr = prTriggered &&
         ((settingsBox.get('awards.autoShow.pr') ?? true) == true);
