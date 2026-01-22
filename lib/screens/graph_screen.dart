@@ -1,13 +1,15 @@
-// lib/screens/graph_screen.dart
 import 'dart:ui';
 import 'dart:math';
 import 'dart:async';
+import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../settings_manager.dart';
@@ -15,7 +17,6 @@ import 'calendar_screen.dart';
 import 'record_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/ad_banner.dart';
-import '../widgets/coach_bubble.dart';
 import 'package:flutter/services.dart';
 import '../widgets/centered_constrained.dart';
 
@@ -201,6 +202,12 @@ class _GraphScreenState extends State<GraphScreen> {
   // 目標ライン
   final TextEditingController _goalController = TextEditingController();
   double? _goalValue;
+
+  // ====== Rewarded Ad ======
+  RewardedAd? _rewardedAd;
+  bool _isGraphUnlocked = false;
+  bool _isAdLoading = false;
+  bool _playAfterLoad = false;
 
   // ====== part name mapping ======
   String _getOriginalPartName(BuildContext context, String translatedPart) {
@@ -511,54 +518,105 @@ class _GraphScreenState extends State<GraphScreen> {
     }
   }
 
-  // ====== Graphヒント ======
-  bool _graphCoachDone = false;
-
-  bool _isActuallyVisible() {
-    if (!mounted || !widget.isActive) return false;
-    final ticker = context.findAncestorWidgetOfExactType<TickerMode>();
-    if (ticker != null && ticker.enabled == false) return false;
-    final ro = context.findRenderObject();
-    if (ro is RenderBox) {
-      if (!ro.attached) return false;
-      final size = ro.hasSize ? ro.size : Size.zero;
-      if (size.isEmpty) return false;
+  // ====== Rewarded Ad Helper ======
+  String _resolveRewardedAdUnitId() {
+    if (kDebugMode) {
+      return Platform.isAndroid
+          ? 'ca-app-pub-3940256099942544/5224354917'
+          : 'ca-app-pub-3940256099942544/1712485313';
     }
-    return true;
+    return 'ca-app-pub-3331079517737737/5606752068';
   }
 
-  Future<void> _tryShowGraphCoachIfVisible() async {
-    if (!mounted || _graphCoachDone) return;
-    final seen = (widget.settingsBox.get('hint_seen_graph') as bool?) ?? false;
-    if (seen) {
-      _graphCoachDone = true;
+  void _loadRewardedAd() {
+    if (_rewardedAd != null) return;
+    setState(() {
+      _isAdLoading = true;
+    });
+    debugPrint('[GraphScreen] Loading RewardedAd...');
+    RewardedAd.load(
+      adUnitId: _resolveRewardedAdUnitId(),
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) {
+          debugPrint('[GraphScreen] RewardedAd loaded.');
+          if (!mounted) {
+            ad.dispose();
+            return;
+          }
+          setState(() {
+            _rewardedAd = ad;
+            _isAdLoading = false;
+          });
+          if (_playAfterLoad) {
+            _playAfterLoad = false;
+            _showRewardedAd();
+          }
+        },
+        onAdFailedToLoad: (error) {
+          debugPrint('[GraphScreen] RewardedAd failed to load: $error');
+          debugPrint('Error Code: ${error.code}, Domain: ${error.domain}, Message: ${error.message}');
+          if (!mounted) return;
+          setState(() {
+            _isAdLoading = false;
+          });
+          if (_playAfterLoad) {
+            _playAfterLoad = false;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('広告の読み込みに失敗しました (Error: ${error.code})。もう一度お試しください。')),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  void _showRewardedAd() {
+    debugPrint('[GraphScreen] _showRewardedAd called. _rewardedAd: $_rewardedAd');
+    if (_rewardedAd == null) {
+      debugPrint('[GraphScreen] RewardedAd is null, reloading (autoplay requested)...');
+      _playAfterLoad = true;
+      _loadRewardedAd();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('広告を読み込んでいます...')),
+      );
       return;
     }
-    if (!_isActuallyVisible()) return;
-
-    final anchorsReady = [
-      _kPart.currentContext,
-      _kChart.currentContext,
-      _kGoal.currentContext,
-      _kFav.currentContext,
-    ].every((c) => c != null);
-    if (!anchorsReady) return;
-
-    final l10n = AppLocalizations.of(context)!;
-    _graphCoachDone = true;
-    await CoachBubbleController.showSequence(
-      context: context,
-      anchors: [_kPart, _kChart, _kGoal, _kFav],
-      messages: [
-        l10n.hintGraphSelectPart,
-        l10n.hintGraphChartArea,
-        l10n.hintGraphSetGoal,
-        l10n.hintGraphFavorite,
-      ],
-      semanticsPrefix: l10n.coachBubbleSemantic,
+    debugPrint('[GraphScreen] Trying to show ad...');
+    _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        debugPrint('[GraphScreen] Ad dismissed.');
+        ad.dispose();
+        setState(() {
+          _rewardedAd = null;
+        });
+        _loadRewardedAd();
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        debugPrint('[GraphScreen] Ad failed to show: $error');
+        ad.dispose();
+        setState(() {
+          _rewardedAd = null;
+        });
+        _loadRewardedAd();
+        ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('広告の再生に失敗しました')),
+        );
+      },
+      onAdShowedFullScreenContent: (ad) {
+        debugPrint('[GraphScreen] Ad showed fullscreen.');
+      },
     );
-    await widget.settingsBox.put('hint_seen_graph', true);
+    _rewardedAd!.show(
+      onUserEarnedReward: (ad, reward) {
+        debugPrint('[GraphScreen] User earned reward: ${reward.amount} ${reward.type}');
+        setState(() {
+          _isGraphUnlocked = true;
+        });
+      },
+    );
   }
+
 
   // ====== lifecycle ======
   @override
@@ -567,15 +625,6 @@ class _GraphScreenState extends State<GraphScreen> {
     _loadSettingsAndParts();
   }
 
-  @override
-  void didUpdateWidget(covariant GraphScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!oldWidget.isActive && widget.isActive) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _tryShowGraphCoachIfVisible();
-      });
-    }
-  }
 
   final ScrollController _verticalScrollController1 = ScrollController();
   final ScrollController _verticalScrollController2 = ScrollController();
@@ -584,6 +633,8 @@ class _GraphScreenState extends State<GraphScreen> {
   @override
   void initState() {
     super.initState();
+    _isGraphUnlocked = false;
+    _loadRewardedAd();
 
     _settingsSubscription =
         widget.settingsBox.watch().listen(_handleSettingsBoxEvent);
@@ -617,6 +668,7 @@ class _GraphScreenState extends State<GraphScreen> {
     _verticalScrollController1.dispose();
     _verticalScrollController2.dispose();
     _goalController.dispose();
+    _rewardedAd?.dispose();
     super.dispose();
   }
 
@@ -2839,10 +2891,10 @@ class _GraphScreenState extends State<GraphScreen> {
     final isPersonal = _isPersonalContext();
     final unitText = _unitOverlayText(l10n);
     final bool _noMenus = _noMenusForSelectedPart;
+    if (kDebugMode) {
+      print('[GraphDebug] unlocked: $_isGraphUnlocked, dates: ${_axisDates.length}');
+    }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _tryShowGraphCoachIfVisible();
-    });
     // 日/週トグル
     Widget dayWeekToggle = SizedBox(
       height: _kControlHeight,
@@ -3619,9 +3671,11 @@ class _GraphScreenState extends State<GraphScreen> {
                                         borderRadius:
                                             BorderRadius.circular(12),
                                       ),
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                      child: Stack(
+                                        children: [
+                                          Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                         children: [
                                           SizedBox(
                                             width: yAxisPanelW,
@@ -3687,7 +3741,156 @@ class _GraphScreenState extends State<GraphScreen> {
                                           ),
                                         ],
                                       ),
-                                    );
+                                      if (!SettingsManager.isPremium && !_isGraphUnlocked && _axisDates.isNotEmpty)
+                                        Positioned.fill(
+                                          child: ClipRect(
+                                            child: BackdropFilter(
+                                              filter: ImageFilter.blur(
+                                                  sigmaX: 4, sigmaY: 4),
+                                              child: Container(
+                                                color: colorScheme.surface
+                                                    .withOpacity(0.08),
+                                                alignment: Alignment.center,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 24),
+                                                child: DecoratedBox(
+                                                  decoration: BoxDecoration(
+                                                    color: colorScheme
+                                                        .surfaceContainerHighest
+                                                        .withOpacity(0.56),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            20),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.black
+                                                            .withOpacity(0.08),
+                                                        blurRadius: 18,
+                                                        offset:
+                                                            const Offset(0, 6),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: Padding(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        vertical: 22,
+                                                        horizontal: 24),
+                                                    child: ConstrainedBox(
+                                                      constraints:
+                                                          const BoxConstraints(
+                                                              maxWidth: 320),
+                                                      child: Column(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          Icon(
+                                                            Icons.lock_outline,
+                                                            color: colorScheme
+                                                                .onSurfaceVariant,
+                                                            size: 30,
+                                                          ),
+                                                          const SizedBox(
+                                                              height: 12),
+                                                          Text(
+                                                            l10n.unlockGraph,
+                                                            style: TextStyle(
+                                                              color: colorScheme
+                                                                  .onSurface,
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                            ),
+                                                            textAlign: TextAlign
+                                                                .center,
+                                                          ),
+                                                          const SizedBox(
+                                                              height: 20),
+                                                          FilledButton(
+                                                            onPressed: _isAdLoading
+                                                                ? null
+                                                                : () {
+                                                                    debugPrint('[GraphScreen] Unlock button pressed');
+                                                                    _showRewardedAd();
+                                                                  },
+                                                            child: Row(
+                                                              mainAxisSize:
+                                                                  MainAxisSize
+                                                                      .min,
+                                                              children: [
+                                                                if (_isAdLoading) ...[
+                                                                  SizedBox(
+                                                                    width: 18,
+                                                                    height: 18,
+                                                                    child:
+                                                                        CircularProgressIndicator(
+                                                                      strokeWidth:
+                                                                          2,
+                                                                      valueColor:
+                                                                          AlwaysStoppedAnimation<
+                                                                              Color>(
+                                                                        colorScheme
+                                                                            .onPrimary,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ] else ...[
+                                                                  const Icon(
+                                                                      Icons
+                                                                          .play_circle_fill_rounded,
+                                                                      size: 20),
+                                                                ],
+                                                                const SizedBox(
+                                                                    width: 10),
+                                                                Text(_isAdLoading
+                                                                    ? 'Loading...'
+                                                                    : l10n.calendarLockedResultsButton),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                      else if (_axisDates.isEmpty)
+                                        Positioned.fill(
+                                          child: Container(
+                                            color: colorScheme.surface,
+                                            alignment: Alignment.center,
+                                            padding: const EdgeInsets.all(32),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.fitness_center,
+                                                  size: 48,
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                                const SizedBox(height: 16),
+                                                Text(
+                                                  l10n.noDataToTrain,
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    color: colorScheme
+                                                        .onSurfaceVariant,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                );
                                   },
                                 ),
                               ),

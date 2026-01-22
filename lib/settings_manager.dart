@@ -45,6 +45,7 @@ class SettingsManager {
   static const String favoritesKey = 'graph_favorites_v2';
   static const String favoritesKeyV3 = 'graph_favorites_v3';
   static const String _lastInterstitialTimestampKey = 'last_interstitial_timestamp';
+  static const String _isPremiumKey = 'is_premium';
 
   // ===== Notifiers =====
   // 重さ
@@ -107,6 +108,10 @@ class SettingsManager {
 
   static final ValueNotifier<String?> _trainingLocationNotifier =
       ValueNotifier<String?>(null);
+
+  // Premium
+  static final ValueNotifier<bool> _isPremiumNotifier =
+      ValueNotifier<bool>(false);
 
   // ===== Initialize =====
   static Future<void> init() async {
@@ -204,6 +209,8 @@ class SettingsManager {
     } else {
       _trainingLocationNotifier.value = null;
     }
+
+    _isPremiumNotifier.value = (box.get(_isPremiumKey) as bool?) ?? false;
   }
 
   // ===== Getters / Notifiers =====
@@ -319,6 +326,9 @@ class SettingsManager {
   static String? get trainingLocation => _trainingLocationNotifier.value;
   static ValueNotifier<String?> get trainingLocationNotifier =>
       _trainingLocationNotifier;
+
+  static bool get isPremium => _isPremiumNotifier.value;
+  static ValueNotifier<bool> get isPremiumNotifier => _isPremiumNotifier;
 
   // 互換（旧API名）
   static bool get showStopwatch => showStopwatchTimer;
@@ -489,12 +499,19 @@ class SettingsManager {
     _trainingLocationNotifier.value = trimmed;
   }
 
+  static Future<void> setPremium(bool isPremium) async {
+    await _ensureBox();
+    await _box?.put(_isPremiumKey, isPremium);
+    _isPremiumNotifier.value = isPremium;
+  }
+
   // 互換（旧API名）
   static Future<void> setShowStopwatch(bool show) =>
       setShowStopwatchTimer(show);
 
   // ===== Interstitial Ad Cooldown =====
   static bool shouldShowInterstitial() {
+    if (isPremium) return false;
     final int? lastTs = _box?.get(_lastInterstitialTimestampKey) as int?;
     if (lastTs == null) return true;
     final diff = DateTime.now().millisecondsSinceEpoch - lastTs;

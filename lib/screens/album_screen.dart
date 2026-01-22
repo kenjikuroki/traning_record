@@ -8,9 +8,10 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
-
+import 'package:url_launcher/url_launcher.dart'; 
 import 'package:ttraining_record/l10n/app_localizations.dart';
 import '../widgets/ad_banner.dart';
+import '../widgets/sister_app_banner.dart';
 import '../settings_manager.dart';
 import '../widgets/centered_constrained.dart';
 import '../services/album_sync.dart';
@@ -697,8 +698,12 @@ class _AlbumScreenState extends State<AlbumScreen> {
                                 );
                               },
                             );
+
                           }(),
-                  )
+                  ),
+
+                  // Sister App Banner
+                  if (!_inSelection) const SisterAppBanner(),
                 ],
               ),
             ),
@@ -788,6 +793,7 @@ class _AlbumViewerDialogState extends State<_AlbumViewerDialog> {
               ),
             ),
           ),
+          // Date Label
           Positioned(
             left: 16,
             top: 16 + MediaQuery.of(context).padding.top,
@@ -801,28 +807,31 @@ class _AlbumViewerDialogState extends State<_AlbumViewerDialog> {
                 _formatDateLabel(photos[_currentIndex].dateKey),
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ),
+          // Close Button
           Positioned(
-            right: 12,
-            top: 12 + MediaQuery.of(context).padding.top,
-            child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white),
-              onPressed: () => Navigator.of(context).pop(),
+            top: 16 + MediaQuery.of(context).padding.top,
+            right: 16,
+            child: CircleAvatar(
+              backgroundColor: Colors.black26,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
             ),
           ),
+          // Counter
           Positioned(
             bottom: 24 + MediaQuery.of(context).padding.bottom,
             left: 0,
             right: 0,
             child: Center(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.45),
                   borderRadius: BorderRadius.circular(16),
@@ -851,6 +860,8 @@ class _AlbumViewerDialogState extends State<_AlbumViewerDialog> {
     return DateFormat('yyyy/MM/dd').format(parsed);
   }
 }
+
+
 
 class _AlbumPhoto {
   final File file;

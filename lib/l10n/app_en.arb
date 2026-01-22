@@ -560,6 +560,16 @@
   },
   "awardSaved": "Saved to your album",
   "awardShare": "Share",
-  "awardClose": "Close"
+  "awardClose": "Close",
+  "sisterAppPromotionTitle": "Specialized Bench Press App Released!",
+  "sisterAppPromotionDialogTitle": "Open Store?",
+  "sisterAppPromotionDialogMessage": "Do you want to open the store page for the Bench Press app?",
+  "sisterAppPromotionDialogCancel": "Cancel",
+  "sisterAppPromotionDialogGo": "Go to Store",
+  "unlockGraph": "Watch Video to Unlock Graph",
+  "noDataToTrain": "No data available. Let's start training to build your record!",
+  "premiumUnlockTitle": "Premium Unlock (Remove Ads)",
+  "premiumUnlockDescription": "Unlock all features and remove ads forever.",
+  "premiumUnlockButton": "Upgrade to Premium"
 
 }

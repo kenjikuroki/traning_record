@@ -157,6 +157,8 @@ class _AdBannerState extends State<AdBanner> with SingleTickerProviderStateMixin
           return 'ca-app-pub-3331079517737737/8271626623';
         case 'graph':
           return 'ca-app-pub-3331079517737737/8642020070';
+        case 'record_overlay': // ← 追加: 記録入力オーバーレイ
+          return 'ca-app-pub-3331079517737737/8642020070';
         case 'album': // ← 追加：アルバム画面(iOS)
           return 'ca-app-pub-3331079517737737/9348300304';
         default:
@@ -182,30 +184,38 @@ class _AdBannerState extends State<AdBanner> with SingleTickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    if (SettingsManager.demoMode) return const SizedBox.shrink(); // ← ここ！
-    final double reservedHeight =
-    (_anchoredSize?.height ?? AdSize.banner.height).toDouble();
+    return ValueListenableBuilder<bool>(
+      valueListenable: SettingsManager.isPremiumNotifier,
+      builder: (context, isPremium, child) {
+        if (isPremium) {
+          return const SizedBox.shrink();
+        }
+        if (SettingsManager.demoMode) return const SizedBox.shrink();
 
-    final bool showAd = _isAdLoaded && _bannerAd != null;
+        final double reservedHeight =
+            (_anchoredSize?.height ?? AdSize.banner.height).toDouble();
+        final bool showAd = _isAdLoaded && _bannerAd != null;
 
-    return SizedBox(
-      width: double.infinity,
-      height: reservedHeight,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 320),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        child: showAd
-            ? ClipRRect(
-                key: const ValueKey('ad'),
-                borderRadius: BorderRadius.circular(12),
-                child: AdWidget(ad: _bannerAd!),
-              )
-            : _AdLoadingPlaceholder(
-                key: const ValueKey('placeholder'),
-                animation: _placeholderCtrl,
-              ),
-      ),
+        return SizedBox(
+          width: double.infinity,
+          height: reservedHeight,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 320),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            child: showAd
+                ? ClipRRect(
+                    key: const ValueKey('ad'),
+                    borderRadius: BorderRadius.circular(12),
+                    child: AdWidget(ad: _bannerAd!),
+                  )
+                : _AdLoadingPlaceholder(
+                    key: const ValueKey('placeholder'),
+                    animation: _placeholderCtrl,
+                  ),
+          ),
+        );
+      },
     );
   }
 }

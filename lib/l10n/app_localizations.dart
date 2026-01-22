@@ -3002,6 +3002,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close'**
   String get awardClose;
+
+  /// No description provided for @sisterAppPromotionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Specialized Bench Press App Released!'**
+  String get sisterAppPromotionTitle;
+
+  /// No description provided for @sisterAppPromotionDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Store?'**
+  String get sisterAppPromotionDialogTitle;
+
+  /// No description provided for @sisterAppPromotionDialogMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Do you want to open the store page for the Bench Press app?'**
+  String get sisterAppPromotionDialogMessage;
+
+  /// No description provided for @sisterAppPromotionDialogCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get sisterAppPromotionDialogCancel;
+
+  /// No description provided for @sisterAppPromotionDialogGo.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Store'**
+  String get sisterAppPromotionDialogGo;
+
+  /// No description provided for @unlockGraph.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch Video to Unlock Graph'**
+  String get unlockGraph;
+
+  /// No description provided for @noDataToTrain.
+  ///
+  /// In en, this message translates to:
+  /// **'No data available. Let\'s start training to build your record!'**
+  String get noDataToTrain;
+
+  /// No description provided for @premiumUnlockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Premium Unlock (Remove Ads)'**
+  String get premiumUnlockTitle;
+
+  /// No description provided for @premiumUnlockDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock all features and remove ads forever.'**
+  String get premiumUnlockDescription;
+
+  /// No description provided for @premiumUnlockButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to Premium'**
+  String get premiumUnlockButton;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

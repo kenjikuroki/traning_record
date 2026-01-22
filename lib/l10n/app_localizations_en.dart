@@ -1489,4 +1489,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get awardClose => 'Close';
+
+  @override
+  String get sisterAppPromotionTitle => 'Specialized Bench Press App Released!';
+
+  @override
+  String get sisterAppPromotionDialogTitle => 'Open Store?';
+
+  @override
+  String get sisterAppPromotionDialogMessage => 'Do you want to open the store page for the Bench Press app?';
+
+  @override
+  String get sisterAppPromotionDialogCancel => 'Cancel';
+
+  @override
+  String get sisterAppPromotionDialogGo => 'Go to Store';
+
+  @override
+  String get unlockGraph => 'Watch Video to Unlock Graph';
+
+  @override
+  String get noDataToTrain => 'No data available. Let\'s start training to build your record!';
+
+  @override
+  String get premiumUnlockTitle => 'Premium Unlock (Remove Ads)';
+
+  @override
+  String get premiumUnlockDescription => 'Unlock all features and remove ads forever.';
+
+  @override
+  String get premiumUnlockButton => 'Upgrade to Premium';
 }

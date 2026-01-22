@@ -634,6 +634,122 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
             children: [
+              // ─────────────────────────────────
+              // プレミアムアンロック (広告削除)
+              // ─────────────────────────────────
+              ValueListenableBuilder<bool>(
+                valueListenable: SettingsManager.isPremiumNotifier,
+                builder: (context, isPremium, child) {
+                  if (isPremium) {
+                    return const SizedBox.shrink(); // プレミアム済みなら非表示（もしくはお祝い表示？）
+                  }
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    elevation: 4,
+                    shadowColor: Colors.amber.withOpacity(0.4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B), // Amber 600
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () async {
+                            // 課金モック処理
+                            final ok = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: Text(l10n.premiumUnlockTitle),
+                                content: Text(l10n.premiumUnlockDescription),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: Text(l10n.sisterAppPromotionDialogCancel),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    child: const Text('Unlock (Mock)'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (ok == true) {
+                              await SettingsManager.setPremium(true);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Premium Unlocked (Mock)!')),
+                                );
+                              }
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(16),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white24,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.diamond_outlined,
+                                    color: Colors.white,
+                                    size: 32,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        l10n.premiumUnlockTitle,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          shadows: [
+                                            Shadow(
+                                              blurRadius: 4,
+                                              color: Colors.black26,
+                                              offset: Offset(0, 2),
+                                            )
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        l10n.premiumUnlockButton,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  color: Colors.white70,
+                                  size: 18,
+                                )
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
 
 
               // ─────────────────────────────────

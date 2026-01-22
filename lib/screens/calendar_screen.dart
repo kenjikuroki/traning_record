@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -20,6 +21,7 @@ import '../models/menu_data.dart';
 import '../models/meal.dart';
 import '../models/exercise_catalog.dart';
 import '../widgets/ad_banner.dart';
+import '../widgets/sister_app_banner.dart';
 import '../settings_manager.dart';
 import '../utils/training_display_utils.dart';
 import 'record_screen.dart';
@@ -559,6 +561,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   bool _requiresResultsUnlock(DateTime day, bool hasRecord) {
+    if (SettingsManager.isPremium) return false;
     if (!hasRecord) return false;
     if (_isUnlockPeriodActive()) return false;
     final DateTime today = DateTime.now();
@@ -2659,8 +2662,6 @@ double _baseRowHeight(BuildContext context) {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const AdBanner(screenName: 'calendar'),
-                              const SizedBox(height: 6),
                               Expanded(
                                 child: _buildCalendar(
                                   context,
@@ -3982,6 +3983,8 @@ double _baseRowHeight(BuildContext context) {
     final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
     final bool hasRecord = (rec != null) && _hasAnyData(rec);
 
+    final bool showAd = Random().nextInt(3) == 0;
+
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -4120,6 +4123,12 @@ double _baseRowHeight(BuildContext context) {
                             ),
                         ],
                       ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: showAd
+                          ? const AdBanner(screenName: 'record_overlay')
+                          : const SisterAppBanner(),
                     ),
                     const Divider(height: 1),
                     Padding(

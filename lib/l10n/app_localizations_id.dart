@@ -583,8 +583,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get resultsCopied => 'Data hasil disalin';
 
   @override
-  String get calendarLockedResultsMessage =>
-      'Catatan yang lebih dari 10 hari lalu akan muncul setelah menonton iklan.';
+  String get calendarLockedResultsMessage => 'Catatan yang lebih dari 10 hari lalu akan muncul setelah menonton iklan.';
 
   @override
   String get calendarLockedResultsButton => 'Lihat catatan';
@@ -1490,4 +1489,34 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get awardClose => 'Tutup';
+
+  @override
+  String get sisterAppPromotionTitle => 'Specialized Bench Press App Released!';
+
+  @override
+  String get sisterAppPromotionDialogTitle => 'Open Store?';
+
+  @override
+  String get sisterAppPromotionDialogMessage => 'Do you want to open the store page for the Bench Press app?';
+
+  @override
+  String get sisterAppPromotionDialogCancel => 'Cancel';
+
+  @override
+  String get sisterAppPromotionDialogGo => 'Go to Store';
+
+  @override
+  String get unlockGraph => 'Watch Video to Unlock Graph';
+
+  @override
+  String get noDataToTrain => 'No data available. Let\'s start training to build your record!';
+
+  @override
+  String get premiumUnlockTitle => 'Buka Premium (Hapus Iklan)';
+
+  @override
+  String get premiumUnlockDescription => 'Buka semua fitur dan hapus iklan selamanya.';
+
+  @override
+  String get premiumUnlockButton => 'Tingkatkan ke Premium';
 }

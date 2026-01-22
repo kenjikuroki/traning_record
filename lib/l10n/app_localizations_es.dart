@@ -583,8 +583,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get resultsCopied => 'Resultados copiados';
 
   @override
-  String get calendarLockedResultsMessage =>
-      'Los registros de hace más de 10 días aparecerán después de ver un anuncio.';
+  String get calendarLockedResultsMessage => 'Los registros de hace más de 10 días aparecerán después de ver un anuncio.';
 
   @override
   String get calendarLockedResultsButton => 'Ver registros';
@@ -1490,4 +1489,34 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get awardClose => 'Cerrar';
+
+  @override
+  String get sisterAppPromotionTitle => 'Specialized Bench Press App Released!';
+
+  @override
+  String get sisterAppPromotionDialogTitle => 'Open Store?';
+
+  @override
+  String get sisterAppPromotionDialogMessage => 'Do you want to open the store page for the Bench Press app?';
+
+  @override
+  String get sisterAppPromotionDialogCancel => 'Cancel';
+
+  @override
+  String get sisterAppPromotionDialogGo => 'Go to Store';
+
+  @override
+  String get unlockGraph => 'Ver video para desbloquear gráfico';
+
+  @override
+  String get noDataToTrain => 'No hay datos disponibles. ¡Empieza a entrenar para crear tu registro!';
+
+  @override
+  String get premiumUnlockTitle => 'Desbloqueo Premium (Sin Anuncios)';
+
+  @override
+  String get premiumUnlockDescription => 'Desbloquea todas las funciones y elimina los anuncios para siempre.';
+
+  @override
+  String get premiumUnlockButton => 'Actualizar a Premium';
 }

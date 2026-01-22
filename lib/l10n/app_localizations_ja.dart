@@ -1489,4 +1489,34 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get awardClose => '閉じる';
+
+  @override
+  String get sisterAppPromotionTitle => 'ベンチプレスに特化したアプリがリリース！';
+
+  @override
+  String get sisterAppPromotionDialogTitle => 'ストアを開く';
+
+  @override
+  String get sisterAppPromotionDialogMessage => 'ベンチプレス特化アプリのストアページを開きますか？';
+
+  @override
+  String get sisterAppPromotionDialogCancel => 'キャンセル';
+
+  @override
+  String get sisterAppPromotionDialogGo => 'ストアへ';
+
+  @override
+  String get unlockGraph => '動画視聴でグラフをアンロック';
+
+  @override
+  String get noDataToTrain => 'データがありません。まずはトレーニングをして実績を作りましょう。';
+
+  @override
+  String get premiumUnlockTitle => 'プレミアム登録（広告全削除）';
+
+  @override
+  String get premiumUnlockDescription => 'すべての機能を制限なく利用し、広告を完全に削除します。';
+
+  @override
+  String get premiumUnlockButton => 'プレミアムにアップグレード';
 }

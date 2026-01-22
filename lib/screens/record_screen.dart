@@ -16,6 +16,8 @@ import '../models/menu_data.dart';
 import '../settings_manager.dart';
 import '../utils/training_display_utils.dart';
 import '../widgets/ad_banner.dart';
+import '../widgets/sister_app_banner.dart';
+import '../widgets/premium_unlock_banner.dart';
 import '../widgets/big_earning_ad.dart';
 import '../widgets/stopwatch_widget.dart';
 import '../widgets/notification_soft_ask.dart';
@@ -242,6 +244,18 @@ enum AwardType {
 
 class _RecordScreenState extends State<RecordScreen>
     with WidgetsBindingObserver, TickerProviderStateMixin {
+  
+  // バナー振り分け: 0=Sister, 1=Premium, else=Ad
+  Widget _buildInputCardBanner() {
+    if (_menuOverlayBannerType == 0) {
+      return const SisterAppBanner();
+    } else if (_menuOverlayBannerType == 1) {
+      return const PremiumUnlockBanner();
+    } else {
+      return const AdBanner(screenName: 'record_overlay');
+    }
+  }
+
   // ▼ 戻る遷移中の再描画発火を抑止するフラグ
   bool _isPopping = false;
 
@@ -391,6 +405,8 @@ class _RecordScreenState extends State<RecordScreen>
 
   int? _currentSectionIndex;
   int? _currentMenuIndex;
+  // 0: sister, 1: premium, others: ad
+  int _menuOverlayBannerType = 0;
 
   bool _showSavedChip = false;
   Timer? _savedChipTimer;
@@ -5408,6 +5424,7 @@ class _RecordScreenState extends State<RecordScreen>
       _menuOverlayOpening = false;
       _fabOpen = false;
       _menuSlideIn = false;
+      _menuOverlayBannerType = Random().nextInt(6);
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -6291,7 +6308,7 @@ class _RecordScreenState extends State<RecordScreen>
   Widget _buildStopwatchCard() {
     final cs = Theme.of(context).colorScheme;
     return Card(
-      key: _kStopwatchArea,
+
       color: cs.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       elevation: 1.0,
@@ -6383,9 +6400,9 @@ class _RecordScreenState extends State<RecordScreen>
     }
 
     if (!mounted) return;
-    await _maybeShowExitInterstitial();
-    if (!mounted) return;
     Navigator.of(context).pop();
+    // 画面を閉じてから広告を出す（閉じた後のチラつき防止）
+    await _maybeShowExitInterstitial();
   }
 
   // パーソナル編集用オーバーレイ（上から/高さ0.4/背景薄暗 + フェード＆スケール）
@@ -6405,7 +6422,8 @@ class _RecordScreenState extends State<RecordScreen>
     final bool showBmr =
         (widget.settingsBox.get('manage.bmr') as bool?) ?? false;
 
-    const double topGap = 12.0;
+    final double safeTop = MediaQuery.of(context).padding.top;
+    final double topGap = safeTop + 10.0;
     final Color headerBg = cs.primary;
     final Color headerFg = cs.onPrimary;
     final TextStyle headerLabelStyle = TextStyle(
@@ -6526,10 +6544,10 @@ class _RecordScreenState extends State<RecordScreen>
         ),
 
         Positioned(
-          left: 12,
-          right: 12,
+          left: 4,
+          right: 4,
           top: topGap,
-          bottom: MediaQuery.of(context).padding.bottom + 12,
+          bottom: MediaQuery.of(context).padding.bottom + 4,
           child: AnimatedSlide(
             duration: _overlaySlideDuration,
             curve: _overlayInCurve,
@@ -6909,7 +6927,8 @@ class _RecordScreenState extends State<RecordScreen>
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final safeBottom = media.padding.bottom;
     final double bottomSpacerHeight = bottomInset + safeBottom + 12;
-    const double topOffset = 12.0;
+    final double safeTop = media.padding.top;
+    final double topOffset = safeTop + 10.0;
     final Color headerBg = cs.primary;
     final Color headerFg = cs.onPrimary;
     const double mealNoColumnWidth = 36.0;
@@ -6955,8 +6974,8 @@ class _RecordScreenState extends State<RecordScreen>
           ),
         ),
         Positioned(
-          left: 12,
-          right: 12,
+          left: 4,
+          right: 4,
           top: topOffset,
           bottom: 0,
           child: AnimatedSlide(
@@ -7425,7 +7444,8 @@ class _RecordScreenState extends State<RecordScreen>
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final safeBottom = media.padding.bottom;
     final double bottomSpacerHeight = bottomInset + safeBottom + 12;
-    const double topOffset = 12.0;
+    final double safeTop = media.padding.top;
+    final double topOffset = safeTop + 12.0;
     final Color headerBg = cs.primary;
     final Color headerFg = cs.onPrimary;
 
@@ -7656,8 +7676,9 @@ class _RecordScreenState extends State<RecordScreen>
       overlayColor: overlayHeaderFg.withOpacity(0.12),
     );
 
-    final double topGap = 12.0;
-    final double bottomGap = media.padding.bottom + 12;
+    final double safeTop = media.padding.top;
+    final double topGap = safeTop + 10.0;
+    final double bottomGap = media.padding.bottom + 4;
     final bool canAddSetButton = !isAerobic &&
         menuIndex < section.setInputDataList.length &&
         section.setInputDataList[menuIndex].length < 10;
@@ -7678,8 +7699,8 @@ class _RecordScreenState extends State<RecordScreen>
         ),
 
         Positioned(
-          left: 12,
-          right: 12,
+          left: 4,
+          right: 4,
           top: topGap,
           bottom: bottomGap,
           child: AnimatedSlide(
@@ -7711,6 +7732,7 @@ class _RecordScreenState extends State<RecordScreen>
                     scale: _menuSlideIn ? 1.0 : 0.98,
                     child: Column(
                       children: [
+
                         // ヘッダー：左=部位、右=＋セット＆保存
                         Padding(
                           padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
@@ -7949,7 +7971,10 @@ class _RecordScreenState extends State<RecordScreen>
                             ),
                           ),
                         ),
-
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                          child: _buildInputCardBanner(),
+                        ),
                       ],
                     ),
                   ),
@@ -8951,68 +8976,72 @@ class _RecordScreenState extends State<RecordScreen>
             if (didPop) return;
             await _handleExit();
           },
-          child: Scaffold(
-          extendBody: true,
-          resizeToAvoidBottomInset: false,
-          backgroundColor: SettingsManager.backgroundAssetNotifier.value.isEmpty
-              ? null
-              : Colors.transparent,
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            leading: inputOverlayActive
-                ? const SizedBox.shrink()
-                : BackButton(
-                    onPressed: () {
-                      _isPopping = true;
-                      try {
-                        _awardPreviewQueue?.clear();
-                      } catch (_) {}
-                      Navigator.of(context).maybePop();
-                    },
-                  ),
-            leadingWidth: inputOverlayActive ? 0 : null,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            surfaceTintColor: Colors.transparent,
-            backgroundColor: colorScheme.primary,
-            foregroundColor: colorScheme.onPrimary,
-            titleTextStyle: Theme.of(context)
-                .appBarTheme
-                .titleTextStyle
-                ?.copyWith(color: colorScheme.onPrimary),
-            centerTitle: false,
-            titleSpacing: 16,
-            toolbarHeight: 56,
-            title: Text(DateFormat('yyyy/MM/dd').format(widget.selectedDate)),
-          ),
-          body: Stack(
+          child: Stack(
             children: [
-              body,
-              blurLayer,
-              overlay,
-              dial,
+              Scaffold(
+                extendBody: true,
+                resizeToAvoidBottomInset: false,
+                backgroundColor: SettingsManager.backgroundAssetNotifier.value.isEmpty
+                    ? null
+                    : Colors.transparent,
+                appBar: AppBar(
+                  automaticallyImplyLeading: false,
+                  leading: inputOverlayActive
+                      ? const SizedBox.shrink()
+                      : BackButton(
+                          onPressed: () {
+                            _isPopping = true;
+                            try {
+                              _awardPreviewQueue?.clear();
+                            } catch (_) {}
+                            Navigator.of(context).maybePop();
+                          },
+                        ),
+                  leadingWidth: inputOverlayActive ? 0 : null,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  surfaceTintColor: Colors.transparent,
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                  titleTextStyle: Theme.of(context)
+                      .appBarTheme
+                      .titleTextStyle
+                      ?.copyWith(color: colorScheme.onPrimary),
+                  centerTitle: false,
+                  titleSpacing: 16,
+                  toolbarHeight: 56,
+                  title: Text(DateFormat('yyyy/MM/dd').format(widget.selectedDate)),
+                ),
+                body: Stack(
+                  children: [
+                    body,
+                    blurLayer,
+                    overlay,
+                    dial,
+                    doneOverlay,
+                  ],
+                ),
+                floatingActionButton: (!keyboardVisible &&
+                        !_memoOverlayVisible &&
+                        !_memoOverlayOpen &&
+                        !_menuOverlayVisible &&
+                        !_mealOverlayVisible &&
+                        !_personalOverlayVisible)
+                    ? AnimatedPadding(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
+                        padding: EdgeInsets.only(
+                            bottom: (kbInset > 0 ? kbInset + 10 : 14)),
+                        child: fabMain,
+                      )
+                    : null,
+                floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+              ),
               _buildMealEditorOverlay(),
               _buildMenuEditorOverlay(),
               _buildMemoEditorOverlay(),
-              _buildPersonalEditorOverlay(), // ← 追加
-              doneOverlay,
+              _buildPersonalEditorOverlay(),
             ],
-          ),
-          floatingActionButton: (!keyboardVisible &&
-                  !_memoOverlayVisible &&
-                  !_memoOverlayOpen &&
-                  !_menuOverlayVisible &&
-                  !_mealOverlayVisible &&
-                  !_personalOverlayVisible)
-              ? AnimatedPadding(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOutCubic,
-                  padding: EdgeInsets.only(
-                      bottom: (kbInset > 0 ? kbInset + 10 : 14)),
-                  child: fabMain,
-                )
-              : null,
-          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         ),
       ),
     ),
@@ -9506,58 +9535,29 @@ class MenuListPreview extends StatelessWidget {
       }
 
       Widget buildGrid() {
-        final Color headerDividerColor =
-            Theme.of(context).colorScheme.outlineVariant;
-        const double headerDividerHeight = 26.0;
+
 
         final headers = <Widget>[
           cell('SET', fw: FontWeight.w700),
-          Container(
-              width: 1.0,
-              height: headerDividerHeight,
-              color: headerDividerColor),
-
           cell(
             l10n.weightUnit,
             fw: FontWeight.w700,
             padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 6.0),
           ),
-          Container(
-              width: 1.0,
-              height: headerDividerHeight,
-              color: headerDividerColor),
-
           cell(l10n.reps, fw: FontWeight.w700),
 
           if (showRirColumn) ...[
-            Container(
-                width: 1.0,
-                height: headerDividerHeight,
-                color: headerDividerColor),
             cell(l10n.rirLabel, fw: FontWeight.w700),
           ],
 
           if (showRmColumn) ...[
-            Container(
-                width: 1.0,
-                height: headerDividerHeight,
-                color: headerDividerColor),
             cell(l10n.rmLabel, fw: FontWeight.w700),
           ],
 
           if (showFailColumn) ...[
-            Container(
-                width: 1.0,
-                height: headerDividerHeight,
-                color: headerDividerColor),
             cell(l10n.failureLabel, fw: FontWeight.w700, maxLines: 2),
           ],
 
-          // ✔ 列を使っている場合のみ、直前に縦線を入れる
-          Container(
-              width: 1.0,
-              height: headerDividerHeight,
-              color: headerDividerColor),
           cell('✔', fw: FontWeight.w700),
         ];
 

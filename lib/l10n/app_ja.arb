@@ -558,5 +558,15 @@
   },
   "awardSaved": "画像をアルバムに保存しました",
   "awardShare": "シェア",
-  "awardClose": "閉じる"
+  "awardClose": "閉じる",
+  "sisterAppPromotionTitle": "ベンチプレスに特化したアプリがリリース！",
+  "sisterAppPromotionDialogTitle": "ストアを開く",
+  "sisterAppPromotionDialogMessage": "ベンチプレス特化アプリのストアページを開きますか？",
+  "sisterAppPromotionDialogCancel": "キャンセル",
+  "sisterAppPromotionDialogGo": "ストアへ",
+  "unlockGraph": "動画視聴でグラフをアンロック",
+  "noDataToTrain": "データがありません。まずはトレーニングをして実績を作りましょう。",
+  "premiumUnlockTitle": "プレミアム登録（広告全削除）",
+  "premiumUnlockDescription": "すべての機能を制限なく利用し、広告を完全に削除します。",
+  "premiumUnlockButton": "プレミアムにアップグレード"
 }
