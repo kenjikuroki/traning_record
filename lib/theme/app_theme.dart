@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../settings_manager.dart';
 
@@ -140,11 +141,16 @@ ThemeData appThemeLight(BuildContext context) {
     textTheme: tt,
     appBarTheme: AppBarTheme(
       elevation: 0,
-      scrolledUnderElevation: 0,          // すりガラス感を無効
+      scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
-      backgroundColor: barColor,           // ← カード色に寄せた少し濃い色
+      backgroundColor: barColor,
       foregroundColor: cs.onSurface,
       titleTextStyle: tt.titleLarge,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark, // 黒いアイコン
+        statusBarBrightness: Brightness.light,    // iOS用の設定
+      ),
     ),
     cardTheme: CardThemeData(
       color: AppTokens.surfaceLight,       // ← カード色（基準）
@@ -243,9 +249,14 @@ ThemeData appThemeDark(BuildContext context) {
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
-      backgroundColor: barColor,            // ← カード色に寄せた少し濃い色
+      backgroundColor: barColor,
       foregroundColor: cs.onSurface,
       titleTextStyle: tt.titleLarge,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light, // 白いアイコン
+        statusBarBrightness: Brightness.dark,     // iOS用の設定
+      ),
     ),
     cardTheme: CardThemeData(
       color: AppTokens.surfaceDark,

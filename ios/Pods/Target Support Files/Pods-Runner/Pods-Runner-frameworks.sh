@@ -176,6 +176,11 @@ code_sign_if_enabled() {
 }
 
 if [[ "$CONFIGURATION" == "Debug" ]]; then
+  install_framework "${BUILT_PRODUCTS_DIR}/FirebaseCore/FirebaseCore.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/FirebaseCoreInternal/FirebaseCoreInternal.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/FirebaseInstallations/FirebaseInstallations.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/GoogleUtilities/GoogleUtilities.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/PromisesObjC/FBLPromises.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/app_tracking_transparency/app_tracking_transparency.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/audio_session/audio_session.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/camera_avfoundation/camera_avfoundation.framework"
@@ -184,8 +189,10 @@ if [[ "$CONFIGURATION" == "Debug" ]]; then
   install_framework "${BUILT_PRODUCTS_DIR}/flutter_native_timezone/flutter_native_timezone.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/home_widget/home_widget.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/image_picker_ios/image_picker_ios.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/in_app_purchase_storekit/in_app_purchase_storekit.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/in_app_review/in_app_review.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/just_audio/just_audio.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/nanopb/nanopb.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/package_info_plus/package_info_plus.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/path_provider_foundation/path_provider_foundation.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/share_plus/share_plus.framework"
@@ -195,6 +202,11 @@ if [[ "$CONFIGURATION" == "Debug" ]]; then
   install_framework "${BUILT_PRODUCTS_DIR}/webview_flutter_wkwebview/webview_flutter_wkwebview.framework"
 fi
 if [[ "$CONFIGURATION" == "Profile" ]]; then
+  install_framework "${BUILT_PRODUCTS_DIR}/FirebaseCore/FirebaseCore.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/FirebaseCoreInternal/FirebaseCoreInternal.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/FirebaseInstallations/FirebaseInstallations.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/GoogleUtilities/GoogleUtilities.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/PromisesObjC/FBLPromises.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/app_tracking_transparency/app_tracking_transparency.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/audio_session/audio_session.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/camera_avfoundation/camera_avfoundation.framework"
@@ -203,8 +215,10 @@ if [[ "$CONFIGURATION" == "Profile" ]]; then
   install_framework "${BUILT_PRODUCTS_DIR}/flutter_native_timezone/flutter_native_timezone.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/home_widget/home_widget.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/image_picker_ios/image_picker_ios.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/in_app_purchase_storekit/in_app_purchase_storekit.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/in_app_review/in_app_review.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/just_audio/just_audio.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/nanopb/nanopb.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/package_info_plus/package_info_plus.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/path_provider_foundation/path_provider_foundation.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/share_plus/share_plus.framework"
@@ -214,6 +228,11 @@ if [[ "$CONFIGURATION" == "Profile" ]]; then
   install_framework "${BUILT_PRODUCTS_DIR}/webview_flutter_wkwebview/webview_flutter_wkwebview.framework"
 fi
 if [[ "$CONFIGURATION" == "Release" ]]; then
+  install_framework "${BUILT_PRODUCTS_DIR}/FirebaseCore/FirebaseCore.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/FirebaseCoreInternal/FirebaseCoreInternal.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/FirebaseInstallations/FirebaseInstallations.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/GoogleUtilities/GoogleUtilities.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/PromisesObjC/FBLPromises.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/app_tracking_transparency/app_tracking_transparency.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/audio_session/audio_session.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/camera_avfoundation/camera_avfoundation.framework"
@@ -222,8 +241,10 @@ if [[ "$CONFIGURATION" == "Release" ]]; then
   install_framework "${BUILT_PRODUCTS_DIR}/flutter_native_timezone/flutter_native_timezone.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/home_widget/home_widget.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/image_picker_ios/image_picker_ios.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/in_app_purchase_storekit/in_app_purchase_storekit.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/in_app_review/in_app_review.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/just_audio/just_audio.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/nanopb/nanopb.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/package_info_plus/package_info_plus.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/path_provider_foundation/path_provider_foundation.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/share_plus/share_plus.framework"

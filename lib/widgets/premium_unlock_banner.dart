@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
+import '../services/iap_service.dart';
 import '../settings_manager.dart';
 
 class PremiumUnlockBanner extends StatelessWidget {
@@ -24,31 +25,13 @@ class PremiumUnlockBanner extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: () async {
-                // 課金モック処理 (SettingsScreenと同じ)
-                final ok = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: Text(l10n.premiumUnlockTitle),
-                    content: Text(l10n.premiumUnlockDescription),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: Text(l10n.sisterAppPromotionDialogCancel),
-                      ),
-                      FilledButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('Unlock (Mock)'),
-                      ),
-                    ],
-                  ),
-                );
-                if (ok == true) {
-                  await SettingsManager.setPremium(true);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Premium Unlocked (Mock)!')),
-                    );
-                  }
+                if (IAPService.instance.isBusy.value) return;
+                
+                final success = await IAPService.instance.purchasePremium();
+                if (!success && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Purchase failed or canceled')),
+                  );
                 }
               },
               child: Padding(
@@ -70,10 +53,25 @@ class PremiumUnlockBanner extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.diamond_outlined,
-                        color: Colors.white,
-                        size: 28,
+                      child: ValueListenableBuilder<bool>(
+                        valueListenable: IAPService.instance.isBusy,
+                        builder: (context, isBusy, _) {
+                          if (isBusy) {
+                            return const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 3,
+                              ),
+                            );
+                          }
+                          return const Icon(
+                            Icons.diamond_outlined,
+                            color: Colors.white,
+                            size: 28,
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(width: 12),

@@ -27,6 +27,7 @@ import '../utils/training_display_utils.dart';
 import 'record_screen.dart';
 import 'graph_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/premium_unlock_banner.dart';
 import '../routes/slide_up_route.dart';
 
 import '../widgets/centered_constrained.dart';
@@ -104,10 +105,10 @@ const Map<String, String> _specialEmptyAssetsByMonthDay = {
   // '01-01': 'assets/calendar_empty/newyear.png',
   // '12-25': 'assets/calendar_empty/xmas.png',
 
-  '01-30': 'assets/calendar/marry0130.png', // 毎年 1/30
-  '06-27': 'assets/calendar/girls0627.png', // 毎年 6/27
-  '04-16': 'assets/calendar/boys0416.png',  // 毎年 4/16
-  '12-25': 'assets/calendar/Xmas1225.png',  // 毎年 12/25
+  // '01-30': 'assets/calendar/marry0130.png', // 毎年 1/30
+  // '06-27': 'assets/calendar/girls0627.png', // 毎年 6/27
+  // '04-16': 'assets/calendar/boys0416.png',  // 毎年 4/16
+  // '12-25': 'assets/calendar/Xmas1225.png',  // 毎年 12/25
 };
 
 // 固定年月日（yyyy-MM-dd）
@@ -127,7 +128,7 @@ String _emptyStateAssetFor(DateTime d) {
     return _specialEmptyAssetsByMonthDay[md]!;
   }
   return _weekdayEmptyAssets[d.weekday] ??
-      'assets/illustrations/empty/calendar/default.png';
+      'assets/calendar/mon.png';
 }
 
 // 空画像の実体解決（存在チェック → default → 無ければ空文字でアイコンフォールバック）
@@ -137,10 +138,10 @@ Future<String> _calendarResolveEmptyAsset(DateTime d) async {
     await rootBundle.load(primary);
     return primary;
   } catch (_) {
-    const fallback = 'assets/illustrations/empty/calendar/default.png';
+    const fallbackAlternative = 'assets/calendar/mon.png';
     try {
-      await rootBundle.load(fallback);
-      return fallback;
+      await rootBundle.load(fallbackAlternative);
+      return fallbackAlternative;
     } catch (_) {
       return ''; // アイコン表示にフォールバック
     }
@@ -576,6 +577,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<InterstitialAd?> _prepareResultsInterstitial() async {
+    if (SettingsManager.isPremium) return null;
     if (SettingsManager.demoMode) {
       return null;
     }
@@ -1157,94 +1159,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> _showWelcomeCardSequence(BuildContext context) async {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context)!;
-
-    // 記録画面のヒントに合わせた色合い（青背景＋白文字）
-    const Color _hintBlue = Color(0xFF2563EB); // brand-like blue
-    const Color _hintFg = Colors.white;
-
-    int step = 0;
-    bool closed = false;
-
-    await showGeneralDialog(
-      context: context,
-      barrierLabel: 'welcome',
-      barrierDismissible: true,
-      barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 360),
-      transitionBuilder: (ctx, anim, secAnim, child) {
-        final curved = CurvedAnimation(
-          parent: anim,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInOutCubic,
-        );
-        return FadeTransition(
-          opacity: curved,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.98, end: 1.0).animate(curved),
-            child: child,
-          ),
-        );
-      },
-      pageBuilder: (ctx, a1, a2) {
-        return StatefulBuilder(
-          builder: (ctx, setState) {
-            // 自動遷移は無し。タップでのみ進む/閉じる。
-            final String message =
-                (step == 0) ? l10n.welcomeThankYou : l10n.hintTapPlus;
-
-            void nextOrClose() {
-              if (step == 0) {
-                setState(() => step = 1);
-              } else {
-                closed = true;
-                Navigator.of(ctx).pop();
-              }
-            }
-
-            return GestureDetector(
-              onTap: nextOrClose, // 画面外側タップでも進む/閉じる（不要ならこの行を削除）
-              child: Scaffold(
-                backgroundColor: Colors.transparent,
-                body: Center(
-                  child: GestureDetector(
-                    onTap: nextOrClose, // カード本体タップで次へ/閉じる
-                    behavior: HitTestBehavior.opaque,
-                    child: Container(
-                      constraints: const BoxConstraints(maxWidth: 560),
-                      margin: const EdgeInsets.symmetric(horizontal: 20),
-                      padding: const EdgeInsets.fromLTRB(24, 22, 24, 22),
-                      decoration: BoxDecoration(
-                        color: _hintBlue, // ★ 青背景
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.25),
-                            blurRadius: 18,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        message,
-                        textAlign: TextAlign.start,
-                        style: const TextStyle(
-                          color: _hintFg, // ★ 白文字
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
+    // Legacy popup removed as per user request.
+    // Logic was: showed welcomeThankYou and hintTapPlus in a dialog.
+    return;
   }
 
   // 「5.3」→「5km300m」
@@ -2244,7 +2161,25 @@ double _baseRowHeight(BuildContext context) {
 
     Widget _partChip(String part) {
       final label = _translatePartToLocale(context, part);
-      final boxColor = _colorForPart(part, cs);
+      Color boxColor = _colorForPart(part, cs);
+      
+      // Check if part is completed
+      bool isCompleted = true;
+      if (record != null && record.menus.containsKey(part)) {
+        final menus = record.menus[part]!;
+        for (final m in menus) {
+          if ((m.checkedStates ?? []).contains(false)) {
+            isCompleted = false;
+            break;
+          }
+        }
+      }
+
+      // If incomplete, make it lighter/fainter
+      if (!isCompleted) {
+        boxColor = boxColor.withOpacity(0.4);
+      }
+
       final textOnBox =
           ThemeData.estimateBrightnessForColor(boxColor) == Brightness.dark
               ? Colors.white
@@ -3256,10 +3191,20 @@ double _baseRowHeight(BuildContext context) {
     // 有酸素
     final List<MenuData> aerobicMenus =
         (record.menus['有酸素運動'] as List<MenuData>?) ?? const <MenuData>[];
+    
+    // 完了チェック済みの有酸素メニューのみ抽出
+    final List<MenuData> visibleAerobicMenus = aerobicMenus.where((m) {
+      if (!_menuHasAnyData(m)) return false;
+      // チェック状態が無ければ表示（過去データ互換）、あれば先頭がtrueか確認
+      if (m.checkedStates == null || m.checkedStates!.isEmpty) return true;
+      return m.checkedStates![0];
+    }).toList();
+
     final double aerobicTotal = _totalAerobicCalories(record);
     final double? energyBalance =
         bmrValue != null ? (mealTotal - (bmrValue + aerobicTotal)) : null;
-    if (aerobicMenus.any(_menuHasAnyData)) {
+
+    if (visibleAerobicMenus.isNotEmpty) {
       aerobicWidgets.add(
         Padding(
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
@@ -3270,7 +3215,7 @@ double _baseRowHeight(BuildContext context) {
           ),
         ),
       );
-      for (final m in aerobicMenus) {
+      for (final m in visibleAerobicMenus) {
         aerobicWidgets.add(
           _selectableLine(
             text: _localizedMenuName(l10n, '有酸素運動', m.name),
@@ -3360,6 +3305,27 @@ double _baseRowHeight(BuildContext context) {
       for (final m in menuList) {
         if (!_menuHasAnyData(m)) continue;
 
+        final int len = (m.weights.length < m.reps.length)
+            ? m.weights.length
+            : m.reps.length;
+
+        // チェック済みセットのインデックスを特定
+        final Set<int> visibleSetIndices = {};
+        if (m.checkedStates == null) {
+          // 従来のデータは全表示
+          for (int i = 0; i < len; i++) visibleSetIndices.add(i);
+        } else {
+          for (int i = 0; i < len; i++) {
+            if (i < m.checkedStates!.length && m.checkedStates![i]) {
+              visibleSetIndices.add(i);
+            }
+          }
+        }
+
+        // セットがあるのにチェック済みが1つもなければ、このメニュー自体を表示しない
+        // (len=0でtotalVolumeのみのような特殊ケースは許容する方針だが、基本はlen>0)
+        if (len > 0 && visibleSetIndices.isEmpty) continue;
+
         final String exerciseId = _canonicalExerciseId(originalPart, m.name);
         final bool isPr = _isPrExerciseOfTheDay(exerciseId);
 
@@ -3372,9 +3338,7 @@ double _baseRowHeight(BuildContext context) {
           ),
         );
 
-        final int len = (m.weights.length < m.reps.length)
-            ? m.weights.length
-            : m.reps.length;
+
         final unit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
         final bool showRmColumn = SettingsManager.showRM;
         final bool showRirColumn = SettingsManager.showRIR;
@@ -3417,6 +3381,8 @@ double _baseRowHeight(BuildContext context) {
         }
 
         for (int i = 0; i < len; i++) {
+          if (!visibleSetIndices.contains(i)) continue; // チェックされていないセットは非表示
+
           final wRaw = m.weights[i].toString().trim();
           final rRaw = m.reps[i].toString().trim();
           final String weightDisplay =
@@ -3729,11 +3695,19 @@ double _baseRowHeight(BuildContext context) {
     final double aerobicTotal = _totalAerobicCalories(record);
     final double? energyBalance =
         bmrValue != null ? (mealTotal - (bmrValue + aerobicTotal)) : null;
-    if (aerobicMenus.any(_menuHasAnyData)) {
+    
+    // 完了チェック済みの有酸素メニューのみ抽出
+    final List<MenuData> visibleAerobicMenus = aerobicMenus.where((m) {
+      if (!_menuHasAnyData(m)) return false;
+      if (m.checkedStates == null || m.checkedStates!.isEmpty) return true;
+      return m.checkedStates![0];
+    }).toList();
+
+    if (visibleAerobicMenus.isNotEmpty) {
       final sectionLines = <String>[
         '■${_translatePartToLocale(context, '有酸素運動')}'
       ];
-      for (final m in aerobicMenus) {
+      for (final m in visibleAerobicMenus) {
         if (!_menuHasAnyData(m)) continue;
         sectionLines.add(_localizedMenuName(l10n, '有酸素運動', m.name));
         final bool hasDistance = _hasPositiveDistanceValue(m.distance);
@@ -3763,7 +3737,27 @@ double _baseRowHeight(BuildContext context) {
 
       bool partHas = false;
       for (final m in menuList) {
-        if (_menuHasAnyData(m)) {
+        if (!_menuHasAnyData(m)) continue;
+        
+        final int len = (m.weights.length < m.reps.length)
+            ? m.weights.length
+            : m.reps.length;
+        
+        bool hasVisible = false;
+        if (m.checkedStates == null) {
+          hasVisible = (len > 0);
+        } else {
+          for(int i=0; i<len; i++) {
+             if (i < m.checkedStates!.length && m.checkedStates![i]) {
+               hasVisible = true;
+               break;
+             }
+          }
+        }
+        if (len > 0 && hasVisible) {
+          partHas = true;
+          break;
+        } else if (len == 0 && _menuHasAnyData(m)) {
           partHas = true;
           break;
         }
@@ -3776,11 +3770,26 @@ double _baseRowHeight(BuildContext context) {
 
       for (final m in menuList) {
         if (!_menuHasAnyData(m)) continue;
-        sectionLines.add(_localizedMenuName(l10n, originalPart, m.name));
 
         final int len = (m.weights.length < m.reps.length)
             ? m.weights.length
             : m.reps.length;
+
+        // チェック済みセットのインデックスを特定
+        final Set<int> visibleSetIndices = {};
+        if (m.checkedStates == null) {
+          for (int i = 0; i < len; i++) visibleSetIndices.add(i);
+        } else {
+          for (int i = 0; i < len; i++) {
+            if (i < m.checkedStates!.length && m.checkedStates![i]) {
+              visibleSetIndices.add(i);
+            }
+          }
+        }
+
+        if (len > 0 && visibleSetIndices.isEmpty) continue;
+
+        sectionLines.add(_localizedMenuName(l10n, originalPart, m.name));
         final unit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
         final bool showRmColumn = SettingsManager.showRM;
         final bool showRirColumn = SettingsManager.showRIR;
@@ -3823,6 +3832,8 @@ double _baseRowHeight(BuildContext context) {
         }
 
         for (int i = 0; i < len; i++) {
+          if (!visibleSetIndices.contains(i)) continue;
+          
           final wRaw = m.weights[i].toString().trim();
           final rRaw = m.reps[i].toString().trim();
           final String weightDisplay =
@@ -3983,7 +3994,10 @@ double _baseRowHeight(BuildContext context) {
     final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
     final bool hasRecord = (rec != null) && _hasAnyData(rec);
 
-    final bool showAd = Random().nextInt(3) == 0;
+    final double adRand = Random().nextDouble();
+    // 0.0 <= adRand < 0.8  => Ad (80%)
+    // 0.8 <= adRand < 0.9  => Sister (10%)
+    // 0.9 <= adRand < 1.0  => Premium (10%)
 
     await showModalBottomSheet(
       context: context,
@@ -4075,7 +4089,7 @@ double _baseRowHeight(BuildContext context) {
                                                   fit: BoxFit.contain,
                                                   errorBuilder: (_, __, ___) =>
                                                       Image.asset(
-                                                    'assets/illustrations/empty/calendar/mon.png',
+                                                    'assets/calendar/mon.png',
                                                     fit: BoxFit.contain,
                                                     errorBuilder:
                                                         (_, __, ___) => Icon(
@@ -4124,12 +4138,19 @@ double _baseRowHeight(BuildContext context) {
                         ],
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: showAd
-                          ? const AdBanner(screenName: 'record_overlay')
-                          : const SisterAppBanner(),
-                    ),
+                    if (!SettingsManager.isPremium)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: () {
+                          if (adRand < 0.8) {
+                            return const AdBanner(screenName: 'record_overlay');
+                          } else if (adRand < 0.9) {
+                            return const SisterAppBanner();
+                          } else {
+                            return const PremiumUnlockBanner();
+                          }
+                        }(),
+                      ),
                     const Divider(height: 1),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -4217,7 +4238,14 @@ double _baseRowHeight(BuildContext context) {
     // --- 有酸素 ---
     final List<MenuData> aerobicMenus =
         (record.menus['有酸素運動'] as List<MenuData>?) ?? const <MenuData>[];
-    if (aerobicMenus.any(_menuHasAnyData)) {
+    
+    final List<MenuData> visibleAerobicMenus = aerobicMenus.where((m) {
+      if (!_menuHasAnyData(m)) return false;
+      if (m.checkedStates == null || m.checkedStates!.isEmpty) return true;
+      return m.checkedStates![0];
+    }).toList();
+
+    if (visibleAerobicMenus.isNotEmpty) {
       summaryChildren.add(
         Padding(
           padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
@@ -4228,7 +4256,7 @@ double _baseRowHeight(BuildContext context) {
           ),
         ),
       );
-      for (final m in aerobicMenus) {
+      for (final m in visibleAerobicMenus) {
         summaryChildren.add(
           _selectableLine(
             text: _localizedMenuName(l10n, '有酸素運動', m.name),
@@ -4318,6 +4346,24 @@ double _baseRowHeight(BuildContext context) {
       for (final m in menuList) {
         if (!_menuHasAnyData(m)) continue;
 
+        final int len = (m.weights.length < m.reps.length)
+            ? m.weights.length
+            : m.reps.length;
+
+        // チェック済みセットのインデックスを特定
+        final Set<int> visibleSetIndices = {};
+        if (m.checkedStates == null) {
+          for (int i = 0; i < len; i++) visibleSetIndices.add(i);
+        } else {
+          for (int i = 0; i < len; i++) {
+            if (i < m.checkedStates!.length && m.checkedStates![i]) {
+              visibleSetIndices.add(i);
+            }
+          }
+        }
+
+        if (len > 0 && visibleSetIndices.isEmpty) continue;
+
         final String exerciseId = _canonicalExerciseId(originalPart, m.name);
         final bool isPr = _isPrExerciseOfTheDay(exerciseId);
 
@@ -4330,9 +4376,7 @@ double _baseRowHeight(BuildContext context) {
           ),
         );
 
-        final int len = (m.weights.length < m.reps.length)
-            ? m.weights.length
-            : m.reps.length;
+
         final unit = SettingsManager.currentUnit == 'kg' ? l10n.kg : l10n.lbs;
         final bool showRmColumn = SettingsManager.showRM;
         final bool showRirColumn = SettingsManager.showRIR;
@@ -4379,6 +4423,8 @@ double _baseRowHeight(BuildContext context) {
         }
 
         for (int i = 0; i < len; i++) {
+          if (!visibleSetIndices.contains(i)) continue; 
+
           final wRaw = m.weights[i].toString().trim();
           final rRaw = m.reps[i].toString().trim();
           final String weightDisplay =

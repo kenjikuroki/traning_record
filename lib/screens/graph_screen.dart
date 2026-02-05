@@ -634,7 +634,9 @@ class _GraphScreenState extends State<GraphScreen> {
   void initState() {
     super.initState();
     _isGraphUnlocked = false;
-    _loadRewardedAd();
+    if (!SettingsManager.isPremium) {
+      _loadRewardedAd();
+    }
 
     _settingsSubscription =
         widget.settingsBox.watch().listen(_handleSettingsBoxEvent);

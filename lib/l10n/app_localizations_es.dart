@@ -1350,10 +1350,91 @@ class AppLocalizationsEs extends AppLocalizations {
   String get bodyweight => 'Peso corporal';
 
   @override
+  String get tutorial => 'Tutorial';
+
+  @override
+  String get startTutorial => 'Iniciar tutorial';
+
+  @override
+  String get tutorials => 'Tutoriales';
+
+  @override
   String get welcomeThankYou => 'Gracias por descargar. ¡Que tengas un gran entrenamiento!';
 
   @override
   String get hintTapPlus => 'Toca el “+” para empezar a registrar.';
+
+  @override
+  String get onboardingWelcomeTitle => 'Configuremos TrainingRecord';
+
+  @override
+  String get onboardingWelcomeBody => 'Sigue estos pasos rápidos para entender cómo registrar.';
+
+  @override
+  String get onboardingTutorialDescription => 'Revisa los controles básicos en un recorrido breve.';
+
+  @override
+  String get onboardingSampleTitle => 'Cargar rutina de ejemplo';
+
+  @override
+  String get onboardingSampleDescription => 'Importa una plantilla de cuerpo completo para probar el registro al instante.';
+
+  @override
+  String get onboardingSampleButton => 'Cargar rutina de ejemplo';
+
+  @override
+  String get onboardingSampleAdded => 'Rutina de ejemplo agregada.';
+
+  @override
+  String get onboardingSampleAlreadyAdded => 'La rutina de ejemplo ya está agregada.';
+
+  @override
+  String get onboardingSampleError => 'No se pudo crear la rutina de ejemplo.';
+
+  @override
+  String get onboardingStyleQuestion => '¿Dónde entrenas normalmente?';
+
+  @override
+  String get onboardingStyleGym => 'Máquinas de gimnasio';
+
+  @override
+  String get onboardingStyleDumbbell => 'Mancuernas en casa';
+
+  @override
+  String get onboardingStyleBodyweight => 'Solo peso corporal';
+
+  @override
+  String get onboardingBodyPartQuestion => '¿Qué zonas quieres entrenar?';
+
+  @override
+  String get onboardingDayQuestion => '¿En qué días planeas entrenar?';
+
+  @override
+  String get onboardingRecordTitle => 'Ve a tu primer registro';
+
+  @override
+  String get onboardingRecordDescription => 'Abre la hoja de registro de inmediato y edita lo que quieras.';
+
+  @override
+  String get onboardingRecordButton => 'Abrir hoja de registro';
+
+  @override
+  String get onboardingSkip => 'Omitir';
+
+  @override
+  String get onboardingNext => 'Siguiente';
+
+  @override
+  String get onboardingDone => 'Listo';
+
+  @override
+  String get onboardingTutorialStepTap => 'Toca el botón +';
+
+  @override
+  String get onboardingTutorialStepPick => 'Elige tus ejercicios';
+
+  @override
+  String get onboardingTutorialStepCheck => 'Marca tras registrar';
 
   @override
   String get notiDailyTitle => '¡Vamos con todo hoy!';
@@ -1515,8 +1596,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get premiumUnlockTitle => 'Desbloqueo Premium (Sin Anuncios)';
 
   @override
-  String get premiumUnlockDescription => 'Desbloquea todas las funciones y elimina los anuncios para siempre.';
+  String get premiumUnlockDescription => 'Desbloquea todas las funciones y elimina los anuncios para siempre. ¡Apoya al desarrollador para que siga mejorando la app!';
 
   @override
-  String get premiumUnlockButton => 'Actualizar a Premium';
+  String get premiumUnlockButton => 'Apoyar al desarrollador y eliminar anuncios';
+
+  @override
+  String get restorePurchase => 'Restaurar compra';
 }

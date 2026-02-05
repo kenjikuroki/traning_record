@@ -703,7 +703,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
                   ),
 
                   // Sister App Banner
-                  if (!_inSelection) const SisterAppBanner(),
+                  if (!_inSelection && !SettingsManager.isPremium) const SisterAppBanner(),
                 ],
               ),
             ),

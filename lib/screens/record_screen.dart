@@ -247,6 +247,9 @@ class _RecordScreenState extends State<RecordScreen>
   
   // バナー振り分け: 0=Sister, 1=Premium, else=Ad
   Widget _buildInputCardBanner() {
+    if (SettingsManager.isPremium) {
+      return const SizedBox.shrink();
+    }
     if (_menuOverlayBannerType == 0) {
       return const SisterAppBanner();
     } else if (_menuOverlayBannerType == 1) {
@@ -485,7 +488,7 @@ class _RecordScreenState extends State<RecordScreen>
   Timer? _capTimer;
   DateTime? _backgroundedAt;
   bool _wasRunning = false;
-  bool _showFirstRecordHint = false;
+
   DateTime? _resumedAt;
 
   Timer? _scrollDebounce;
@@ -500,7 +503,7 @@ class _RecordScreenState extends State<RecordScreen>
   int _photoCaptureSinceAd = 0;
 
   void _loadExitInterstitial() {
-    if (!mounted || SettingsManager.demoMode) return;
+    if (!mounted || SettingsManager.demoMode || SettingsManager.isPremium) return;
     if (_exitInterstitialAd != null || _loadingExitInterstitial) return;
     _loadingExitInterstitial = true;
     final adUnitId = _resolveExitInterstitialUnitId();
@@ -531,7 +534,7 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   Future<InterstitialAd?> _preparePhotoInterstitial() async {
-    if (SettingsManager.demoMode) return null;
+    if (SettingsManager.demoMode || SettingsManager.isPremium) return null;
     if (_photoInterstitialAd != null) return _photoInterstitialAd;
     if (_photoInterstitialCompleter != null) {
       return _photoInterstitialCompleter!.future;
@@ -788,26 +791,7 @@ class _RecordScreenState extends State<RecordScreen>
       if (mounted) setState(() => _firstBuildDone = true);
     });
 
-    // First hint
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      final route = ModalRoute.of(context);
-      if (route?.isCurrent != true) return;
-      final box = widget.settingsBox;
-      final seen = box.get('hint_seen_record') as bool? ?? false;
-      if (seen) return;
 
-      final deadline = DateTime.now().add(const Duration(milliseconds: 800));
-      while (DateTime.now().isBefore(deadline)) {
-        if (!mounted) return;
-        if (_kRecordPart.currentContext != null) break;
-        await Future<void>.delayed(const Duration(milliseconds: 16));
-      }
-      if (!mounted || _kRecordPart.currentContext == null) return;
-
-      setState(() => _showFirstRecordHint = true);
-      await box.put('hint_seen_record', true);
-    });
 
     _inactivityTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       final idle = DateTime.now().difference(_lastInteractionAt);
@@ -966,52 +950,7 @@ class _RecordScreenState extends State<RecordScreen>
     );
   }
 
-  void _dismissFirstRecordHint() {
-    if (!_showFirstRecordHint) return;
-    setState(() => _showFirstRecordHint = false);
-  }
 
-  Widget _buildFirstRecordHintCard(
-      BuildContext context, AppLocalizations l10n) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 220),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      child: !_showFirstRecordHint
-          ? const SizedBox.shrink()
-          : Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: GestureDetector(
-                onTap: _dismissFirstRecordHint,
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  key: const ValueKey('recordFirstHint'),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2F6AA6),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x332F6AA6),
-                        blurRadius: 18,
-                        offset: Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-                  child: Text(
-                    l10n.hintRecordFirst,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      height: 1.45,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-    );
-  }
 
   String _formatAppBarDate(BuildContext context) {
     final locale = Localizations.localeOf(context);
@@ -1031,7 +970,7 @@ class _RecordScreenState extends State<RecordScreen>
       if (!mounted) return;
       setState(() => _showSavedChip = false);
     });
-    NotificationSoftAsk.showIfNeeded(context);
+
   }
 
   Future<void> _dismissKeyboardSafely(BuildContext ctx) async {
@@ -2096,7 +2035,7 @@ class _RecordScreenState extends State<RecordScreen>
   double _roundToSingleDecimal(double value) =>
       (value * 10).round().toDouble() / 10.0;
 
-  double _preferredWeightInitial() {
+  double? _preferredWeightInitial() {
     final previous =
         _latestRecordMetricBeforeSelected((record) => record.weight);
     if (previous != null) {
@@ -2109,27 +2048,25 @@ class _RecordScreenState extends State<RecordScreen>
           : personalKg * _kPoundsPerKg;
       return _roundToSingleDecimal(display);
     }
-    final defaultDisplay = SettingsManager.currentUnit == 'kg'
-        ? _kDefaultWeightKg
-        : _kDefaultWeightKg * _kPoundsPerKg;
-    return _roundToSingleDecimal(defaultDisplay);
+    return null;
   }
 
-  double _preferredBodyFatInitial() {
+  double? _preferredBodyFatInitial() {
     final previous =
         _latestRecordMetricBeforeSelected((record) => record.bodyFatPercent) ??
             _latestPersonalMetricFromSettings('bodyFat');
     if (previous != null) {
       return _roundToSingleDecimal(previous);
     }
-    return _roundToSingleDecimal(_kDefaultBodyFatPercent);
+    return null;
   }
 
-  double _preferredWaistInitial() {
+  double? _preferredWaistInitial() {
     final previousCm =
         _latestRecordMetricBeforeSelected((record) => record.waistCm) ??
             _latestPersonalMetricFromSettings('waist');
-    final double cm = previousCm ?? _kDefaultWaistCm;
+    final double? cm = previousCm;
+    if (cm == null) return null;
     final double display = SettingsManager.isWaistInch ? cm / 2.54 : cm;
     return _roundToSingleDecimal(display);
   }
@@ -8050,12 +7987,12 @@ class _RecordScreenState extends State<RecordScreen>
         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
         child: Column(
           children: [
-            KeyedSubtree(
-              key: _kAdArea,
-              child: const AdBanner(screenName: 'record'),
-            ),
-            const SizedBox(height: 0.0),
-            _buildFirstRecordHintCard(context, l10n),
+            if (!SettingsManager.isPremium)
+              KeyedSubtree(
+                key: _kAdArea,
+                child: const AdBanner(screenName: 'record'),
+              ),
+
             Visibility(
               visible: SettingsManager.showStopwatch,
               maintainState: true,

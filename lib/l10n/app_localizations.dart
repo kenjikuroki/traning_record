@@ -9,6 +9,7 @@ import 'app_localizations_en.dart';
 import 'app_localizations_es.dart';
 import 'app_localizations_id.dart';
 import 'app_localizations_ja.dart';
+import 'app_localizations_kl.dart';
 
 // ignore_for_file: type=lint
 
@@ -96,7 +97,8 @@ abstract class AppLocalizations {
     Locale('en'),
     Locale('es'),
     Locale('id'),
-    Locale('ja')
+    Locale('ja'),
+    Locale('kl')
   ];
 
   /// No description provided for @appTitle.
@@ -2733,6 +2735,24 @@ abstract class AppLocalizations {
   /// **'Bodyweight'**
   String get bodyweight;
 
+  /// No description provided for @tutorial.
+  ///
+  /// In en, this message translates to:
+  /// **'Tutorial'**
+  String get tutorial;
+
+  /// No description provided for @startTutorial.
+  ///
+  /// In en, this message translates to:
+  /// **'Start tutorial'**
+  String get startTutorial;
+
+  /// No description provided for @tutorials.
+  ///
+  /// In en, this message translates to:
+  /// **'Tutorials'**
+  String get tutorials;
+
   /// No description provided for @welcomeThankYou.
   ///
   /// In en, this message translates to:
@@ -2744,6 +2764,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap the “+” to start logging.'**
   String get hintTapPlus;
+
+  /// No description provided for @onboardingWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Let\'s set up TrainingRecord'**
+  String get onboardingWelcomeTitle;
+
+  /// No description provided for @onboardingWelcomeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow these quick steps to understand how logging works.'**
+  String get onboardingWelcomeBody;
+
+  /// No description provided for @onboardingTutorialDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'See the basic controls in a short walkthrough.'**
+  String get onboardingTutorialDescription;
+
+  /// No description provided for @onboardingSampleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Load a sample routine'**
+  String get onboardingSampleTitle;
+
+  /// No description provided for @onboardingSampleDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Import a full-body template so you can try logging immediately.'**
+  String get onboardingSampleDescription;
+
+  /// No description provided for @onboardingSampleButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Load sample routine'**
+  String get onboardingSampleButton;
+
+  /// No description provided for @onboardingSampleAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample routine added.'**
+  String get onboardingSampleAdded;
+
+  /// No description provided for @onboardingSampleAlreadyAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample routine already added.'**
+  String get onboardingSampleAlreadyAdded;
+
+  /// No description provided for @onboardingSampleError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not create the sample routine.'**
+  String get onboardingSampleError;
+
+  /// No description provided for @onboardingStyleQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Where do you usually train?'**
+  String get onboardingStyleQuestion;
+
+  /// No description provided for @onboardingStyleGym.
+  ///
+  /// In en, this message translates to:
+  /// **'Gym machines'**
+  String get onboardingStyleGym;
+
+  /// No description provided for @onboardingStyleDumbbell.
+  ///
+  /// In en, this message translates to:
+  /// **'Home dumbbells'**
+  String get onboardingStyleDumbbell;
+
+  /// No description provided for @onboardingStyleBodyweight.
+  ///
+  /// In en, this message translates to:
+  /// **'Bodyweight only'**
+  String get onboardingStyleBodyweight;
+
+  /// No description provided for @onboardingBodyPartQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Which areas do you want to train?'**
+  String get onboardingBodyPartQuestion;
+
+  /// No description provided for @onboardingDayQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Which days do you plan to train?'**
+  String get onboardingDayQuestion;
+
+  /// No description provided for @onboardingRecordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump into your first log'**
+  String get onboardingRecordTitle;
+
+  /// No description provided for @onboardingRecordDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the record sheet right away and edit anything you like.'**
+  String get onboardingRecordDescription;
+
+  /// No description provided for @onboardingRecordButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Open record sheet'**
+  String get onboardingRecordButton;
+
+  /// No description provided for @onboardingSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get onboardingSkip;
+
+  /// No description provided for @onboardingNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get onboardingNext;
+
+  /// No description provided for @onboardingDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get onboardingDone;
+
+  /// No description provided for @onboardingTutorialStepTap.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the + button'**
+  String get onboardingTutorialStepTap;
+
+  /// No description provided for @onboardingTutorialStepPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick your exercises'**
+  String get onboardingTutorialStepPick;
+
+  /// No description provided for @onboardingTutorialStepCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check after logging'**
+  String get onboardingTutorialStepCheck;
 
   /// No description provided for @notiDailyTitle.
   ///
@@ -3048,20 +3212,26 @@ abstract class AppLocalizations {
   /// No description provided for @premiumUnlockTitle.
   ///
   /// In en, this message translates to:
-  /// **'Premium Unlock (Remove Ads)'**
+  /// **'Premium Version'**
   String get premiumUnlockTitle;
 
   /// No description provided for @premiumUnlockDescription.
   ///
   /// In en, this message translates to:
-  /// **'Unlock all features and remove ads forever.'**
+  /// **''**
   String get premiumUnlockDescription;
 
   /// No description provided for @premiumUnlockButton.
   ///
   /// In en, this message translates to:
-  /// **'Upgrade to Premium'**
+  /// **'Purchase and remove ads'**
   String get premiumUnlockButton;
+
+  /// No description provided for @restorePurchase.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore Purchase'**
+  String get restorePurchase;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
@@ -3073,7 +3243,7 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'es', 'id', 'ja'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'es', 'id', 'ja', 'kl'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -3088,6 +3258,7 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
     case 'es': return AppLocalizationsEs();
     case 'id': return AppLocalizationsId();
     case 'ja': return AppLocalizationsJa();
+    case 'kl': return AppLocalizationsKl();
   }
 
   throw FlutterError(

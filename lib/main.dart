@@ -4,10 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:flutter/scheduler.dart' show SchedulerBinding;
 import 'dart:io' show Platform; // ★ 追加
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'services/iap_service.dart';
 import 'theme/app_theme.dart';
 
 import 'models/menu_data.dart';
@@ -26,6 +28,14 @@ Future<void> _initAudioSession() async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Firebase初期化 (設定ファイルがない場合はスキップ)
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Firebase initialization skip or error: $e');
+  }
+
   await _initAudioSession();
 
   await Hive.initFlutter();
@@ -45,6 +55,7 @@ Future<void> main() async {
   await NotificationService.instance.requestPermissionsIfNeeded();
 
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  await IAPService.instance.init();
 
   final recordsBox = await Hive.openBox<DailyRecord>('dailyRecords');
   // 型安全化：List<MenuData> 保持用
@@ -194,30 +205,43 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 return ValueListenableBuilder<String>(
                   valueListenable: SettingsManager.backgroundAssetNotifier,
                   builder: (context, bg, __) {
-                    if (bg.isEmpty) {
-                      return child ?? const SizedBox.shrink();
-                    }
-                    return Container(
-                      decoration: BoxDecoration(
-                        image: DecorationImage(
-                          image: AssetImage(bg),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      child: Theme(
-                        data: Theme.of(context).copyWith(
-                          scaffoldBackgroundColor: Colors.transparent,
-                          canvasColor: Colors.transparent,
-                          cardColor: Colors.transparent,
-                          dialogBackgroundColor: Colors.transparent,
-                          bottomSheetTheme: const BottomSheetThemeData(
-                            backgroundColor: Colors.transparent,
-                            surfaceTintColor: Colors.transparent,
-                            elevation: 0,
-                          ),
-                        ),
-                        child: child ?? const SizedBox.shrink(),
-                      ),
+                    final theme = Theme.of(context);
+                    final overlayStyle = theme.brightness == Brightness.light
+                        ? SystemUiOverlayStyle.dark.copyWith(
+                            statusBarColor: Colors.transparent,
+                          )
+                        : SystemUiOverlayStyle.light.copyWith(
+                            statusBarColor: Colors.transparent,
+                          );
+
+                    Widget result = bg.isEmpty
+                        ? (child ?? const SizedBox.shrink())
+                        : Container(
+                            decoration: BoxDecoration(
+                              image: DecorationImage(
+                                image: AssetImage(bg),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            child: Theme(
+                              data: theme.copyWith(
+                                scaffoldBackgroundColor: Colors.transparent,
+                                canvasColor: Colors.transparent,
+                                cardColor: Colors.transparent,
+                                dialogBackgroundColor: Colors.transparent,
+                                bottomSheetTheme: const BottomSheetThemeData(
+                                  backgroundColor: Colors.transparent,
+                                  surfaceTintColor: Colors.transparent,
+                                  elevation: 0,
+                                ),
+                              ),
+                              child: child ?? const SizedBox.shrink(),
+                            ),
+                          );
+
+                    return AnnotatedRegion<SystemUiOverlayStyle>(
+                      value: overlayStyle,
+                      child: result,
                     );
                   },
                 );

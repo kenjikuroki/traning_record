@@ -1350,10 +1350,91 @@ class AppLocalizationsJa extends AppLocalizations {
   String get bodyweight => '自重';
 
   @override
+  String get tutorial => 'チュートリアル';
+
+  @override
+  String get startTutorial => 'チュートリアルを開始';
+
+  @override
+  String get tutorials => 'チュートリアル';
+
+  @override
   String get welcomeThankYou => 'ダウンロードいただきありがとうございます。良いトレーニングライフをお過ごしください。';
 
   @override
   String get hintTapPlus => '記録を始めるには、「＋」をタップしてください。';
+
+  @override
+  String get onboardingWelcomeTitle => 'TrainingRecordを始めましょう';
+
+  @override
+  String get onboardingWelcomeBody => 'チュートリアルとサンプルで使い方をすぐに確認できます。';
+
+  @override
+  String get onboardingTutorialDescription => '基本操作を短いチュートリアルで確認できます。';
+
+  @override
+  String get onboardingSampleTitle => 'サンプルルーティン';
+
+  @override
+  String get onboardingSampleDescription => '胸・背中・有酸素のセットを自動で読み込みます。';
+
+  @override
+  String get onboardingSampleButton => 'サンプルを読み込む';
+
+  @override
+  String get onboardingSampleAdded => 'サンプルルーティンを追加しました。';
+
+  @override
+  String get onboardingSampleAlreadyAdded => 'サンプルは追加済みです。';
+
+  @override
+  String get onboardingSampleError => 'サンプルを作成できませんでした。';
+
+  @override
+  String get onboardingStyleQuestion => '普段のトレーニング環境を選んでください';
+
+  @override
+  String get onboardingStyleGym => 'ジムでマシン';
+
+  @override
+  String get onboardingStyleDumbbell => '自宅でダンベル';
+
+  @override
+  String get onboardingStyleBodyweight => '自重中心';
+
+  @override
+  String get onboardingBodyPartQuestion => '鍛えたい部位を選択してください';
+
+  @override
+  String get onboardingDayQuestion => 'トレーニングする曜日を選択してください';
+
+  @override
+  String get onboardingRecordTitle => '初回記録ショートカット';
+
+  @override
+  String get onboardingRecordDescription => 'すぐに記録画面を開いて入力を始めましょう。';
+
+  @override
+  String get onboardingRecordButton => '記録画面を開く';
+
+  @override
+  String get onboardingSkip => 'スキップ';
+
+  @override
+  String get onboardingNext => '次へ';
+
+  @override
+  String get onboardingDone => '完了';
+
+  @override
+  String get onboardingTutorialStepTap => '＋をタップ';
+
+  @override
+  String get onboardingTutorialStepPick => '種目を選ぶ';
+
+  @override
+  String get onboardingTutorialStepCheck => '入力後にチェック';
 
   @override
   String get notiDailyTitle => '今日も頑張りましょう！';
@@ -1512,11 +1593,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get noDataToTrain => 'データがありません。まずはトレーニングをして実績を作りましょう。';
 
   @override
-  String get premiumUnlockTitle => 'プレミアム登録（広告全削除）';
+  String get premiumUnlockTitle => 'プレミアム版';
 
   @override
-  String get premiumUnlockDescription => 'すべての機能を制限なく利用し、広告を完全に削除します。';
+  String get premiumUnlockDescription => '';
 
   @override
-  String get premiumUnlockButton => 'プレミアムにアップグレード';
+  String get premiumUnlockButton => '購入して広告を完全に削除';
+
+  @override
+  String get restorePurchase => '購入を復元';
 }

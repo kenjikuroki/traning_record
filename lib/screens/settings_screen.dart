@@ -10,8 +10,9 @@ import 'package:ttraining_record/l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../settings_manager.dart';
 import '../constants/backgrounds.dart';
-import '../widgets/centered_constrained.dart';
+import '../services/iap_service.dart';
 import 'notification_settings_screen.dart';
+import '../widgets/centered_constrained.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
@@ -644,106 +645,180 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     return const SizedBox.shrink(); // プレミアム済みなら非表示（もしくはお祝い表示？）
                   }
                   return Card(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     margin: const EdgeInsets.only(bottom: 12),
                     elevation: 4,
-                    shadowColor: Colors.amber.withOpacity(0.4),
+                    shadowColor: Colors.black.withOpacity(0.1),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF59E0B), // Amber 600
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () async {
-                            // 課金モック処理
-                            final ok = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: Text(l10n.premiumUnlockTitle),
-                                content: Text(l10n.premiumUnlockDescription),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx, false),
-                                    child: Text(l10n.sisterAppPromotionDialogCancel),
-                                  ),
-                                  FilledButton(
-                                    onPressed: () => Navigator.pop(ctx, true),
-                                    child: const Text('Unlock (Mock)'),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        // No gradient, using Card color
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            // Inner Card (Content - Dark Gold)
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFF59E0B), // Amber 600
+                                    Color(0xFFFF8F00), // Amber 800
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFF59E0B)
+                                        .withOpacity(0.4),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
                                   ),
                                 ],
                               ),
-                            );
-                            if (ok == true) {
-                              await SettingsManager.setPremium(true);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Premium Unlocked (Mock)!')),
-                                );
-                              }
-                            }
-                          },
-                          borderRadius: BorderRadius.circular(16),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white24,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.diamond_outlined,
-                                    color: Colors.white,
-                                    size: 32,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        l10n.premiumUnlockTitle,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          shadows: [
-                                            Shadow(
-                                              blurRadius: 4,
-                                              color: Colors.black26,
-                                              offset: Offset(0, 2),
-                                            )
-                                          ],
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 24, horizontal: 16),
+                              width: double.infinity,
+                              child: Column(
+                                children: [
+                                  // Title
+                                  Text(
+                                    l10n.premiumUnlockTitle,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Color(0xFFFFF8E1), // Amber 50
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black12,
+                                          offset: Offset(0, 2),
+                                          blurRadius: 4,
                                         ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        l10n.premiumUnlockButton,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                const Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  color: Colors.white70,
-                                  size: 18,
-                                )
-                              ],
+                                  if (l10n.premiumUnlockDescription.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    // Description
+                                    Text(
+                                      l10n.premiumUnlockDescription,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: const Color(0xFFFFF8E1)
+                                            .withOpacity(0.9),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 20),
+                                  // Purchase Button (Light Yellow)
+                                  Container(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 220),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(30),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.2),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ElevatedButton(
+                                      onPressed: () async {
+                                        if (IAPService.instance.isBusy.value)
+                                          return;
+                                        final success = await IAPService
+                                            .instance
+                                            .purchasePremium();
+                                        if (!success && context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                  'Purchase failed or canceled'),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFFFFFDE7), // Light Yellow
+                                        foregroundColor: const Color(0xFFF57C00), // Dark Orange text
+                                        elevation: 0,
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(30),
+                                        ),
+                                        minimumSize:
+                                            const Size(double.infinity, 0),
+                                      ),
+                                      child: ValueListenableBuilder<bool>(
+                                        valueListenable:
+                                            IAPService.instance.isBusy,
+                                        builder: (context, isBusy, child) {
+                                          if (isBusy) {
+                                            return const SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                color: Color(0xFFF57C00),
+                                                strokeWidth: 2,
+                                              ),
+                                            );
+                                          }
+                                          return Text(
+                                            l10n.premiumUnlockButton,
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 12),
+                            // Restore Link (On Outer Card - Dark Text)
+                            TextButton(
+                              onPressed: () async {
+                                if (IAPService.instance.isBusy.value) return;
+                                await IAPService.instance.restorePurchases();
+                              },
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.grey[600],
+                                tapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                minimumSize: const Size(0, 32),
+                                padding: EdgeInsets.zero,
+                              ),
+                              child: Text(
+                                l10n.restorePurchase,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: Colors.grey[400],
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

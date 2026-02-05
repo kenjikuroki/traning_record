@@ -30,8 +30,8 @@
     }
   },
   "platforms": {
-    "ios": "12.0",
-    "osx": "10.14"
+    "ios": "13.0",
+    "osx": "10.15"
   },
   "swift_versions": "5.0",
   "resource_bundles": {

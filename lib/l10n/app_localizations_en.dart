@@ -1350,10 +1350,91 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bodyweight => 'Bodyweight';
 
   @override
+  String get tutorial => 'Tutorial';
+
+  @override
+  String get startTutorial => 'Start tutorial';
+
+  @override
+  String get tutorials => 'Tutorials';
+
+  @override
   String get welcomeThankYou => 'Thanks for downloading. Have a great training life!';
 
   @override
   String get hintTapPlus => 'Tap the “+” to start logging.';
+
+  @override
+  String get onboardingWelcomeTitle => 'Let\'s set up TrainingRecord';
+
+  @override
+  String get onboardingWelcomeBody => 'Follow these quick steps to understand how logging works.';
+
+  @override
+  String get onboardingTutorialDescription => 'See the basic controls in a short walkthrough.';
+
+  @override
+  String get onboardingSampleTitle => 'Load a sample routine';
+
+  @override
+  String get onboardingSampleDescription => 'Import a full-body template so you can try logging immediately.';
+
+  @override
+  String get onboardingSampleButton => 'Load sample routine';
+
+  @override
+  String get onboardingSampleAdded => 'Sample routine added.';
+
+  @override
+  String get onboardingSampleAlreadyAdded => 'Sample routine already added.';
+
+  @override
+  String get onboardingSampleError => 'Could not create the sample routine.';
+
+  @override
+  String get onboardingStyleQuestion => 'Where do you usually train?';
+
+  @override
+  String get onboardingStyleGym => 'Gym machines';
+
+  @override
+  String get onboardingStyleDumbbell => 'Home dumbbells';
+
+  @override
+  String get onboardingStyleBodyweight => 'Bodyweight only';
+
+  @override
+  String get onboardingBodyPartQuestion => 'Which areas do you want to train?';
+
+  @override
+  String get onboardingDayQuestion => 'Which days do you plan to train?';
+
+  @override
+  String get onboardingRecordTitle => 'Jump into your first log';
+
+  @override
+  String get onboardingRecordDescription => 'Open the record sheet right away and edit anything you like.';
+
+  @override
+  String get onboardingRecordButton => 'Open record sheet';
+
+  @override
+  String get onboardingSkip => 'Skip';
+
+  @override
+  String get onboardingNext => 'Next';
+
+  @override
+  String get onboardingDone => 'Done';
+
+  @override
+  String get onboardingTutorialStepTap => 'Tap the + button';
+
+  @override
+  String get onboardingTutorialStepPick => 'Pick your exercises';
+
+  @override
+  String get onboardingTutorialStepCheck => 'Check after logging';
 
   @override
   String get notiDailyTitle => 'Let’s keep it up today!';
@@ -1512,11 +1593,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noDataToTrain => 'No data available. Let\'s start training to build your record!';
 
   @override
-  String get premiumUnlockTitle => 'Premium Unlock (Remove Ads)';
+  String get premiumUnlockTitle => 'Premium Version';
 
   @override
-  String get premiumUnlockDescription => 'Unlock all features and remove ads forever.';
+  String get premiumUnlockDescription => '';
 
   @override
-  String get premiumUnlockButton => 'Upgrade to Premium';
+  String get premiumUnlockButton => 'Purchase and remove ads';
+
+  @override
+  String get restorePurchase => 'Restore Purchase';
 }

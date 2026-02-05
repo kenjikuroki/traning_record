@@ -1350,10 +1350,91 @@ class AppLocalizationsId extends AppLocalizations {
   String get bodyweight => 'Berat badan';
 
   @override
+  String get tutorial => 'Tutorial';
+
+  @override
+  String get startTutorial => 'Mulai tutorial';
+
+  @override
+  String get tutorials => 'Tutorial';
+
+  @override
   String get welcomeThankYou => 'Terima kasih telah mengunduh. Semoga latihannya seru!';
 
   @override
   String get hintTapPlus => 'Ketuk “+” untuk mulai mencatat.';
+
+  @override
+  String get onboardingWelcomeTitle => 'Mari siapkan TrainingRecord';
+
+  @override
+  String get onboardingWelcomeBody => 'Ikuti langkah singkat ini untuk memahami cara mencatat.';
+
+  @override
+  String get onboardingTutorialDescription => 'Lihat kontrol dasar melalui panduan singkat.';
+
+  @override
+  String get onboardingSampleTitle => 'Muat rutinitas contoh';
+
+  @override
+  String get onboardingSampleDescription => 'Impor template seluruh tubuh agar bisa mencoba mencatat segera.';
+
+  @override
+  String get onboardingSampleButton => 'Muat rutinitas contoh';
+
+  @override
+  String get onboardingSampleAdded => 'Rutinitas contoh telah ditambahkan.';
+
+  @override
+  String get onboardingSampleAlreadyAdded => 'Rutinitas contoh sudah ditambahkan.';
+
+  @override
+  String get onboardingSampleError => 'Gagal membuat rutinitas contoh.';
+
+  @override
+  String get onboardingStyleQuestion => 'Biasanya kamu latihan di mana?';
+
+  @override
+  String get onboardingStyleGym => 'Mesin gym';
+
+  @override
+  String get onboardingStyleDumbbell => 'Dumbbell di rumah';
+
+  @override
+  String get onboardingStyleBodyweight => 'Hanya berat badan';
+
+  @override
+  String get onboardingBodyPartQuestion => 'Pilih bagian tubuh yang ingin dilatih';
+
+  @override
+  String get onboardingDayQuestion => 'Pilih hari latihan yang direncanakan';
+
+  @override
+  String get onboardingRecordTitle => 'Mulai catatan pertama';
+
+  @override
+  String get onboardingRecordDescription => 'Buka lembar catatan sekarang dan ubah apa pun yang kamu mau.';
+
+  @override
+  String get onboardingRecordButton => 'Buka lembar catatan';
+
+  @override
+  String get onboardingSkip => 'Lewati';
+
+  @override
+  String get onboardingNext => 'Berikutnya';
+
+  @override
+  String get onboardingDone => 'Selesai';
+
+  @override
+  String get onboardingTutorialStepTap => 'Ketuk tombol +';
+
+  @override
+  String get onboardingTutorialStepPick => 'Pilih latihanmu';
+
+  @override
+  String get onboardingTutorialStepCheck => 'Centang setelah isi';
 
   @override
   String get notiDailyTitle => 'Ayo semangat hari ini!';
@@ -1512,11 +1593,14 @@ class AppLocalizationsId extends AppLocalizations {
   String get noDataToTrain => 'No data available. Let\'s start training to build your record!';
 
   @override
-  String get premiumUnlockTitle => 'Buka Premium (Hapus Iklan)';
+  String get premiumUnlockTitle => 'Buka Premium (Hapus Semua Iklan)';
 
   @override
-  String get premiumUnlockDescription => 'Buka semua fitur dan hapus iklan selamanya.';
+  String get premiumUnlockDescription => 'Buka semua fitur dan hapus iklan selamanya. Dukung pengembang untuk terus meningkatkan aplikasi ini!';
 
   @override
-  String get premiumUnlockButton => 'Tingkatkan ke Premium';
+  String get premiumUnlockButton => 'Dukung Pengembang & Hapus Iklan';
+
+  @override
+  String get restorePurchase => 'Pulihkan pembelian';
 }

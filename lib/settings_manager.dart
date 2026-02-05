@@ -26,6 +26,8 @@ class SettingsManager {
   static const String _showStopwatchTimerKey =
       'show_stopwatch_timer'; // true/false
   static const String _keepScreenOnKey = 'keep_screen_on';
+  static const String _onboardingCompletedKey = 'onboarding_completed';
+  static const String _sampleRoutineKey = 'sample_routine_imported';
 
   // カレンダー連携（アプリ全体で使用するカレンダー）
   static const String _calendarIdKey = 'calendar.id';
@@ -87,6 +89,12 @@ class SettingsManager {
       ValueNotifier<bool>(false);
 
   static final ValueNotifier<bool> _manageBmrNotifier =
+      ValueNotifier<bool>(false);
+
+  static final ValueNotifier<bool> _onboardingCompletedNotifier =
+      ValueNotifier<bool>(false);
+
+  static final ValueNotifier<bool> _sampleRoutineImportedNotifier =
       ValueNotifier<bool>(false);
 
   // 体重入力の表示
@@ -182,6 +190,12 @@ class SettingsManager {
     _showFailNotifier.value = (box.get(_showFailKey) as bool?) ?? false;
     _keepScreenOnNotifier.value =
         (box.get(_keepScreenOnKey) as bool?) ?? false;
+
+    _onboardingCompletedNotifier.value =
+        (box.get(_onboardingCompletedKey) as bool?) ?? false;
+
+    _sampleRoutineImportedNotifier.value =
+        (box.get(_sampleRoutineKey) as bool?) ?? false;
 
     // 体重入力の表示
     _showWeightInputNotifier.value =
@@ -304,6 +318,16 @@ class SettingsManager {
   static bool get keepScreenOn => _keepScreenOnNotifier.value;
   static ValueNotifier<bool> get keepScreenOnNotifier =>
       _keepScreenOnNotifier;
+
+  static bool get hasCompletedOnboarding =>
+      _onboardingCompletedNotifier.value;
+  static ValueNotifier<bool> get onboardingCompletedNotifier =>
+      _onboardingCompletedNotifier;
+
+  static bool get hasImportedSampleRoutine =>
+      _sampleRoutineImportedNotifier.value;
+  static ValueNotifier<bool> get sampleRoutineImportedNotifier =>
+      _sampleRoutineImportedNotifier;
 
   /// 体重入力の表示
   static bool get showWeightInput => _showWeightInputNotifier.value;
@@ -437,6 +461,18 @@ class SettingsManager {
     await _ensureBox();
     await _box?.put(_keepScreenOnKey, keepOn);
     _keepScreenOnNotifier.value = keepOn;
+  }
+
+  static Future<void> setOnboardingCompleted(bool completed) async {
+    await _ensureBox();
+    await _box?.put(_onboardingCompletedKey, completed);
+    _onboardingCompletedNotifier.value = completed;
+  }
+
+  static Future<void> setSampleRoutineImported(bool imported) async {
+    await _ensureBox();
+    await _box?.put(_sampleRoutineKey, imported);
+    _sampleRoutineImportedNotifier.value = imported;
   }
 
   /// 体重入力の表示設定

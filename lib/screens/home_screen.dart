@@ -9,6 +9,7 @@ import 'calendar_screen.dart';
 import 'graph_screen.dart';
 import 'settings_screen.dart';
 import 'album_screen.dart';
+import 'onboarding_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
@@ -33,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
       GlobalKey<CalendarScreenState>();
   final GlobalKey<AlbumScreenState> _albumKey = GlobalKey<AlbumScreenState>();
   int _currentIndex = 0;
+  bool _showingOnboarding = false;
 
   int get _currentNavIndex =>
       _currentIndex <= 1 ? _currentIndex : _currentIndex + 1;
@@ -76,11 +78,53 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _showOnboardingIfNeeded();
+    });
   }
 
   @override
   void dispose() {
     super.dispose();
+  }
+
+  Future<void> _showOnboardingIfNeeded() async {
+    const bool forceForTests = false;
+    if (!forceForTests && SettingsManager.hasCompletedOnboarding) {
+      return;
+    }
+    if (!forceForTests && widget.recordsBox.isNotEmpty) {
+      await SettingsManager.setOnboardingCompleted(true);
+      return;
+    }
+    if (_showingOnboarding) {
+      return;
+    }
+    _showingOnboarding = true;
+    final result = await Navigator.of(context).push<OnboardingResult>(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => OnboardingScreen(
+          recordsBox: widget.recordsBox,
+          lastUsedMenusBox: widget.lastUsedMenusBox,
+          settingsBox: widget.settingsBox,
+        ),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+
+    _showingOnboarding = false;
+    if (!mounted) {
+      return;
+    }
+    if (result?.openRecord == true) {
+      if (_currentIndex != 0) {
+        setState(() => _currentIndex = 0);
+      }
+      await _handleAddAction();
+    }
   }
 
   void _onItemTapped(int index) async {
