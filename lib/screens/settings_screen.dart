@@ -1,18 +1,16 @@
 // lib/screens/settings_screen.dart
-import 'dart:ui'; // BackdropFilter 用
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
-import '../widgets/ad_square.dart';
-import '../widgets/ad_banner.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../settings_manager.dart';
 import '../constants/backgrounds.dart';
-import '../services/iap_service.dart';
 import 'notification_settings_screen.dart';
 import '../widgets/centered_constrained.dart';
+import '../widgets/app_dialog.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Box<DailyRecord> recordsBox;
@@ -35,7 +33,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   // 見た目の統一
   static const double _kGap = 0.0; // 連結カードの間隔（連結なので 0）
-  static const double _kGapAd = 12.0; // 広告前後の余白
   static const EdgeInsets _kCardMargin = EdgeInsets.symmetric(vertical: 2.0);
   static const double _kTileHeight = 56.0; // 見出し行の高さ
   static const double _kIconGap = 12.0; // アイコンと文字の距離
@@ -69,7 +66,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     'その他２',
     'その他３',
   ];
-  late Map<String, bool> _selectedBodyParts;
   bool _isBodyPartsExpanded = false;
   bool _isDisplayOptionsExpanded = false;
 
@@ -124,12 +120,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _showRIR = SettingsManager.showRIR;
     _showFail = SettingsManager.showFail;
     _screenOn = SettingsManager.keepScreenOn;
-
-    final Map stored =
-        (widget.settingsBox.get('selectedBodyParts') as Map?) ?? {};
-    _selectedBodyParts = {
-      for (final p in _bodyPartsOriginal) p: (stored[p] as bool?) ?? true
-    };
 
     _setCount = widget.setCountBox.get('setCount') ?? 3;
     _themeMode = SettingsManager.currentThemeMode;
@@ -219,16 +209,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // 小見出し（左詰め・他とトーン合わせ）
-  Widget _label(BuildContext context, String text) {
-    final cs = Theme.of(context).colorScheme;
-    return Text(
-      text,
-      style: TextStyle(
-          fontSize: 15, fontWeight: FontWeight.w600, color: cs.onSurface),
-    );
-  }
-
   // 背景変更
   void _onBackgroundChanged(String assetPath) {
     setState(() => _selectedBgAsset = assetPath);
@@ -277,22 +257,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _onAppColorThemeChanged(int nextIndex) async {
     final l10n = AppLocalizations.of(context)!;
 
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.settingsThemeConfirmTitle),
-        content: Text(l10n.settingsThemeConfirmMessage),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l10n.no),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l10n.yes),
-          ),
-        ],
-      ),
+    final ok = await showConfirmDialog(
+      context,
+      title: l10n.settingsThemeConfirmTitle,
+      message: l10n.settingsThemeConfirmMessage,
+      cancelLabel: l10n.no,
+      confirmLabel: l10n.yes,
+      icon: Icons.palette_outlined,
     );
 
     if (ok == true) {
@@ -636,198 +607,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
             children: [
               // ─────────────────────────────────
-              // プレミアムアンロック (広告削除)
-              // ─────────────────────────────────
-              ValueListenableBuilder<bool>(
-                valueListenable: SettingsManager.isPremiumNotifier,
-                builder: (context, isPremium, child) {
-                  if (isPremium) {
-                    return const SizedBox.shrink(); // プレミアム済みなら非表示（もしくはお祝い表示？）
-                  }
-                  return Card(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    elevation: 4,
-                    shadowColor: Colors.black.withOpacity(0.1),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        // No gradient, using Card color
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            // Inner Card (Content - Dark Gold)
-                            Container(
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFF59E0B), // Amber 600
-                                    Color(0xFFFF8F00), // Amber 800
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFFF59E0B)
-                                        .withOpacity(0.4),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 24, horizontal: 16),
-                              width: double.infinity,
-                              child: Column(
-                                children: [
-                                  // Title
-                                  Text(
-                                    l10n.premiumUnlockTitle,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Color(0xFFFFF8E1), // Amber 50
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.5,
-                                      shadows: [
-                                        Shadow(
-                                          color: Colors.black12,
-                                          offset: Offset(0, 2),
-                                          blurRadius: 4,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (l10n.premiumUnlockDescription.isNotEmpty) ...[
-                                    const SizedBox(height: 8),
-                                    // Description
-                                    Text(
-                                      l10n.premiumUnlockDescription,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: const Color(0xFFFFF8E1)
-                                            .withOpacity(0.9),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 20),
-                                  // Purchase Button (Light Yellow)
-                                  Container(
-                                    constraints:
-                                        const BoxConstraints(maxWidth: 220),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(30),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.2),
-                                          blurRadius: 6,
-                                          offset: const Offset(0, 3),
-                                        ),
-                                      ],
-                                    ),
-                                    child: ElevatedButton(
-                                      onPressed: () async {
-                                        if (IAPService.instance.isBusy.value)
-                                          return;
-                                        final success = await IAPService
-                                            .instance
-                                            .purchasePremium();
-                                        if (!success && context.mounted) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                  'Purchase failed or canceled'),
-                                            ),
-                                          );
-                                        }
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFFFFFDE7), // Light Yellow
-                                        foregroundColor: const Color(0xFFF57C00), // Dark Orange text
-                                        elevation: 0,
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 12),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(30),
-                                        ),
-                                        minimumSize:
-                                            const Size(double.infinity, 0),
-                                      ),
-                                      child: ValueListenableBuilder<bool>(
-                                        valueListenable:
-                                            IAPService.instance.isBusy,
-                                        builder: (context, isBusy, child) {
-                                          if (isBusy) {
-                                            return const SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                color: Color(0xFFF57C00),
-                                                strokeWidth: 2,
-                                              ),
-                                            );
-                                          }
-                                          return Text(
-                                            l10n.premiumUnlockButton,
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 0.5,
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            // Restore Link (On Outer Card - Dark Text)
-                            TextButton(
-                              onPressed: () async {
-                                if (IAPService.instance.isBusy.value) return;
-                                await IAPService.instance.restorePurchases();
-                              },
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.grey[600],
-                                tapTargetSize:
-                                    MaterialTapTargetSize.shrinkWrap,
-                                minimumSize: const Size(0, 32),
-                                padding: EdgeInsets.zero,
-                              ),
-                              child: Text(
-                                l10n.restorePurchase,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  decoration: TextDecoration.underline,
-                                  decorationColor: Colors.grey[400],
-                                  color: Colors.grey[600],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-
-              // ─────────────────────────────────
               // グループ①：パーソナル設定（最上段／下辺だけ直角）
               // ─────────────────────────────────
               Card(
@@ -1122,7 +901,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // 通知設定（パーソナル設定直後）
               Card(
                 color: colorScheme.surfaceContainerHighest,
-                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.zero),
                 margin: _kCardMargin,
                 child: Padding(
                   padding: _kOuterPad,
@@ -1165,7 +945,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onTap: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => const NotificationSettingsScreen(),
+                                builder: (_) =>
+                                    const NotificationSettingsScreen(),
                               ),
                             );
                           },
@@ -1216,61 +997,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 margin: _kCardMargin,
                 child: Padding(
                   padding: _kOuterPad,
-                  child: Theme(
-                    data: Theme.of(context).copyWith(
-                      dividerColor: Colors.transparent,
-                      splashFactory: NoSplash.splashFactory,
-                      splashColor: Colors.transparent,
-                      highlightColor: Colors.transparent,
-                      hoverColor: Colors.transparent,
-                    ),
-                    child: ExpansionTile(
-                      leading: SizedBox(
-                        width: 28,
-                        child: Icon(
-                          Icons.sports_gymnastics_outlined,
-                          size: 24,
-                          color: colorScheme.onSurfaceVariant,
+                  child: ValueListenableBuilder<Box<dynamic>>(
+                    valueListenable: widget.settingsBox.listenable(keys: const ['selectedBodyParts']),
+                    builder: (context, box, _) {
+                      final Map stored = (box.get('selectedBodyParts') as Map?) ?? {};
+                      final selectedParts = <String, bool>{
+                        for (final p in _bodyPartsOriginal) p: (stored[p] as bool?) ?? true,
+                      };
+                      return Theme(
+                        data: Theme.of(context).copyWith(
+                          dividerColor: Colors.transparent,
+                          splashFactory: NoSplash.splashFactory,
+                          splashColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                          hoverColor: Colors.transparent,
                         ),
-                      ),
-                      initiallyExpanded: _isBodyPartsExpanded,
-                      onExpansionChanged: (v) =>
-                          setState(() => _isBodyPartsExpanded = v),
-                      expandedAlignment: Alignment.centerLeft,
-                      tilePadding: const EdgeInsets.symmetric(horizontal: 0),
-                      childrenPadding: EdgeInsets.zero,
-                      title: Text(
-                        l10n.selectBodyParts,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(color: colorScheme.onSurface),
-                      ),
-                      children: _bodyPartsOriginal.map((original) {
-                        final translated = _translatePart(context, original);
-                        final current = _selectedBodyParts[original] ?? true;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 0),
-                          child: SwitchListTile(
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              translated,
-                              style: const TextStyle(
-                                  fontSize: 14.0, fontWeight: FontWeight.w500),
+                        child: ExpansionTile(
+                          leading: SizedBox(
+                            width: 28,
+                            child: Icon(
+                              Icons.sports_gymnastics_outlined,
+                              size: 24,
+                              color: colorScheme.onSurfaceVariant,
                             ),
-                            value: current,
-                            onChanged: (bool value) async {
-                              setState(
-                                  () => _selectedBodyParts[original] = value);
-                              await widget.settingsBox
-                                  .put('selectedBodyParts', _selectedBodyParts);
-                            },
-                            activeThumbColor: colorScheme.primary,
                           ),
-                        );
-                      }).toList(),
-                    ),
+                          initiallyExpanded: _isBodyPartsExpanded,
+                          onExpansionChanged: (v) =>
+                              setState(() => _isBodyPartsExpanded = v),
+                          expandedAlignment: Alignment.centerLeft,
+                          tilePadding: const EdgeInsets.symmetric(horizontal: 0),
+                          childrenPadding: EdgeInsets.zero,
+                          title: Text(
+                            l10n.selectBodyParts,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(color: colorScheme.onSurface),
+                          ),
+                          children: _bodyPartsOriginal.map((original) {
+                            final translated = _translatePart(context, original);
+                            final current = selectedParts[original] ?? true;
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 0),
+                              child: SwitchListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(
+                                  translated,
+                                  style: const TextStyle(
+                                      fontSize: 14.0, fontWeight: FontWeight.w500),
+                                ),
+                                value: current,
+                                onChanged: (bool value) async {
+                                  final updated = Map<String, bool>.from(selectedParts)..[original] = value;
+                                  await widget.settingsBox.put('selectedBodyParts', updated);
+                                },
+                                activeThumbColor: colorScheme.primary,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -1469,8 +1257,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // ─────────────────────────────────
               // 以下はその他設定
               // ─────────────────────────────────
-
-
 
               // ダークモード（ブロック先頭：上だけ角丸）
               Card(
@@ -1690,7 +1476,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         title: l10n.keepScreenOn,
                         trailing: Switch(
                           value: _screenOn,
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
                           onChanged: (v) {
                             setState(() => _screenOn = v);
                             SettingsManager.setKeepScreenOn(v);
@@ -1783,8 +1570,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           children: [
                                             _radio(l10n.kg, 'kg', _selectedUnit,
                                                 _onUnitChanged),
-                                            _radio(l10n.lbs, 'lbs', _selectedUnit,
-                                                _onUnitChanged),
+                                            _radio(l10n.lbs, 'lbs',
+                                                _selectedUnit, _onUnitChanged),
                                           ],
                                         ),
                                       ),
@@ -1903,8 +1690,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ) ??
+                      fontWeight: FontWeight.w600,
+                    ) ??
                 const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
         ],
@@ -1995,27 +1782,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _showAerobicCalorieHelp(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(l10n.aerobicCalorieInfoTitle),
-          content: Text(
-            l10n.aerobicCalorieInfoBody.replaceAll('\\n', '\n'),
-            style: const TextStyle(fontSize: 14, height: 1.6),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(l10n.close),
-            ),
-          ],
-        );
-      },
+    return showInfoDialog(
+      context,
+      title: l10n.aerobicCalorieInfoTitle,
+      message: l10n.aerobicCalorieInfoBody.replaceAll('\\n', '\n'),
+      okLabel: l10n.close,
+      icon: Icons.info_outline_rounded,
     );
   }
-
 }

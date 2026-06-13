@@ -583,12 +583,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get resultsCopied => 'Resultados copiados';
 
   @override
-  String get calendarLockedResultsMessage => 'Los registros de hace más de 10 días aparecerán después de ver un anuncio.';
-
-  @override
-  String get calendarLockedResultsButton => 'Ver registros';
-
-  @override
   String deleteSelectedConfirmTitle(Object count) {
     return '¿Eliminar $count elemento(s)?';
   }
@@ -1593,13 +1587,37 @@ class AppLocalizationsEs extends AppLocalizations {
   String get noDataToTrain => 'No hay datos disponibles. ¡Empieza a entrenar para crear tu registro!';
 
   @override
-  String get premiumUnlockTitle => 'Desbloqueo Premium (Sin Anuncios)';
+  String get premiumUnlockTitle => 'Premium';
 
   @override
-  String get premiumUnlockDescription => 'Desbloquea todas las funciones y elimina los anuncios para siempre. ¡Apoya al desarrollador para que siga mejorando la app!';
+  String get premiumUnlockDescription => 'Un pago unico para desbloquear el guardado de fotos y los graficos.';
 
   @override
-  String get premiumUnlockButton => 'Apoyar al desarrollador y eliminar anuncios';
+  String get premiumUnlockButton => 'Comprar y desbloquear';
+
+  @override
+  String get premiumFeaturePhotoSaving => 'Fotos';
+
+  @override
+  String get premiumFeatureGraphs => 'Graficos';
+
+  @override
+  String get premiumFeatureOneTime => 'Pago unico';
+
+  @override
+  String get premiumPhotoHeadline => 'Desbloquear guardado de fotos';
+
+  @override
+  String get premiumPhotoMessage => 'Guardar fotos es una funcion premium. Mejora para guardar tus fotos en el album.';
+
+  @override
+  String get premiumGraphHeadline => 'Desbloquear graficos';
+
+  @override
+  String get premiumGraphMessage => 'Los graficos son una funcion premium. Mejora para ver el progreso de tu entrenamiento.';
+
+  @override
+  String get purchaseFailed => 'Fallo en la compra';
 
   @override
   String get restorePurchase => 'Restaurar compra';

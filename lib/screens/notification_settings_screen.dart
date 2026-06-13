@@ -3,6 +3,7 @@ import 'package:ttraining_record/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import '../services/notification_service.dart';
 import '../services/notification_prefs.dart';
+import '../widgets/app_dialog.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -258,22 +259,13 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
     required String message,
   }) async {
     final s = AppLocalizations.of(context)!;
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(s.notiConfirmNo),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(s.notiConfirmYes),
-          ),
-        ],
-      ),
+    final result = await showConfirmDialog(
+      context,
+      title: title,
+      message: message,
+      cancelLabel: s.notiConfirmNo,
+      confirmLabel: s.notiConfirmYes,
+      icon: Icons.notifications_outlined,
     );
     return result ?? false;
   }

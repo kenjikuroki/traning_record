@@ -49,32 +49,12 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
-		<key>Google-Mobile-Ads-SDK-GoogleMobileAdsResources.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>Google-Mobile-Ads-SDK.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
 		<key>GoogleAdsOnDeviceConversion.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>
 		</dict>
 		<key>GoogleAppMeasurement.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>GoogleUserMessagingPlatform-UserMessagingPlatformResources.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>GoogleUserMessagingPlatform.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>
@@ -105,16 +85,6 @@
 			<false/>
 		</dict>
 		<key>PromisesObjC.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>app_tracking_transparency-app_tracking_transparency_privacy.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>app_tracking_transparency.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>
@@ -160,16 +130,6 @@
 			<false/>
 		</dict>
 		<key>flutter_native_timezone.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>google_mobile_ads-google_mobile_ads.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>google_mobile_ads.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>
@@ -285,16 +245,6 @@
 			<false/>
 		</dict>
 		<key>wakelock_plus.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>webview_flutter_wkwebview-webview_flutter_wkwebview_privacy.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>webview_flutter_wkwebview.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>

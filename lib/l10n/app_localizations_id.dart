@@ -583,12 +583,6 @@ class AppLocalizationsId extends AppLocalizations {
   String get resultsCopied => 'Data hasil disalin';
 
   @override
-  String get calendarLockedResultsMessage => 'Catatan yang lebih dari 10 hari lalu akan muncul setelah menonton iklan.';
-
-  @override
-  String get calendarLockedResultsButton => 'Lihat catatan';
-
-  @override
   String deleteSelectedConfirmTitle(Object count) {
     return 'Hapus $count item?';
   }
@@ -1593,13 +1587,37 @@ class AppLocalizationsId extends AppLocalizations {
   String get noDataToTrain => 'No data available. Let\'s start training to build your record!';
 
   @override
-  String get premiumUnlockTitle => 'Buka Premium (Hapus Semua Iklan)';
+  String get premiumUnlockTitle => 'Premium';
 
   @override
-  String get premiumUnlockDescription => 'Buka semua fitur dan hapus iklan selamanya. Dukung pengembang untuk terus meningkatkan aplikasi ini!';
+  String get premiumUnlockDescription => 'Pembelian sekali untuk membuka simpan foto dan fitur grafik.';
 
   @override
-  String get premiumUnlockButton => 'Dukung Pengembang & Hapus Iklan';
+  String get premiumUnlockButton => 'Beli untuk membuka';
+
+  @override
+  String get premiumFeaturePhotoSaving => 'Simpan foto';
+
+  @override
+  String get premiumFeatureGraphs => 'Grafik';
+
+  @override
+  String get premiumFeatureOneTime => 'Sekali bayar';
+
+  @override
+  String get premiumPhotoHeadline => 'Buka simpan foto';
+
+  @override
+  String get premiumPhotoMessage => 'Menyimpan foto adalah fitur premium. Upgrade untuk menyimpan foto ke album.';
+
+  @override
+  String get premiumGraphHeadline => 'Buka grafik';
+
+  @override
+  String get premiumGraphMessage => 'Grafik adalah fitur premium. Upgrade untuk melihat perkembangan latihanmu.';
+
+  @override
+  String get purchaseFailed => 'Pembelian gagal';
 
   @override
   String get restorePurchase => 'Pulihkan pembelian';

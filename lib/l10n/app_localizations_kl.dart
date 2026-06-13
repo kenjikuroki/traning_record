@@ -583,12 +583,6 @@ class AppLocalizationsKl extends AppLocalizations {
   String get resultsCopied => 'Copied results to clipboard';
 
   @override
-  String get calendarLockedResultsMessage => 'Records from over 10 days ago are hidden until you watch an ad.';
-
-  @override
-  String get calendarLockedResultsButton => 'View results';
-
-  @override
   String deleteSelectedConfirmTitle(Object count) {
     return 'Delete $count item(s)?';
   }
@@ -1596,10 +1590,34 @@ class AppLocalizationsKl extends AppLocalizations {
   String get premiumUnlockTitle => 'Premium Version';
 
   @override
-  String get premiumUnlockDescription => '';
+  String get premiumUnlockDescription => 'A one-time upgrade to unlock photo saving and graphs.';
 
   @override
-  String get premiumUnlockButton => 'Purchase and remove ads';
+  String get premiumUnlockButton => 'Purchase to unlock';
+
+  @override
+  String get premiumFeaturePhotoSaving => 'Photo saving';
+
+  @override
+  String get premiumFeatureGraphs => 'Graphs';
+
+  @override
+  String get premiumFeatureOneTime => 'One-time';
+
+  @override
+  String get premiumPhotoHeadline => 'Unlock photo saving';
+
+  @override
+  String get premiumPhotoMessage => 'Photo saving is a premium feature. Upgrade to save your progress shots to the album.';
+
+  @override
+  String get premiumGraphHeadline => 'Unlock graphs';
+
+  @override
+  String get premiumGraphMessage => 'Graphs are a premium feature. Upgrade to view your training trends.';
+
+  @override
+  String get purchaseFailed => 'Purchase failed';
 
   @override
   String get restorePurchase => 'Restore Purchase';

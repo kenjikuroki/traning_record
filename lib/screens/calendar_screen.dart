@@ -3,11 +3,9 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
-import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart'
     show Clipboard, ClipboardData, rootBundle;
 import 'package:intl/intl.dart' hide TextDirection;
@@ -16,24 +14,15 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../models/menu_data.dart';
 import '../models/meal.dart';
 import '../models/exercise_catalog.dart';
-import '../widgets/ad_banner.dart';
-import '../widgets/sister_app_banner.dart';
 import '../settings_manager.dart';
 import '../utils/training_display_utils.dart';
 import 'record_screen.dart';
-import 'graph_screen.dart';
-import 'settings_screen.dart';
-import '../widgets/premium_unlock_banner.dart';
-import '../routes/slide_up_route.dart';
 
 import '../widgets/centered_constrained.dart';
-import '../widgets/big_earning_ad.dart';
 import '../widgets/calendar_widget_view.dart';
-import '../services/age_signals_service.dart';
 
 String _fmtWaist(double cm, AppLocalizations l10n) {
   final v = SettingsManager.waistCmToDisplay(cm).toStringAsFixed(1);
@@ -148,8 +137,6 @@ Future<String> _calendarResolveEmptyAsset(DateTime d) async {
   }
 }
 
-const String _kResultsUnlockExpiryKey = 'calendar_results_unlock_until';
-
 class _CalendarScreenState extends State<CalendarScreen> {
   // 空データ用画像の実体解決（存在チェックしてフォールバック）
 
@@ -165,12 +152,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _widgetRefreshScheduled = false;
 
   bool get _shouldUpdateHomeWidget => false;
-
-  DateTime? _resultsUnlockExpiry;
-  InterstitialAd? _resultsInterstitialAd;
-  bool _loadingResultsInterstitial = false;
-  bool _unlockingResults = false;
-  Completer<InterstitialAd?>? _resultsInterstitialCompleter;
 
   double _clampDouble(double value, double min, double max) {
     if (value < min) {
@@ -528,288 +509,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return (c ?? cs.primary).withOpacity(0.9);
   }
 
-  void _loadResultsUnlockExpiry() {
-    final raw = widget.settingsBox.get(_kResultsUnlockExpiryKey);
-    DateTime? parsed;
-    if (raw is int) {
-      parsed = DateTime.fromMillisecondsSinceEpoch(raw, isUtc: false);
-    } else if (raw is String) {
-      parsed = DateTime.tryParse(raw);
-    }
-    if (parsed != null && DateTime.now().isBefore(parsed)) {
-      _resultsUnlockExpiry = parsed;
-    } else {
-      _resultsUnlockExpiry = null;
-    }
-  }
-
-  Future<void> _persistResultsUnlockExpiry() async {
-    final expiry = _resultsUnlockExpiry;
-    if (expiry == null) {
-      await widget.settingsBox.delete(_kResultsUnlockExpiryKey);
-    } else {
-      await widget.settingsBox.put(
-        _kResultsUnlockExpiryKey,
-        expiry.millisecondsSinceEpoch,
-      );
-    }
-  }
-
-  bool _isUnlockPeriodActive() {
-    final expiry = _resultsUnlockExpiry;
-    if (expiry == null) return false;
-    return DateTime.now().isBefore(expiry);
-  }
-
-  bool _requiresResultsUnlock(DateTime day, bool hasRecord) {
-    if (SettingsManager.isPremium) return false;
-    if (!hasRecord) return false;
-    if (_isUnlockPeriodActive()) return false;
-    final DateTime today = DateTime.now();
-    final DateTime normalizedDay = DateTime(day.year, day.month, day.day);
-    final DateTime normalizedToday =
-        DateTime(today.year, today.month, today.day);
-    final int diff = normalizedToday.difference(normalizedDay).inDays;
-    if (diff < 10) {
-      return false;
-    }
-    return true;
-  }
-
-  Future<InterstitialAd?> _prepareResultsInterstitial() async {
-    if (SettingsManager.isPremium) return null;
-    if (SettingsManager.demoMode) {
-      return null;
-    }
-    if (_resultsInterstitialAd != null) {
-      return _resultsInterstitialAd;
-    }
-    if (_resultsInterstitialCompleter != null) {
-      return _resultsInterstitialCompleter!.future;
-    }
-    _loadingResultsInterstitial = true;
-    final completer = Completer<InterstitialAd?>();
-    _resultsInterstitialCompleter = completer;
-    InterstitialAd.load(
-      adUnitId: _resolveResultsInterstitialUnitId(),
-      request: AgeSignalsService.instance.buildAdRequest(),
-      adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (ad) {
-          if (!mounted) {
-            ad.dispose();
-            if (!completer.isCompleted) completer.complete(null);
-            _resultsInterstitialCompleter = null;
-            _loadingResultsInterstitial = false;
-            return;
-          }
-          _resultsInterstitialAd = ad;
-          _loadingResultsInterstitial = false;
-          if (!completer.isCompleted) {
-            completer.complete(ad);
-          }
-          _resultsInterstitialCompleter = null;
-        },
-        onAdFailedToLoad: (error) {
-          _resultsInterstitialAd?.dispose();
-          _resultsInterstitialAd = null;
-          _loadingResultsInterstitial = false;
-          if (!completer.isCompleted) {
-            completer.complete(null);
-          }
-          _resultsInterstitialCompleter = null;
-        },
-      ),
-    );
-    return completer.future;
-  }
-
-  void _disposeResultsInterstitial() {
-    _resultsInterstitialAd?.dispose();
-    _resultsInterstitialAd = null;
-  }
-
-  Future<bool> _playResultsInterstitial() async {
-    final ad = await _prepareResultsInterstitial();
-    if (ad == null) {
-      return false;
-    }
-    _resultsInterstitialAd = null;
-    final completer = Completer<void>();
-    ad.fullScreenContentCallback = FullScreenContentCallback(
-      onAdDismissedFullScreenContent: (ad) {
-        ad.dispose();
-        if (!completer.isCompleted) {
-          completer.complete();
-        }
-      },
-      onAdFailedToShowFullScreenContent: (ad, error) {
-        ad.dispose();
-        if (!completer.isCompleted) {
-          completer.complete();
-        }
-      },
-    );
-    try {
-      ad.show();
-      await completer.future;
-    } catch (_) {
-      ad.dispose();
-      if (!completer.isCompleted) {
-        completer.complete();
-      }
-      return false;
-    } finally {
-      if (mounted) {
-        _prepareResultsInterstitial();
-      }
-    }
-    return true;
-  }
-
-  Future<void> _extendResultsUnlockPeriod() async {
-    final newExpiry = DateTime.now().add(const Duration(hours: 24));
-    setState(() {
-      _resultsUnlockExpiry = newExpiry;
-    });
-    await _persistResultsUnlockExpiry();
-  }
-
-  Future<void> _unlockResultsWithAd(
-    DateTime day, {
-    VoidCallback? onStateChange,
-  }) async {
-    if (!_requiresResultsUnlock(day, true)) {
-      onStateChange?.call();
-      return;
-    }
-    if (_unlockingResults) {
-      return;
-    }
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _unlockingResults = true;
-    });
-    onStateChange?.call();
-    try {
-      final played = await _playResultsInterstitial();
-      if (!played) {
-        return;
-      }
-      if (!mounted) return;
-      await _extendResultsUnlockPeriod();
-    } finally {
-      if (mounted) {
-        setState(() {
-          _unlockingResults = false;
-        });
-      } else {
-        _unlockingResults = false;
-      }
-      onStateChange?.call();
-    }
-  }
-
-  String _resolveResultsInterstitialUnitId() {
-    if (kDebugMode) {
-      return Platform.isAndroid
-          ? 'ca-app-pub-3940256099942544/1033173712'
-          : 'ca-app-pub-3940256099942544/4411468910';
-    }
-    if (Platform.isAndroid) {
-      return 'ca-app-pub-3331079517737737/6644663263';
-    }
-    if (Platform.isIOS) {
-      return 'ca-app-pub-3331079517737737/5606752068';
-    }
-    return 'ca-app-pub-3940256099942544/1033173712';
-  }
-
-  Widget _buildResultsLockOverlay(
-    BuildContext context,
-    bool unlocking,
-    VoidCallback? onPressed,
-  ) {
-    final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-        child: Container(
-          color: cs.surface.withOpacity(0.08),
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Center(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withOpacity(0.56),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 24),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 320),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.lock_outline,
-                        color: cs.onSurfaceVariant,
-                        size: 30,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        l10n.calendarLockedResultsMessage,
-                        style: TextStyle(
-                          color: cs.onSurface,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 20),
-                      FilledButton(
-                        onPressed: unlocking ? null : onPressed,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (unlocking) ...[
-                              SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    cs.onPrimary,
-                                  ),
-                                ),
-                              ),
-                            ] else ...[
-                              const Icon(Icons.play_circle_fill_rounded, size: 20),
-                            ],
-                            const SizedBox(width: 10),
-                            Text(l10n.calendarLockedResultsButton),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   void initState() {
     super.initState();
@@ -821,14 +520,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       widget.selectedDate.month,
       widget.selectedDate.day,
     );
-
-    _loadResultsUnlockExpiry();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await AgeSignalsService.instance.ensureInitialized();
-      if (mounted) {
-        await _prepareResultsInterstitial();
-      }
-    });
 
     // 初回のみ：中央ウェルカムカード（2ステップ）
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -850,7 +541,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     SettingsManager.showRmNotifier.removeListener(_onDisplayToggleChanged);
     SettingsManager.showRirNotifier.removeListener(_onDisplayToggleChanged);
     SettingsManager.showFailNotifier.removeListener(_onDisplayToggleChanged);
-    _disposeResultsInterstitial();
     super.dispose();
   }
 
@@ -2156,8 +1846,8 @@ double _baseRowHeight(BuildContext context) {
       0.6,
       4.0,
     );
-    final double chipLabelFontSize = chipFontSize * 1.08;
-    final double chipBoxHeight = chipLabelFontSize * 1.2 + chipVPad * 2;
+    final double chipLabelFontSize = chipFontSize * 0.95;
+    final double chipBoxHeight = chipLabelFontSize * 1.4 + chipVPad * 2;
 
     Widget _partChip(String part) {
       final label = _translatePartToLocale(context, part);
@@ -2190,13 +1880,10 @@ double _baseRowHeight(BuildContext context) {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         textAlign: TextAlign.center,
-        textHeightBehavior: const TextHeightBehavior(
-          applyHeightToFirstAscent: false,
-          applyHeightToLastDescent: false,
-        ),
         style: TextStyle(
           fontSize: chipLabelFontSize,
-          height: 1.0,
+          height: 1.4,
+          leadingDistribution: TextLeadingDistribution.even,
           color: textOnBox,
           fontWeight: FontWeight.w600,
         ),
@@ -2205,9 +1892,9 @@ double _baseRowHeight(BuildContext context) {
       final chip = Container(
         padding: EdgeInsets.fromLTRB(
           chipHPad,
-          chipVPad * 0.7,
+          chipVPad,
           chipHPad,
-          chipVPad * 1.3,
+          chipVPad,
         ),
         decoration: BoxDecoration(
           color: boxColor,
@@ -2251,9 +1938,9 @@ double _baseRowHeight(BuildContext context) {
     Widget _memoChip() => Container(
           padding: EdgeInsets.fromLTRB(
             chipHPad,
-            chipVPad * 0.7,
+            chipVPad,
             chipHPad,
-            chipVPad * 1.3,
+            chipVPad,
           ),
           decoration: BoxDecoration(
             color: cs.tertiaryContainer,
@@ -2266,13 +1953,10 @@ double _baseRowHeight(BuildContext context) {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              textHeightBehavior: const TextHeightBehavior(
-                applyHeightToFirstAscent: false,
-                applyHeightToLastDescent: false,
-              ),
               style: TextStyle(
                 fontSize: chipLabelFontSize,
-                height: 1.0,
+                height: 1.4,
+                leadingDistribution: TextLeadingDistribution.even,
                 color: cs.onTertiaryContainer,
                 fontWeight: FontWeight.w700,
               ),
@@ -2286,9 +1970,9 @@ double _baseRowHeight(BuildContext context) {
       return Container(
         padding: EdgeInsets.fromLTRB(
           chipHPad,
-          chipVPad * 0.7,
+          chipVPad,
           chipHPad,
-          chipVPad * 1.3,
+          chipVPad,
         ),
         decoration: BoxDecoration(
           color: cs.secondaryContainer,
@@ -2301,13 +1985,10 @@ double _baseRowHeight(BuildContext context) {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            textHeightBehavior: const TextHeightBehavior(
-              applyHeightToFirstAscent: false,
-              applyHeightToLastDescent: false,
-            ),
             style: TextStyle(
               fontSize: chipLabelFontSize,
-              height: 1.0,
+              height: 1.4,
+              leadingDistribution: TextLeadingDistribution.even,
               color: cs.onSecondaryContainer,
               fontWeight: FontWeight.w700,
             ),
@@ -2321,9 +2002,9 @@ double _baseRowHeight(BuildContext context) {
       return Container(
         padding: EdgeInsets.fromLTRB(
           chipHPad,
-          chipVPad * 0.7,
+          chipVPad,
           chipHPad,
-          chipVPad * 1.3,
+          chipVPad,
         ),
         decoration: BoxDecoration(
           color: cs.surfaceVariant,
@@ -2336,13 +2017,10 @@ double _baseRowHeight(BuildContext context) {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            textHeightBehavior: const TextHeightBehavior(
-              applyHeightToFirstAscent: false,
-              applyHeightToLastDescent: false,
-            ),
             style: TextStyle(
               fontSize: chipLabelFontSize,
-              height: 1.0,
+              height: 1.4,
+              leadingDistribution: TextLeadingDistribution.even,
               color: cs.onSurface,
               fontWeight: FontWeight.w700,
             ),
@@ -3989,15 +3667,8 @@ double _baseRowHeight(BuildContext context) {
   ) async {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
-
-    // 記録の有無（ラベル切替に使用）
     final DailyRecord? rec = widget.recordsBox.get(_dateKey(sel));
     final bool hasRecord = (rec != null) && _hasAnyData(rec);
-
-    final double adRand = Random().nextDouble();
-    // 0.0 <= adRand < 0.8  => Ad (80%)
-    // 0.8 <= adRand < 0.9  => Sister (10%)
-    // 0.9 <= adRand < 1.0  => Premium (10%)
 
     await showModalBottomSheet(
       context: context,
@@ -4010,7 +3681,6 @@ double _baseRowHeight(BuildContext context) {
         final double maxHeight = MediaQuery.of(ctx).size.height * 0.90;
         return StatefulBuilder(
           builder: (ctx, setModalState) {
-            final bool locked = _requiresResultsUnlock(sel, hasRecord);
             return SafeArea(
               top: false,
               child: ConstrainedBox(
@@ -4032,9 +3702,7 @@ double _baseRowHeight(BuildContext context) {
                               ),
                             ),
                           ),
-                          if (hasRecord &&
-                              summaryLines.isNotEmpty &&
-                              !locked)
+                          if (summaryLines.isNotEmpty)
                             IconButton(
                               icon: const Icon(Icons.copy_rounded),
                               tooltip: l10n.resultsCopy,
@@ -4063,94 +3731,56 @@ double _baseRowHeight(BuildContext context) {
                     ),
                     const Divider(height: 1),
                     Expanded(
-                      child: Stack(
-                        children: [
-                          SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: body.isEmpty
-                                  ? [
-                                      Center(
-                                        child: Column(
-                                          children: [
-                                            const SizedBox(height: 40),
-                                            SizedBox.square(
-                                              dimension:
-                                                  MediaQuery.of(context)
-                                                          .size
-                                                          .height /
-                                                      3,
-                                              child: ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius.circular(24),
-                                                child: Image.asset(
-                                                  _emptyStateAssetFor(sel),
-                                                  fit: BoxFit.contain,
-                                                  errorBuilder: (_, __, ___) =>
-                                                      Image.asset(
-                                                    'assets/calendar/mon.png',
-                                                    fit: BoxFit.contain,
-                                                    errorBuilder:
-                                                        (_, __, ___) => Icon(
-                                                      Icons.event_busy,
-                                                      size: 72,
-                                                      color:
-                                                          cs.onSurfaceVariant,
-                                                    ),
-                                                  ),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: body.isEmpty
+                              ? [
+                                  Center(
+                                    child: Column(
+                                      children: [
+                                        const SizedBox(height: 40),
+                                        SizedBox.square(
+                                          dimension:
+                                              MediaQuery.of(context).size.height /
+                                                  3,
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(24),
+                                            child: Image.asset(
+                                              _emptyStateAssetFor(sel),
+                                              fit: BoxFit.contain,
+                                              errorBuilder: (_, __, ___) =>
+                                                  Image.asset(
+                                                'assets/calendar/mon.png',
+                                                fit: BoxFit.contain,
+                                                errorBuilder:
+                                                    (_, __, ___) => Icon(
+                                                  Icons.event_busy,
+                                                  size: 72,
+                                                  color: cs.onSurfaceVariant,
                                                 ),
                                               ),
                                             ),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              l10n.noRecords,
-                                              style: TextStyle(
-                                                  color:
-                                                      cs.onSurfaceVariant,
-                                                  fontSize: 14),
-                                            ),
-                                          ],
+                                          ),
                                         ),
-                                      ),
-                                    ]
-                                  : body,
-                            ),
-                          ),
-                          if (locked)
-                            Positioned.fill(
-                              child: _buildResultsLockOverlay(
-                                ctx,
-                                _unlockingResults,
-                                () async {
-                                  setModalState(() {});
-                                  await _unlockResultsWithAd(
-                                    sel,
-                                    onStateChange: () {
-                                      if (mounted) {
-                                        setModalState(() {});
-                                      }
-                                    },
-                                  );
-                                },
-                              ),
-                            ),
-                        ],
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          l10n.noRecords,
+                                          style: TextStyle(
+                                            color: cs.onSurfaceVariant,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ]
+                              : body,
+                        ),
                       ),
                     ),
-                    if (!SettingsManager.isPremium)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: () {
-                          if (adRand < 0.8) {
-                            return const AdBanner(screenName: 'record_overlay');
-                          } else if (adRand < 0.9) {
-                            return const SisterAppBanner();
-                          } else {
-                            return const PremiumUnlockBanner();
-                          }
-                        }(),
-                      ),
                     const Divider(height: 1),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),

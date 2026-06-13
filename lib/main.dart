@@ -3,11 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:app_tracking_transparency/app_tracking_transparency.dart';
-import 'package:flutter/scheduler.dart' show SchedulerBinding;
-import 'dart:io' show Platform; // ★ 追加
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'services/iap_service.dart';
 import 'theme/app_theme.dart';
@@ -16,9 +12,7 @@ import 'models/menu_data.dart';
 import 'screens/home_screen.dart';
 import 'settings_manager.dart';
 import 'package:audio_session/audio_session.dart';
-import 'services/age_signals_service.dart';
 import 'services/notification_service.dart';
-import 'utils/banner_ad_manager.dart';
 
 Future<void> _initAudioSession() async {
   final session = await AudioSession.instance;
@@ -49,8 +43,6 @@ Future<void> main() async {
 
   await SettingsManager.initialize();
 
-  await AgeSignalsService.instance.ensureInitialized();
-
   await NotificationService.instance.init();
   await NotificationService.instance.requestPermissionsIfNeeded();
 
@@ -69,24 +61,6 @@ Future<void> main() async {
     settingsBox: settingsBox,
     setCountBox: setCountBox,
   ));
-
-  // 初回フレーム描画後に、ATT → 広告初期化 の順で実行（iOSのみ）
-  SchedulerBinding.instance.addPostFrameCallback((_) async {
-    if (Platform.isIOS) {
-      final status = await AppTrackingTransparency.trackingAuthorizationStatus;
-      if (status == TrackingStatus.notDetermined) {
-        // スプラッシュからホームへの遷移安定のため、短い待機
-        await Future.delayed(const Duration(milliseconds: 400));
-        await AppTrackingTransparency.requestTrackingAuthorization();
-      }
-      await MobileAds.instance.initialize();
-    } else {
-      // iOS以外はそのまま初期化
-      await MobileAds.instance.initialize();
-    }
-    // カレンダー広告の先行ロード
-    BannerAdManager.instance.preloadCalendarAd();
-  });
 }
 
 class MyApp extends StatefulWidget {

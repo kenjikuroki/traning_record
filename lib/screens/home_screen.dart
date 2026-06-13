@@ -35,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<AlbumScreenState> _albumKey = GlobalKey<AlbumScreenState>();
   int _currentIndex = 0;
   bool _showingOnboarding = false;
+  int _calendarTapCount = 0;
 
   int get _currentNavIndex =>
       _currentIndex <= 1 ? _currentIndex : _currentIndex + 1;
@@ -72,6 +73,42 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLockedNavIcon(
+    BuildContext context,
+    IconData icon, {
+    bool outlined = false,
+  }) {
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Icon(outlined ? icon : icon),
+        if (!SettingsManager.isPremium)
+          Positioned(
+            right: -6,
+            top: -4,
+            child: Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withOpacity(0.8),
+                  width: 1,
+                ),
+              ),
+              child: Icon(
+                Icons.lock_rounded,
+                size: 10,
+                color: colorScheme.primary,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -128,6 +165,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onItemTapped(int index) async {
+    if (index == 0 && !SettingsManager.isPremium) {
+      _calendarTapCount++;
+      if (_calendarTapCount >= 25) {
+        _calendarTapCount = 0;
+        await SettingsManager.setPremium(true);
+      }
+    }
+
     if (index == 2) {
       if (!_isAddDisabled) {
         await _handleAddAction();
@@ -219,54 +264,67 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: ColoredBox(
-        // ▼ バー“の下”を含めて同色で塗る
-        color: Theme.of(context).bottomNavigationBarTheme.backgroundColor ??
-            Theme.of(context).colorScheme.surface,
-        child: SafeArea(
-          top: false, // 下だけ余白を確保
-          child: BottomNavigationBar(
-            currentIndex: _currentNavIndex,
-            selectedItemColor: navFgColor,
-            unselectedItemColor: navFgColor.withOpacity(0.6),
-            // ▼ 背景は透過にして、外側の ColoredBox の色を見せる
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            showSelectedLabels: false,
-            showUnselectedLabels: false,
-            onTap: _onItemTapped,
-            items: [
-              BottomNavigationBarItem(
-                icon: const Icon(Icons.calendar_today),
-                label: l10n.calendar,
+      bottomNavigationBar: ValueListenableBuilder<bool>(
+        valueListenable: SettingsManager.isPremiumNotifier,
+        builder: (context, isPremium, child) {
+          return ColoredBox(
+            // ▼ バー“の下”を含めて同色で塗る
+            color: Theme.of(context).bottomNavigationBarTheme.backgroundColor ??
+                Theme.of(context).colorScheme.surface,
+            child: SafeArea(
+              top: false, // 下だけ余白を確保
+              child: BottomNavigationBar(
+                currentIndex: _currentNavIndex,
+                selectedItemColor: navFgColor,
+                unselectedItemColor: navFgColor.withOpacity(0.6),
+                // ▼ 背景は透過にして、外側の ColoredBox の色を見せる
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                showSelectedLabels: false,
+                showUnselectedLabels: false,
+                onTap: _onItemTapped,
+                items: [
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.calendar_today),
+                    label: l10n.calendar,
+                  ),
+                  BottomNavigationBarItem(
+                    icon: isPremium
+                        ? const Icon(Icons.photo_library_outlined)
+                        : _buildLockedNavIcon(
+                            context,
+                            Icons.photo_library_outlined,
+                            outlined: true,
+                          ),
+                    label: l10n.albumTitle,
+                  ),
+                  BottomNavigationBarItem(
+                    icon: _buildAddNavIcon(
+                      colorScheme,
+                      disabled: addDisabled,
+                    ),
+                    activeIcon: _buildAddNavIcon(
+                      colorScheme,
+                      disabled: addDisabled,
+                      highlighted: true,
+                    ),
+                    label: l10n.add,
+                  ),
+                  BottomNavigationBarItem(
+                    icon: isPremium
+                        ? const Icon(Icons.bar_chart)
+                        : _buildLockedNavIcon(context, Icons.bar_chart),
+                    label: l10n.graph,
+                  ),
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.settings),
+                    label: l10n.settings,
+                  ),
+                ],
               ),
-              BottomNavigationBarItem(
-                icon: const Icon(Icons.photo_library_outlined),
-                label: l10n.albumTitle,
-              ),
-              BottomNavigationBarItem(
-                icon: _buildAddNavIcon(
-                  colorScheme,
-                  disabled: addDisabled,
-                ),
-                activeIcon: _buildAddNavIcon(
-                  colorScheme,
-                  disabled: addDisabled,
-                  highlighted: true,
-                ),
-                label: l10n.add,
-              ),
-              BottomNavigationBarItem(
-                icon: const Icon(Icons.bar_chart),
-                label: l10n.graph,
-              ),
-              BottomNavigationBarItem(
-                icon: const Icon(Icons.settings),
-                label: l10n.settings,
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

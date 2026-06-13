@@ -1,24 +1,18 @@
 import 'dart:ui';
 import 'dart:math';
 import 'dart:async';
-import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:ttraining_record/l10n/app_localizations.dart';
 import '../models/menu_data.dart';
 import '../settings_manager.dart';
-import 'calendar_screen.dart';
-import 'record_screen.dart';
-import 'settings_screen.dart';
-import '../widgets/ad_banner.dart';
 import 'package:flutter/services.dart';
 import '../widgets/centered_constrained.dart';
+import '../widgets/premium_upgrade_sheet.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 
@@ -203,12 +197,6 @@ class _GraphScreenState extends State<GraphScreen> {
   final TextEditingController _goalController = TextEditingController();
   double? _goalValue;
 
-  // ====== Rewarded Ad ======
-  RewardedAd? _rewardedAd;
-  bool _isGraphUnlocked = false;
-  bool _isAdLoading = false;
-  bool _playAfterLoad = false;
-
   // ====== part name mapping ======
   String _getOriginalPartName(BuildContext context, String translatedPart) {
     final cached = _partLabelToOriginal[translatedPart];
@@ -238,15 +226,13 @@ class _GraphScreenState extends State<GraphScreen> {
       return;
     }
     if (!mounted) {
-      _selectedPartOriginal =
-          _partLabelToOriginal[value] ?? value;
+      _selectedPartOriginal = _partLabelToOriginal[value] ?? value;
       return;
     }
     _selectedPartOriginal = _getOriginalPartName(context, value);
   }
 
-  void _syncPersonalMetricFromFavorite(
-      AppLocalizations l10n, String display) {
+  void _syncPersonalMetricFromFavorite(AppLocalizations l10n, String display) {
     final rawKey = _favoriteDisplayToKey[display] ?? display;
     final metric =
         _personalMetricFromKey(rawKey) ?? _metricFromDisplay(l10n, rawKey);
@@ -348,7 +334,7 @@ class _GraphScreenState extends State<GraphScreen> {
     if (_showBodyFatMetric) options.add(PersonalMetric.bodyFat);
     if (_showBmiMetric) options.add(PersonalMetric.bmi);
     if (_showWaistMetric) options.add(PersonalMetric.waist);
-    
+
     return options;
   }
 
@@ -458,7 +444,6 @@ class _GraphScreenState extends State<GraphScreen> {
     return key; // 後方互換・未知キー
   }
 
-
   Future<void> _openPersonalMetricPicker() async {
     final l10n = AppLocalizations.of(context)!;
     final options = _availablePersonalMetrics();
@@ -518,113 +503,12 @@ class _GraphScreenState extends State<GraphScreen> {
     }
   }
 
-  // ====== Rewarded Ad Helper ======
-  String _resolveRewardedAdUnitId() {
-    if (kDebugMode) {
-      return Platform.isAndroid
-          ? 'ca-app-pub-3940256099942544/5224354917'
-          : 'ca-app-pub-3940256099942544/1712485313';
-    }
-    return 'ca-app-pub-3331079517737737/5606752068';
-  }
-
-  void _loadRewardedAd() {
-    if (_rewardedAd != null) return;
-    setState(() {
-      _isAdLoading = true;
-    });
-    debugPrint('[GraphScreen] Loading RewardedAd...');
-    RewardedAd.load(
-      adUnitId: _resolveRewardedAdUnitId(),
-      request: const AdRequest(),
-      rewardedAdLoadCallback: RewardedAdLoadCallback(
-        onAdLoaded: (ad) {
-          debugPrint('[GraphScreen] RewardedAd loaded.');
-          if (!mounted) {
-            ad.dispose();
-            return;
-          }
-          setState(() {
-            _rewardedAd = ad;
-            _isAdLoading = false;
-          });
-          if (_playAfterLoad) {
-            _playAfterLoad = false;
-            _showRewardedAd();
-          }
-        },
-        onAdFailedToLoad: (error) {
-          debugPrint('[GraphScreen] RewardedAd failed to load: $error');
-          debugPrint('Error Code: ${error.code}, Domain: ${error.domain}, Message: ${error.message}');
-          if (!mounted) return;
-          setState(() {
-            _isAdLoading = false;
-          });
-          if (_playAfterLoad) {
-            _playAfterLoad = false;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('広告の読み込みに失敗しました (Error: ${error.code})。もう一度お試しください。')),
-            );
-          }
-        },
-      ),
-    );
-  }
-
-  void _showRewardedAd() {
-    debugPrint('[GraphScreen] _showRewardedAd called. _rewardedAd: $_rewardedAd');
-    if (_rewardedAd == null) {
-      debugPrint('[GraphScreen] RewardedAd is null, reloading (autoplay requested)...');
-      _playAfterLoad = true;
-      _loadRewardedAd();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('広告を読み込んでいます...')),
-      );
-      return;
-    }
-    debugPrint('[GraphScreen] Trying to show ad...');
-    _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
-      onAdDismissedFullScreenContent: (ad) {
-        debugPrint('[GraphScreen] Ad dismissed.');
-        ad.dispose();
-        setState(() {
-          _rewardedAd = null;
-        });
-        _loadRewardedAd();
-      },
-      onAdFailedToShowFullScreenContent: (ad, error) {
-        debugPrint('[GraphScreen] Ad failed to show: $error');
-        ad.dispose();
-        setState(() {
-          _rewardedAd = null;
-        });
-        _loadRewardedAd();
-        ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(content: Text('広告の再生に失敗しました')),
-        );
-      },
-      onAdShowedFullScreenContent: (ad) {
-        debugPrint('[GraphScreen] Ad showed fullscreen.');
-      },
-    );
-    _rewardedAd!.show(
-      onUserEarnedReward: (ad, reward) {
-        debugPrint('[GraphScreen] User earned reward: ${reward.amount} ${reward.type}');
-        setState(() {
-          _isGraphUnlocked = true;
-        });
-      },
-    );
-  }
-
-
   // ====== lifecycle ======
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _loadSettingsAndParts();
   }
-
 
   final ScrollController _verticalScrollController1 = ScrollController();
   final ScrollController _verticalScrollController2 = ScrollController();
@@ -633,11 +517,6 @@ class _GraphScreenState extends State<GraphScreen> {
   @override
   void initState() {
     super.initState();
-    _isGraphUnlocked = false;
-    if (!SettingsManager.isPremium) {
-      _loadRewardedAd();
-    }
-
     _settingsSubscription =
         widget.settingsBox.watch().listen(_handleSettingsBoxEvent);
 
@@ -670,7 +549,6 @@ class _GraphScreenState extends State<GraphScreen> {
     _verticalScrollController1.dispose();
     _verticalScrollController2.dispose();
     _goalController.dispose();
-    _rewardedAd?.dispose();
     super.dispose();
   }
 
@@ -758,12 +636,12 @@ class _GraphScreenState extends State<GraphScreen> {
       });
     }
 
-    final baseOriginalParts = (savedBodyPartsSettings == null ||
-            savedBodyPartsSettings.isEmpty)
-        ? List<String>.from(allBodyParts)
-        : allBodyParts
-            .where((p) => savedBodyPartsSettings![p] == true)
-            .toList();
+    final baseOriginalParts =
+        (savedBodyPartsSettings == null || savedBodyPartsSettings.isEmpty)
+            ? List<String>.from(allBodyParts)
+            : allBodyParts
+                .where((p) => savedBodyPartsSettings![p] == true)
+                .toList();
 
     _filteredBodyParts = [];
     _partLabelToOriginal.clear();
@@ -824,7 +702,7 @@ class _GraphScreenState extends State<GraphScreen> {
       }
     })();
     final lower = value.toLowerCase();
-    
+
     // Check localized and English defaults
     if (value == l10n.bodyWeight ||
         lower == l10n.bodyWeight.toLowerCase() ||
@@ -899,8 +777,7 @@ class _GraphScreenState extends State<GraphScreen> {
     final newBodyFat =
         (widget.settingsBox.get('manage.bodyFat') as bool?) ?? false;
     final newBmi = (widget.settingsBox.get('manage.bmi') as bool?) ?? false;
-    final newWaist =
-        (widget.settingsBox.get('manage.waist') as bool?) ?? false;
+    final newWaist = (widget.settingsBox.get('manage.waist') as bool?) ?? false;
 
     final changed = newWeight != _showWeightMetric ||
         newBodyFat != _showBodyFatMetric ||
@@ -918,8 +795,7 @@ class _GraphScreenState extends State<GraphScreen> {
     _cleanupFavorites();
 
     _loadPersonalData();
-    if (_selectedPart != null &&
-        _selectedPartOriginal == _kFavoritesOriginal) {
+    if (_selectedPart != null && _selectedPartOriginal == _kFavoritesOriginal) {
       _loadMenusForPart(_selectedPart!);
     } else {
       _checkIfFavoriteNew();
@@ -995,7 +871,7 @@ class _GraphScreenState extends State<GraphScreen> {
       if (rawFavorites is List) {
         final favList = rawFavorites.whereType<String>().toList();
         final displays = <String>[];
-        
+
         for (final rawKey in favList) {
           if (rawKey.startsWith('menu:')) {
             final menuName = rawKey.substring(5);
@@ -1059,8 +935,7 @@ class _GraphScreenState extends State<GraphScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     // Favorites上でPersonal表示名が選ばれていたら _personalMetric を合わせる
-    if (_selectedPartOriginal == _kFavoritesOriginal &&
-        _selectedMenu != null) {
+    if (_selectedPartOriginal == _kFavoritesOriginal && _selectedMenu != null) {
       _syncPersonalMetricFromFavorite(l10n, _selectedMenu!);
     }
 
@@ -2202,11 +2077,10 @@ class _GraphScreenState extends State<GraphScreen> {
     return;
   }
 
-
   // ====== 新お気に入り（メニュー専用） ======
   void _checkIfFavoriteNew() {
     if (!mounted) return;
-    
+
     String? key;
     if (_selectedMenu != null && !_isPersonalContext()) {
       key = 'menu:${_selectedMenu!}';
@@ -2231,7 +2105,7 @@ class _GraphScreenState extends State<GraphScreen> {
 
   void _toggleFavoriteNew() {
     final l10n = AppLocalizations.of(context)!;
-    
+
     if (_selectedMenu == null || _isPersonalContext()) {
       return;
     }
@@ -2893,9 +2767,6 @@ class _GraphScreenState extends State<GraphScreen> {
     final isPersonal = _isPersonalContext();
     final unitText = _unitOverlayText(l10n);
     final bool _noMenus = _noMenusForSelectedPart;
-    if (kDebugMode) {
-      print('[GraphDebug] unlocked: $_isGraphUnlocked, dates: ${_axisDates.length}');
-    }
 
     // 日/週トグル
     Widget dayWeekToggle = SizedBox(
@@ -2971,8 +2842,7 @@ class _GraphScreenState extends State<GraphScreen> {
               decoration: BoxDecoration(
                 color: colorScheme.surfaceContainer,
                 borderRadius: BorderRadius.circular(12),
-                border:
-                    Border.all(color: colorScheme.primary.withOpacity(0.5)),
+                border: Border.all(color: colorScheme.primary.withOpacity(0.5)),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
@@ -3000,12 +2870,12 @@ class _GraphScreenState extends State<GraphScreen> {
       ),
     );
 
-    final bool isFavoritesTab =
-        _selectedPartOriginal == _kFavoritesOriginal ||
+    final bool isFavoritesTab = _selectedPartOriginal == _kFavoritesOriginal ||
         _selectedPartOriginal == _kFavoritesNew;
     final bool isPersonalTab = _selectedPartOriginal == 'パーソナル';
-    final bool favEnabled =
-        !isFavoritesTab && !isPersonalTab && !(_noMenus && !_isPersonalContext());
+    final bool favEnabled = !isFavoritesTab &&
+        !isPersonalTab &&
+        !(_noMenus && !_isPersonalContext());
 
     Widget favButton = Opacity(
       opacity: favEnabled ? 1.0 : 0.4,
@@ -3033,104 +2903,106 @@ class _GraphScreenState extends State<GraphScreen> {
     Widget partMenuRow = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Row(
-      children: [
-        // 左: 部位
-        Expanded(
-          child: SizedBox(
-            height: _kPickerHeight,
-            child: InkWell(
-              key: _kPart,
-              onTap: _openPartPicker,
-              borderRadius: BorderRadius.circular(12),
-              child: Ink(
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainer,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: colorScheme.primary.withOpacity(0.5)),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _selectedPart ?? l10n.selectTrainingPart,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: colorScheme.onSurface,
-                            fontWeight: FontWeight.w700,
+        children: [
+          // 左: 部位
+          Expanded(
+            child: SizedBox(
+              height: _kPickerHeight,
+              child: InkWell(
+                key: _kPart,
+                onTap: _openPartPicker,
+                borderRadius: BorderRadius.circular(12),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainer,
+                    borderRadius: BorderRadius.circular(12),
+                    border:
+                        Border.all(color: colorScheme.primary.withOpacity(0.5)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _selectedPart ?? l10n.selectTrainingPart,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: colorScheme.onSurface,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
-                      Icon(Icons.expand_more,
-                          color: colorScheme.onSurfaceVariant),
-                    ],
+                        Icon(Icons.expand_more,
+                            color: colorScheme.onSurfaceVariant),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 8),
+          const SizedBox(width: 8),
 
-        // 右: 種目（Personal のときは「体重/体脂肪率/BMI」をここで選ぶ）
-        Expanded(
-          child: SizedBox(
-            height: _kPickerHeight,
-            child: InkWell(
-              onTap: isPersonal
-                  ? _openPersonalMetricPicker
-                  : (_menusForPart.isNotEmpty
-                      ? _openMenuPicker
-                      : () => _showThrottledHint(l10n.hintRecordFirst)),
-              borderRadius: BorderRadius.circular(12),
-              child: Ink(
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainer,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: (isPersonal || _menusForPart.isNotEmpty)
-                        ? colorScheme.outlineVariant
-                        : colorScheme.outline,
+          // 右: 種目（Personal のときは「体重/体脂肪率/BMI」をここで選ぶ）
+          Expanded(
+            child: SizedBox(
+              height: _kPickerHeight,
+              child: InkWell(
+                onTap: isPersonal
+                    ? _openPersonalMetricPicker
+                    : (_menusForPart.isNotEmpty
+                        ? _openMenuPicker
+                        : () => _showThrottledHint(l10n.hintRecordFirst)),
+                borderRadius: BorderRadius.circular(12),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainer,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: (isPersonal || _menusForPart.isNotEmpty)
+                          ? colorScheme.outlineVariant
+                          : colorScheme.outline,
+                    ),
                   ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          isPersonal
-                              ? _personalMetricLabel(l10n) // ← Personal はここに表示
-                              : ((_selectedMenu ?? '').isEmpty
-                                  ? l10n.selectExercise
-                                  : _selectedMenu!),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: (isPersonal || _menusForPart.isNotEmpty)
-                                ? colorScheme.onSurface
-                                : colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            isPersonal
+                                ? _personalMetricLabel(
+                                    l10n) // ← Personal はここに表示
+                                : ((_selectedMenu ?? '').isEmpty
+                                    ? l10n.selectExercise
+                                    : _selectedMenu!),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: (isPersonal || _menusForPart.isNotEmpty)
+                                  ? colorScheme.onSurface
+                                  : colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
-                      Icon(
-                        Icons.expand_more,
-                        color: (isPersonal || _menusForPart.isNotEmpty)
-                            ? colorScheme.onSurfaceVariant
-                            : colorScheme.outline,
-                      ),
-                    ],
+                        Icon(
+                          Icons.expand_more,
+                          color: (isPersonal || _menusForPart.isNotEmpty)
+                              ? colorScheme.onSurfaceVariant
+                              : colorScheme.outline,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
-    ),
+        ],
+      ),
     );
 
     // AEROBIC トグル
@@ -3213,7 +3085,6 @@ class _GraphScreenState extends State<GraphScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-
                     Expanded(
                       child: Card(
                         key: _kChart,
@@ -3259,8 +3130,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                         : points * _kXStridePx;
 
                                     final unitOverlay =
-                                        (unitText.isEmpty ||
-                                                _axisDates.isEmpty)
+                                        (unitText.isEmpty || _axisDates.isEmpty)
                                             ? const SizedBox.shrink()
                                             : Positioned(
                                                 left: 4,
@@ -3271,8 +3141,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                                     color: colorScheme
                                                         .onSurfaceVariant,
                                                     fontSize: 12,
-                                                    fontWeight:
-                                                        FontWeight.w600,
+                                                    fontWeight: FontWeight.w600,
                                                   ),
                                                 ),
                                               );
@@ -3287,10 +3156,9 @@ class _GraphScreenState extends State<GraphScreen> {
 
                                     viewMinY =
                                         (viewMinY / _yLabelStep).floor() *
-                                            _yLabelStep -
-                                        _kYPadStepsBottom * _yLabelStep;
-                                    viewMaxY =
-                                        (viewMaxY / _yLabelStep).ceil() *
+                                                _yLabelStep -
+                                            _kYPadStepsBottom * _yLabelStep;
+                                    viewMaxY = (viewMaxY / _yLabelStep).ceil() *
                                             _yLabelStep +
                                         _kYPadStepsTop * _yLabelStep;
 
@@ -3341,8 +3209,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                                       showTitles: false,
                                                     ),
                                                   ),
-                                                  rightTitles:
-                                                      const AxisTitles(
+                                                  rightTitles: const AxisTitles(
                                                     sideTitles: SideTitles(
                                                       showTitles: false,
                                                     ),
@@ -3384,8 +3251,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                                     const FlClipData.none(),
                                                 lineBarsData: const [],
                                                 titlesData: FlTitlesData(
-                                                  leftTitles:
-                                                      const AxisTitles(
+                                                  leftTitles: const AxisTitles(
                                                     sideTitles: SideTitles(
                                                       showTitles: false,
                                                     ),
@@ -3405,17 +3271,16 @@ class _GraphScreenState extends State<GraphScreen> {
                                                       showTitles: false,
                                                     ),
                                                   ),
-                                                  rightTitles:
-                                                      const AxisTitles(
+                                                  rightTitles: const AxisTitles(
                                                     sideTitles: SideTitles(
                                                       showTitles: false,
                                                     ),
                                                   ),
                                                 ),
-                                                gridData:
-                                                    const FlGridData(show: false),
-                                                borderData: FlBorderData(
+                                                gridData: const FlGridData(
                                                     show: false),
+                                                borderData:
+                                                    FlBorderData(show: false),
                                               ),
                                             ),
                                     );
@@ -3426,13 +3291,13 @@ class _GraphScreenState extends State<GraphScreen> {
                                                 totalH - 2 - _kXAxisReservedPx,
                                             alignment: Alignment.center,
                                             child: Column(
-                                              mainAxisSize:
-                                                  MainAxisSize.min,
+                                              mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 SizedBox.square(
                                                   dimension: min(
                                                     MediaQuery.of(context)
-                                                            .size.height /
+                                                            .size
+                                                            .height /
                                                         3,
                                                     240.0,
                                                   ),
@@ -3473,8 +3338,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                         : Container(
                                             height: chartH,
                                             child: SingleChildScrollView(
-                                              scrollDirection:
-                                                  Axis.horizontal,
+                                              scrollDirection: Axis.horizontal,
                                               physics:
                                                   const BouncingScrollPhysics(),
                                               child: SizedBox(
@@ -3486,12 +3350,11 @@ class _GraphScreenState extends State<GraphScreen> {
                                                     maxX: points.toDouble(),
                                                     minY: viewMinY,
                                                     maxY: viewMaxY,
-                                                    clipData: const FlClipData
-                                                        .all(),
+                                                    clipData:
+                                                        const FlClipData.all(),
                                                     extraLinesData:
                                                         ExtraLinesData(
-                                                      horizontalLines:
-                                                          <HorizontalLine>[
+                                                      horizontalLines: <HorizontalLine>[
                                                         HorizontalLine(
                                                           y: 0,
                                                           color: colorScheme
@@ -3520,8 +3383,8 @@ class _GraphScreenState extends State<GraphScreen> {
                                                       LineChartBarData(
                                                         spots: _spots,
                                                         isCurved: false,
-                                                        color: colorScheme
-                                                            .primary,
+                                                        color:
+                                                            colorScheme.primary,
                                                         barWidth: 3,
                                                         dotData:
                                                             const FlDotData(
@@ -3531,33 +3394,28 @@ class _GraphScreenState extends State<GraphScreen> {
                                                                 show: false),
                                                       ),
                                                     ],
-                                                    titlesData:
-                                                        FlTitlesData(
+                                                    titlesData: FlTitlesData(
                                                       leftTitles:
                                                           const AxisTitles(
-                                                        sideTitles:
-                                                            SideTitles(
+                                                        sideTitles: SideTitles(
                                                           showTitles: false,
                                                         ),
                                                       ),
                                                       bottomTitles:
                                                           const AxisTitles(
-                                                        sideTitles:
-                                                            SideTitles(
+                                                        sideTitles: SideTitles(
                                                           showTitles: false,
                                                         ),
                                                       ),
                                                       topTitles:
                                                           const AxisTitles(
-                                                        sideTitles:
-                                                            SideTitles(
+                                                        sideTitles: SideTitles(
                                                           showTitles: false,
                                                         ),
                                                       ),
                                                       rightTitles:
                                                           const AxisTitles(
-                                                        sideTitles:
-                                                            SideTitles(
+                                                        sideTitles: SideTitles(
                                                           showTitles: false,
                                                         ),
                                                       ),
@@ -3574,8 +3432,8 @@ class _GraphScreenState extends State<GraphScreen> {
                                                       checkToShowVerticalLine:
                                                           (v) =>
                                                               (v - v.round())
-                                                                      .abs() <
-                                                                  1e-6,
+                                                                  .abs() <
+                                                              1e-6,
                                                       getDrawingHorizontalLine:
                                                           (v) => FlLine(
                                                         color: colorScheme
@@ -3591,7 +3449,8 @@ class _GraphScreenState extends State<GraphScreen> {
                                                     ),
                                                     borderData: FlBorderData(
                                                         show: false),
-                                                    lineTouchData: LineTouchData(
+                                                    lineTouchData:
+                                                        LineTouchData(
                                                       handleBuiltInTouches:
                                                           true,
                                                       touchTooltipData:
@@ -3601,58 +3460,56 @@ class _GraphScreenState extends State<GraphScreen> {
                                                         tooltipPadding:
                                                             const EdgeInsets
                                                                 .all(8),
-                                                        getTooltipColor:
-                                                            (_) => colorScheme
+                                                        getTooltipColor: (_) =>
+                                                            colorScheme
                                                                 .primaryContainer,
                                                         getTooltipItems:
                                                             (spots) {
-                                                          final loc =
-                                                              Localizations
-                                                                      .localeOf(
-                                                                          context)
-                                                                  .toLanguageTag();
-                                                          return spots
-                                                              .map(
-                                                                (s) {
-                                                                  final i =
-                                                                      s.spotIndex;
-                                                                  final d =
-                                                                      (i >= 0 &&
-                                                                              i <
-                                                                                  _xDates.length)
-                                                                          ?
-                                                                          _xDates[
-                                                                              i]
-                                                                          :
-                                                                          null;
-                                                                  final dateStr =
-                                                                      (_displayMode ==
-                                                                              DisplayMode.day)
-                                                                          ? (d !=
-                                                                                  null
-                                                                              ? DateFormat('M/d', loc)
-                                                                                  .format(d)
-                                                                              : '')
-                                                                          : (d !=
-                                                                                  null
-                                                                              ? _formatWeekLabel(d)
-                                                                              : '');
-                                                                  final valStr =
-                                                                      _formatTooltipValue(
-                                                                          s.y,
-                                                                          l10n);
-                                                                  return LineTooltipItem(
-                                                                    '${dateStr}\n$valStr',
-                                                                    TextStyle(
-                                                                      color: colorScheme
-                                                                          .onPrimaryContainer,
-                                                                      fontWeight:
-                                                                          FontWeight.w600,
-                                                                    ),
-                                                                  );
-                                                                },
-                                                              )
-                                                              .toList();
+                                                          final loc = Localizations
+                                                                  .localeOf(
+                                                                      context)
+                                                              .toLanguageTag();
+                                                          return spots.map(
+                                                            (s) {
+                                                              final i =
+                                                                  s.spotIndex;
+                                                              final d = (i >=
+                                                                          0 &&
+                                                                      i <
+                                                                          _xDates
+                                                                              .length)
+                                                                  ? _xDates[i]
+                                                                  : null;
+                                                              final dateStr = (_displayMode ==
+                                                                      DisplayMode
+                                                                          .day)
+                                                                  ? (d != null
+                                                                      ? DateFormat(
+                                                                              'M/d',
+                                                                              loc)
+                                                                          .format(
+                                                                              d)
+                                                                      : '')
+                                                                  : (d != null
+                                                                      ? _formatWeekLabel(
+                                                                          d)
+                                                                      : '');
+                                                              final valStr =
+                                                                  _formatTooltipValue(
+                                                                      s.y,
+                                                                      l10n);
+                                                              return LineTooltipItem(
+                                                                '${dateStr}\n$valStr',
+                                                                TextStyle(
+                                                                  color: colorScheme
+                                                                      .onPrimaryContainer,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
+                                                              );
+                                                            },
+                                                          ).toList();
                                                         },
                                                       ),
                                                     ),
@@ -3670,229 +3527,279 @@ class _GraphScreenState extends State<GraphScreen> {
                                         border: Border.all(
                                           color: colorScheme.outlineVariant,
                                         ),
-                                        borderRadius:
-                                            BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Stack(
                                         children: [
                                           Row(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
-                                        children: [
-                                          SizedBox(
-                                            width: yAxisPanelW,
-                                            child: Column(
-                                              children: [
-                                                Expanded(
-                                                  child:
-                                                      SingleChildScrollView(
-                                                    controller:
-                                                        _verticalScrollController1,
-                                                    physics:
-                                                        const BouncingScrollPhysics(),
-                                                    child: yAxisChart,
-                                                  ),
-                                                ),
-                                                SizedBox(
-                                                    height:
-                                                        _kXAxisReservedPx),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 2),
-                                          Expanded(
-                                            child:
-                                                SingleChildScrollView(
-                                              scrollDirection:
-                                                  Axis.horizontal,
-                                              physics:
-                                                  const BouncingScrollPhysics(),
-                                              child: SizedBox(
-                                                width: chartW,
-                                                height: totalH - 2,
-                                                child: Stack(
+                                            children: [
+                                              SizedBox(
+                                                width: yAxisPanelW,
+                                                child: Column(
                                                   children: [
-                                                    Positioned(
-                                                      top: 0,
-                                                      left: 0,
-                                                      right: 0,
-                                                      bottom:
-                                                          _kXAxisReservedPx,
+                                                    Expanded(
                                                       child:
                                                           SingleChildScrollView(
                                                         controller:
-                                                            _verticalScrollController2,
-                                                        physics: const
-                                                            BouncingScrollPhysics(),
-                                                        child: plotArea,
+                                                            _verticalScrollController1,
+                                                        physics:
+                                                            const BouncingScrollPhysics(),
+                                                        child: yAxisChart,
                                                       ),
                                                     ),
-                                                    Positioned(
-                                                      left: 0,
-                                                      right: 0,
-                                                      bottom: 0,
-                                                      height:
-                                                          _kXAxisReservedPx,
-                                                      child: xAxisChart,
+                                                    SizedBox(
+                                                        height:
+                                                            _kXAxisReservedPx),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 2),
+                                              Expanded(
+                                                child: SingleChildScrollView(
+                                                  scrollDirection:
+                                                      Axis.horizontal,
+                                                  physics:
+                                                      const BouncingScrollPhysics(),
+                                                  child: SizedBox(
+                                                    width: chartW,
+                                                    height: totalH - 2,
+                                                    child: Stack(
+                                                      children: [
+                                                        Positioned(
+                                                          top: 0,
+                                                          left: 0,
+                                                          right: 0,
+                                                          bottom:
+                                                              _kXAxisReservedPx,
+                                                          child:
+                                                              SingleChildScrollView(
+                                                            controller:
+                                                                _verticalScrollController2,
+                                                            physics:
+                                                                const BouncingScrollPhysics(),
+                                                            child: plotArea,
+                                                          ),
+                                                        ),
+                                                        Positioned(
+                                                          left: 0,
+                                                          right: 0,
+                                                          bottom: 0,
+                                                          height:
+                                                              _kXAxisReservedPx,
+                                                          child: xAxisChart,
+                                                        ),
+                                                        unitOverlay,
+                                                      ],
                                                     ),
-                                                    unitOverlay,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          ValueListenableBuilder<bool>(
+                                            valueListenable: SettingsManager
+                                                .isPremiumNotifier,
+                                            builder:
+                                                (context, isPremium, child) {
+                                              if (isPremium) {
+                                                return const SizedBox.shrink();
+                                              }
+                                              final overlayTheme = Theme.of(
+                                                context,
+                                              );
+                                              return Positioned.fill(
+                                                child: ClipRect(
+                                                  child: BackdropFilter(
+                                                    filter: ImageFilter.blur(
+                                                      sigmaX: 6,
+                                                      sigmaY: 6,
+                                                    ),
+                                                    child: Container(
+                                                      color: colorScheme.surface
+                                                          .withOpacity(0.72),
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                              24),
+                                                      child: Center(
+                                                        child: ConstrainedBox(
+                                                          constraints:
+                                                              const BoxConstraints(
+                                                            maxWidth: 320,
+                                                          ),
+                                                          child: DecoratedBox(
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: colorScheme
+                                                                  .surface,
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          24),
+                                                              border:
+                                                                  Border.all(
+                                                                color:
+                                                                    const Color(
+                                                                  0xFFFFC266,
+                                                                ).withOpacity(
+                                                                        0.60),
+                                                              ),
+                                                            ),
+                                                            child: Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .all(20),
+                                                              child: Column(
+                                                                mainAxisSize:
+                                                                    MainAxisSize
+                                                                        .min,
+                                                                children: [
+                                                                  Container(
+                                                                    width: 52,
+                                                                    height: 52,
+                                                                    decoration:
+                                                                        BoxDecoration(
+                                                                      borderRadius:
+                                                                          BorderRadius
+                                                                              .circular(
+                                                                        16,
+                                                                      ),
+                                                                      gradient:
+                                                                          const LinearGradient(
+                                                                        colors: [
+                                                                          Color(
+                                                                            0xFFFFC94D,
+                                                                          ),
+                                                                          Color(
+                                                                            0xFFFF9800,
+                                                                          ),
+                                                                        ],
+                                                                      ),
+                                                                    ),
+                                                                    child:
+                                                                        const Icon(
+                                                                      Icons
+                                                                          .insights_rounded,
+                                                                      color: Colors
+                                                                          .white,
+                                                                    ),
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 14,
+                                                                  ),
+                                                                  Text(
+                                                                    premiumGraphHeadline(
+                                                                      l10n,
+                                                                    ),
+                                                                    textAlign:
+                                                                        TextAlign
+                                                                            .center,
+                                                                    style: overlayTheme
+                                                                        .textTheme
+                                                                        .titleLarge
+                                                                        ?.copyWith(
+                                                                      color: colorScheme
+                                                                          .onSurface,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w800,
+                                                                    ),
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 8,
+                                                                  ),
+                                                                  Text(
+                                                                    premiumGraphMessage(
+                                                                      l10n,
+                                                                    ),
+                                                                    textAlign:
+                                                                        TextAlign
+                                                                            .center,
+                                                                    style: overlayTheme
+                                                                        .textTheme
+                                                                        .bodyMedium
+                                                                        ?.copyWith(
+                                                                      color: colorScheme
+                                                                          .onSurfaceVariant,
+                                                                      height:
+                                                                          1.45,
+                                                                    ),
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 16,
+                                                                  ),
+                                                                  FilledButton(
+                                                                    onPressed:
+                                                                        () async {
+                                                                      await showPremiumUpgradeSheet(
+                                                                        context,
+                                                                        headline:
+                                                                            premiumGraphHeadline(
+                                                                          l10n,
+                                                                        ),
+                                                                        message:
+                                                                            premiumGraphMessage(
+                                                                          l10n,
+                                                                        ),
+                                                                      );
+                                                                    },
+                                                                    child: Text(
+                                                                      premiumSettingsButtonLabel(
+                                                                        l10n,
+                                                                      ),
+                                                                      textAlign:
+                                                                          TextAlign
+                                                                              .center,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          if (_axisDates.isEmpty)
+                                            Positioned.fill(
+                                              child: Container(
+                                                color: colorScheme.surface,
+                                                alignment: Alignment.center,
+                                                padding:
+                                                    const EdgeInsets.all(32),
+                                                child: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.fitness_center,
+                                                      size: 48,
+                                                      color: colorScheme
+                                                          .onSurfaceVariant,
+                                                    ),
+                                                    const SizedBox(height: 16),
+                                                    Text(
+                                                      l10n.noDataToTrain,
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      style: TextStyle(
+                                                        color: colorScheme
+                                                            .onSurfaceVariant,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
                                                   ],
                                                 ),
                                               ),
                                             ),
-                                          ),
                                         ],
                                       ),
-                                      if (!SettingsManager.isPremium && !_isGraphUnlocked && _axisDates.isNotEmpty)
-                                        Positioned.fill(
-                                          child: ClipRect(
-                                            child: BackdropFilter(
-                                              filter: ImageFilter.blur(
-                                                  sigmaX: 4, sigmaY: 4),
-                                              child: Container(
-                                                color: colorScheme.surface
-                                                    .withOpacity(0.08),
-                                                alignment: Alignment.center,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 24),
-                                                child: DecoratedBox(
-                                                  decoration: BoxDecoration(
-                                                    color: colorScheme
-                                                        .surfaceContainerHighest
-                                                        .withOpacity(0.56),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            20),
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: Colors.black
-                                                            .withOpacity(0.08),
-                                                        blurRadius: 18,
-                                                        offset:
-                                                            const Offset(0, 6),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  child: Padding(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                        vertical: 22,
-                                                        horizontal: 24),
-                                                    child: ConstrainedBox(
-                                                      constraints:
-                                                          const BoxConstraints(
-                                                              maxWidth: 320),
-                                                      child: Column(
-                                                        mainAxisSize:
-                                                            MainAxisSize.min,
-                                                        children: [
-                                                          Icon(
-                                                            Icons.lock_outline,
-                                                            color: colorScheme
-                                                                .onSurfaceVariant,
-                                                            size: 30,
-                                                          ),
-                                                          const SizedBox(
-                                                              height: 12),
-                                                          Text(
-                                                            l10n.unlockGraph,
-                                                            style: TextStyle(
-                                                              color: colorScheme
-                                                                  .onSurface,
-                                                              fontSize: 14,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                            ),
-                                                            textAlign: TextAlign
-                                                                .center,
-                                                          ),
-                                                          const SizedBox(
-                                                              height: 20),
-                                                          FilledButton(
-                                                            onPressed: _isAdLoading
-                                                                ? null
-                                                                : () {
-                                                                    debugPrint('[GraphScreen] Unlock button pressed');
-                                                                    _showRewardedAd();
-                                                                  },
-                                                            child: Row(
-                                                              mainAxisSize:
-                                                                  MainAxisSize
-                                                                      .min,
-                                                              children: [
-                                                                if (_isAdLoading) ...[
-                                                                  SizedBox(
-                                                                    width: 18,
-                                                                    height: 18,
-                                                                    child:
-                                                                        CircularProgressIndicator(
-                                                                      strokeWidth:
-                                                                          2,
-                                                                      valueColor:
-                                                                          AlwaysStoppedAnimation<
-                                                                              Color>(
-                                                                        colorScheme
-                                                                            .onPrimary,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                ] else ...[
-                                                                  const Icon(
-                                                                      Icons
-                                                                          .play_circle_fill_rounded,
-                                                                      size: 20),
-                                                                ],
-                                                                const SizedBox(
-                                                                    width: 10),
-                                                                Text(_isAdLoading
-                                                                    ? 'Loading...'
-                                                                    : l10n.calendarLockedResultsButton),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                      else if (_axisDates.isEmpty)
-                                        Positioned.fill(
-                                          child: Container(
-                                            color: colorScheme.surface,
-                                            alignment: Alignment.center,
-                                            padding: const EdgeInsets.all(32),
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  Icons.fitness_center,
-                                                  size: 48,
-                                                  color: colorScheme
-                                                      .onSurfaceVariant,
-                                                ),
-                                                const SizedBox(height: 16),
-                                                Text(
-                                                  l10n.noDataToTrain,
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    color: colorScheme
-                                                        .onSurfaceVariant,
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                );
+                                    );
                                   },
                                 ),
                               ),
@@ -3911,7 +3818,6 @@ class _GraphScreenState extends State<GraphScreen> {
         ),
       ),
     );
-
   }
 }
 

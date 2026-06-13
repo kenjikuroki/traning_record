@@ -8,13 +8,12 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart'; 
 import 'package:ttraining_record/l10n/app_localizations.dart';
-import '../widgets/ad_banner.dart';
-import '../widgets/sister_app_banner.dart';
 import '../settings_manager.dart';
 import '../widgets/centered_constrained.dart';
+import '../widgets/premium_upgrade_sheet.dart';
 import '../services/album_sync.dart';
+import '../widgets/app_dialog.dart';
 
 Future<bool> _ensureAlbumCameraPermission(BuildContext context) async {
   var status = await Permission.camera.status;
@@ -179,34 +178,37 @@ class _AlbumScreenState extends State<AlbumScreen> {
 
   void _confirmDelete(File file, String dateKey, int index) {
     final l10n = AppLocalizations.of(context)!;
-    showDialog<void>(
+    showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.mediaDelete),
+      builder: (ctx) => AppDialog(
+        title: l10n.mediaDelete,
+        icon: Icons.delete_outline_rounded,
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l10n.mediaCancel),
+          AppDialogAction(
+            label: l10n.mediaCancel,
+            isCancel: true,
+            onPressed: () => Navigator.of(ctx).pop(false),
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              try {
-                await file.delete();
-              } catch (_) {}
-              if (!mounted) return;
-              setState(() {
-                _byDate[dateKey]!.removeAt(index);
-                if (_byDate[dateKey]!.isEmpty) {
-                  _byDate.remove(dateKey);
-                }
-              });
-            },
-            child: Text(l10n.delete),
+          AppDialogAction(
+            label: l10n.delete,
+            isDestructive: true,
+            onPressed: () => Navigator.of(ctx).pop(true),
           ),
         ],
       ),
-    );
+    ).then((ok) async {
+      if (ok != true) return;
+      try {
+        await file.delete();
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _byDate[dateKey]!.removeAt(index);
+        if (_byDate[dateKey]!.isEmpty) {
+          _byDate.remove(dateKey);
+        }
+      });
+    });
   }
 
   void _toggleSelect(File f) {
@@ -235,21 +237,13 @@ class _AlbumScreenState extends State<AlbumScreen> {
   Future<void> _deleteSelected() async {
     final l10n = AppLocalizations.of(context)!;
     final count = _selectedPaths.length;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deleteSelectedConfirmTitle(count)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l10n.mediaCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l10n.delete),
-          ),
-        ],
-      ),
+    final ok = await showConfirmDialog(
+      context,
+      title: l10n.deleteSelectedConfirmTitle(count),
+      cancelLabel: l10n.mediaCancel,
+      confirmLabel: l10n.delete,
+      isDestructive: true,
+      icon: Icons.delete_outline_rounded,
     );
     if (ok != true) return;
 
@@ -330,6 +324,15 @@ class _AlbumScreenState extends State<AlbumScreen> {
 
   Future<void> _handleAddPressed() async {
     if (_captureInProgress) return;
+    if (!SettingsManager.isPremium) {
+      final l10n = AppLocalizations.of(context)!;
+      await showPremiumUpgradeSheet(
+        context,
+        headline: premiumPhotoHeadline(l10n),
+        message: premiumPhotoMessage(l10n),
+      );
+      return;
+    }
     if (!await _ensureAlbumCameraPermission(context)) return;
     if (!mounted) return;
 
@@ -513,7 +516,6 @@ class _AlbumScreenState extends State<AlbumScreen> {
                         ],
                       ),
                     ),
-
                   Expanded(
                     child: _loading
                         ? const Center(child: CircularProgressIndicator())
@@ -698,12 +700,8 @@ class _AlbumScreenState extends State<AlbumScreen> {
                                 );
                               },
                             );
-
                           }(),
                   ),
-
-                  // Sister App Banner
-                  if (!_inSelection && !SettingsManager.isPremium) const SisterAppBanner(),
                 ],
               ),
             ),
@@ -831,7 +829,8 @@ class _AlbumViewerDialogState extends State<_AlbumViewerDialog> {
             right: 0,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.45),
                   borderRadius: BorderRadius.circular(16),
@@ -860,8 +859,6 @@ class _AlbumViewerDialogState extends State<_AlbumViewerDialog> {
     return DateFormat('yyyy/MM/dd').format(parsed);
   }
 }
-
-
 
 class _AlbumPhoto {
   final File file;

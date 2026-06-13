@@ -583,12 +583,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get resultsCopied => '実績をコピーしました';
 
   @override
-  String get calendarLockedResultsMessage => '10日以上前の実績は広告視聴後に表示されます。';
-
-  @override
-  String get calendarLockedResultsButton => '実績を見る';
-
-  @override
   String deleteSelectedConfirmTitle(Object count) {
     return '選択した$count件を削除しますか？';
   }
@@ -1596,10 +1590,34 @@ class AppLocalizationsJa extends AppLocalizations {
   String get premiumUnlockTitle => 'プレミアム版';
 
   @override
-  String get premiumUnlockDescription => '';
+  String get premiumUnlockDescription => '写真保存とグラフ機能を解放する買い切りプラン';
 
   @override
-  String get premiumUnlockButton => '購入して広告を完全に削除';
+  String get premiumUnlockButton => '購入してロックを解除';
+
+  @override
+  String get premiumFeaturePhotoSaving => '写真保存';
+
+  @override
+  String get premiumFeatureGraphs => 'グラフ';
+
+  @override
+  String get premiumFeatureOneTime => '買い切り';
+
+  @override
+  String get premiumPhotoHeadline => '写真保存を解放';
+
+  @override
+  String get premiumPhotoMessage => '写真の保存はプレミアム機能です。アップグレードすると、記録写真をアルバムに保存できます。';
+
+  @override
+  String get premiumGraphHeadline => 'グラフを解放';
+
+  @override
+  String get premiumGraphMessage => 'グラフ表示はプレミアム機能です。アップグレードすると、トレーニングの推移を確認できます。';
+
+  @override
+  String get purchaseFailed => '購入に失敗しました';
 
   @override
   String get restorePurchase => '購入を復元';

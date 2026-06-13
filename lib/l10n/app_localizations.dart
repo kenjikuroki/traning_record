@@ -1217,18 +1217,6 @@ abstract class AppLocalizations {
   /// **'Copied results to clipboard'**
   String get resultsCopied;
 
-  /// No description provided for @calendarLockedResultsMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'Records from over 10 days ago are hidden until you watch an ad.'**
-  String get calendarLockedResultsMessage;
-
-  /// No description provided for @calendarLockedResultsButton.
-  ///
-  /// In en, this message translates to:
-  /// **'View results'**
-  String get calendarLockedResultsButton;
-
   /// No description provided for @deleteSelectedConfirmTitle.
   ///
   /// In en, this message translates to:
@@ -3218,14 +3206,62 @@ abstract class AppLocalizations {
   /// No description provided for @premiumUnlockDescription.
   ///
   /// In en, this message translates to:
-  /// **''**
+  /// **'A one-time upgrade to unlock photo saving and graphs.'**
   String get premiumUnlockDescription;
 
   /// No description provided for @premiumUnlockButton.
   ///
   /// In en, this message translates to:
-  /// **'Purchase and remove ads'**
+  /// **'Purchase to unlock'**
   String get premiumUnlockButton;
+
+  /// No description provided for @premiumFeaturePhotoSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo saving'**
+  String get premiumFeaturePhotoSaving;
+
+  /// No description provided for @premiumFeatureGraphs.
+  ///
+  /// In en, this message translates to:
+  /// **'Graphs'**
+  String get premiumFeatureGraphs;
+
+  /// No description provided for @premiumFeatureOneTime.
+  ///
+  /// In en, this message translates to:
+  /// **'One-time'**
+  String get premiumFeatureOneTime;
+
+  /// No description provided for @premiumPhotoHeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock photo saving'**
+  String get premiumPhotoHeadline;
+
+  /// No description provided for @premiumPhotoMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo saving is a premium feature. Upgrade to save your progress shots to the album.'**
+  String get premiumPhotoMessage;
+
+  /// No description provided for @premiumGraphHeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock graphs'**
+  String get premiumGraphHeadline;
+
+  /// No description provided for @premiumGraphMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Graphs are a premium feature. Upgrade to view your training trends.'**
+  String get premiumGraphMessage;
+
+  /// No description provided for @purchaseFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase failed'**
+  String get purchaseFailed;
 
   /// No description provided for @restorePurchase.
   ///

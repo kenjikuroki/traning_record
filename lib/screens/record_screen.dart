@@ -15,21 +15,17 @@ import '../models/meal.dart';
 import '../models/menu_data.dart';
 import '../settings_manager.dart';
 import '../utils/training_display_utils.dart';
-import '../widgets/ad_banner.dart';
-import '../widgets/sister_app_banner.dart';
-import '../widgets/premium_unlock_banner.dart';
-import '../widgets/big_earning_ad.dart';
 import '../widgets/stopwatch_widget.dart';
 import '../widgets/notification_soft_ask.dart';
+import '../widgets/premium_upgrade_sheet.dart';
+import '../widgets/app_dialog.dart';
 import '../services/album_sync.dart';
-import '../services/age_signals_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 Future<bool> _ensureCameraPermission(BuildContext context) async {
   var status = await Permission.camera.status;
@@ -244,21 +240,6 @@ enum AwardType {
 
 class _RecordScreenState extends State<RecordScreen>
     with WidgetsBindingObserver, TickerProviderStateMixin {
-  
-  // バナー振り分け: 0=Sister, 1=Premium, else=Ad
-  Widget _buildInputCardBanner() {
-    if (SettingsManager.isPremium) {
-      return const SizedBox.shrink();
-    }
-    if (_menuOverlayBannerType == 0) {
-      return const SisterAppBanner();
-    } else if (_menuOverlayBannerType == 1) {
-      return const PremiumUnlockBanner();
-    } else {
-      return const AdBanner(screenName: 'record_overlay');
-    }
-  }
-
   // ▼ 戻る遷移中の再描画発火を抑止するフラグ
   bool _isPopping = false;
 
@@ -397,7 +378,6 @@ class _RecordScreenState extends State<RecordScreen>
   final GlobalKey _kFabKey = GlobalKey();
   final GlobalKey _kMenuSaveButton = GlobalKey();
   final GlobalKey _kStopwatchArea = GlobalKey();
-  final GlobalKey _kAdArea = GlobalKey();
 
   bool _firstBuildDone = false;
 
@@ -408,8 +388,6 @@ class _RecordScreenState extends State<RecordScreen>
 
   int? _currentSectionIndex;
   int? _currentMenuIndex;
-  // 0: sister, 1: premium, others: ad
-  int _menuOverlayBannerType = 0;
 
   bool _showSavedChip = false;
   Timer? _savedChipTimer;
@@ -494,210 +472,6 @@ class _RecordScreenState extends State<RecordScreen>
   Timer? _scrollDebounce;
   GlobalKey? _pendingScrollKey;
   double _pendingScrollAlignment = 0.22;
-
-  InterstitialAd? _exitInterstitialAd;
-  bool _loadingExitInterstitial = false;
-  InterstitialAd? _photoInterstitialAd;
-  bool _loadingPhotoInterstitial = false;
-  Completer<InterstitialAd?>? _photoInterstitialCompleter;
-  int _photoCaptureSinceAd = 0;
-
-  void _loadExitInterstitial() {
-    if (!mounted || SettingsManager.demoMode || SettingsManager.isPremium) return;
-    if (_exitInterstitialAd != null || _loadingExitInterstitial) return;
-    _loadingExitInterstitial = true;
-    final adUnitId = _resolveExitInterstitialUnitId();
-    InterstitialAd.load(
-      adUnitId: adUnitId,
-      request: AgeSignalsService.instance.buildAdRequest(),
-      adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (ad) {
-          if (!mounted) {
-            ad.dispose();
-            return;
-          }
-          _loadingExitInterstitial = false;
-          _exitInterstitialAd = ad;
-        },
-        onAdFailedToLoad: (error) {
-          _loadingExitInterstitial = false;
-          _exitInterstitialAd?.dispose();
-          _exitInterstitialAd = null;
-        },
-      ),
-    );
-  }
-
-  void _disposeExitInterstitial() {
-    _exitInterstitialAd?.dispose();
-    _exitInterstitialAd = null;
-  }
-
-  Future<InterstitialAd?> _preparePhotoInterstitial() async {
-    if (SettingsManager.demoMode || SettingsManager.isPremium) return null;
-    if (_photoInterstitialAd != null) return _photoInterstitialAd;
-    if (_photoInterstitialCompleter != null) {
-      return _photoInterstitialCompleter!.future;
-    }
-    _loadingPhotoInterstitial = true;
-    final completer = Completer<InterstitialAd?>();
-    _photoInterstitialCompleter = completer;
-    await AgeSignalsService.instance.ensureInitialized();
-    InterstitialAd.load(
-      adUnitId: _resolvePhotoInterstitialUnitId(),
-      request: AgeSignalsService.instance.buildAdRequest(),
-      adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (ad) {
-          if (!mounted) {
-            ad.dispose();
-            if (!completer.isCompleted) completer.complete(null);
-            _photoInterstitialCompleter = null;
-            _loadingPhotoInterstitial = false;
-            return;
-          }
-          _photoInterstitialAd = ad;
-          _loadingPhotoInterstitial = false;
-          if (!completer.isCompleted) completer.complete(ad);
-          _photoInterstitialCompleter = null;
-        },
-        onAdFailedToLoad: (error) {
-          _photoInterstitialAd?.dispose();
-          _photoInterstitialAd = null;
-          _loadingPhotoInterstitial = false;
-          if (!completer.isCompleted) completer.complete(null);
-          _photoInterstitialCompleter = null;
-        },
-      ),
-    );
-    return completer.future;
-  }
-
-  void _disposePhotoInterstitial() {
-    _photoInterstitialAd?.dispose();
-    _photoInterstitialAd = null;
-  }
-
-  Future<void> _playPhotoInterstitial() async {
-    final ad = await _preparePhotoInterstitial();
-    if (ad == null) return;
-
-    // 30分以内の表示制限チェック
-    if (!SettingsManager.shouldShowInterstitial()) {
-      return;
-    }
-
-    _photoInterstitialAd = null;
-    final completer = Completer<void>();
-    ad.fullScreenContentCallback = FullScreenContentCallback(
-      onAdDismissedFullScreenContent: (ad) {
-        ad.dispose();
-        if (!completer.isCompleted) completer.complete();
-      },
-      onAdFailedToShowFullScreenContent: (ad, error) {
-        ad.dispose();
-        if (!completer.isCompleted) completer.complete();
-      },
-    );
-    try {
-      ad.show();
-      await SettingsManager.markInterstitialShown(); // 表示時刻を記録
-      await completer.future;
-    } catch (_) {
-      ad.dispose();
-      if (!completer.isCompleted) completer.complete();
-    } finally {
-      if (mounted) {
-        _preparePhotoInterstitial();
-      }
-    }
-  }
-
-  Future<void> _handlePhotoCaptureAdProgress() async {
-    if (SettingsManager.demoMode) return;
-    _photoCaptureSinceAd++;
-    if (_photoCaptureSinceAd >= 5) {
-      _photoCaptureSinceAd = 0;
-      await _playPhotoInterstitial();
-    } else {
-      await _preparePhotoInterstitial();
-    }
-  }
-
-  Future<void> _maybeShowExitInterstitial() async {
-    if (SettingsManager.demoMode) {
-      _disposeExitInterstitial();
-      return;
-    }
-    final ad = _exitInterstitialAd;
-    _exitInterstitialAd = null;
-    if (ad == null) {
-      _loadExitInterstitial();
-      return;
-    }
-
-    if (!SettingsManager.shouldShowInterstitial()) {
-      ad.dispose();
-      _loadExitInterstitial();
-      return;
-    }
-
-    final completer = Completer<void>();
-    ad.fullScreenContentCallback = FullScreenContentCallback(
-      onAdDismissedFullScreenContent: (ad) {
-        ad.dispose();
-        if (!completer.isCompleted) completer.complete();
-        if (mounted) {
-          _loadExitInterstitial();
-        }
-      },
-      onAdFailedToShowFullScreenContent: (ad, error) {
-        ad.dispose();
-        if (!completer.isCompleted) completer.complete();
-        if (mounted) {
-          _loadExitInterstitial();
-        }
-      },
-    );
-    try {
-      ad.show();
-      await SettingsManager.markInterstitialShown();
-      await completer.future;
-    } catch (_) {
-      ad.dispose();
-      if (!completer.isCompleted) completer.complete();
-      if (mounted) {
-        _loadExitInterstitial();
-      }
-    }
-  }
-
-  String _resolveExitInterstitialUnitId() {
-    if (kDebugMode) {
-      return Platform.isAndroid
-          ? 'ca-app-pub-3940256099942544/1033173712'
-          : 'ca-app-pub-3940256099942544/4411468910';
-    }
-    if (Platform.isAndroid) {
-      return 'ca-app-pub-3331079517737737/6644663263';
-    } else if (Platform.isIOS) {
-      return 'ca-app-pub-3331079517737737/4615914659';
-    }
-    return 'ca-app-pub-3940256099942544/1033173712';
-  }
-
-  String _resolvePhotoInterstitialUnitId() {
-    if (kDebugMode) {
-      return Platform.isAndroid
-          ? 'ca-app-pub-3940256099942544/1033173712'
-          : 'ca-app-pub-3940256099942544/4411468910';
-    }
-    if (Platform.isAndroid) {
-      return 'ca-app-pub-3331079517737737/6644663263';
-    } else if (Platform.isIOS) {
-      return 'ca-app-pub-3331079517737737/4615914659';
-    }
-    return 'ca-app-pub-3940256099942544/1033173712';
-  }
 
   // 体型カードの下あたり、クラス内メソッドとして追加
   void _applyWaistDisplayUnitFromCm() {
@@ -791,8 +565,6 @@ class _RecordScreenState extends State<RecordScreen>
       if (mounted) setState(() => _firstBuildDone = true);
     });
 
-
-
     _inactivityTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       final idle = DateTime.now().difference(_lastInteractionAt);
       if (idle >= _kIdleAutoPause && _swController.isRunning) {
@@ -828,13 +600,6 @@ class _RecordScreenState extends State<RecordScreen>
         }
       });
     }
-
-    _loadExitInterstitial();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _preparePhotoInterstitial();
-      }
-    });
   }
 
   @override
@@ -898,9 +663,6 @@ class _RecordScreenState extends State<RecordScreen>
         .removeListener(_onPersonalWeightSettingChanged);
     SettingsManager.manageBmrNotifier.removeListener(_onBmrToggleChanged);
 
-    _disposeExitInterstitial();
-    _disposePhotoInterstitial();
-
     super.dispose();
   }
 
@@ -950,8 +712,6 @@ class _RecordScreenState extends State<RecordScreen>
     );
   }
 
-
-
   String _formatAppBarDate(BuildContext context) {
     final locale = Localizations.localeOf(context);
     final date = widget.selectedDate;
@@ -970,7 +730,6 @@ class _RecordScreenState extends State<RecordScreen>
       if (!mounted) return;
       setState(() => _showSavedChip = false);
     });
-
   }
 
   Future<void> _dismissKeyboardSafely(BuildContext ctx) async {
@@ -1608,51 +1367,60 @@ class _RecordScreenState extends State<RecordScreen>
     String originalPart, {
     String? currentName,
   }) {
-    final options = LinkedHashSet<String>();
-    final trimmedCurrent = currentName?.trim() ?? '';
+    final customList = _customExercises[originalPart] ?? const <String>[];
+    final customSet = <String>{
+      for (final c in customList)
+        if (c.trim().isNotEmpty) c.trim(),
+    };
+    final seen = <String>{};
+    final result = <String>[];
+
+    void addOption(String name) {
+      final t = name.trim();
+      if (t.isEmpty || customSet.contains(t)) return;
+      if (seen.add(t)) result.add(t);
+    }
+
     final l10n = AppLocalizations.of(context)!;
     final localizedPart = _translatePartToLocale(context, originalPart);
-    options.addAll(ExerciseCatalog.defaultsFor(localizedPart, l10n: l10n));
-    final customList = _customExercises[originalPart];
-    if (customList != null) {
-      for (final name in customList) {
-        final trimmed = name.trim();
-        if (trimmed.isNotEmpty) {
-          options.add(trimmed);
-        }
-      }
+
+    for (final name in ExerciseCatalog.defaultsFor(localizedPart, l10n: l10n)) {
+      addOption(name);
     }
+
     final dynamic rawLastUsed = widget.lastUsedMenusBox.get(originalPart);
     if (rawLastUsed is List) {
       for (final item in rawLastUsed) {
         if (item is MenuData) {
-          final trimmed = item.name.trim();
-          if (trimmed.isNotEmpty) {
-            options.add(trimmed);
-          }
+          addOption(item.name);
         } else if (item is String) {
-          final trimmed = item.trim();
-          if (trimmed.isNotEmpty) {
-            options.add(trimmed);
-          }
+          addOption(item);
         }
       }
     }
+
     for (final section in _sections) {
       final selected = section.selectedPart;
       if (selected == null) continue;
       if (_getOriginalPartName(context, selected) != originalPart) continue;
       for (final ctrl in section.menuControllers) {
-        final trimmed = ctrl.text.trim();
-        if (trimmed.isNotEmpty) {
-          options.add(trimmed);
-        }
+        addOption(ctrl.text);
       }
     }
-    if (trimmedCurrent.isNotEmpty && !options.contains(trimmedCurrent)) {
-      options.add(trimmedCurrent);
+
+    // カスタム種目は一番下に表示
+    for (final c in customList) {
+      final t = c.trim();
+      if (t.isEmpty) continue;
+      if (seen.add(t)) result.add(t);
     }
-    return options.where((name) => name.isNotEmpty).toList(growable: false);
+
+    final trimmedCurrent = currentName?.trim() ?? '';
+    if (trimmedCurrent.isNotEmpty && !seen.contains(trimmedCurrent)) {
+      result.add(trimmedCurrent);
+    }
+
+    return result;
   }
 
   // 人気3＋補助2（有酸素は人気3）のプリセット。
@@ -1846,22 +1614,9 @@ class _RecordScreenState extends State<RecordScreen>
                   if (!stateCtx.mounted) return;
                   return;
                 }
-                final added = await _addCustomExercise(originalPart, newName);
+                await _addCustomExercise(originalPart, newName);
                 if (!stateCtx.mounted) return;
-                if (!added) {
-                  showAppSnack(stateCtx, sheetL10n.customExerciseDuplicate);
-                  return;
-                }
-                pickerOptions = _exerciseOptionsForPart(
-                  originalPart,
-                  currentName: newName,
-                );
-                tempIndex = pickerOptions.indexOf(newName);
-                if (tempIndex < 0) {
-                  tempIndex = 0;
-                }
-                if (!stateCtx.mounted) return;
-                setSheetState(() {});
+                Navigator.pop(stateCtx, newName);
               }
 
               Widget buildPicker() {
@@ -2702,30 +2457,13 @@ class _RecordScreenState extends State<RecordScreen>
 
   Future<void> _confirmRemoveAllMealCards(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final bool? ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) {
-        return AlertDialog(
-          title: Text(l10n.mealDeleteConfirmTitle),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(false),
-              child: Text(
-                l10n.no,
-                style: TextStyle(color: cs.primary),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(true),
-              child: Text(
-                l10n.yes,
-                style: TextStyle(color: cs.primary),
-              ),
-            ),
-          ],
-        );
-      },
+    final bool? ok = await showConfirmDialog(
+      context,
+      title: l10n.mealDeleteConfirmTitle,
+      cancelLabel: l10n.no,
+      confirmLabel: l10n.yes,
+      isDestructive: true,
+      icon: Icons.delete_outline_rounded,
     );
     if (ok == true) {
       _removeAllMealCards();
@@ -2892,6 +2630,15 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   void _loadInitialSections() {
+    // 下書きが残っていればそちらから復元（保存なしで離れた場合の継続）
+    if (_hasMeaningfulDraft()) {
+      final rawDraft = widget.settingsBox.get(_draftKey);
+      if (rawDraft is Map) {
+        _loadFromDraft(rawDraft);
+        return;
+      }
+    }
+
     final dateKey = _getDateKey(widget.selectedDate);
     final record = widget.recordsBox.get(dateKey);
 
@@ -3193,6 +2940,290 @@ class _RecordScreenState extends State<RecordScreen>
 
   String _getDateKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+  String get _draftKey =>
+      'training_draft_${_getDateKey(widget.selectedDate)}';
+
+  bool _hasMeaningfulDraft() {
+    final raw = widget.settingsBox.get(_draftKey);
+    if (raw is! Map) return false;
+    final sections = raw['sections'];
+    if (sections is! List || sections.isEmpty) return false;
+    for (final sec in sections) {
+      if (sec is! Map) continue;
+      if (sec['part'] != null) return true;
+      final menus = sec['menus'];
+      if (menus is! List) continue;
+      for (final menu in menus) {
+        if (menu is! Map) continue;
+        final name = (menu['name'] as String?) ?? '';
+        if (name.trim().isNotEmpty) return true;
+      }
+    }
+    final weight = (raw['weight'] as String?) ?? '';
+    final memo = (raw['memo'] as String?) ?? '';
+    return weight.trim().isNotEmpty || memo.trim().isNotEmpty;
+  }
+
+  void _saveDraft() {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final List<dynamic> sectionsData = [];
+    for (final section in _sections) {
+      String? origPart;
+      if (section.selectedPart != null) {
+        origPart = _getOriginalPartName(context, section.selectedPart!);
+      }
+      final bool isAerobic = section.selectedPart == l10n.aerobicExercise;
+      final List<dynamic> menusData = [];
+      for (int i = 0; i < section.menuControllers.length; i++) {
+        final menuMap = <String, dynamic>{
+          'name': section.menuControllers[i].text,
+          'sat': (i < section.satisfactionList.length)
+              ? section.satisfactionList[i]
+              : null,
+        };
+        if (isAerobic) {
+          menuMap['dist'] = (i < section.aerobicDistanceCtrls.length)
+              ? section.aerobicDistanceCtrls[i].text
+              : '';
+          menuMap['dur'] = (i < section.aerobicDurationCtrls.length)
+              ? section.aerobicDurationCtrls[i].text
+              : '';
+          menuMap['cal'] = (i < section.aerobicCaloriesCtrls.length)
+              ? section.aerobicCaloriesCtrls[i].text
+              : '';
+          menuMap['sets'] = <dynamic>[];
+        } else {
+          final List<dynamic> setsData = [];
+          if (i < section.setInputDataList.length) {
+            for (final set in section.setInputDataList[i]) {
+              setsData.add(<String, dynamic>{
+                'w': set.weightController.text,
+                'r': set.repController.text,
+                'rir': set.rirController.text,
+                'checked': set.checked,
+                'fail': set.failureChecked,
+                'sug': set.isSuggestion,
+              });
+            }
+          }
+          menuMap['sets'] = setsData;
+        }
+        menusData.add(menuMap);
+      }
+      sectionsData.add(<String, dynamic>{
+        'part': origPart,
+        'menus': menusData,
+      });
+    }
+    widget.settingsBox.put(_draftKey, <String, dynamic>{
+      'v': 1,
+      'sections': sectionsData,
+      'weight': _weightController.text,
+      'bodyFat': _bodyFatController.text,
+      'waist': _waistController.text,
+      'memo': _memoController.text,
+      'bmr': _bmrController.text,
+    });
+  }
+
+  void _loadFromDraft(Map<dynamic, dynamic> draft) {
+    final l10n = AppLocalizations.of(context)!;
+    final dateKey = _getDateKey(widget.selectedDate);
+    final record = widget.recordsBox.get(dateKey);
+
+    _loadMealCardsFromRecord(record);
+
+    for (var s in _sections) {
+      s.dispose();
+    }
+    _sections.clear();
+
+    final dw = (draft['weight'] as String?) ?? '';
+    final dbf = (draft['bodyFat'] as String?) ?? '';
+    final dwaist = (draft['waist'] as String?) ?? '';
+    final dmemo = (draft['memo'] as String?) ?? '';
+    final dbmr = (draft['bmr'] as String?) ?? '';
+
+    _weightController.text =
+        dw.isNotEmpty ? dw : (record?.weight?.toString() ?? '');
+    _bodyFatController.text =
+        dbf.isNotEmpty ? dbf : (record?.bodyFatPercent?.toString() ?? '');
+    _waistController.text = dwaist.isNotEmpty
+        ? dwaist
+        : (record?.waistCm != null ? record!.waistCm!.toString() : '');
+    _memoController.text = dmemo;
+    _showMemo = _memoController.text.trim().isNotEmpty;
+
+    if (dbmr.isNotEmpty) {
+      _bmrController.text = dbmr;
+    } else if (record?.bmr != null) {
+      _bmrController.text = _formatKcalInput(record!.bmr!);
+    } else {
+      final autoBmr = _calculateBmr();
+      if (autoBmr != null) {
+        _bmrController.text = _formatKcalInput(autoBmr);
+      } else {
+        _bmrController.clear();
+      }
+    }
+
+    _updateBmiDisplay();
+
+    final rawSections = draft['sections'];
+    if (rawSections is! List || rawSections.isEmpty) {
+      final section = SectionData.createEmpty(
+        _currentSetCount,
+        shouldPopulateDefaults: false,
+      );
+      section.selectedPart = null;
+      _sections.add(section);
+      _currentSectionIndex = 0;
+      _currentMenuIndex = null;
+      _applyWaistDisplayUnitFromCm();
+      final bool hasPd = _weightController.text.trim().isNotEmpty ||
+          _bodyFatController.text.trim().isNotEmpty ||
+          _waistController.text.trim().isNotEmpty;
+      _showPersonalCard = hasPd;
+      _showWeightCard = hasPd;
+      return;
+    }
+
+    for (final rawSec in rawSections) {
+      if (rawSec is! Map) continue;
+      final origPart = rawSec['part'] as String?;
+      final translatedPart =
+          origPart != null ? _translatePartToLocale(context, origPart) : null;
+      final bool isAerobic = translatedPart == l10n.aerobicExercise;
+
+      final section = SectionData(
+        key: GlobalKey(),
+        selectedPart: translatedPart,
+        menuControllers: [],
+        setInputDataList: [],
+        menuKeys: [],
+        nameFieldKeys: [],
+        menuCollapsedStates: [],
+        satisfactionList: [],
+        previousVolumeList: [],
+        aerobicDistanceCtrls: [],
+        aerobicDurationCtrls: [],
+        aerobicSuggestFlags: [],
+        aerobicCaloriesCtrls: [],
+        aerobicCalorieSuggestFlags: [],
+      );
+
+      final rawMenus = rawSec['menus'];
+      if (rawMenus is List) {
+        for (final rawMenu in rawMenus) {
+          if (rawMenu is! Map) continue;
+          final name = (rawMenu['name'] as String?) ?? '';
+          section.menuControllers.add(TextEditingController(text: name));
+          section.menuKeys.add(GlobalKey());
+          section.nameFieldKeys.add(GlobalKey());
+          section.menuCollapsedStates.add(true);
+          section.satisfactionList.add(rawMenu['sat'] as int?);
+          section.previousVolumeList.add(null);
+
+          if (isAerobic) {
+            section.aerobicDistanceCtrls.add(TextEditingController(
+                text: (rawMenu['dist'] as String?) ?? ''));
+            section.aerobicDurationCtrls.add(TextEditingController(
+                text: (rawMenu['dur'] as String?) ?? ''));
+            final cal = (rawMenu['cal'] as String?) ?? '';
+            section.aerobicCaloriesCtrls
+                .add(TextEditingController(text: cal));
+            section.aerobicSuggestFlags.add(true);
+            section.aerobicCalorieSuggestFlags.add(cal.isEmpty);
+            section.aerobicCalorieHintVisible.add(false);
+            section.aerobicCalorieHintShown.add(false);
+            section.setInputDataList.add(<SetInputData>[]);
+          } else {
+            final rawSets = rawMenu['sets'];
+            final setRow = <SetInputData>[];
+            if (rawSets is List) {
+              for (final rawSet in rawSets) {
+                if (rawSet is! Map) continue;
+                final set = SetInputData(
+                  weightController: TextEditingController(
+                      text: (rawSet['w'] as String?) ?? ''),
+                  repController: TextEditingController(
+                      text: (rawSet['r'] as String?) ?? ''),
+                  isSuggestion: (rawSet['sug'] as bool?) ?? true,
+                  checked: (rawSet['checked'] as bool?) ?? false,
+                );
+                set.rirController.text = (rawSet['rir'] as String?) ?? '';
+                set.failureChecked = (rawSet['fail'] as bool?) ?? false;
+                setRow.add(set);
+              }
+            }
+            while (setRow.length < _currentSetCount) {
+              setRow.add(SetInputData(
+                weightController: TextEditingController(),
+                repController: TextEditingController(),
+                isSuggestion: true,
+              ));
+            }
+            section.setInputDataList.add(setRow);
+          }
+        }
+      }
+
+      if (section.menuControllers.isEmpty) {
+        section.menuControllers.add(TextEditingController());
+        section.menuKeys.add(GlobalKey());
+        section.nameFieldKeys.add(GlobalKey());
+        section.menuCollapsedStates.add(true);
+        section.satisfactionList.add(null);
+        section.previousVolumeList.add(null);
+        if (!isAerobic) {
+          section.setInputDataList.add(List.generate(
+            _currentSetCount,
+            (_) => SetInputData(
+              weightController: TextEditingController(),
+              repController: TextEditingController(),
+              isSuggestion: true,
+            ),
+          ));
+        } else {
+          section.aerobicDistanceCtrls.add(TextEditingController());
+          section.aerobicDurationCtrls.add(TextEditingController());
+          section.aerobicCaloriesCtrls.add(TextEditingController());
+          section.aerobicSuggestFlags.add(true);
+          section.aerobicCalorieSuggestFlags.add(true);
+          section.aerobicCalorieHintVisible.add(false);
+          section.aerobicCalorieHintShown.add(false);
+          section.setInputDataList.add(<SetInputData>[]);
+        }
+      }
+
+      _sections.add(section);
+    }
+
+    if (_sections.isEmpty) {
+      final section = SectionData.createEmpty(
+        _currentSetCount,
+        shouldPopulateDefaults: false,
+      );
+      section.selectedPart = null;
+      _sections.add(section);
+    }
+
+    _currentSectionIndex = 0;
+    _currentMenuIndex =
+        _sections.isNotEmpty && _sections.first.menuControllers.isNotEmpty
+            ? 0
+            : null;
+
+    _applyWaistDisplayUnitFromCm();
+
+    final bool hasPersonalData = _weightController.text.trim().isNotEmpty ||
+        _bodyFatController.text.trim().isNotEmpty ||
+        _waistController.text.trim().isNotEmpty;
+    _showPersonalCard = hasPersonalData;
+    _showWeightCard = hasPersonalData;
+  }
 
   void _clearSectionControllersAndMaps(SectionData section) {
     for (var c in section.menuControllers) {
@@ -3805,7 +3836,8 @@ class _RecordScreenState extends State<RecordScreen>
         final l10n = AppLocalizations.of(ctx)!;
         final primary = cs.primary;
 
-        final effectiveType = awardType ?? (() {
+        final effectiveType = awardType ??
+            (() {
               if (title == l10n.awardTitleFirst) {
                 return AwardType.first;
               }
@@ -3847,7 +3879,8 @@ class _RecordScreenState extends State<RecordScreen>
 
         return Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: Center(
             child: Container(
               decoration: BoxDecoration(
@@ -3904,13 +3937,13 @@ class _RecordScreenState extends State<RecordScreen>
                       thickness: 1,
                     ),
                     const SizedBox(height: 16),
-
                     if (dateLine.isNotEmpty)
                       Text(
                         '${l10n.awardLabelDate} $dateLine',
                         style: detailTextStyle,
                       ),
-                    if (effectiveType == AwardType.max && exerciseLine.isNotEmpty)
+                    if (effectiveType == AwardType.max &&
+                        exerciseLine.isNotEmpty)
                       Text(
                         '${l10n.awardLabelExercise} $exerciseLine',
                         style: detailTextStyle,
@@ -3920,19 +3953,18 @@ class _RecordScreenState extends State<RecordScreen>
                         todayLine,
                         style: detailTextStyle,
                       ),
-                    if (effectiveType == AwardType.max && previousLine.isNotEmpty)
+                    if (effectiveType == AwardType.max &&
+                        previousLine.isNotEmpty)
                       Text(
                         '${l10n.awardLabelPrevious} $previousLine',
                         style: detailTextStyle,
                       ),
-
                     const SizedBox(height: 16),
                     Text(
                       l10n.awardFooterMessage,
                       style: detailTextStyle,
                       textAlign: TextAlign.left,
                     ),
-
                     const SizedBox(height: 28),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -4095,7 +4127,8 @@ class _RecordScreenState extends State<RecordScreen>
     final String unit = useKg ? l10n.kg : l10n.lbs;
     final String weight = newVal.toStringAsFixed(1);
     final String prev = prevVal.toStringAsFixed(1);
-    final String diff = '${diffVal >= 0 ? '+' : ''}${diffVal.toStringAsFixed(1)}';
+    final String diff =
+        '${diffVal >= 0 ? '+' : ''}${diffVal.toStringAsFixed(1)}';
     final String todayLine = l10n.awardLineToday(weight, unit);
     final String prevLine = l10n.awardLinePrev(prev, unit, diff, unit);
     final String dateStr = DateFormat.yMd(l10n.localeName).format(date);
@@ -4800,21 +4833,13 @@ class _RecordScreenState extends State<RecordScreen>
     }
 
     final l10n = AppLocalizations.of(context)!;
-    final bool? ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deletePartConfirmationTitle),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.no),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.yes),
-          ),
-        ],
-      ),
+    final bool? ok = await showConfirmDialog(
+      context,
+      title: l10n.deletePartConfirmationTitle,
+      cancelLabel: l10n.no,
+      confirmLabel: l10n.yes,
+      isDestructive: true,
+      icon: Icons.delete_outline_rounded,
     );
     if (ok != true) {
       return;
@@ -5157,21 +5182,13 @@ class _RecordScreenState extends State<RecordScreen>
 
   Future<void> _handleRemovePersonalCard() async {
     final l10n = AppLocalizations.of(context)!;
-    final bool? ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deletePersonalConfirmationTitle),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.no),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.yes),
-          ),
-        ],
-      ),
+    final bool? ok = await showConfirmDialog(
+      context,
+      title: l10n.deletePersonalConfirmationTitle,
+      cancelLabel: l10n.no,
+      confirmLabel: l10n.yes,
+      isDestructive: true,
+      icon: Icons.delete_outline_rounded,
     );
     if (ok != true) {
       return;
@@ -5361,7 +5378,6 @@ class _RecordScreenState extends State<RecordScreen>
       _menuOverlayOpening = false;
       _fabOpen = false;
       _menuSlideIn = false;
-      _menuOverlayBannerType = Random().nextInt(6);
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -5577,6 +5593,16 @@ class _RecordScreenState extends State<RecordScreen>
   }
 
   Future<void> _saveAndAppendXFile(XFile shot) async {
+    if (!SettingsManager.isPremium) {
+      final l10n = AppLocalizations.of(context)!;
+      await showPremiumUpgradeSheet(
+        context,
+        headline: premiumPhotoHeadline(l10n),
+        message: premiumPhotoMessage(l10n),
+      );
+      return;
+    }
+
     final dir = await _mediaDirFor(widget.selectedDate);
     await _ensureDir(dir);
 
@@ -5588,10 +5614,18 @@ class _RecordScreenState extends State<RecordScreen>
 
     await shot.saveTo(savePath);
     await _registerProgressSnap(savePath, scrollIntoView: true);
-    await _handlePhotoCaptureAdProgress();
   }
 
   Future<void> _startCaptureLoop() async {
+    if (!SettingsManager.isPremium) {
+      final l10n = AppLocalizations.of(context)!;
+      await showPremiumUpgradeSheet(
+        context,
+        headline: premiumPhotoHeadline(l10n),
+        message: premiumPhotoMessage(l10n),
+      );
+      return;
+    }
     if (!await _ensureCameraPermission(context)) return;
 
     while (mounted) {
@@ -5676,31 +5710,34 @@ class _RecordScreenState extends State<RecordScreen>
 
   void _confirmDelete(String path) {
     final l10n = AppLocalizations.of(context)!;
-    showDialog<void>(
+    showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.mediaDelete),
+      builder: (ctx) => AppDialog(
+        title: l10n.mediaDelete,
+        icon: Icons.delete_outline_rounded,
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l10n.mediaCancel),
+          AppDialogAction(
+            label: l10n.mediaCancel,
+            isCancel: true,
+            onPressed: () => Navigator.of(ctx).pop(false),
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              try {
-                await File(path).delete();
-              } catch (_) {}
-              if (!mounted) return;
-              setState(() {
-                _mediaPaths.remove(path);
-              });
-            },
-            child: Text(l10n.delete),
+          AppDialogAction(
+            label: l10n.delete,
+            isDestructive: true,
+            onPressed: () => Navigator.of(ctx).pop(true),
           ),
         ],
       ),
-    );
+    ).then((ok) async {
+      if (ok != true) return;
+      try {
+        await File(path).delete();
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _mediaPaths.remove(path);
+      });
+    });
   }
 
   // ===== メモ：プレビュー（タップでフローティング編集へ） =====
@@ -6245,7 +6282,6 @@ class _RecordScreenState extends State<RecordScreen>
   Widget _buildStopwatchCard() {
     final cs = Theme.of(context).colorScheme;
     return Card(
-
       color: cs.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       elevation: 1.0,
@@ -6329,6 +6365,7 @@ class _RecordScreenState extends State<RecordScreen>
 
     final trimmed = _trimTrailingEmptySetsForAllMenus(_currentSetCount);
     if (trimmed) setState(() {});
+    _saveDraft();
     final didSave = _saveAllSectionsData(showHint: false);
 
     if (didSave) {
@@ -6338,8 +6375,6 @@ class _RecordScreenState extends State<RecordScreen>
 
     if (!mounted) return;
     Navigator.of(context).pop();
-    // 画面を閉じてから広告を出す（閉じた後のチラつき防止）
-    await _maybeShowExitInterstitial();
   }
 
   // パーソナル編集用オーバーレイ（上から/高さ0.4/背景薄暗 + フェード＆スケール）
@@ -6833,7 +6868,6 @@ class _RecordScreenState extends State<RecordScreen>
                             ),
                           ),
                         ),
-
                       ],
                     ),
                   ),
@@ -7356,7 +7390,6 @@ class _RecordScreenState extends State<RecordScreen>
                                 ),
                               ),
                             ),
-
                           ],
                         ),
                       ),
@@ -7507,8 +7540,7 @@ class _RecordScreenState extends State<RecordScreen>
                                           controller: _memoController,
                                           textAlignVertical:
                                               TextAlignVertical.top,
-                                          keyboardType:
-                                              TextInputType.multiline,
+                                          keyboardType: TextInputType.multiline,
                                           textInputAction:
                                               TextInputAction.newline,
                                           maxLength: 400,
@@ -7518,12 +7550,10 @@ class _RecordScreenState extends State<RecordScreen>
                                           ],
                                           minLines: 6,
                                           maxLines: null,
-                                          style:
-                                              TextStyle(color: cs.onSurface),
+                                          style: TextStyle(color: cs.onSurface),
                                           decoration: InputDecoration(
                                             isDense: true,
-                                            hintText:
-                                                l10n.memoBodyPlaceholder,
+                                            hintText: l10n.memoBodyPlaceholder,
                                             hintStyle: TextStyle(
                                               color: cs.onSurfaceVariant
                                                   .withOpacity(0.6),
@@ -7550,7 +7580,6 @@ class _RecordScreenState extends State<RecordScreen>
                                           mainAxisAlignment:
                                               MainAxisAlignment.end,
                                           children: [
-
                                             SizedBox(
                                               height: bottomSpacerHeight,
                                             ),
@@ -7669,7 +7698,6 @@ class _RecordScreenState extends State<RecordScreen>
                     scale: _menuSlideIn ? 1.0 : 0.98,
                     child: Column(
                       children: [
-
                         // ヘッダー：左=部位、右=＋セット＆保存
                         Padding(
                           padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
@@ -7908,10 +7936,6 @@ class _RecordScreenState extends State<RecordScreen>
                             ),
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                          child: _buildInputCardBanner(),
-                        ),
                       ],
                     ),
                   ),
@@ -7987,12 +8011,6 @@ class _RecordScreenState extends State<RecordScreen>
         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
         child: Column(
           children: [
-            if (!SettingsManager.isPremium)
-              KeyedSubtree(
-                key: _kAdArea,
-                child: const AdBanner(screenName: 'record'),
-              ),
-
             Visibility(
               visible: SettingsManager.showStopwatch,
               maintainState: true,
@@ -8918,9 +8936,10 @@ class _RecordScreenState extends State<RecordScreen>
               Scaffold(
                 extendBody: true,
                 resizeToAvoidBottomInset: false,
-                backgroundColor: SettingsManager.backgroundAssetNotifier.value.isEmpty
-                    ? null
-                    : Colors.transparent,
+                backgroundColor:
+                    SettingsManager.backgroundAssetNotifier.value.isEmpty
+                        ? null
+                        : Colors.transparent,
                 appBar: AppBar(
                   automaticallyImplyLeading: false,
                   leading: inputOverlayActive
@@ -8947,7 +8966,8 @@ class _RecordScreenState extends State<RecordScreen>
                   centerTitle: false,
                   titleSpacing: 16,
                   toolbarHeight: 56,
-                  title: Text(DateFormat('yyyy/MM/dd').format(widget.selectedDate)),
+                  title: Text(
+                      DateFormat('yyyy/MM/dd').format(widget.selectedDate)),
                 ),
                 body: Stack(
                   children: [
@@ -8972,17 +8992,18 @@ class _RecordScreenState extends State<RecordScreen>
                         child: fabMain,
                       )
                     : null,
-                floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+                floatingActionButtonLocation:
+                    FloatingActionButtonLocation.endFloat,
               ),
               _buildMealEditorOverlay(),
               _buildMenuEditorOverlay(),
               _buildMemoEditorOverlay(),
               _buildPersonalEditorOverlay(),
             ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 
   Future<void> _scrollIntoComfortZoneAfterKeyboard(
@@ -9472,8 +9493,6 @@ class MenuListPreview extends StatelessWidget {
       }
 
       Widget buildGrid() {
-
-
         final headers = <Widget>[
           cell('SET', fw: FontWeight.w700),
           cell(
@@ -9482,19 +9501,15 @@ class MenuListPreview extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 6.0),
           ),
           cell(l10n.reps, fw: FontWeight.w700),
-
           if (showRirColumn) ...[
             cell(l10n.rirLabel, fw: FontWeight.w700),
           ],
-
           if (showRmColumn) ...[
             cell(l10n.rmLabel, fw: FontWeight.w700),
           ],
-
           if (showFailColumn) ...[
             cell(l10n.failureLabel, fw: FontWeight.w700, maxLines: 2),
           ],
-
           cell('✔', fw: FontWeight.w700),
         ];
 
@@ -10051,21 +10066,13 @@ class MenuListPreview extends StatelessWidget {
               context,
               onPressed: () async {
                 onPrepareAction();
-                final bool? ok = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: Text(l10n.deleteMenuConfirmationTitle),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: Text(l10n.no),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: Text(l10n.yes),
-                      ),
-                    ],
-                  ),
+                final bool? ok = await showConfirmDialog(
+                  context,
+                  title: l10n.deleteMenuConfirmationTitle,
+                  cancelLabel: l10n.no,
+                  confirmLabel: l10n.yes,
+                  isDestructive: true,
+                  icon: Icons.delete_outline_rounded,
                 );
                 if (ok == true) {
                   onRemoveMenu();
@@ -10187,26 +10194,25 @@ class _CustomExerciseDialogState extends State<_CustomExerciseDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.l10n.customExerciseDialogTitle),
-      content: SizedBox(
-        width: 320,
-        child: TextField(
-          controller: _controller,
-          autofocus: true,
-          inputFormatters: [LengthLimitingTextInputFormatter(40)],
-          decoration:
-              InputDecoration(hintText: widget.l10n.customExerciseNameHint),
-        ),
+    return AppDialog(
+      title: widget.l10n.customExerciseDialogTitle,
+      contentWidget: TextField(
+        controller: _controller,
+        autofocus: true,
+        inputFormatters: [LengthLimitingTextInputFormatter(40)],
+        decoration: InputDecoration(hintText: widget.l10n.customExerciseNameHint),
+        textInputAction: TextInputAction.done,
+        onSubmitted: (_) => Navigator.pop(context, _controller.text.trim()),
       ),
       actions: [
-        TextButton(
+        AppDialogAction(
+          label: widget.material.cancelButtonLabel,
+          isCancel: true,
           onPressed: () => Navigator.pop(context, null),
-          child: Text(widget.material.cancelButtonLabel),
         ),
-        TextButton(
+        AppDialogAction(
+          label: widget.material.okButtonLabel,
           onPressed: () => Navigator.pop(context, _controller.text.trim()),
-          child: Text(widget.material.okButtonLabel),
         ),
       ],
     );
@@ -12533,17 +12539,13 @@ class _PhotoPreviewPage extends StatelessWidget {
 
   Future<void> _confirmDiscard(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.discardPhotoConfirmTitle),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.no)),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.yes)),
-        ],
-      ),
+    final ok = await showConfirmDialog(
+      context,
+      title: l10n.discardPhotoConfirmTitle,
+      cancelLabel: l10n.no,
+      confirmLabel: l10n.yes,
+      isDestructive: true,
+      icon: Icons.delete_outline_rounded,
     );
     if (ok == true) {
       Navigator.of(context).pop(_QuickReview.discard);

@@ -42,8 +42,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   
   // Configuration State
   TrainingStyle _trainingStyle = TrainingStyle.gym;
-  // Default parts now include 'arm', 'full_body', 'cardio'
-  final List<String> _selectedBodyPartsOrder = ['full_body', 'cardio'];
+  final List<String> _selectedBodyPartsOrder = [];
   final List<int> _selectedWeekdayOrder = [
     DateTime.now().weekday,
   ];
@@ -157,9 +156,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           originalPart: menus,
         },
         lastModifiedPart: originalPart,
-        weight: 70,
-        bodyFatPercent: 18.5,
-        waistCm: 82,
         trainingStart: DateTime(date.year, date.month, date.day, 18, 0),
         trainingEnd: DateTime(date.year, date.month, date.day, 18, 50),
       );
@@ -181,9 +177,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             date: date,
             menus: {originalPart: menus},
             lastModifiedPart: originalPart,
-            weight: 70,
-            bodyFatPercent: 18.5,
-            waistCm: 82,
           ),
         );
         lastUsedPayload[originalPart] = menus;
@@ -199,6 +192,63 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       'parts': partOrder,
       'days': weekdayOrder,
     });
+  }
+
+  Future<void> _saveSelectedBodyParts() async {
+    const allOriginalParts = <String>[
+      '有酸素運動',
+      '腕',
+      '胸',
+      '背中',
+      '肩',
+      '足',
+      '腹筋',
+      '全身',
+      '自重',
+      'その他１',
+      'その他２',
+      'その他３',
+    ];
+    final selectedOriginalParts = _selectedBodyPartsOrder
+        .map(_originalPartName)
+        .toSet();
+    final selectedBodyParts = <String, bool>{
+      for (final part in allOriginalParts) part: selectedOriginalParts.contains(part),
+    };
+    await widget.settingsBox.put('selectedBodyParts', selectedBodyParts);
+  }
+
+  String _sampleDescription(AppLocalizations l10n) {
+    if (_selectedBodyPartsOrder.isEmpty) {
+      return l10n.onboardingSampleDescription;
+    }
+    final labels = _selectedBodyPartsOrder
+        .map((part) => _localizedPartName(l10n, part))
+        .toList();
+    return '${labels.join('・')}のセットを自動で読み込みます。';
+  }
+
+  String _localizedPartName(AppLocalizations l10n, String key) {
+    switch (key) {
+      case 'full_body':
+        return l10n.fullBody;
+      case 'chest':
+        return l10n.chest;
+      case 'back':
+        return l10n.back;
+      case 'shoulder':
+        return l10n.shoulder;
+      case 'arm':
+        return l10n.arm;
+      case 'leg':
+        return l10n.leg;
+      case 'abs':
+        return l10n.abs;
+      case 'cardio':
+        return l10n.aerobicExercise;
+      default:
+        return key;
+    }
   }
 
   // --- Expanded Menu Catalog (~5 items per part) ---
@@ -468,6 +518,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _finish({bool openRecord = false}) async {
     if (_isFinishing) return;
     _isFinishing = true;
+    await _saveSelectedBodyParts();
     await SettingsManager.setOnboardingCompleted(true);
     if (!mounted) return;
     Navigator.of(context).pop(OnboardingResult(openRecord: openRecord));
@@ -539,6 +590,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
       // 4. Completion
       _CompletionStep(
+        description: _sampleDescription(l10n),
         onStart: () => _loadSampleRoutineAndFinish(openRecord: true),
         onSkip: () => _finish(openRecord: false),
         isBusy: _importingSample,
@@ -829,7 +881,7 @@ class _BodyPartSelectionStep extends StatelessWidget {
             ),
           ),
            FilledButton(
-            onPressed: onNext,
+            onPressed: selectedParts.isEmpty ? null : onNext,
             style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
             child: Text(l10n.onboardingNext),
           ),
@@ -980,11 +1032,13 @@ class _WeekdaySelectionStep extends StatelessWidget {
 }
 
 class _CompletionStep extends StatelessWidget {
+  final String description;
   final VoidCallback onStart;
   final VoidCallback onSkip;
   final bool isBusy;
 
   const _CompletionStep({
+    required this.description,
     required this.onStart,
     required this.onSkip,
     required this.isBusy,
@@ -1008,7 +1062,7 @@ class _CompletionStep extends StatelessWidget {
           ),
            const SizedBox(height: 16),
             Text(
-            l10n.onboardingSampleDescription,
+            description,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
